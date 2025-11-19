@@ -292,14 +292,15 @@ app-context-panel {
     flex-direction: row;
     gap: 10px;
     margin-bottom: 0px;
-    width:70%;
+    width: 70%;
+
     select {
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    font-size: 14px;
-    width: 33%
-  }
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      font-size: 14px;
+      width: 33%
+    }
   }
 
   .tab-actions {
@@ -363,14 +364,17 @@ app-context-panel {
     }
   }
 }
-.scenario-header{
-  margin-bottom:0px;
+
+.scenario-header {
+  margin-bottom: 0px;
 }
+
 .scenario-actions {
   display: flex;
   gap: 12px;
   margin-bottom: 5px;
-  .nova-button{
+
+  .nova-button {
     height: 43px;
     width: 43px;
     display: flex;
@@ -484,8 +488,9 @@ app-context-panel {
     }
   }
 }
-.scenario-item:hover{
-    box-shadow: 0 0 8px 0 rgba(15, 23, 42, 0.2) !important;
+
+.scenario-item:hover {
+  box-shadow: 0 0 8px 0 rgba(15, 23, 42, 0.2) !important;
 
 }
 
@@ -596,12 +601,13 @@ app-context-panel {
       }
     }
   }
+
   .section-divider {
-        margin: 20px auto;
+    margin: 20px auto;
     border-bottom: #EEE solid 1px;
     box-shadow: 0px 5px 18px 0px rgba(0, 0, 0, 0.1);
-    width:80%;
-}
+    width: 80%;
+  }
 
   .panel-footer {
     display: flex;
@@ -723,6 +729,7 @@ app-context-panel {
   justify-content: center;
   align-items: center;
   z-index: 10001;
+  border-radius: 15px;
 }
 
 .scenario-editor-modal {
@@ -754,10 +761,9 @@ app-context-panel {
   padding: 30px;
 
   .form-group {
-    border-radius: 24px;
-    border: 1px solid #d5d7da;
+    margin-bottom: 20px;
 
-    box-shadow: 2px 2px 5px #794cff1a label {
+    label {
       display: block;
       margin-bottom: 8px;
       font-weight: 500;
@@ -767,9 +773,10 @@ app-context-panel {
     .form-control {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      border: 1px solid #d5d7da;
+      border-radius: 24px;
       font-size: 14px;
+      box-shadow: 2px 2px 5px #794cff1a;
 
       &:focus {
         outline: none;

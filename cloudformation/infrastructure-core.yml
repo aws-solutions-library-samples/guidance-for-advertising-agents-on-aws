@@ -338,7 +338,7 @@ Resources:
                   - bedrock:RetrieveAndGenerate
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:*::foundation-model/*"
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:InvokeAgentRuntime
@@ -348,7 +348,7 @@ Resources:
                   - bedrock-agentcore:RetrieveMemoryRecords
                   - bedrock-agentcore:GetAgentRuntime
                   - bedrock-agentcore:ListAgentRuntimes
-                Resource: !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
+                Resource: !Sub "arn:aws:bedrock-agentcore:*:${AWS::AccountId}:*"
               - Effect: Allow
                 Action:
                   - s3:GetObject
