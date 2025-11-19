@@ -26,6 +26,8 @@ This guidance demonstrates how to deploy a comprehensive agentic application for
 
 This guidance demonstrates how to deploy a comprehensive agentic application for advertising workflows using Amazon Bedrock AgentCore. The solution showcases advanced multi-agent collaboration across the entire advertising value chain - from strategic media planning and audience targeting to real-time bid optimization and publisher revenue management.
 
+![Agents for Advertising - Ad Load Optimization Simulation](assets/agents_demo.gif)
+
 **Advertising Industry Challenge**
 Modern advertising requires intelligent coordination across multiple specialized domains:
 - **Strategic Media Planning**: Campaign strategy, audience targeting, channel mix optimization, and campaign architecture

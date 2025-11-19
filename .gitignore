@@ -117,3 +117,4 @@ _NOGIT*
 _notused_
 bedrock-adtech-demo/src/assets/global_configuration.json
 agentcore/deployment/agent/test_handler_invocation.py
+licenses.txt
