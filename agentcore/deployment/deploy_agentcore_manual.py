@@ -553,6 +553,7 @@ class ManualAgentCoreDeployer:
                     "Action": [
                         "bedrock-agentcore:RetrieveMemoryRecords",
                         "bedrock-agentcore:ListMemoryRecords",
+                        "bedrock-agentcore:CreateEvent",
                         "s3:GetObject",
                         "s3:ListBucket",
                         "s3:PutObject",
@@ -661,11 +662,11 @@ class ManualAgentCoreDeployer:
                         "bedrock:RetrieveAndGenerate",
                         "bedrock:ListFoundationModels",
                         "bedrock:ListKnowledgeBases",
-                        "bedrock:ListDataSources",
+                        "bedrock:ListDataSources"
                     ],
                     "Resource": [
-                        "arn:aws:bedrock:*::foundation-model/*",
-                        "arn:aws:bedrock:*:*:*",
+                        "arn:aws:bedrock:*::*/*",
+                        "arn:aws:bedrock:*:*:*"
                     ],
                 },
                 {

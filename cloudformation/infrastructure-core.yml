@@ -139,7 +139,7 @@ Resources:
                   - bedrock:ListKnowledgeBases
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::*/*"
 
   # OpenSearch Serverless Collection for Knowledge Bases
   OpenSearchCollection:

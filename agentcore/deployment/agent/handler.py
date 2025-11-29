@@ -17,6 +17,7 @@ import base64
 import threading
 import uuid
 from typing import Dict, List, Optional, Any, Union
+import copy
 from opentelemetry import baggage, context
 from strands.agent.conversation_manager import SummarizingConversationManager
 from shared.response_model import (
@@ -74,6 +75,12 @@ from shared.memory_integration import (
     create_memory_hooks_and_state,
     extract_session_id_and_memory_id_and_actor_from_payload,
     MEMORY_AVAILABLE,
+)
+
+# AgentCore Memory Conversation Manager for persistent session management
+from shared.agentcore_memory_conversation_manager import (
+    AgentCoreMemoryConversationManager,
+    create_agentcore_memory_manager,
 )
 
 logger = logging.getLogger(__name__)
@@ -861,6 +868,19 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     # Normalize actor_id to comply with validation pattern
     normalized_actor_id = agent_name.replace("_", "-")
 
+    # Create conversation manager for collaborator agents
+    # Use AgentCoreMemoryConversationManager when memory is configured
+    if "default" not in orchestrator_instance.memory_id.lower():
+        conversation_manager = create_agentcore_memory_manager(
+            memory_id=orchestrator_instance.memory_id,
+            actor_id=normalized_actor_id,
+            session_id=orchestrator_instance.session_id,
+            region_name=os.environ.get("AWS_REGION", "us-east-1"),
+            use_summarizing_fallback=True,
+        )
+    else:
+        conversation_manager = None  # Use default behavior
+
     return Agent(
         model=model,
         name=agent_name,
@@ -868,6 +888,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         tools=tools,
         description=collaborator_config.get("agent_description", ""),
         hooks=hooks,
+        conversation_manager=conversation_manager,
         state={
             "session_id": orchestrator_instance.session_id,
             "actor_id": normalized_actor_id,
@@ -1013,6 +1034,53 @@ def appsync_publisher_callback_handler(**kwargs):
 
 # Global variable to collect sources from tool calls
 collected_sources = {}
+
+# Agent context storage for maintaining conversation history across agent switches
+# Structure: {session_id: {agent_name: List[messages]}}
+# This enables continuous conversation when users switch between agent types
+agent_context_store: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+
+# Maximum messages to store per agent context (to prevent unbounded memory growth)
+MAX_CONTEXT_MESSAGES = 30
+
+
+def get_context_store_stats() -> Dict[str, Any]:
+    """Get statistics about the current context store for debugging."""
+    global agent_context_store
+    stats = {
+        "total_sessions": len(agent_context_store),
+        "sessions": {}
+    }
+    for session_id, agents in agent_context_store.items():
+        stats["sessions"][session_id] = {
+            "agents": list(agents.keys()),
+            "message_counts": {agent: len(msgs) for agent, msgs in agents.items()}
+        }
+    return stats
+
+
+def clear_session_context(session_id: str) -> bool:
+    """Clear all agent contexts for a specific session."""
+    global agent_context_store
+    if session_id in agent_context_store:
+        del agent_context_store[session_id]
+        logger.info(f"🗑️ CONTEXT_CLEAR: Cleared all contexts for session {session_id}")
+        return True
+    return False
+
+
+def trim_context_messages(messages: List[Dict[str, Any]], max_messages: int = MAX_CONTEXT_MESSAGES) -> List[Dict[str, Any]]:
+    """
+    Trim messages to prevent unbounded memory growth.
+    Keeps the most recent messages while preserving conversation flow.
+    """
+    if len(messages) <= max_messages:
+        return messages
+    
+    # Keep the most recent messages
+    trimmed = messages[-max_messages:]
+    logger.info(f"✂️ CONTEXT_TRIM: Trimmed {len(messages) - max_messages} old messages, keeping {len(trimmed)}")
+    return trimmed
 
 
 @tool
@@ -1499,7 +1567,16 @@ class GenericAgent:
         global CONFIG
         # Create the summarizing conversation manager with default settings
 
-    def create_orchestrator(self, session_id, memory_id, agent_name):
+    def create_orchestrator(self, session_id, memory_id, agent_name, saved_messages: Optional[List[Dict[str, Any]]] = None):
+        """
+        Create an orchestrator agent with optional conversation history restoration.
+        
+        Args:
+            session_id: The session identifier (shared across all agents in a conversation)
+            memory_id: The AgentCore memory identifier
+            agent_name: Name of the agent to create
+            saved_messages: Optional list of previous messages to restore conversation context
+        """
         if agent_name == "default":
             return Agent()
         self.agent_name = agent_name
@@ -1638,30 +1715,58 @@ class GenericAgent:
         try:
             agent_description = config.get("agent_description", "")
 
-            conversation_manager = SummarizingConversationManager(
-                summary_ratio=0.3,  # Summarize 30% of messages when context reduction is needed
-                preserve_recent_messages=5,  # Always keep 5 most recent messages
-                summarization_system_prompt="summarize the current conversation context.",
-            )
             # Normalize actor_id to comply with validation pattern
             actor_name = agent_name or config.get("agent_id", config.get("agent_name"))
             normalized_actor_id = actor_name.replace("_", "-")
 
-            agent = Agent(
-                model=model,
-                name=actor_name,
-                system_prompt=enhanced_system_prompt,
-                tools=tools,
-                description=agent_description,
-                hooks=hooks,
-                state={
+            # Create AgentCore Memory Conversation Manager for persistent session management
+            # This provides:
+            # 1. Automatic persistence of conversation history to AgentCore Memory
+            # 2. Retrieval of conversation history when resuming sessions (survives process restarts)
+            # 3. Falls back to SummarizingConversationManager for context window management
+            if "default" not in self.memory_id.lower():
+                conversation_manager = create_agentcore_memory_manager(
+                    memory_id=self.memory_id,
+                    actor_id=normalized_actor_id,
+                    session_id=self.session_id,
+                    region_name=os.environ.get("AWS_REGION", "us-east-1"),
+                    use_summarizing_fallback=True,  # Use SummarizingConversationManager for context reduction
+                )
+                logger.info(
+                    f"✅ Using AgentCoreMemoryConversationManager for {agent_name} "
+                    f"(memory_id={self.memory_id}, session_id={self.session_id})"
+                )
+            else:
+                # Fall back to simple SummarizingConversationManager when memory is not configured
+                conversation_manager = SummarizingConversationManager(
+                    summary_ratio=0.3,
+                    preserve_recent_messages=5,
+                    summarization_system_prompt="summarize the current conversation context.",
+                )
+                logger.info(f"⊘ Using SummarizingConversationManager (no memory configured) for {agent_name}")
+
+            # Build agent kwargs
+            agent_kwargs = {
+                "model": model,
+                "name": actor_name,
+                "system_prompt": enhanced_system_prompt,
+                "tools": tools,
+                "description": agent_description,
+                "hooks": hooks,
+                "state": {
                     "session_id": self.session_id,
                     "actor_id": normalized_actor_id,
                     "memory_id": self.memory_id,
                 },
-                conversation_manager=conversation_manager,
-                # callback_handler=transform_response_handler
-            )
+                "conversation_manager": conversation_manager,
+            }
+            
+            # Restore conversation history if provided
+            if saved_messages:
+                agent_kwargs["messages"] = saved_messages
+                logger.info(f"📂 CONTEXT_RESTORE: Restored {len(saved_messages)} messages for {agent_name}")
+            
+            agent = Agent(**agent_kwargs)
             return agent
         except Exception as e:
             logger.error(f"CREATE_ORCHESTRATOR: FAILED")
@@ -1677,11 +1782,30 @@ print(f"DEBUG: Module load - All env vars: {list(os.environ.keys())}")
 
 # Create the orchestrator instance
 orchestrator_instance = GenericAgent()
-agent = orchestrator_instance.create_orchestrator(
-    session_id="new_session-12345678901234567890",
-    memory_id="default",
-    agent_name="AdFabricAgent",
-)
+agent = None  # Will be lazily initialized on first invocation
+current_agent_name = None  # Track which agent is currently loaded
+
+
+def _flush_log(message: str, level: str = "INFO"):
+    """Force-flush a log message to ensure it appears in CloudWatch immediately."""
+    import sys
+    try:
+        timestamp = datetime.now().isoformat()
+        formatted = f"[{timestamp}] {level}: {message}"
+        print(formatted, flush=True)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        if level == "ERROR":
+            logger.error(message)
+        elif level == "WARNING":
+            logger.warning(message)
+        elif level == "DEBUG":
+            logger.debug(message)
+        else:
+            logger.info(message)
+    except Exception as log_err:
+        # Last resort - just print
+        print(f"LOG_ERROR: {log_err} | Original message: {message}", flush=True)
 
 
 @app.entrypoint
@@ -1690,187 +1814,344 @@ async def agent_invocation(payload, context):
     Invoke the orchestrator, unless directed otherwise
     Returns complete response chunks instead of streaming tokens
     """
+    _flush_log("=" * 60)
+    _flush_log("🚀 AGENT_INVOCATION: Entry point called")
+    _flush_log(f"🚀 AGENT_INVOCATION: Payload keys: {list(payload.keys()) if payload else 'None'}")
+    _flush_log(f"🚀 AGENT_INVOCATION: Context type: {type(context)}")
+    
+    try:
+        appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
+        _flush_log(f"🔧 AGENT_INVOCATION: APPSYNC_ENDPOINT = {appsync_endpoint[:50] if appsync_endpoint else 'None'}...")
 
-    appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
+        # Check for APPSYNC variations
+        for var_name in [
+            "APPSYNC_ENDPOINT",
+            "AppSyncEndpoint",
+            "appsync_endpoint",
+            "APPSYNC_URL",
+        ]:
+            value = os.getenv(var_name)
 
-    # Check for APPSYNC variations
-    for var_name in [
-        "APPSYNC_ENDPOINT",
-        "AppSyncEndpoint",
-        "appsync_endpoint",
-        "APPSYNC_URL",
-    ]:
-        value = os.getenv(var_name)
+        global collected_sources
+        global agent
+        global CONFIG
+        global GLOBAL_CONFIG
+        global memory_id
+        global orchestrator_instance
+        global current_agent_name
+        
+        _flush_log(f"🔧 AGENT_INVOCATION: Global vars accessed. current_agent_name={current_agent_name}, agent={'exists' if agent else 'None'}")
 
-    global collected_sources
-    global agent
-    global CONFIG
-    global GLOBAL_CONFIG
-    global memory_id
-    global orchestrator_instance
+        # Process the prompt - it can be a string or a list of content blocks
+        raw_prompt = payload.get("prompt")
+        _flush_log(f"📝 AGENT_INVOCATION: raw_prompt type={type(raw_prompt)}, length={len(str(raw_prompt)) if raw_prompt else 0}")
+        media = payload.get("media", {})
 
-    # Process the prompt - it can be a string or a list of content blocks
-    raw_prompt = payload.get("prompt")
-    media = payload.get("media", {})
+        # Parse the prompt to extract text and file attachments
+        user_input = ""
+        file_attachments = []
+        seen_files = set()  # Track file names to avoid duplicates
+        _flush_log(f"📝 AGENT_INVOCATION: Parsing prompt...")
 
-    # Parse the prompt to extract text and file attachments
-    user_input = ""
-    file_attachments = []
-    seen_files = set()  # Track file names to avoid duplicates
-    print(f"Raw prompt:{raw_prompt}\n\n")
-
-    if isinstance(raw_prompt, str):
-        # Simple string prompt
-        user_input = raw_prompt
-    elif isinstance(raw_prompt, list):
-        print("is a list")
-        # Content blocks format (Bedrock format)
-        for block in raw_prompt:
-            print(f"block: {block}")
-            if isinstance(block, dict):
-                if "text" in block:
-                    # Extract text content
-                    text_content = block["text"]
-                    # Extract and parse <file>...</file> tags if present
-                    import re
-                    import json
-                if "document" in block:
-                    # Extract document content
-                    print("found doc in prompt")
-                    document_content = block["document"]
-                    file_attachments.append(document_content)
-            elif isinstance(block, str):
-                user_input += block
-    else:
-        print("is a str")
-        user_input = str(raw_prompt)
-    # Process file attachments - download from S3 and convert to bytes
-    processed_attachments = []
-    s3_client = boto3.client(
-        "s3", region_name=os.environ.get("AWS_REGION", "us-east-1")
-    )
-
-    # Check for explicit direct mention flag from frontend (clean approach)
-    direct_mention_target = payload.get("direct_mention_target")
-    direct_mention_mode = False
-
-    # Clear collected sources from previous invocations
-    collected_sources = {}
-
-    # Extract session information from payload for memory integration
-    session_id, extracted_memory_id, agent_name = (
-        extract_session_id_and_memory_id_and_actor_from_payload(payload)
-    )
-
-    GLOBAL_CONFIG = load_configs("global_configuration.json")
-
-    CONFIG = get_agent_config(agent_name=agent_name)
-
-    if session_id:
-        # Update orchestrator instance with session information
-        orchestrator_instance.session_id = session_id
-        orchestrator_instance.memory_id = extracted_memory_id
-        orchestrator_instance.direct_mention_mode = direct_mention_mode
-        orchestrator_instance.direct_mention_target = direct_mention_target
-        memory_id = extracted_memory_id
-
-        # Recreate agent with updated session info and conversation context
-        agent = orchestrator_instance.create_orchestrator(
-            session_id, memory_id, agent_name
+        if isinstance(raw_prompt, str):
+            # Simple string prompt
+            user_input = raw_prompt
+            _flush_log(f"📝 AGENT_INVOCATION: Prompt is string, length={len(user_input)}")
+        elif isinstance(raw_prompt, list):
+            _flush_log(f"📝 AGENT_INVOCATION: Prompt is list with {len(raw_prompt)} blocks")
+            # Content blocks format (Bedrock format)
+            for idx, block in enumerate(raw_prompt):
+                _flush_log(f"📝 AGENT_INVOCATION: Processing block {idx}: type={type(block)}")
+                if isinstance(block, dict):
+                    if "text" in block:
+                        # Extract text content
+                        text_content = block["text"]
+                        user_input = text_content
+                        _flush_log(f"📝 AGENT_INVOCATION: Found text block, length={len(text_content)}")
+                    if "document" in block:
+                        # Extract document content
+                        _flush_log(f"📝 AGENT_INVOCATION: Found document block")
+                        document_content = block["document"]
+                        file_attachments.append(document_content)
+                elif isinstance(block, str):
+                    user_input += block
+        else:
+            _flush_log(f"📝 AGENT_INVOCATION: Prompt is other type: {type(raw_prompt)}")
+            user_input = str(raw_prompt)
+        _flush_log(f"📝 AGENT_INVOCATION: user_input length={len(user_input)}, file_attachments={len(file_attachments)}")
+        
+        # Process file attachments - download from S3 and convert to bytes
+        processed_attachments = []
+        s3_client = boto3.client(
+            "s3", region_name=os.environ.get("AWS_REGION", "us-east-1")
         )
+
+        # Check for explicit direct mention flag from frontend (clean approach)
+        direct_mention_target = payload.get("direct_mention_target")
+        direct_mention_mode = False
+
+        # Clear collected sources from previous invocations
+        collected_sources = {}
+
+        # Extract session information from payload for memory integration
+        _flush_log("🔍 AGENT_INVOCATION: Extracting session info from payload...")
         try:
-            context_token = set_session_context(session_id)
-        except:
-            print("Failed to set session context")
-            context_token = None
-    # Get tool agent names from config
-    stream = payload.get("stream", True)
-
-    if stream:
-        try:
-            # Build the input for the agent
-            agent_input = user_input
-
-            # If there are file attachments, format them for the agent
-            if file_attachments:
-                # Convert to ConverseStream content format
-                content_blocks = []
-
-                # Process each document attachment
-                document_analyses = []
-                for file_info in file_attachments:
-                    try:
-                        # Extract S3 location from document block
-                        if isinstance(file_info, dict) and "source" in file_info:
-                            s3_location = file_info.get("source", {}).get(
-                                "s3Location", {}
-                            )
-                            s3_uri = s3_location.get("uri", "")
-
-                            if s3_uri.startswith("s3://"):
-                                # Parse S3 URI: s3://bucket/key
-                                s3_parts = s3_uri[5:].split("/", 1)
-                                if len(s3_parts) == 2:
-                                    bucket_name = s3_parts[0]
-                                    object_key = s3_parts[1]
-
-                                    # Pre-process the document
-                                    print(
-                                        f"Pre-processing document from s3://{bucket_name}/{object_key}"
-                                    )
-                                    analysis = get_s3_as_base64_and_extract_summary_and_facts(
-                                        bucket_name, object_key
-                                    )
-
-                                    if analysis:
-                                        document_name = file_info.get(
-                                            "name", "document"
-                                        )
-                                        document_analyses.append(
-                                            f"\n\n--- Document: {document_name} ---\n{analysis}"
-                                        )
-                                        print(
-                                            f"Successfully pre-processed document: {document_name}"
-                                        )
-                    except Exception as e:
-                        logger.error(f"Failed to pre-process document: {e}")
-                        print(f"Error pre-processing document: {e}")
-
-                # Append document analyses to user input
-                if document_analyses:
-                    enhanced_input = (
-                        user_input
-                        + "\n\nHere is additional context from attached documents I pre-processed for you:"
-                        + "".join(document_analyses)
-                    )
-                    content_blocks.append({"text": enhanced_input})
-                else:
-                    content_blocks.append({"text": user_input})
-
-                # Add cache point if needed
-                content_blocks.append({"cachePoint": {"type": "default"}})
-                agent_input = content_blocks
-
-            stream = agent.stream_async(agent_input)
-            event_count = 0
-
-            events_yielded = False
-            async for event in stream:
-                if event.get("message") and event.get("message").get("content"):
-                    event["teamName"] = orchestrator_instance.team_name
-                    yield (event)
-                    # After stream completes, yield sources as a separate event
-                    if collected_sources and collected_sources != {}:
-                        print(f"\n\nSOURCES:\n\n{collected_sources}")
-                        yield {"type": "sources", "sources": collected_sources}
-        except Exception as e:
-            logger.error(f"❌ STREAM: Streaming failed: {e}")
-            print(f"❌ STREAM: Streaming failed with error: {e}")
+            session_id, extracted_memory_id, agent_name = (
+                extract_session_id_and_memory_id_and_actor_from_payload(payload)
+            )
+            _flush_log(f"🔍 AGENT_INVOCATION: session_id={session_id}, memory_id={extracted_memory_id}, agent_name={agent_name}")
+        except Exception as extract_err:
+            _flush_log(f"❌ AGENT_INVOCATION: Failed to extract session info: {extract_err}", "ERROR")
             import traceback
+            _flush_log(f"❌ AGENT_INVOCATION: Traceback: {traceback.format_exc()}", "ERROR")
+            raise
 
-            logger.error(f"❌ STREAM: Traceback: {traceback.format_exc()}")
-            print(f"❌ STREAM: Full traceback: {traceback.format_exc()}")
-            print(f"⚠️ STREAM: Falling back to non-streaming mode")
+        _flush_log("📂 AGENT_INVOCATION: Loading global configuration...")
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
+        _flush_log(f"📂 AGENT_INVOCATION: GLOBAL_CONFIG keys: {list(GLOBAL_CONFIG.keys()) if GLOBAL_CONFIG else 'None'}")
+
+        _flush_log(f"📂 AGENT_INVOCATION: Getting agent config for {agent_name}...")
+        CONFIG = get_agent_config(agent_name=agent_name)
+        _flush_log(f"📂 AGENT_INVOCATION: CONFIG keys: {list(CONFIG.keys()) if CONFIG else 'None'}")
+
+        # Check if we need to create or recreate the agent
+        agent_type_changed = (current_agent_name is not None and current_agent_name != agent_name)
+        _flush_log(f"🔄 AGENT_INVOCATION: agent_type_changed={agent_type_changed}, current={current_agent_name}, new={agent_name}")
+        
+        # Access global context store
+        global agent_context_store
+        
+        # Determine the session key for context storage (use session_id, shared across all agents)
+        context_session_key = session_id if session_id else "default_session"
+        _flush_log(f"🔄 AGENT_INVOCATION: context_session_key={context_session_key}")
+        
+        if agent is None or agent_type_changed:
+            _flush_log(f"🏗️ AGENT_INVOCATION: Need to create agent (agent is None: {agent is None}, type_changed: {agent_type_changed})")
+            # Need to create a new agent (first time or agent type changed)
+            
+            # SAVE current agent's context before switching (if switching)
+            if agent_type_changed and agent is not None and current_agent_name:
+                # Initialize session entry if needed
+                if context_session_key not in agent_context_store:
+                    agent_context_store[context_session_key] = {}
+                
+                # Deep copy messages to preserve state
+                try:
+                    saved_messages = copy.deepcopy(agent.messages) if hasattr(agent, 'messages') and agent.messages else []
+                    # Trim to prevent unbounded memory growth
+                    saved_messages = trim_context_messages(saved_messages)
+                    agent_context_store[context_session_key][current_agent_name] = saved_messages
+                    _flush_log(f"💾 CONTEXT_SAVE: Saved {len(saved_messages)} messages for {current_agent_name}")
+                except Exception as e:
+                    _flush_log(f"⚠️ CONTEXT_SAVE: Failed to save context for {current_agent_name}: {e}", "WARNING")
+            
+            if agent_type_changed:
+                _flush_log(f"🔄 Agent type changed from {current_agent_name} to {agent_name}")
+            
+            # Set up session info
+            if session_id:
+                orchestrator_instance.session_id = session_id
+                orchestrator_instance.memory_id = extracted_memory_id
+                orchestrator_instance.direct_mention_mode = direct_mention_mode
+                orchestrator_instance.direct_mention_target = direct_mention_target
+                memory_id = extracted_memory_id
+            else:
+                orchestrator_instance.session_id = "new_session-12345678901234567890"
+                orchestrator_instance.memory_id = "default"
+                memory_id = "default"
+            
+            # RESTORE saved context for the new agent (if available)
+            saved_messages = None
+            if context_session_key in agent_context_store and agent_name in agent_context_store[context_session_key]:
+                saved_messages = agent_context_store[context_session_key][agent_name]
+                _flush_log(f"📂 CONTEXT_RESTORE: Found {len(saved_messages)} saved messages for {agent_name}")
+            
+            # Create agent with restored context
+            _flush_log(f"🏗️ AGENT_INVOCATION: Calling create_orchestrator for {agent_name}...")
+            try:
+                agent = orchestrator_instance.create_orchestrator(
+                    orchestrator_instance.session_id, 
+                    orchestrator_instance.memory_id, 
+                    agent_name,
+                    saved_messages=saved_messages
+                )
+                _flush_log(f"✅ AGENT_INVOCATION: Agent created successfully, type={type(agent)}")
+            except Exception as create_err:
+                _flush_log(f"❌ AGENT_INVOCATION: create_orchestrator failed: {create_err}", "ERROR")
+                import traceback
+                _flush_log(f"❌ AGENT_INVOCATION: Traceback: {traceback.format_exc()}", "ERROR")
+                raise
+            
+            current_agent_name = agent_name
+            _flush_log(f"✅ Agent created for {agent_name} with session {orchestrator_instance.session_id}")
+        else:
+            # Agent already exists and type hasn't changed, just update session info if needed
+            _flush_log(f"♻️ AGENT_INVOCATION: Reusing existing agent {agent_name}")
+            if session_id:
+                orchestrator_instance.session_id = session_id
+                orchestrator_instance.memory_id = extracted_memory_id
+                orchestrator_instance.direct_mention_mode = direct_mention_mode
+                orchestrator_instance.direct_mention_target = direct_mention_target
+                memory_id = extracted_memory_id
+                
+                # Update agent state without recreating
+                normalized_actor_id = agent_name.replace("_", "-")
+                agent.state = {
+                    "session_id": session_id,
+                    "actor_id": normalized_actor_id,
+                    "memory_id": extracted_memory_id,
+                }
+                _flush_log(f"♻️ Agent reused for {agent_name} with session {session_id}")
+        
+        if session_id:
+            try:
+                context_token = set_session_context(session_id)
+                _flush_log(f"🔧 AGENT_INVOCATION: Session context set for {session_id}")
+            except Exception as ctx_err:
+                _flush_log(f"⚠️ AGENT_INVOCATION: Failed to set session context: {ctx_err}", "WARNING")
+                context_token = None
+        
+        # Get tool agent names from config
+        stream = payload.get("stream", True)
+        _flush_log(f"🎬 AGENT_INVOCATION: stream={stream}, about to invoke agent...")
+
+        if stream:
+            _flush_log("🎬 AGENT_INVOCATION: Starting STREAMING mode...")
+            try:
+                # Build the input for the agent
+                agent_input = user_input
+                _flush_log(f"🎬 AGENT_INVOCATION: agent_input length={len(str(agent_input))}")
+
+                # If there are file attachments, format them for the agent
+                if file_attachments:
+                    _flush_log(f"📎 AGENT_INVOCATION: Processing {len(file_attachments)} file attachments...")
+                    # Convert to ConverseStream content format
+                    content_blocks = []
+
+                    # Process each document attachment
+                    document_analyses = []
+                    for file_info in file_attachments:
+                        try:
+                            # Extract S3 location from document block
+                            if isinstance(file_info, dict) and "source" in file_info:
+                                s3_location = file_info.get("source", {}).get(
+                                    "s3Location", {}
+                                )
+                                s3_uri = s3_location.get("uri", "")
+
+                                if s3_uri.startswith("s3://"):
+                                    # Parse S3 URI: s3://bucket/key
+                                    s3_parts = s3_uri[5:].split("/", 1)
+                                    if len(s3_parts) == 2:
+                                        bucket_name = s3_parts[0]
+                                        object_key = s3_parts[1]
+
+                                        # Pre-process the document
+                                        _flush_log(f"📎 Pre-processing document from s3://{bucket_name}/{object_key}")
+                                        analysis = get_s3_as_base64_and_extract_summary_and_facts(
+                                            bucket_name, object_key
+                                        )
+
+                                        if analysis:
+                                            document_name = file_info.get("name", "document")
+                                            document_analyses.append(
+                                                f"\n\n--- Document: {document_name} ---\n{analysis}"
+                                            )
+                                            _flush_log(f"📎 Successfully pre-processed document: {document_name}")
+                        except Exception as e:
+                            _flush_log(f"❌ Failed to pre-process document: {e}", "ERROR")
+
+                    # Append document analyses to user input
+                    if document_analyses:
+                        enhanced_input = (
+                            user_input
+                            + "\n\nHere is additional context from attached documents I pre-processed for you:"
+                            + "".join(document_analyses)
+                        )
+                        content_blocks.append({"text": enhanced_input})
+                    else:
+                        content_blocks.append({"text": user_input})
+
+                    # Add cache point if needed
+                    content_blocks.append({"cachePoint": {"type": "default"}})
+                    agent_input = content_blocks
+
+                _flush_log(f"🎬 AGENT_INVOCATION: Calling agent.stream_async()...")
+                stream_obj = agent.stream_async(agent_input)
+                _flush_log(f"🎬 AGENT_INVOCATION: stream_async returned, type={type(stream_obj)}")
+                event_count = 0
+
+                events_yielded = False
+                _flush_log("🎬 AGENT_INVOCATION: Starting async iteration over stream...")
+                async for event in stream_obj:
+                    event_count += 1
+                    if event_count <= 3:  # Log first few events
+                        _flush_log(f"🎬 AGENT_INVOCATION: Event #{event_count}, keys={list(event.keys()) if isinstance(event, dict) else type(event)}")
+                    if event.get("message") and event.get("message").get("content"):
+                        event["teamName"] = orchestrator_instance.team_name
+                        yield event
+                        # After stream completes, yield sources as a separate event
+                        if collected_sources and collected_sources != {}:
+                            _flush_log(f"📦 STREAM: Yielding sources")
+                            yield {"type": "sources", "sources": collected_sources}
+                
+                _flush_log(f"✅ STREAM: Completed with {event_count} events")
+                
+            except Exception as e:
+                _flush_log(f"❌ STREAM: Streaming failed: {e}", "ERROR")
+                import traceback
+                _flush_log(f"❌ STREAM: Traceback: {traceback.format_exc()}", "ERROR")
+                _flush_log("⚠️ STREAM: Falling back to non-streaming mode")
+                try:
+                    # Build the input for the agent (same as streaming path)
+                    agent_input = user_input
+                    if file_attachments:
+                        content_blocks = [{"text": user_input}]
+                        for file_info in file_attachments:
+                            content_blocks.append({"document": file_info})
+                        content_blocks.append({"cachePoint": {"type": "default"}})
+                        agent_input = content_blocks
+
+                    _flush_log(f"🔄 FALLBACK: About to call agent() with input type: {type(agent_input)}")
+                    # Fallback to non-streaming response
+                    response = agent(agent_input)
+                    _flush_log(f"🔄 FALLBACK: agent() returned: {type(response)}")
+                    
+                    # Safely extract response text
+                    try:
+                        if hasattr(response, "message") and response.message:
+                            content = response.message.get("content")
+                            if isinstance(content, list) and len(content) > 0:
+                                if isinstance(content[0], dict) and "text" in content[0]:
+                                    response_text = content[0]["text"]
+                                else:
+                                    response_text = str(content[0])
+                            elif isinstance(content, str):
+                                response_text = content
+                            else:
+                                response_text = str(content)
+                        else:
+                            response_text = "No response content available"
+                    except (KeyError, IndexError, AttributeError) as e:
+                        response_text = f"Error extracting response content: {e}"
+
+                    # Yield the response
+                    yield response_text
+
+                    # Yield sources after response
+                    if collected_sources:
+                        _flush_log(f"📦 FALLBACK: Yielding sources with {len(collected_sources)} sources")
+                        yield {"type": "sources", "sources": collected_sources}
+                        
+                except Exception as fallback_error:
+                    _flush_log(f"❌ FALLBACK: Non-streaming failed: {fallback_error}", "ERROR")
+                    import traceback
+                    _flush_log(f"❌ FALLBACK: Traceback: {traceback.format_exc()}", "ERROR")
+                    # Yield an error message
+                    yield f"Error processing request: {fallback_error}"
+        else:
+            # Non-streaming path
+            _flush_log("🎬 AGENT_INVOCATION: Starting NON-STREAMING mode...")
             try:
                 # Build the input for the agent (same as streaming path)
                 agent_input = user_input
@@ -1881,121 +2162,82 @@ async def agent_invocation(payload, context):
                     content_blocks.append({"cachePoint": {"type": "default"}})
                     agent_input = content_blocks
 
-                print(
-                    f"DEBUG: About to call agent() with input type: {type(agent_input)}"
-                )
-                # Fallback to non-streaming response
                 response = agent(agent_input)
-                print(f"DEBUG: agent() returned: {type(response)}")
-                # Safely extract response text
-                try:
-                    if hasattr(response, "message") and response.message:
-                        content = response.message.get("content")
-                        if isinstance(content, list) and len(content) > 0:
-                            if isinstance(content[0], dict) and "text" in content[0]:
-                                response_text = content[0]["text"]
-                            else:
-                                response_text = str(content[0])
-                        elif isinstance(content, str):
-                            response_text = content
+                _flush_log(f"✅ NON-STREAM: Complete response received")
+
+                # Extract the response text
+                response_text = ""
+                if hasattr(response, "message") and response["message"]:
+                    content = response.message.get("content", [])
+                    if content and len(content) > 0:
+                        response_text = content[0].get("text", "")
+                else:
+                    response_text = str(response)
+
+                if response_text:
+                    # The response may contain agent-message tags from the tools
+                    # Split by lines and yield each meaningful chunk
+                    lines = response_text.split("\n")
+                    current_chunk = ""
+
+                    for line in lines:
+                        line_stripped = line.strip()
+                        if not line_stripped:
+                            continue
+
+                        # Check if this line contains an agent message tag
+                        if "<agent-message agent=" in line_stripped:
+                            # Yield any accumulated chunk first
+                            if current_chunk.strip():
+                                yield f"💬 RESPONSE: {current_chunk.strip()}"
+                                current_chunk = ""
+
+                            # Yield the agent message as-is
+                            yield line_stripped
+
                         else:
-                            response_text = str(content)
-                    else:
-                        response_text = "No response content available"
-                except (KeyError, IndexError, AttributeError) as e:
-                    response_text = f"Error extracting response content: {e}"
+                            # Accumulate regular content
+                            current_chunk += line_stripped + " "
 
-                # Yield the response
-                yield response_text
+                            # Yield when we have a complete thought
+                            if (
+                                line_stripped.endswith((".", "!", "?"))
+                                and len(current_chunk.strip()) > 50
+                            ):
+                                yield f"💬 RESPONSE: {current_chunk.strip()}"
+                                current_chunk = ""
 
-                # Yield sources after response
+                    # Yield any remaining content
+                    if current_chunk.strip():
+                        yield f"💬 RESPONSE: {current_chunk.strip()}"
+
+                else:
+                    yield "💬 RESPONSE: Analysis completed successfully."
+
+                # Yield sources at the end
                 if collected_sources:
-                    logger.info(
-                        f"📦 FALLBACK: Yielding sources with {len(collected_sources)} sources"
-                    )
-                    print(
-                        f"📦 FALLBACK: Yielding sources with {len(collected_sources)} sources"
-                    )
                     yield {"type": "sources", "sources": collected_sources}
-            except Exception as fallback_error:
-                print(f"Non-streaming failed: {fallback_error}")
-                # Yield an error message
-                yield f"Error processing request: {fallback_error}"
-    else:
-        # Non-streaming path
-        try:
-            # Build the input for the agent (same as streaming path)
-            agent_input = user_input
-            if file_attachments:
-                content_blocks = [{"text": user_input}]
-                for file_info in file_attachments:
-                    content_blocks.append({"document": file_info})
-                content_blocks.append({"cachePoint": {"type": "default"}})
-                agent_input = content_blocks
 
-            response = agent(agent_input)
-            print(f"Complete response received")
-
-            # Extract the response text
-            response_text = ""
-            if hasattr(response, "message") and response["message"]:
-                content = response.message.get("content", [])
-                if content and len(content) > 0:
-                    response_text = content[0].get("text", "")
-            else:
-                response_text = str(response)
-
-            if response_text:
-                # The response may contain agent-message tags from the tools
-                # Split by lines and yield each meaningful chunk
-                lines = response_text.split("\n")
-                current_chunk = ""
-
-                for line in lines:
-                    line_stripped = line.strip()
-                    if not line_stripped:
-                        continue
-
-                    # Check if this line contains an agent message tag
-                    if "<agent-message agent=" in line_stripped:
-                        # Yield any accumulated chunk first
-                        if current_chunk.strip():
-                            yield f"💬 RESPONSE: {current_chunk.strip()}"
-                            current_chunk = ""
-
-                        # Yield the agent message as-is
-                        yield line_stripped
-
-                    else:
-                        # Accumulate regular content
-                        current_chunk += line_stripped + " "
-
-                        # Yield when we have a complete thought
-                        if (
-                            line_stripped.endswith((".", "!", "?"))
-                            and len(current_chunk.strip()) > 50
-                        ):
-                            yield f"💬 RESPONSE: {current_chunk.strip()}"
-                            current_chunk = ""
-
-                # Yield any remaining content
-                if current_chunk.strip():
-                    yield f"💬 RESPONSE: {current_chunk.strip()}"
-
-            else:
-                yield "💬 RESPONSE: Analysis completed successfully."
-
-            # Yield sources at the end
-            if collected_sources:
-                yield {"type": "sources", "sources": collected_sources}
-
-        except Exception as response_error:
-            print(f"Response processing failed: {response_error}")
-            yield f"❌ ERROR: {response_error}"
-        finally:
-            # Detach context when done
-            context.detach(context_token)
-            logger.info(f"Session context for '{args.session_id}' detached")
+            except Exception as response_error:
+                _flush_log(f"❌ NON-STREAM: Response processing failed: {response_error}", "ERROR")
+                import traceback
+                _flush_log(f"❌ NON-STREAM: Traceback: {traceback.format_exc()}", "ERROR")
+                yield f"❌ ERROR: {response_error}"
+            finally:
+                # Detach context when done
+                try:
+                    if context_token:
+                        context.detach(context_token)
+                        _flush_log(f"🔧 AGENT_INVOCATION: Session context detached")
+                except Exception as detach_err:
+                    _flush_log(f"⚠️ AGENT_INVOCATION: Failed to detach context: {detach_err}", "WARNING")
+    
+    except Exception as top_level_error:
+        # Top-level exception handler to catch ANY unhandled errors
+        _flush_log(f"💥 AGENT_INVOCATION: TOP-LEVEL EXCEPTION: {top_level_error}", "ERROR")
+        import traceback
+        _flush_log(f"💥 AGENT_INVOCATION: Full traceback:\n{traceback.format_exc()}", "ERROR")
+        yield f"❌ FATAL ERROR: {top_level_error}"
 
 
 # resolver = RuntimeARNResolver(unique_id=os.environ.get("UNIQUE_ID",'1234'), stack_prefix=os.environ.get("STACK_PREFIX",'sim'))
