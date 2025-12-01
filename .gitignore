@@ -89,6 +89,7 @@ aws-exports.js
 .runtime*
 .memory*
 .appsync*
+.adcp-gateway*
 
 # CloudFormation and CDK
 *.zip
