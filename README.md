@@ -659,29 +659,85 @@ aws cognito-idp admin-create-user \
 ### 2. External API Integration
 
   **AdCP MCP Gateway (Ad Context Protocol):**
-  The ecosystem includes an AdCP MCP Gateway that provides standardized advertising protocol tools for agent collaboration. The gateway is automatically deployed in Phase 7 and provides:
-  
-  - **AdCP Media Buy Protocol**: Discover publisher inventory, create media buys, track delivery metrics
-  - **AdCP Signals Protocol**: Discover and activate audience/contextual signals
-  - **MCP Services**: Brand safety verification, audience reach resolution, measurement configuration
+  The ecosystem includes an AdCP MCP Gateway that provides standardized advertising protocol tools for agent collaboration. The gateway is automatically deployed in Phase 7 and consists of:
 
-  <iframe src="https://d2ug0k696238iq.cloudfront.net/" width="100%" height="800" frameborder="0" allowfullscreen></iframe>
+  **Gateway Components:**
+  - **MCP Gateway**: Amazon Bedrock AgentCore MCP Gateway that handles authentication, routing, and protocol translation
+  - **Lambda Target**: AWS Lambda function (`{stack-prefix}-adcp-handler-{unique-id}`) that implements the AdCP protocol handlers
+  - **Gateway Target**: Configuration that connects the MCP Gateway to the Lambda function with tool schema definitions
 
+  **AdCP Protocol Tools (8 tools):**
+  | Tool | Description |
+  |------|-------------|
+  | `get_products` | Discover available advertising products/inventory matching criteria |
+  | `get_signals` | Get available audience signals and targeting data |
+  | `activate_signal` | Activate an audience signal on a decisioning platform |
+  | `create_media_buy` | Create a media buy with specified packages |
+  | `get_media_buy_delivery` | Get delivery status and metrics for a media buy |
+  | `verify_brand_safety` | Verify brand safety for a list of properties/URLs |
+  | `resolve_audience_reach` | Resolve audience reach across channels |
+  | `configure_brand_lift_study` | Configure a brand lift or measurement study |
 
   **Gateway Architecture:**
   ```
-  Agent → adcp_tools.py → HTTP → AgentCore Gateway → Lambda Handler → AdCP Protocol
+  Agent → adcp_tools.py → HTTP → MCP Gateway → Lambda Target → AdCP Protocol Handlers
+                                      ↓
+                              Gateway Target (tool schema)
   ```
 
   **Environment Variables (auto-configured during deployment):**
   | Variable | Description |
   |----------|-------------|
   | `ADCP_USE_MCP` | Enable MCP integration (default: true). Set to "false" to use fallback mock data |
-  | `ADCP_GATEWAY_URL` | AgentCore Gateway URL (set automatically) |
+  | `ADCP_GATEWAY_URL` | AgentCore Gateway URL (e.g., `https://{gateway-id}.gateway.bedrock-agentcore.{region}.amazonaws.com/mcp`) |
+
+  **Manual Gateway Deployment (if needed):**
+  ```bash
+  # Deploy AdCP Gateway manually
+  python agentcore/deployment/deploy_adcp_gateway.py \
+    --stack-prefix agnt4ad \
+    --unique-id abc123 \
+    --region us-east-1 \
+    --profile agnts4ad
+
+  # Deploy only Lambda target to existing gateway
+  python agentcore/deployment/deploy_adcp_gateway.py \
+    --stack-prefix agnt4ad \
+    --unique-id abc123 \
+    --region us-east-1 \
+    --profile agnts4ad \
+    --target-only
+  ```
+
+  **Verify Gateway Deployment:**
+  ```bash
+  # List MCP Gateways
+  aws bedrock-agentcore-control list-gateways --region us-east-1 --profile agnts4ad
+
+  # Get gateway details
+  aws bedrock-agentcore-control get-gateway \
+    --gateway-identifier {gateway-id} \
+    --region us-east-1 \
+    --profile agnts4ad
+
+  # List gateway targets
+  aws bedrock-agentcore-control list-gateway-targets \
+    --gateway-identifier {gateway-id} \
+    --region us-east-1 \
+    --profile agnts4ad
+  ```
 
   **Testing the Gateway:**
   ```bash
-  # Test direct handlers locally
+  # Test Lambda function directly
+  aws lambda invoke \
+    --function-name agnt4ad-adcp-handler-abc123 \
+    --payload '{"tool_name": "get_products", "arguments": {"channels": ["ctv"]}}' \
+    --region us-east-1 \
+    --profile agnts4ad \
+    /tmp/response.json && cat /tmp/response.json
+
+  # Test local MCP server
   cd synthetic_data/mcp_mocks
   python test_adcp_server.py
 
@@ -969,13 +1025,19 @@ The deployment script includes comprehensive cleanup functionality:
 
 The automated cleanup removes:
 - **AgentCore containers and runtimes**
-- **AdCP MCP Gateway Lambda functions and resources**
+- **AdCP MCP Gateway resources:**
+  - MCP Gateway and all associated gateway targets
+  - Lambda function (`{stack-prefix}-adcp-handler-{unique-id}`)
+  - IAM role (`{stack-prefix}-adcp-lambda-role-{unique-id}`)
+  - SSM parameters for gateway configuration
 - **All CloudFormation stacks**
 - **S3 buckets and contents**
 - **ECR repositories and images**
 - **Knowledge base and data sources**
 - **Cognito user pools**
 - **CloudFront distributions**
+
+**Note:** The cleanup script queries AWS directly to find resources matching your stack prefix, so it works even if local tracking files are missing.
 
 ### 2. Verify Cleanup
 
@@ -997,6 +1059,18 @@ aws ecr describe-repositories --region us-east-1 --profile agnts4ad | grep agent
 # Check agent runtimes
 aws bedrock-agentcore-control list-agent-runtimes --region us-east-1 --profile agnts4ad
 
+# Check MCP Gateways
+aws bedrock-agentcore-control list-gateways \
+  --region us-east-1 \
+  --profile agnts4ad \
+  --query 'items[?contains(name, `agnt4ad`)]'
+
+# Check AdCP Lambda functions
+aws lambda list-functions \
+  --region us-east-1 \
+  --profile agnts4ad \
+  --query 'Functions[?contains(FunctionName, `adcp-handler`)]'
+
 # Check knowledge bases (separate Bedrock service)
 aws bedrock-agent list-knowledge-bases --region us-east-1 --profile agnts4ad
 ```
@@ -1007,7 +1081,59 @@ aws bedrock-agent list-knowledge-bases --region us-east-1 --profile agnts4ad
 ✓ S3 buckets: All removed
 ✓ ECR repositories: All deleted
 ✓ AgentCore agents: All removed
+✓ MCP Gateways: All deleted
+✓ AdCP Lambda functions: All removed
 ✓ Knowledge base: Deleted
+```
+
+### 3. Manual Gateway Cleanup (if needed)
+
+If you need to manually clean up the AdCP MCP Gateway resources:
+
+```bash
+# 1. List gateways to find the gateway ID
+aws bedrock-agentcore-control list-gateways \
+  --region us-east-1 \
+  --profile agnts4ad
+
+# 2. List and delete gateway targets first
+GATEWAY_ID="agnt4ad-adcp-gateway-abc123-xxxxxxxxxx"
+aws bedrock-agentcore-control list-gateway-targets \
+  --gateway-identifier $GATEWAY_ID \
+  --region us-east-1 \
+  --profile agnts4ad
+
+# Delete each target
+aws bedrock-agentcore-control delete-gateway-target \
+  --gateway-identifier $GATEWAY_ID \
+  --target-id <target-id> \
+  --region us-east-1 \
+  --profile agnts4ad
+
+# 3. Delete the gateway
+aws bedrock-agentcore-control delete-gateway \
+  --gateway-identifier $GATEWAY_ID \
+  --region us-east-1 \
+  --profile agnts4ad
+
+# 4. Delete the Lambda function
+aws lambda delete-function \
+  --function-name agnt4ad-adcp-handler-abc123 \
+  --region us-east-1 \
+  --profile agnts4ad
+
+# 5. Delete the IAM role (detach policies first)
+ROLE_NAME="agnt4ad-adcp-lambda-role-abc123"
+aws iam detach-role-policy \
+  --role-name $ROLE_NAME \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+aws iam delete-role --role-name $ROLE_NAME
+
+# 6. Delete SSM parameter
+aws ssm delete-parameter \
+  --name "/agnt4ad/adcp_gateway/abc123" \
+  --region us-east-1 \
+  --profile agnts4ad
 ```
 
 **Note:** Some resources like CloudWatch logs may have retention policies and won't be immediately deleted. These will be automatically cleaned up based on their retention settings.
@@ -1030,6 +1156,11 @@ aws bedrock-agent list-knowledge-bases --region us-east-1 --profile agnts4ad
 - **Symptom**: Knowledge bases fail to create or remain in CREATING state
 - **Resolution**: Check S3 bucket permissions and OpenSearch Serverless configuration
 - **Debug**: Check CloudWatch logs for bedrock-agentcore service
+
+**Issue: AdCP Gateway target creation fails with AccessDeniedException**
+- **Symptom**: Gateway is created but target creation fails with "User is not authorized to perform: bedrock-agentcore:CreateGatewayTarget"
+- **Resolution**: Your IAM role needs `bedrock-agentcore:CreateGatewayTarget` permission. The deployment script handles this gracefully and will retry on subsequent runs once the gateway is in READY state.
+- **Manual fix**: Add the permission to your IAM policy or wait for the gateway to be READY and re-run the deployment script
 
 **Issue: UI not loading or showing errors**
 - **Symptom**: CloudFront URL returns errors or blank page

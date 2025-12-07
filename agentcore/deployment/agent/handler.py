@@ -1838,6 +1838,17 @@ class GenericAgent:
 
 
 print(f"DEBUG: Module load - All env vars: {list(os.environ.keys())}")
+print("=" * 60)
+print("🔍 MODULE LOAD - ENVIRONMENT VARIABLES:")
+for key, value in sorted(os.environ.items()):
+    # Mask sensitive values but show they exist
+    if any(sensitive in key.upper() for sensitive in ['SECRET', 'PASSWORD', 'TOKEN', 'KEY', 'CREDENTIAL']):
+        print(f"   {key} = ***MASKED*** (length={len(value)})")
+    else:
+        # Truncate long values for readability
+        display_value = value[:100] + '...' if len(value) > 100 else value
+        print(f"   {key} = {display_value}")
+print("=" * 60)
 
 # Create the orchestrator instance
 orchestrator_instance = GenericAgent()
@@ -1877,6 +1888,19 @@ async def agent_invocation(payload, context):
     _flush_log("🚀 AGENT_INVOCATION: Entry point called")
     _flush_log(f"🚀 AGENT_INVOCATION: Payload keys: {list(payload.keys()) if payload else 'None'}")
     _flush_log(f"🚀 AGENT_INVOCATION: Context type: {type(context)}")
+    
+    # Log all environment variables for debugging
+    _flush_log("=" * 60)
+    _flush_log("🔍 ENVIRONMENT VARIABLES:")
+    for key, value in sorted(os.environ.items()):
+        # Mask sensitive values but show they exist
+        if any(sensitive in key.upper() for sensitive in ['SECRET', 'PASSWORD', 'TOKEN', 'KEY', 'CREDENTIAL']):
+            _flush_log(f"   {key} = ***MASKED*** (length={len(value)})")
+        else:
+            # Truncate long values for readability
+            display_value = value[:100] + '...' if len(value) > 100 else value
+            _flush_log(f"   {key} = {display_value}")
+    _flush_log("=" * 60)
     
     try:
         appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")

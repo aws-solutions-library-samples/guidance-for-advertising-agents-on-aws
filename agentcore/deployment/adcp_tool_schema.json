@@ -1,0 +1,96 @@
+[
+  {
+    "name": "get_products",
+    "description": "Get available advertising products/inventory matching criteria",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channels": {"type": "array", "items": {"type": "string"}, "description": "Filter by channels (ctv, online_video, display, etc.)"},
+        "brand_safety_tier": {"type": "string", "description": "Brand safety tier filter (tier_1, tier_2, tier_3)"},
+        "min_budget": {"type": "number", "description": "Minimum budget filter"},
+        "brief": {"type": "string", "description": "Campaign brief description"}
+      }
+    }
+  },
+  {
+    "name": "get_signals",
+    "description": "Get available audience signals and targeting data",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "signal_types": {"type": "array", "items": {"type": "string"}, "description": "Filter by signal types (audience, contextual)"},
+        "decisioning_platform": {"type": "string", "description": "Target platform (ttd, dv360, etc.)"}
+      }
+    }
+  },
+  {
+    "name": "activate_signal",
+    "description": "Activate an audience signal on a decisioning platform",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "signal_agent_segment_id": {"type": "string", "description": "Signal ID to activate"},
+        "decisioning_platform": {"type": "string", "description": "Target platform"}
+      },
+      "required": ["signal_agent_segment_id"]
+    }
+  },
+  {
+    "name": "create_media_buy",
+    "description": "Create a media buy with specified packages",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "buyer_ref": {"type": "string", "description": "Buyer reference identifier"},
+        "packages": {"type": "array", "items": {"type": "object"}, "description": "List of packages with product_id and budget"}
+      },
+      "required": ["buyer_ref", "packages"]
+    }
+  },
+  {
+    "name": "get_media_buy_delivery",
+    "description": "Get delivery status and metrics for a media buy",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "media_buy_id": {"type": "string", "description": "Media buy identifier"}
+      },
+      "required": ["media_buy_id"]
+    }
+  },
+  {
+    "name": "verify_brand_safety",
+    "description": "Verify brand safety for a list of properties/URLs",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "properties": {"type": "array", "items": {"type": "object"}, "description": "List of properties to verify"}
+      },
+      "required": ["properties"]
+    }
+  },
+  {
+    "name": "resolve_audience_reach",
+    "description": "Resolve audience reach across channels",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channels": {"type": "array", "items": {"type": "string"}, "description": "Channels to calculate reach for"}
+      }
+    }
+  },
+  {
+    "name": "configure_brand_lift_study",
+    "description": "Configure a brand lift or measurement study",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "study_name": {"type": "string", "description": "Name of the study"},
+        "study_type": {"type": "string", "description": "Type of study (brand_lift, foot_traffic, sales_lift, attribution)"},
+        "provider": {"type": "string", "description": "Measurement provider (lucid, etc.)"},
+        "metrics": {"type": "array", "items": {"type": "string"}, "description": "Metrics to measure"}
+      },
+      "required": ["study_name", "study_type"]
+    }
+  }
+]

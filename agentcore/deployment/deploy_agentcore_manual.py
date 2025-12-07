@@ -690,6 +690,19 @@ class ManualAgentCoreDeployer:
                     "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*gateway*",
                 },
                 {
+                    "Sid": "AgentCoreMemory",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:List*",
+                        "bedrock-agentcore:Create*",
+                        "bedrock-agentcore:Delete*",
+                        "bedrock-agentcore:Update*",
+                        "bedrock-agentcore:Start*",
+                        "bedrock-agentcore:Stop*"
+                    ],
+                    "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*memory*",
+                },
+                {
                     "Effect": "Allow",
                     "Action": [
                         "dynamodb:GetItem",

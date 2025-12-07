@@ -26,56 +26,133 @@ from strands import tool
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-USE_MCP = os.environ.get("ADCP_USE_MCP", "true").lower() == "true"
-MCP_GATEWAY_URL = os.environ.get("ADCP_GATEWAY_URL")
-MCP_SERVER_PATH = os.environ.get("ADCP_MCP_SERVER_PATH")
-
-# Try to import MCP client
+# Lazy initialization - MCP client is created on first use, not at module load time
+# This allows the gateway URL to be set after the module is imported
 _mcp_client = None
-_mcp_available = False
+_mcp_client_initialized = False
+_mcp_available = True
 
-if USE_MCP:
+# Try to import MCP client module (but don't create client yet)
+try:
+    from .adcp_mcp_client import create_adcp_mcp_client, MCP_AVAILABLE, SIGV4_AVAILABLE
+    _mcp_available = MCP_AVAILABLE
+    logger.info(f"AdCP MCP module loaded: MCP_AVAILABLE={MCP_AVAILABLE}, SIGV4_AVAILABLE={SIGV4_AVAILABLE}")
+except ImportError as e:
+    logger.warning(f"MCP client module not available: {e}. Using fallback mode.")
+    _mcp_available = False
+    MCP_AVAILABLE = False
+    SIGV4_AVAILABLE = False
+
+
+def _get_mcp_client():
+    """
+    Lazy initialization of MCP client.
+    
+    This is called on first tool use, not at module load time.
+    This allows environment variables to be set after the module is imported,
+    which is important when the gateway is deployed after the runtime starts.
+    """
+    global _mcp_client, _mcp_client_initialized
+    
+    # Only try to initialize once
+    if _mcp_client_initialized:
+        return _mcp_client
+    
+    _mcp_client_initialized = True
+    
+    # Check if MCP is enabled (re-read from environment each time)
+    use_mcp = os.environ.get("ADCP_USE_MCP", "true").lower() == "true"
+    if not use_mcp:
+        logger.info("AdCP MCP disabled via ADCP_USE_MCP=false")
+        return None
+    
+    if not _mcp_available:
+        logger.warning("MCP dependencies not available. Using fallback mode.")
+        return None
+    
+    # Get gateway URL from environment (re-read each time)
+    gateway_url = os.environ.get("ADCP_GATEWAY_URL")
+    server_path = os.environ.get("ADCP_MCP_SERVER_PATH")
+    
+    logger.info(f"Initializing AdCP MCP client: gateway_url={gateway_url}, server_path={server_path}")
+    
     try:
-        from .adcp_mcp_client import create_adcp_mcp_client, MCP_AVAILABLE
-        _mcp_available = MCP_AVAILABLE
-        
-        if _mcp_available:
-            if MCP_GATEWAY_URL:
-                _mcp_client = create_adcp_mcp_client(
-                    transport="http",
-                    gateway_url=MCP_GATEWAY_URL
-                )
-                logger.info(f"AdCP MCP client created with HTTP transport: {MCP_GATEWAY_URL}")
+        if gateway_url:
+            _mcp_client = create_adcp_mcp_client(
+                transport="http",
+                gateway_url=gateway_url
+            )
+            if _mcp_client:
+                logger.info(f"✅ AdCP MCP client created with HTTP transport: {gateway_url}")
             else:
-                _mcp_client = create_adcp_mcp_client(
-                    transport="stdio",
-                    server_path=MCP_SERVER_PATH
-                )
-                logger.info("AdCP MCP client created with stdio transport")
-    except ImportError as e:
-        logger.warning(f"MCP client not available: {e}. Using fallback mode.")
-        _mcp_available = False
+                logger.error(f"❌ Failed to create AdCP MCP client for gateway: {gateway_url}")
+        elif server_path or os.path.exists(_get_default_server_path()):
+            _mcp_client = create_adcp_mcp_client(
+                transport="stdio",
+                server_path=server_path
+            )
+            if _mcp_client:
+                logger.info("✅ AdCP MCP client created with stdio transport")
+            else:
+                logger.warning("❌ Failed to create stdio MCP client")
+        else:
+            logger.info("No ADCP_GATEWAY_URL or local server found. Using fallback mode.")
+    except Exception as e:
+        logger.error(f"❌ Error creating MCP client: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+    
+    return _mcp_client
+
+
+def _get_default_server_path() -> str:
+    """Get the default path to the local MCP server"""
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    return os.path.join(base_dir, "synthetic_data", "mcp_mocks", "adcp_mcp_server.py")
 
 
 def _call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> Optional[str]:
     """Call an MCP tool if available, return None to use fallback"""
-    if not _mcp_available or _mcp_client is None:
+    # Lazy initialization - get or create client on first use
+    client = _get_mcp_client()
+    
+    if client is None:
+        logger.debug(f"MCP client not available for {tool_name}, using fallback")
         return None
     
     try:
-        with _mcp_client:
-            result = _mcp_client.call_tool_sync(
+        logger.info(f"🔌 Calling MCP tool: {tool_name}")
+        with client:
+            result = client.call_tool_sync(
                 tool_use_id=f"adcp_{tool_name}",
                 name=tool_name,
                 arguments=arguments
             )
             if result and result.get("content"):
+                logger.info(f"✅ MCP tool {tool_name} succeeded")
                 return result["content"][0].get("text", json.dumps(result))
+            else:
+                logger.warning(f"⚠️ MCP tool {tool_name} returned empty result")
     except Exception as e:
-        logger.warning(f"MCP call failed for {tool_name}: {e}. Using fallback.")
+        logger.warning(f"❌ MCP call failed for {tool_name}: {e}. Using fallback.")
+        import traceback
+        logger.debug(traceback.format_exc())
     
     return None
+
+
+def reinitialize_mcp_client():
+    """
+    Force re-initialization of the MCP client.
+    
+    Call this after setting ADCP_GATEWAY_URL environment variable
+    to pick up the new configuration.
+    """
+    global _mcp_client, _mcp_client_initialized
+    _mcp_client = None
+    _mcp_client_initialized = False
+    logger.info("MCP client marked for re-initialization")
+    return _get_mcp_client()
 
 
 # ============================================================================
@@ -618,15 +695,23 @@ def get_adcp_mcp_tools():
     Returns either:
     - MCP client (if MCP is enabled and available) for managed integration
     - Standard tool functions (fallback mode)
+    
+    Note: Uses lazy initialization - MCP client is created on first call.
     """
-    if USE_MCP and _mcp_available and _mcp_client:
+    client = _get_mcp_client()
+    if client is not None:
         # Return MCP client for managed integration
-        return [_mcp_client]
+        return [client]
     else:
         # Return standard tools with fallback
         return ADCP_TOOLS
 
 
 def is_mcp_enabled() -> bool:
-    """Check if MCP integration is enabled and available"""
-    return USE_MCP and _mcp_available and _mcp_client is not None
+    """
+    Check if MCP integration is enabled and available.
+    
+    Note: Uses lazy initialization - MCP client is created on first call.
+    """
+    client = _get_mcp_client()
+    return client is not None

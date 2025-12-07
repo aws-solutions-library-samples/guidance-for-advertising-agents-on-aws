@@ -32,6 +32,14 @@ ARG KNOWLEDGEBASES=""
 ARG RUNTIMES=""
 ENV KNOWLEDGEBASES=${KNOWLEDGEBASES}
 ENV RUNTIMES=${RUNTIMES}
+
+# AdCP MCP Gateway Configuration
+# When ADCP_GATEWAY_URL is set, agents will use the MCP Gateway for AdCP tools
+# Otherwise, they fall back to local mock data
+ARG ADCP_GATEWAY_URL=""
+ARG ADCP_USE_MCP="true"
+ENV ADCP_GATEWAY_URL=${ADCP_GATEWAY_URL}
+ENV ADCP_USE_MCP=${ADCP_USE_MCP}
 # Signal that this is running in Docker for host binding logic
 ENV DOCKER_CONTAINER=1
 

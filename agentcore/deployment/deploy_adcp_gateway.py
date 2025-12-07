@@ -78,6 +78,9 @@ class AdCPGatewayDeployer:
         self.gateway_name = f"{stack_prefix}-adcp-gateway-{unique_id}"
         self.lambda_name = f"{stack_prefix}-adcp-handler-{unique_id}"
         self.role_name = f"{stack_prefix}-adcp-lambda-role-{unique_id}"
+        self.gateway_role_name = f"{stack_prefix}-adcp-gateway-role-{unique_id}"
+        self.invoke_role_name = f"{stack_prefix}-adcp-invoke-role-{unique_id}"
+        self._session = session
         
     def create_lambda_execution_role(self) -> str:
         """Create IAM role for AdCP Lambda functions"""
@@ -114,6 +117,151 @@ class AdCPGatewayDeployer:
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             response = self.iam_client.get_role(RoleName=self.role_name)
             logger.info(f"Using existing IAM role: {response['Role']['Arn']}")
+            return response["Role"]["Arn"]
+    
+    def create_gateway_role(self, lambda_arn: str) -> str:
+        """
+        Create IAM role for AgentCore Gateway.
+        
+        This role allows the gateway to:
+        1. Be assumed by the bedrock-agentcore service
+        2. Invoke the Lambda function (outbound auth)
+        """
+        trust_policy = {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": "gateway.bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole"
+            }]
+        }
+        
+        # Policy to allow gateway to invoke Lambda
+        lambda_invoke_policy = {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": "lambda:InvokeFunction",
+                "Resource": lambda_arn
+            }]
+        }
+        
+        try:
+            response = self.iam_client.create_role(
+                RoleName=self.gateway_role_name,
+                AssumeRolePolicyDocument=json.dumps(trust_policy),
+                Description="Role for AgentCore Gateway to invoke AdCP Lambda"
+            )
+            role_arn = response["Role"]["Arn"]
+            logger.info(f"Created gateway IAM role: {role_arn}")
+            
+            # Attach inline policy for Lambda invocation
+            self.iam_client.put_role_policy(
+                RoleName=self.gateway_role_name,
+                PolicyName="LambdaInvokePolicy",
+                PolicyDocument=json.dumps(lambda_invoke_policy)
+            )
+            
+            # Wait for role propagation
+            logger.info("Waiting for gateway role propagation (10 seconds)...")
+            time.sleep(10)  # nosemgrep: arbitrary-sleep - Intentional delay for IAM role propagation
+            
+            return role_arn
+            
+        except self.iam_client.exceptions.EntityAlreadyExistsException:
+            # Update the policy in case Lambda ARN changed
+            try:
+                self.iam_client.put_role_policy(
+                    RoleName=self.gateway_role_name,
+                    PolicyName="LambdaInvokePolicy",
+                    PolicyDocument=json.dumps(lambda_invoke_policy)
+                )
+            except Exception as e:
+                logger.warning(f"Could not update gateway role policy: {e}")
+            
+            response = self.iam_client.get_role(RoleName=self.gateway_role_name)
+            logger.info(f"Using existing gateway IAM role: {response['Role']['Arn']}")
+            return response["Role"]["Arn"]
+    
+    def create_gateway_invoke_role(self, gateway_id: str, caller_arn: str = None) -> str:
+        """
+        Create IAM role for invoking the AgentCore Gateway.
+        
+        This role is needed by agents/clients to call the gateway with SigV4 auth.
+        It grants the bedrock-agentcore:InvokeGateway permission.
+        
+        Args:
+            gateway_id: The gateway ID to grant invoke permission for
+            caller_arn: ARN of the principal that will assume this role (optional)
+        """
+        # If no caller ARN provided, use the current identity
+        if not caller_arn:
+            caller_identity = self.sts_client.get_caller_identity()
+            caller_arn = caller_identity["Arn"]
+        
+        # Trust policy allows both the service and the caller to assume the role
+        trust_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                    "Action": "sts:AssumeRole"
+                },
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": caller_arn},
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }
+        
+        # Policy to allow invoking the gateway
+        gateway_arn = f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:gateway/{gateway_id}"
+        invoke_policy = {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": "bedrock-agentcore:InvokeGateway",
+                "Resource": gateway_arn
+            }]
+        }
+        
+        try:
+            response = self.iam_client.create_role(
+                RoleName=self.invoke_role_name,
+                AssumeRolePolicyDocument=json.dumps(trust_policy),
+                Description="Role for invoking AdCP MCP Gateway"
+            )
+            role_arn = response["Role"]["Arn"]
+            logger.info(f"Created gateway invoke role: {role_arn}")
+            
+            # Attach inline policy for gateway invocation
+            self.iam_client.put_role_policy(
+                RoleName=self.invoke_role_name,
+                PolicyName="GatewayInvokePolicy",
+                PolicyDocument=json.dumps(invoke_policy)
+            )
+            
+            # Wait for role propagation
+            logger.info("Waiting for invoke role propagation (10 seconds)...")
+            time.sleep(10)  # nosemgrep: arbitrary-sleep - Intentional delay for IAM role propagation
+            
+            return role_arn
+            
+        except self.iam_client.exceptions.EntityAlreadyExistsException:
+            # Update the policy in case gateway ID changed
+            try:
+                self.iam_client.put_role_policy(
+                    RoleName=self.invoke_role_name,
+                    PolicyName="GatewayInvokePolicy",
+                    PolicyDocument=json.dumps(invoke_policy)
+                )
+            except Exception as e:
+                logger.warning(f"Could not update invoke role policy: {e}")
+            
+            response = self.iam_client.get_role(RoleName=self.invoke_role_name)
+            logger.info(f"Using existing gateway invoke role: {response['Role']['Arn']}")
             return response["Role"]["Arn"]
     
     def create_adcp_lambda_code(self) -> bytes:
@@ -465,7 +613,7 @@ def handle_configure_study(args):
             return response["Configuration"]["FunctionArn"]
     
     def get_existing_gateway(self) -> dict:
-        """Check if gateway already exists and return its info"""
+        """Check if gateway already exists and return its info using AWS CLI"""
         logger.info(f"Checking for existing gateway: {self.gateway_name}")
         
         # Set up environment with AWS_PROFILE if specified
@@ -474,63 +622,74 @@ def handle_configure_study(args):
             env["AWS_PROFILE"] = self.profile
         
         try:
-            # List gateways to find existing one
+            # Use AWS CLI to list gateways (more reliable than agentcore CLI)
             cmd = [
-                "agentcore", "gateway", "list-mcp-gateways",
+                "aws", "bedrock-agentcore-control", "list-gateways",
                 "--region", self.region
             ]
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
             
-            if result.returncode == 0 and self.gateway_name in result.stdout:
-                logger.info(f"Found existing gateway: {self.gateway_name}")
-                
-                # Try to get gateway details
-                get_cmd = [
-                    "agentcore", "gateway", "get-mcp-gateway",
-                    "--name", self.gateway_name,
-                    "--region", self.region
-                ]
-                
-                get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
-                
-                if get_result.returncode == 0:
-                    # Parse output to get gateway ARN and URL
-                    gateway_info = {}
-                    output_lines = get_result.stdout.strip().split('\n')
-                    for line in output_lines:
-                        line_lower = line.lower()
-                        if "arn:" in line_lower or "gatewayarn" in line_lower.replace(" ", "").replace("_", ""):
-                            # Extract ARN from line
-                            if "arn:aws:" in line:
-                                arn_start = line.find("arn:aws:")
-                                arn_end = line.find(" ", arn_start) if " " in line[arn_start:] else len(line)
-                                gateway_info["gateway_arn"] = line[arn_start:arn_end].strip().rstrip(',').strip('"')
-                        if "url" in line_lower or "endpoint" in line_lower:
-                            # Extract URL from line
-                            if "https://" in line:
-                                url_start = line.find("https://")
-                                url_end = line.find(" ", url_start) if " " in line[url_start:] else len(line)
-                                gateway_info["gateway_url"] = line[url_start:url_end].strip().rstrip(',').strip('"')
-                    
-                    if gateway_info:
-                        return {"status": "exists", "output": get_result.stdout, **gateway_info}
-                
-                # If we couldn't parse details, still return that it exists
-                return {"status": "exists", "output": result.stdout}
+            if result.returncode == 0:
+                gateways_data = json.loads(result.stdout)
+                # Find gateway by name
+                for gw in gateways_data.get("items", []):
+                    if gw.get("name") == self.gateway_name:
+                        gateway_id = gw.get("gatewayId")
+                        logger.info(f"Found existing gateway: {self.gateway_name} (ID: {gateway_id})")
+                        
+                        # Get full gateway details
+                        get_cmd = [
+                            "aws", "bedrock-agentcore-control", "get-gateway",
+                            "--gateway-identifier", gateway_id,
+                            "--region", self.region
+                        ]
+                        
+                        get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+                        
+                        if get_result.returncode == 0:
+                            gw_details = json.loads(get_result.stdout)
+                            return {
+                                "status": "exists",
+                                "gateway_id": gw_details.get("gatewayId"),
+                                "gateway_arn": gw_details.get("gatewayArn"),
+                                "gateway_url": gw_details.get("gatewayUrl"),
+                                "role_arn": gw_details.get("roleArn"),
+                                "output": get_result.stdout
+                            }
+                        
+                        # Fallback: construct ARN and URL from gateway ID
+                        return {
+                            "status": "exists",
+                            "gateway_id": gateway_id,
+                            "gateway_arn": f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:gateway/{gateway_id}",
+                            "gateway_url": f"https://{gateway_id}.gateway.bedrock-agentcore.{self.region}.amazonaws.com/mcp"
+                        }
             
             return {"status": "not_found"}
             
         except subprocess.TimeoutExpired:
             return {"status": "check_timeout"}
         except FileNotFoundError:
-            return {"status": "cli_not_found"}
+            return {"status": "cli_not_found", "message": "AWS CLI not found"}
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse gateway list response: {e}")
+            return {"status": "parse_error", "message": str(e)}
         except Exception as e:
             logger.warning(f"Error checking for existing gateway: {e}")
             return {"status": "check_error", "message": str(e)}
     
-    def create_gateway(self) -> dict:
-        """Create MCP Gateway using AgentCore CLI, or return existing one"""
+    def create_gateway(self, enable_semantic_search: bool = False, gateway_role_arn: str = None) -> dict:
+        """
+        Create MCP Gateway using boto3 SDK with AWS IAM authentication.
+        
+        This method uses the bedrock-agentcore-control API directly to ensure
+        proper configuration of authorizerType='AWS_IAM' for SigV4 authentication.
+        
+        Args:
+            enable_semantic_search: Enable semantic search on the gateway
+            gateway_role_arn: IAM role ARN for the gateway (for outbound auth to Lambda)
+        """
         logger.info(f"Creating MCP Gateway: {self.gateway_name}")
         
         # First check if gateway already exists
@@ -544,74 +703,218 @@ def handle_configure_study(args):
                 **{k: v for k, v in existing.items() if k != "status"}
             }
         
+        try:
+            # Create bedrock-agentcore-control client
+            gateway_client = self._session.client('bedrock-agentcore-control', region_name=self.region)
+            
+            # Build create_gateway parameters
+            create_params = {
+                'name': self.gateway_name,
+                'protocolType': 'MCP',
+                'authorizerType': 'AWS_IAM',  # This is critical for SigV4 authentication!
+                'description': 'AdCP MCP Gateway for Agentic Advertising Ecosystem'
+            }
+            
+            # Add role ARN if provided (required for Lambda target invocation)
+            if gateway_role_arn:
+                create_params['roleArn'] = gateway_role_arn
+            
+            logger.info(f"Creating gateway with authorizerType=AWS_IAM")
+            response = gateway_client.create_gateway(**create_params)
+            
+            gateway_info = {
+                "gateway_id": response.get("gatewayId"),
+                "gateway_arn": response.get("gatewayArn"),
+                "gateway_url": response.get("gatewayUrl"),
+                "role_arn": response.get("roleArn"),
+            }
+            
+            logger.info(f"Gateway created successfully: {gateway_info['gateway_id']}")
+            logger.info(f"Gateway URL: {gateway_info['gateway_url']}")
+            logger.info(f"Gateway ARN: {gateway_info['gateway_arn']}")
+            
+            # Wait for gateway to be ready
+            logger.info("Waiting for gateway to be active (10 seconds)...")
+            time.sleep(10)  # nosemgrep: arbitrary-sleep - Intentional delay for gateway propagation
+            
+            return {"status": "success", **gateway_info}
+            
+        except gateway_client.exceptions.ConflictException:
+            logger.info(f"Gateway already exists (ConflictException): {self.gateway_name}")
+            existing = self.get_existing_gateway()
+            if existing.get("status") == "exists":
+                return {
+                    "status": "success",
+                    "already_existed": True,
+                    **{k: v for k, v in existing.items() if k != "status"}
+                }
+            return {"status": "success", "already_existed": True, "message": "Gateway already exists"}
+            
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Gateway creation failed: {error_msg}")
+            
+            # Fall back to CLI if boto3 fails (e.g., API not available)
+            if "UnknownServiceError" in error_msg or "Could not connect" in error_msg:
+                logger.info("Falling back to agentcore CLI for gateway creation...")
+                return self._create_gateway_via_cli(enable_semantic_search)
+            
+            return {"status": "error", "message": error_msg}
+    
+    def _create_gateway_via_cli(self, enable_semantic_search: bool = False) -> dict:
+        """Fallback: Create MCP Gateway using AgentCore CLI"""
+        logger.info(f"Creating MCP Gateway via CLI: {self.gateway_name}")
+        
         cmd = [
             "agentcore", "gateway", "create-mcp-gateway",
             "--name", self.gateway_name,
             "--region", self.region
         ]
         
-        # Set up environment with AWS_PROFILE if specified
-        # (agentcore CLI doesn't support --profile flag, uses env var instead)
         env = os.environ.copy()
         if self.profile:
             env["AWS_PROFILE"] = self.profile
-            logger.info(f"Setting AWS_PROFILE={self.profile} for agentcore CLI")
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # nosemgrep: dangerous-subprocess-use-audit
             
             if result.returncode != 0:
-                # Check if error is because gateway already exists (ConflictException)
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
-                    logger.info(f"Gateway already exists (detected from error): {self.gateway_name}")
-                    # Try to get existing gateway info
                     existing = self.get_existing_gateway()
                     if existing.get("status") == "exists":
-                        return {
-                            "status": "success",
-                            "already_existed": True,
-                            **{k: v for k, v in existing.items() if k != "status"}
-                        }
-                    # Even if we can't get details, return success since gateway exists
-                    return {
-                        "status": "success",
-                        "already_existed": True,
-                        "message": "Gateway already exists"
-                    }
+                        return {"status": "success", "already_existed": True, **{k: v for k, v in existing.items() if k != "status"}}
+                    return {"status": "success", "already_existed": True}
                 
                 logger.error(f"Gateway creation failed: {result.stderr}")
                 return {"status": "error", "message": result.stderr}
             
-            logger.info("Gateway created successfully")
-            logger.info(result.stdout)
+            logger.info("Gateway created successfully via CLI")
             
-            # Parse output to get gateway ARN and URL
-            output_lines = result.stdout.strip().split('\n')
+            # Parse output
             gateway_info = {}
-            for line in output_lines:
-                if "arn:" in line.lower():
-                    gateway_info["gateway_arn"] = line.strip()
-                if "url" in line.lower() or "endpoint" in line.lower():
-                    gateway_info["gateway_url"] = line.strip()
+            import re
+            arn_match = re.search(r"'gatewayArn':\s*'([^']+)'", result.stdout)
+            url_match = re.search(r"'gatewayUrl':\s*'([^']+)'", result.stdout)
+            id_match = re.search(r"'gatewayId':\s*'([^']+)'", result.stdout)
+            role_match = re.search(r"'roleArn':\s*'([^']+)'", result.stdout)
+            
+            if arn_match:
+                gateway_info["gateway_arn"] = arn_match.group(1)
+            if url_match:
+                gateway_info["gateway_url"] = url_match.group(1)
+            if id_match:
+                gateway_info["gateway_id"] = id_match.group(1)
+            if role_match:
+                gateway_info["role_arn"] = role_match.group(1)
+            
+            if not gateway_info.get("gateway_arn"):
+                fetched = self.get_existing_gateway()
+                if fetched.get("status") == "exists":
+                    gateway_info.update({k: v for k, v in fetched.items() if k != "status" and k != "output"})
             
             return {"status": "success", "output": result.stdout, **gateway_info}
             
         except subprocess.TimeoutExpired:
             return {"status": "timeout", "message": "Gateway creation timed out"}
         except FileNotFoundError:
-            return {"status": "cli_not_found", "message": "AgentCore CLI not found. Install with: pip install bedrock-agentcore-starter-toolkit"}
+            return {"status": "cli_not_found", "message": "AgentCore CLI not found"}
     
-    def add_lambda_target(self, gateway_arn: str, gateway_url: str, role_arn: str, lambda_arn: str) -> dict:
-        """Add Lambda target to MCP Gateway"""
-        logger.info(f"Adding Lambda target to gateway: {self.lambda_name}")
+    def get_gateway_targets(self, gateway_id: str) -> list:
+        """Get existing targets for a gateway"""
+        env = os.environ.copy()
+        if self.profile:
+            env["AWS_PROFILE"] = self.profile
+        
+        try:
+            cmd = [
+                "aws", "bedrock-agentcore-control", "list-gateway-targets",
+                "--gateway-identifier", gateway_id,
+                "--region", self.region
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+            
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                return data.get("items", [])
+        except Exception as e:
+            logger.warning(f"Failed to list gateway targets: {e}")
+        
+        return []
+    
+    def get_adcp_tool_schema(self) -> list:
+        """Return the AdCP tool schema for Lambda target"""
+        return [
+            {"name": "get_products", "description": "Get available advertising products/inventory matching criteria",
+             "inputSchema": {"type": "object", "properties": {
+                 "channels": {"type": "array", "items": {"type": "string"}, "description": "Filter by channels (ctv, online_video, display, etc.)"},
+                 "brand_safety_tier": {"type": "string", "description": "Brand safety tier filter (tier_1, tier_2, tier_3)"},
+                 "min_budget": {"type": "number", "description": "Minimum budget filter"},
+                 "brief": {"type": "string", "description": "Campaign brief description"}}}},
+            {"name": "get_signals", "description": "Get available audience signals and targeting data",
+             "inputSchema": {"type": "object", "properties": {
+                 "signal_types": {"type": "array", "items": {"type": "string"}, "description": "Filter by signal types (audience, contextual)"},
+                 "decisioning_platform": {"type": "string", "description": "Target platform (ttd, dv360, etc.)"}}}},
+            {"name": "activate_signal", "description": "Activate an audience signal on a decisioning platform",
+             "inputSchema": {"type": "object", "properties": {
+                 "signal_agent_segment_id": {"type": "string", "description": "Signal ID to activate"},
+                 "decisioning_platform": {"type": "string", "description": "Target platform"}}, "required": ["signal_agent_segment_id"]}},
+            {"name": "create_media_buy", "description": "Create a media buy with specified packages",
+             "inputSchema": {"type": "object", "properties": {
+                 "buyer_ref": {"type": "string", "description": "Buyer reference identifier"},
+                 "packages": {"type": "array", "items": {"type": "object"}, "description": "List of packages with product_id and budget"}}, "required": ["buyer_ref", "packages"]}},
+            {"name": "get_media_buy_delivery", "description": "Get delivery status and metrics for a media buy",
+             "inputSchema": {"type": "object", "properties": {
+                 "media_buy_id": {"type": "string", "description": "Media buy identifier"}}, "required": ["media_buy_id"]}},
+            {"name": "verify_brand_safety", "description": "Verify brand safety for a list of properties/URLs",
+             "inputSchema": {"type": "object", "properties": {
+                 "properties": {"type": "array", "items": {"type": "object"}, "description": "List of properties to verify"}}, "required": ["properties"]}},
+            {"name": "resolve_audience_reach", "description": "Resolve audience reach across channels",
+             "inputSchema": {"type": "object", "properties": {
+                 "channels": {"type": "array", "items": {"type": "string"}, "description": "Channels to calculate reach for"}}}},
+            {"name": "configure_brand_lift_study", "description": "Configure a brand lift or measurement study",
+             "inputSchema": {"type": "object", "properties": {
+                 "study_name": {"type": "string", "description": "Name of the study"},
+                 "study_type": {"type": "string", "description": "Type of study (brand_lift, foot_traffic, sales_lift, attribution)"},
+                 "provider": {"type": "string", "description": "Measurement provider (lucid, etc.)"},
+                 "metrics": {"type": "array", "items": {"type": "string"}, "description": "Metrics to measure"}}, "required": ["study_name", "study_type"]}}
+        ]
+    
+    def add_lambda_target(self, gateway_arn: str, gateway_url: str, role_arn: str, lambda_arn: str, gateway_id: str = None) -> dict:
+        """Add Lambda target to MCP Gateway using AWS CLI (agentcore CLI has a bug with Lambda ARN)"""
+        target_name = f"{self.gateway_name}-lambda-target"
+        logger.info(f"Adding Lambda target to gateway: {target_name}")
+        logger.info(f"Lambda ARN: {lambda_arn}")
+        
+        # Check if target already exists
+        if gateway_id:
+            existing_targets = self.get_gateway_targets(gateway_id)
+            for target in existing_targets:
+                if target.get("name") == target_name:
+                    logger.info(f"Target already exists: {target_name}")
+                    return {"status": "success", "already_existed": True, "target": target}
+        
+        # Use AWS CLI directly (agentcore CLI doesn't allow specifying Lambda ARN)
+        tool_schema = self.get_adcp_tool_schema()
+        target_config = {
+            "mcp": {
+                "lambda": {
+                    "lambdaArn": lambda_arn,
+                    "toolSchema": {
+                        "inlinePayload": tool_schema
+                    }
+                }
+            }
+        }
+        
+        credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
         
         cmd = [
-            "agentcore", "gateway", "create-mcp-gateway-target",
-            "--gateway-arn", gateway_arn,
-            "--gateway-url", gateway_url,
-            "--role-arn", role_arn,
-            "--name", f"{self.gateway_name}-lambda-target",
-            "--target-type", "lambda",
+            "aws", "bedrock-agentcore-control", "create-gateway-target",
+            "--gateway-identifier", gateway_id or self.gateway_name,
+            "--name", target_name,
+            "--description", "AdCP Lambda target for advertising protocol tools",
+            "--target-configuration", json.dumps(target_config),
+            "--credential-provider-configurations", json.dumps(credential_config),
             "--region", self.region
         ]
         
@@ -624,18 +927,34 @@ def handle_configure_study(args):
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # nosemgrep: dangerous-subprocess-use-audit
             
             if result.returncode != 0:
+                # Check if target already exists
+                if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
+                    logger.info(f"Target already exists: {target_name}")
+                    return {"status": "success", "already_existed": True}
+                # Check for permission issues - warn but don't fail deployment
+                if "AccessDeniedException" in result.stderr:
+                    logger.warning(f"Permission denied for CreateGatewayTarget. Your IAM role may need bedrock-agentcore:CreateGatewayTarget permission.")
+                    logger.warning("The gateway was created but the Lambda target could not be added.")
+                    logger.warning("You can add the target manually or update your IAM permissions and re-run.")
+                    return {"status": "permission_denied", "message": result.stderr}
                 logger.error(f"Target creation failed: {result.stderr}")
                 return {"status": "error", "message": result.stderr}
             
             logger.info("Lambda target added successfully")
-            return {"status": "success", "output": result.stdout}
+            
+            # Parse response to get target details
+            try:
+                response_data = json.loads(result.stdout)
+                return {"status": "success", "output": result.stdout, "target_id": response_data.get("targetId")}
+            except json.JSONDecodeError:
+                return {"status": "success", "output": result.stdout}
             
         except subprocess.TimeoutExpired:
             return {"status": "timeout"}
         except FileNotFoundError:
-            return {"status": "cli_not_found"}
+            return {"status": "cli_not_found", "message": "AWS CLI not found"}
     
-    def deploy(self) -> dict:
+    def deploy(self, enable_semantic_search: bool = False) -> dict:
         """Full deployment: Lambda + Gateway + Target"""
         results = {
             "stack_prefix": self.stack_prefix,
@@ -659,11 +978,26 @@ def handle_configure_study(args):
             results["lambda_error"] = str(e)
             return results
         
-        # Step 2: Create Gateway
+        # Step 2: Create Gateway Role (for outbound auth to Lambda)
         logger.info("=" * 60)
-        logger.info("Step 2: Creating MCP Gateway")
+        logger.info("Step 2: Creating Gateway IAM Role")
         logger.info("=" * 60)
-        gateway_result = self.create_gateway()
+        try:
+            gateway_role_arn = self.create_gateway_role(lambda_arn)
+            results["gateway_role_arn"] = gateway_role_arn
+        except Exception as e:
+            logger.warning(f"Could not create gateway role: {e}")
+            logger.warning("Gateway will use default role (may have limited permissions)")
+            gateway_role_arn = None
+        
+        # Step 3: Create Gateway
+        logger.info("=" * 60)
+        logger.info("Step 3: Creating MCP Gateway with AWS_IAM authentication")
+        logger.info("=" * 60)
+        gateway_result = self.create_gateway(
+            enable_semantic_search=enable_semantic_search,
+            gateway_role_arn=gateway_role_arn
+        )
         results["gateway_result"] = gateway_result
         
         if gateway_result.get("status") == "cli_not_found":
@@ -680,23 +1014,58 @@ def handle_configure_study(args):
             results["status"] = "gateway_failed"
             return results
         
-        # Step 3: Add Lambda target (if we have gateway info)
+        # Step 4: Add Lambda target (if we have gateway info)
         if gateway_result.get("gateway_arn") and gateway_result.get("gateway_url"):
             logger.info("=" * 60)
-            logger.info("Step 3: Adding Lambda target to gateway")
+            logger.info("Step 4: Adding Lambda target to gateway")
             logger.info("=" * 60)
             
-            # Get role ARN
-            role_response = self.iam_client.get_role(RoleName=self.role_name)
-            role_arn = role_response["Role"]["Arn"]
+            # Use gateway's role ARN if available, otherwise use Lambda role
+            role_arn = gateway_result.get("role_arn")
+            if not role_arn:
+                role_response = self.iam_client.get_role(RoleName=self.role_name)
+                role_arn = role_response["Role"]["Arn"]
             
             target_result = self.add_lambda_target(
                 gateway_result["gateway_arn"],
                 gateway_result["gateway_url"],
                 role_arn,
-                lambda_arn
+                lambda_arn,
+                gateway_id=gateway_result.get("gateway_id")
             )
             results["target_result"] = target_result
+            
+            if target_result.get("status") == "permission_denied":
+                # Permission issue - gateway created but target not added
+                # Continue with partial success so deployment doesn't fail
+                logger.warning("Deployment partially complete - target requires manual setup or IAM fix")
+                results["status"] = "partial"
+                results["gateway_url"] = gateway_result.get("gateway_url")
+                return results
+            elif target_result.get("status") not in ["success"]:
+                logger.error("Failed to add Lambda target to gateway")
+                results["status"] = "target_failed"
+                return results
+        else:
+            logger.warning("Gateway ARN or URL not available - cannot add Lambda target")
+            logger.warning("You may need to manually add the Lambda target to the gateway")
+            results["status"] = "partial"
+            return results
+        
+        # Step 5: Create Gateway Invoke Role (for agents to call the gateway)
+        if gateway_result.get("gateway_id"):
+            logger.info("=" * 60)
+            logger.info("Step 5: Creating Gateway Invoke Role")
+            logger.info("=" * 60)
+            try:
+                invoke_role_arn = self.create_gateway_invoke_role(gateway_result["gateway_id"])
+                results["invoke_role_arn"] = invoke_role_arn
+            except Exception as e:
+                logger.warning(f"Could not create invoke role: {e}")
+                logger.warning("Agents will need to use their own credentials with InvokeGateway permission")
+                invoke_role_arn = None
+        else:
+            invoke_role_arn = None
         
         results["status"] = "success"
         
@@ -708,10 +1077,24 @@ def handle_configure_study(args):
         logger.info(f"Lambda ARN: {results.get('lambda_arn')}")
         if gateway_result.get("gateway_url"):
             logger.info(f"Gateway URL: {gateway_result['gateway_url']}")
+            logger.info(f"Gateway ID: {gateway_result.get('gateway_id')}")
+            if results.get("invoke_role_arn"):
+                logger.info(f"Invoke Role ARN: {results['invoke_role_arn']}")
+            logger.info("")
+            logger.info("=" * 60)
+            logger.info("AUTHENTICATION SETUP")
+            logger.info("=" * 60)
+            logger.info("This gateway uses AWS IAM (SigV4) authentication.")
             logger.info("")
             logger.info("To enable MCP integration in your agents:")
             logger.info(f"  export ADCP_USE_MCP=true")
             logger.info(f"  export ADCP_GATEWAY_URL={gateway_result['gateway_url']}")
+            logger.info("")
+            logger.info("Your AWS credentials must have permission to invoke the gateway.")
+            if results.get("invoke_role_arn"):
+                logger.info(f"You can assume the invoke role: {results['invoke_role_arn']}")
+            logger.info("")
+            logger.info("The MCP client will automatically sign requests with SigV4.")
         
         return results
 
@@ -723,6 +1106,10 @@ def main():
     parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
     parser.add_argument("--profile", help="AWS profile name")
     parser.add_argument("--lambda-only", action="store_true", help="Deploy only Lambda (skip gateway)")
+    parser.add_argument("--enable-semantic-search", action="store_true", default=False,
+                        help="Enable semantic search on the gateway (disabled by default)")
+    parser.add_argument("--target-only", action="store_true", 
+                        help="Only add Lambda target to existing gateway (skip gateway creation)")
     
     args = parser.parse_args()
     
@@ -731,6 +1118,7 @@ def main():
     logger.info(f"  Unique ID: {args.unique_id}")
     logger.info(f"  Region: {args.region}")
     logger.info(f"  Profile: {args.profile or 'default'}")
+    logger.info(f"  Semantic Search: {'enabled' if args.enable_semantic_search else 'disabled'}")
     
     try:
         deployer = AdCPGatewayDeployer(
@@ -758,9 +1146,44 @@ def main():
             print(json.dumps({"status": "error", "message": str(e)}, indent=2))
             return 1
     
+    if args.target_only:
+        # Just add Lambda target to existing gateway
+        try:
+            lambda_arn = deployer.deploy_adcp_lambda()
+            gateway_info = deployer.get_existing_gateway()
+            
+            if gateway_info.get("status") != "exists":
+                print(json.dumps({"status": "error", "message": "Gateway not found. Create gateway first."}, indent=2))
+                return 1
+            
+            role_arn = gateway_info.get("role_arn")
+            if not role_arn:
+                role_response = deployer.iam_client.get_role(RoleName=deployer.role_name)
+                role_arn = role_response["Role"]["Arn"]
+            
+            target_result = deployer.add_lambda_target(
+                gateway_info["gateway_arn"],
+                gateway_info["gateway_url"],
+                role_arn,
+                lambda_arn,
+                gateway_id=gateway_info.get("gateway_id")
+            )
+            
+            result = {
+                "status": target_result.get("status"),
+                "lambda_arn": lambda_arn,
+                "gateway_url": gateway_info.get("gateway_url"),
+                "target_result": target_result
+            }
+            print(json.dumps(result, indent=2, default=str))
+            return 0 if target_result.get("status") == "success" else 1
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": str(e)}, indent=2))
+            return 1
+    
     # Full deployment
     try:
-        result = deployer.deploy()
+        result = deployer.deploy(enable_semantic_search=args.enable_semantic_search)
         print(json.dumps(result, indent=2, default=str))
         return 0 if result.get("status") in ["success", "partial"] else 1
     except Exception as e:

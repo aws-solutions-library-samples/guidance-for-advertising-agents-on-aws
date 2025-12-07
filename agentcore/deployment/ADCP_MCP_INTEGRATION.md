@@ -83,22 +83,70 @@ export ADCP_USE_MCP=true
 
 ### Option 3: AgentCore Gateway (Production)
 
+AgentCore Gateway uses **AWS IAM (SigV4) authentication** for secure access. The MCP client automatically signs requests with your AWS credentials.
+
 1. Deploy the MCP Gateway:
 ```bash
 cd agentcore/deployment
 python deploy_adcp_gateway.py \
     --stack-prefix myapp \
     --unique-id abc123 \
-    --region us-east-1
+    --region us-east-1 \
+    --profile your-aws-profile  # optional
 ```
 
 2. Set environment variables from deployment output:
 ```bash
 export ADCP_USE_MCP=true
-export ADCP_GATEWAY_URL=https://your-gateway-url.bedrock-agentcore.us-east-1.amazonaws.com
+export ADCP_GATEWAY_URL=https://<gateway-id>.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp
+export AWS_REGION=us-east-1
 ```
 
-3. The tools will now connect to the AgentCore Gateway via HTTP.
+3. Ensure your AWS credentials have the `bedrock-agentcore:InvokeGateway` permission:
+```json
+{
+    "Effect": "Allow",
+    "Action": "bedrock-agentcore:InvokeGateway",
+    "Resource": "arn:aws:bedrock-agentcore:us-east-1:ACCOUNT_ID:gateway/GATEWAY_ID"
+}
+```
+
+4. The tools will now connect to the AgentCore Gateway via HTTP with SigV4 authentication.
+
+## Authentication
+
+### AWS IAM (SigV4) Authentication
+
+AgentCore Gateway uses AWS IAM for authentication. The MCP client automatically:
+1. Retrieves AWS credentials from the default credential chain (env vars, ~/.aws/credentials, IAM role, etc.)
+2. Signs each request with AWS SigV4 using the `bedrock-agentcore` service name
+3. Includes the signature in request headers
+
+**Required IAM Permissions:**
+- `bedrock-agentcore:InvokeGateway` on the gateway resource
+
+**Credential Sources (in order of precedence):**
+1. Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`)
+2. Shared credentials file (`~/.aws/credentials`)
+3. IAM role (for EC2, Lambda, ECS, etc.)
+
+### Assuming the Invoke Role
+
+The deployment script creates an invoke role that you can assume:
+```python
+import boto3
+
+sts = boto3.client('sts')
+response = sts.assume_role(
+    RoleArn='arn:aws:iam::ACCOUNT:role/myapp-adcp-invoke-role-abc123',
+    RoleSessionName='mcp-session'
+)
+
+# Use the temporary credentials
+os.environ['AWS_ACCESS_KEY_ID'] = response['Credentials']['AccessKeyId']
+os.environ['AWS_SECRET_ACCESS_KEY'] = response['Credentials']['SecretAccessKey']
+os.environ['AWS_SESSION_TOKEN'] = response['Credentials']['SessionToken']
+```
 
 ## Environment Variables
 
@@ -107,7 +155,9 @@ export ADCP_GATEWAY_URL=https://your-gateway-url.bedrock-agentcore.us-east-1.ama
 | `ADCP_USE_MCP` | Enable MCP integration | `true` |
 | `ADCP_GATEWAY_URL` | AgentCore Gateway URL | None |
 | `ADCP_MCP_SERVER_PATH` | Path to local MCP server | Auto-detected |
-| `ADCP_AUTH_TOKEN` | Auth token for gateway | None |
+| `ADCP_USE_SIGV4` | Use SigV4 authentication for gateway | `true` |
+| `AWS_REGION` | AWS region for SigV4 signing | `us-east-1` |
+| `AWS_DEFAULT_REGION` | Fallback region for SigV4 signing | `us-east-1` |
 
 ## Testing
 
@@ -228,9 +278,34 @@ MCP Gateway → Lambda Function → AdCP Protocol Handlers → Response
 2. Verify MCP dependencies: `pip install mcp strands-agents`
 3. Check server is running: `python adcp_mcp_server.py`
 
+### Gateway Authentication Errors (403/401)
+1. **Verify AWS credentials are configured:**
+   ```bash
+   aws sts get-caller-identity
+   ```
+2. **Check IAM permissions:** Your role/user needs `bedrock-agentcore:InvokeGateway` permission
+3. **Verify SigV4 is enabled:** Check `ADCP_USE_SIGV4=true` (default)
+4. **Check region matches:** The region in the gateway URL must match your AWS_REGION
+5. **Review CloudWatch logs:** Check the gateway and Lambda logs for detailed errors
+
+### Common Authentication Issues
+
+**"Signature mismatch" errors:**
+- Ensure the `connection: keep-alive` header is not included in signature calculation
+- Check that the service name is `bedrock-agentcore`
+- Verify the region is correct
+
+**"Access Denied" errors:**
+- Your IAM principal needs `bedrock-agentcore:InvokeGateway` permission
+- The gateway resource ARN in the policy must match your gateway
+
+**"Credentials not found" errors:**
+- Configure AWS credentials via environment variables, ~/.aws/credentials, or IAM role
+- Install boto3: `pip install boto3`
+
 ### Gateway Errors
-1. Verify gateway URL is correct
-2. Check authentication token if required
+1. Verify gateway URL is correct (should end with `/mcp`)
+2. Check that the gateway was created with `authorizerType=AWS_IAM`
 3. Review CloudWatch logs for Lambda errors
 
 ### Fallback Mode Active
@@ -238,6 +313,7 @@ If you see `"source": "fallback"` in responses, MCP is not connected:
 1. Check environment variables
 2. Verify MCP server is accessible
 3. Check for import errors in logs
+4. Verify AWS credentials are valid for gateway authentication
 
 ## Files Reference
 

@@ -2320,7 +2320,7 @@ except:
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 6: Deploying AgentCore agents..."
+    print_step "Step 7: Deploying AgentCore agents (after MCP Gateway)..."
     
     local agentcore_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
     
@@ -2539,16 +2539,15 @@ EOF
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
-        print_success "🎉 Step 6 Complete: AgentCore agents have been deployed!"
-        print_status "The following steps remain:"
-        print_status "  - Step 7: Deploy AdCP MCP Gateway"
+        print_success "🎉 Step 7 Complete: AgentCore agents have been deployed!"
+        print_status "The following step remains:"
         print_status "  - Step 8: Generate AWS configuration"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
-            print_status "Deployment paused after Step 6. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 7 (AdCP Gateway)."
+            print_status "Deployment paused after Step 7. You can resume later by running the script again."
+            print_status "Current progress has been saved and the script will resume from Step 8 (UI Config)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
@@ -2557,8 +2556,9 @@ EOF
 }
 
 # Function to deploy AdCP MCP Gateway for agent collaboration
+# NOTE: This must run BEFORE AgentCore agents so the gateway URL is available
 deploy_adcp_mcp_gateway() {
-    print_step "Step 7: Deploying AdCP MCP Gateway for agent collaboration..."
+    print_step "Step 6: Deploying AdCP MCP Gateway for agent collaboration..."
     
     local deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_adcp_gateway.py"
     
@@ -2593,10 +2593,13 @@ deploy_adcp_mcp_gateway() {
     print_status "Executing: $deploy_cmd"
     
     # Execute deployment
+    # Use a subshell with set +e to prevent script exit on command failure
     local deploy_output
     local deploy_exit_code
+    set +e  # Temporarily disable exit on error
     deploy_output=$(eval "$deploy_cmd" 2>&1)
     deploy_exit_code=$?
+    set -e  # Re-enable exit on error
     
     if [ $deploy_exit_code -eq 0 ]; then
         print_success "✅ AdCP MCP Gateway deployed successfully"
@@ -2604,10 +2607,28 @@ deploy_adcp_mcp_gateway() {
         # Extract gateway URL from output if available
         local gateway_url=$(echo "$deploy_output" | grep -o 'gateway_url.*' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/' 2>/dev/null || echo "")
         
+        # Also try to extract from JSON format
+        if [ -z "$gateway_url" ] || [ "$gateway_url" = "null" ]; then
+            gateway_url=$(echo "$deploy_output" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    url = data.get('gateway_result', {}).get('gateway_url') or data.get('gateway_url')
+    if url:
+        print(url)
+except:
+    pass
+" 2>/dev/null || echo "")
+        fi
+        
         if [ -n "$gateway_url" ] && [ "$gateway_url" != "null" ]; then
             print_status "  Gateway URL: $gateway_url"
             
-            # Store gateway URL in SSM for agents to use
+            # CRITICAL: Export gateway URL for AgentCore deployment to use
+            export ADCP_GATEWAY_URL="$gateway_url"
+            print_status "  ✅ Exported ADCP_GATEWAY_URL for AgentCore agents"
+            
+            # Store gateway URL in SSM for agents to use at runtime
             local ssm_param_name="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
             if aws_cmd ssm put-parameter \
                 --name "$ssm_param_name" \
@@ -2617,6 +2638,9 @@ deploy_adcp_mcp_gateway() {
                 --region "$AWS_REGION" > /dev/null 2>&1; then
                 print_status "  Gateway URL stored in SSM: $ssm_param_name"
             fi
+        else
+            print_warning "  ⚠️  Could not extract gateway URL from deployment output"
+            print_warning "  AgentCore agents will use fallback local tools"
         fi
         
         # Save deployment output to file
@@ -2937,35 +2961,120 @@ cleanup_ecosystem() {
 cleanup_adcp_gateway() {
     print_step "2. Cleaning up AdCP MCP Gateway..."
     
-    # Check if gateway info file exists
     local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gateway_name="${STACK_PREFIX}-adcp-gateway-${UNIQUE_ID}"
+    local lambda_name="${STACK_PREFIX}-adcp-handler-${UNIQUE_ID}"
+    local found_gateway=""
+    local found_gateway_id=""
     
-    if [ ! -f "$gateway_info_file" ]; then
-        print_status "No AdCP Gateway deployment found, skipping..."
+    # Query AWS directly for gateways matching our stack prefix
+    print_status "Checking for MCP Gateways matching ${gateway_name}..."
+    
+    local gateways_json=$(aws_cmd bedrock-agentcore-control list-gateways --region "$AWS_REGION" 2>/dev/null || echo '{"items":[]}')
+    
+    # Find gateway matching our naming pattern
+    found_gateway_id=$(echo "$gateways_json" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for gw in data.get('items', []):
+        if gw.get('name', '') == '${gateway_name}':
+            print(gw.get('gatewayId', ''))
+            break
+except:
+    pass
+" 2>/dev/null || echo "")
+    
+    # Check if Lambda function exists
+    local lambda_exists=""
+    if aws_cmd lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" > /dev/null 2>&1; then
+        lambda_exists="true"
+    fi
+    
+    # Check if IAM role exists
+    local role_name="${STACK_PREFIX}-adcp-lambda-role-${UNIQUE_ID}"
+    local role_exists=""
+    if aws_cmd iam get-role --role-name "$role_name" > /dev/null 2>&1; then
+        role_exists="true"
+    fi
+    
+    # If nothing found, skip cleanup
+    if [ -z "$found_gateway_id" ] && [ -z "$lambda_exists" ] && [ -z "$role_exists" ]; then
+        print_status "No AdCP Gateway resources found for ${STACK_PREFIX}-${UNIQUE_ID}, skipping..."
+        rm -f "$gateway_info_file" 2>/dev/null || true
         return 0
     fi
     
-    printf "Delete AdCP MCP Gateway Lambda function for stack ${STACK_PREFIX}-${UNIQUE_ID}? (y/N): "
+    # Show what was found
+    print_status "Found AdCP Gateway resources:"
+    [ -n "$found_gateway_id" ] && print_status "  - MCP Gateway: $found_gateway_id"
+    [ -n "$lambda_exists" ] && print_status "  - Lambda function: $lambda_name"
+    [ -n "$role_exists" ] && print_status "  - IAM role: $role_name"
+    
+    printf "Delete AdCP MCP Gateway resources for stack ${STACK_PREFIX}-${UNIQUE_ID}? (y/N): "
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         print_status "Skipping AdCP Gateway cleanup"
         return 0
     fi
     
-    # Delete Lambda function
-    local lambda_name="${STACK_PREFIX}-adcp-handler-${UNIQUE_ID}"
-    print_status "Deleting Lambda function: $lambda_name"
+    # Delete gateway targets first, then gateway
+    if [ -n "$found_gateway_id" ]; then
+        print_status "Deleting MCP Gateway targets for: $found_gateway_id"
+        
+        # List and delete all targets for this gateway
+        local targets_json=$(aws_cmd bedrock-agentcore-control list-gateway-targets \
+            --gateway-identifier "$found_gateway_id" \
+            --region "$AWS_REGION" 2>/dev/null || echo '{"items":[]}')
+        
+        local target_ids=$(echo "$targets_json" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for target in data.get('items', []):
+        print(target.get('targetId', ''))
+except:
+    pass
+" 2>/dev/null || echo "")
+        
+        for target_id in $target_ids; do
+            if [ -n "$target_id" ]; then
+                print_status "  Deleting target: $target_id"
+                if aws_cmd bedrock-agentcore-control delete-gateway-target \
+                    --gateway-identifier "$found_gateway_id" \
+                    --target-id "$target_id" \
+                    --region "$AWS_REGION" 2>/dev/null; then
+                    print_success "  ✅ Target deleted: $target_id"
+                else
+                    print_warning "  ⚠️  Failed to delete target: $target_id"
+                fi
+            fi
+        done
+        
+        # Delete the gateway
+        print_status "Deleting MCP Gateway: $found_gateway_id"
+        if aws_cmd bedrock-agentcore-control delete-gateway \
+            --gateway-identifier "$found_gateway_id" \
+            --region "$AWS_REGION" 2>/dev/null; then
+            print_success "✅ MCP Gateway deleted: $found_gateway_id"
+        else
+            print_warning "⚠️  Failed to delete MCP Gateway: $found_gateway_id"
+        fi
+    fi
     
-    if aws_cmd lambda delete-function --function-name "$lambda_name" --region "$AWS_REGION" 2>/dev/null; then
-        print_success "✅ Lambda function deleted: $lambda_name"
-    else
-        print_warning "⚠️  Lambda function not found or already deleted: $lambda_name"
+    # Delete Lambda function
+    if [ -n "$lambda_exists" ]; then
+        print_status "Deleting Lambda function: $lambda_name"
+        if aws_cmd lambda delete-function --function-name "$lambda_name" --region "$AWS_REGION" 2>/dev/null; then
+            print_success "✅ Lambda function deleted: $lambda_name"
+        else
+            print_warning "⚠️  Failed to delete Lambda function: $lambda_name"
+        fi
     fi
     
     # Delete SSM parameter
     local ssm_param_name="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
     print_status "Deleting SSM parameter: $ssm_param_name"
-    
     if aws_cmd ssm delete-parameter --name "$ssm_param_name" --region "$AWS_REGION" 2>/dev/null; then
         print_success "✅ SSM parameter deleted: $ssm_param_name"
     else
@@ -2973,34 +3082,35 @@ cleanup_adcp_gateway() {
     fi
     
     # Delete IAM role for Lambda
-    local role_name="${STACK_PREFIX}-adcp-lambda-role-${UNIQUE_ID}"
-    print_status "Deleting IAM role: $role_name"
-    
-    # First detach policies
-    local attached_policies=$(aws_cmd iam list-attached-role-policies --role-name "$role_name" --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null || echo "")
-    for policy_arn in $attached_policies; do
-        if [ -n "$policy_arn" ]; then
-            aws_cmd iam detach-role-policy --role-name "$role_name" --policy-arn "$policy_arn" 2>/dev/null || true
+    if [ -n "$role_exists" ]; then
+        print_status "Deleting IAM role: $role_name"
+        
+        # First detach policies
+        local attached_policies=$(aws_cmd iam list-attached-role-policies --role-name "$role_name" --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null || echo "")
+        for policy_arn in $attached_policies; do
+            if [ -n "$policy_arn" ]; then
+                aws_cmd iam detach-role-policy --role-name "$role_name" --policy-arn "$policy_arn" 2>/dev/null || true
+            fi
+        done
+        
+        # Delete inline policies
+        local inline_policies=$(aws_cmd iam list-role-policies --role-name "$role_name" --query 'PolicyNames[*]' --output text 2>/dev/null || echo "")
+        for policy_name in $inline_policies; do
+            if [ -n "$policy_name" ]; then
+                aws_cmd iam delete-role-policy --role-name "$role_name" --policy-name "$policy_name" 2>/dev/null || true
+            fi
+        done
+        
+        # Delete the role
+        if aws_cmd iam delete-role --role-name "$role_name" 2>/dev/null; then
+            print_success "✅ IAM role deleted: $role_name"
+        else
+            print_warning "⚠️  Failed to delete IAM role: $role_name"
         fi
-    done
-    
-    # Delete inline policies
-    local inline_policies=$(aws_cmd iam list-role-policies --role-name "$role_name" --query 'PolicyNames[*]' --output text 2>/dev/null || echo "")
-    for policy_name in $inline_policies; do
-        if [ -n "$policy_name" ]; then
-            aws_cmd iam delete-role-policy --role-name "$role_name" --policy-name "$policy_name" 2>/dev/null || true
-        fi
-    done
-    
-    # Delete the role
-    if aws_cmd iam delete-role --role-name "$role_name" 2>/dev/null; then
-        print_success "✅ IAM role deleted: $role_name"
-    else
-        print_warning "⚠️  IAM role not found or already deleted: $role_name"
     fi
     
     # Remove local tracking file
-    rm -f "$gateway_info_file"
+    rm -f "$gateway_info_file" 2>/dev/null || true
     print_success "✅ AdCP Gateway cleanup completed"
     
     return 0
@@ -3896,8 +4006,8 @@ confirm_deployment_steps() {
         "Phase 3: Deploy Lambda functions and migrate visualization data"
         "Phase 4: Deploy knowledge bases with organized data sources"
         "Phase 5: Sync data sources (start ingestion jobs)"
-        "Phase 6: Detect and deploy AgentCore agents"
-        "Phase 7: Deploy AdCP MCP Gateway for agent collaboration"
+        "Phase 6: Deploy AdCP MCP Gateway for agent collaboration (must be before agents)"
+        "Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)"
         "Phase 8: Generate UI configuration"
     )
     
@@ -3991,8 +4101,8 @@ main() {
     # Phase 3: Deploy Lambda functions and migrate visualization data
     # Phase 4: Deploy knowledge bases with organized data sources
     # Phase 5: Sync data sources (start ingestion jobs)
-    # Phase 6: Detect and deploy AgentCore agents
-    # Phase 7: Deploy AdCP MCP Gateway for agent collaboration
+    # Phase 6: Deploy AdCP MCP Gateway for agent collaboration (BEFORE agents!)
+    # Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)
     # Phase 8: Generate UI configuration
     
     # Pre-deployment validation
@@ -4031,12 +4141,13 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 6 ]; then
-        # Prompt for AgentCore deployment confirmation
-        detect_and_deploy_agentcore_agents
+        # Deploy AdCP MCP Gateway FIRST so agents can use it
+        deploy_adcp_mcp_gateway
     fi
     
     if [ "$RESUME_AT_STEP" -le 7 ]; then
-        deploy_adcp_mcp_gateway
+        # Deploy AgentCore agents AFTER gateway so ADCP_GATEWAY_URL is available
+        detect_and_deploy_agentcore_agents
     fi
     
     if [ "$RESUME_AT_STEP" -le 8 ]; then

@@ -661,6 +661,29 @@ except Exception as e:
     fi
 fi
 
+# Get AdCP Gateway URL from SSM or environment variable
+print_status "Checking for AdCP MCP Gateway URL..."
+ADCP_GATEWAY_URL_VALUE="${ADCP_GATEWAY_URL:-}"
+
+if [ -z "$ADCP_GATEWAY_URL_VALUE" ]; then
+    # Try to get from SSM
+    SSM_GATEWAY_PARAM="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
+    if [ -n "$AWS_PROFILE" ]; then
+        ADCP_GATEWAY_URL_VALUE=$(aws ssm get-parameter --name "$SSM_GATEWAY_PARAM" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    else
+        ADCP_GATEWAY_URL_VALUE=$(aws ssm get-parameter --name "$SSM_GATEWAY_PARAM" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    fi
+fi
+
+if [ -n "$ADCP_GATEWAY_URL_VALUE" ] && [ "$ADCP_GATEWAY_URL_VALUE" != "None" ]; then
+    print_status "✅ AdCP Gateway URL found: $ADCP_GATEWAY_URL_VALUE"
+    print_status "   Agents will use MCP Gateway for AdCP tools"
+else
+    print_warning "⚠️  AdCP Gateway URL not found"
+    print_warning "   Agents will use fallback local tools for AdCP"
+    ADCP_GATEWAY_URL_VALUE=""
+fi
+
 docker build \
     --build-arg MEMORY_ID="$MEMORY_ID" \
     --build-arg ACTOR_ID="AdFabricAgent" \
@@ -671,6 +694,8 @@ docker build \
     --build-arg APPSYNC_ENDPOINT="$APPSYNC_ENDPOINT" \
     --build-arg APPSYNC_REALTIME_DOMAIN="$APPSYNC_REALTIME_DOMAIN" \
     --build-arg APPSYNC_CHANNEL_NAMESPACE="${STACK_PREFIX}events${UNIQUE_ID}" \
+    --build-arg ADCP_GATEWAY_URL="$ADCP_GATEWAY_URL_VALUE" \
+    --build-arg ADCP_USE_MCP="true" \
     -t "$ECR_REPO_NAME:latest" .
 
 # # Clean up copied libraries from build context
