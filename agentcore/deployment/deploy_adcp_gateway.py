@@ -645,7 +645,7 @@ def handle_configure_study(args):
                             "--region", self.region
                         ]
                         
-                        get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+                        get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-tainted-env-args
                         
                         if get_result.returncode == 0:
                             gw_details = json.loads(get_result.stdout)
