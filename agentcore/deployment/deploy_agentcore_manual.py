@@ -132,6 +132,17 @@ class ManualAgentCoreDeployer:
 
         return profile
 
+    @staticmethod
+    def _validate_aws_identifier(value: str, name: str) -> str:
+        """Validate AWS identifiers to prevent command injection"""
+        if not value:
+            raise ValueError(f"{name} cannot be empty")
+        import re
+        # AWS identifiers: alphanumeric, hyphens, underscores, colons (for ARNs), slashes, dots
+        if not re.match(r'^[a-zA-Z0-9._:/-]+$', value):
+            raise ValueError(f"Invalid {name}: {value}")
+        return value
+
     def _upgrade_boto3(self) -> bool:
         """Automatically upgrade boto3, botocore, and awscli to latest versions"""
         try:
@@ -1238,12 +1249,17 @@ class ManualAgentCoreDeployer:
                     )
 
                 # Method B: Manual Deployment with AWS CLI (with 10-minute timeouts)
+                # Validate inputs to prevent command injection
+                validated_runtime_name = self._validate_aws_identifier(runtime_name, "runtime_name")
+                validated_role_arn = self._validate_aws_identifier(role_arn, "role_arn")
+                validated_region = self._validate_aws_identifier(self.agentcore_region, "region")
+                
                 cli_command = [
                     "aws",
                     "bedrock-agentcore-control",
                     "create-agent-runtime",
                     "--agent-runtime-name",
-                    runtime_name,
+                    validated_runtime_name,
                     "--agent-runtime-artifact",
                     json.dumps(container_config),
                     "--environment-variables",
@@ -1251,9 +1267,9 @@ class ManualAgentCoreDeployer:
                     "--network-configuration",
                     json.dumps({"networkMode": "PUBLIC"}),
                     "--role-arn",
-                    role_arn,
+                    validated_role_arn,
                     "--region",
-                    self.agentcore_region,
+                    validated_region,
                     "--cli-read-timeout",
                     "600",  # 10 minutes
                     "--cli-connect-timeout",
@@ -1273,7 +1289,7 @@ class ManualAgentCoreDeployer:
                 )
 
                 try:
-                    result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-tainted-env-args
+                    result = subprocess.run(
                         cli_command, capture_output=True, text=True, timeout=700
                     )
 
@@ -1479,12 +1495,17 @@ class ManualAgentCoreDeployer:
                     )
 
                 # Use AWS CLI with 10-minute timeouts for update operations
+                # Validate inputs to prevent command injection
+                validated_runtime_id = self._validate_aws_identifier(runtime_id, "runtime_id")
+                validated_role_arn = self._validate_aws_identifier(role_arn, "role_arn")
+                validated_region = self._validate_aws_identifier(self.agentcore_region, "region")
+                
                 cli_command = [
                     "aws",
                     "bedrock-agentcore-control",
                     "update-agent-runtime",
                     "--agent-runtime-id",
-                    runtime_id,
+                    validated_runtime_id,
                     "--agent-runtime-artifact",
                     json.dumps(container_config),
                     "--environment-variables",
@@ -1492,11 +1513,11 @@ class ManualAgentCoreDeployer:
                     "--network-configuration",
                     json.dumps({"networkMode": "PUBLIC"}),
                     "--role-arn",
-                    role_arn,
+                    validated_role_arn,
                     "--description",
                     "Updated agent runtime with new container image and environment variables",
                     "--region",
-                    self.agentcore_region,
+                    validated_region,
                     "--cli-read-timeout",
                     "600",  # 10 minutes
                     "--cli-connect-timeout",
@@ -1519,7 +1540,6 @@ class ManualAgentCoreDeployer:
                 )
                 logger.debug(f"Environment vars: {json.dumps(env_vars, indent=2)}")
 
-                # nosemgrep: dangerous-subprocess-use-audit - Validated AWS CLI update
                 result = subprocess.run(
                     cli_command,
                     capture_output=True,

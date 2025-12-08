@@ -27,6 +27,8 @@ import boto3
 import json
 import logging
 import os
+import re
+import shlex
 import subprocess
 import sys
 import time
@@ -39,6 +41,25 @@ logger = logging.getLogger(__name__)
 
 class AdCPGatewayDeployer:
     """Deploy AdCP MCP Gateway with Lambda targets"""
+    
+    @staticmethod
+    def _validate_aws_identifier(value: str, name: str) -> str:
+        """Validate AWS identifiers to prevent command injection"""
+        if not value:
+            raise ValueError(f"{name} cannot be empty")
+        # AWS identifiers typically contain alphanumeric, hyphens, underscores
+        if not re.match(r'^[a-zA-Z0-9._-]+$', value):
+            raise ValueError(f"Invalid {name}: {value}")
+        return value
+    
+    @staticmethod
+    def _validate_aws_profile(profile: str) -> str:
+        """Validate AWS profile name to prevent command injection"""
+        if not profile:
+            raise ValueError("Profile name cannot be empty")
+        if not re.match(r'^[a-zA-Z0-9._-]+$', profile):
+            raise ValueError(f"Invalid AWS profile name: {profile}")
+        return profile
     
     def __init__(self, stack_prefix: str, unique_id: str, region: str = "us-east-1", profile: str = None):
         self.stack_prefix = stack_prefix
@@ -392,19 +413,23 @@ class AdCPGatewayDeployer:
         """Check if gateway already exists and return its info using AWS CLI"""
         logger.info(f"Checking for existing gateway: {self.gateway_name}")
         
+        # Validate region to prevent command injection
+        validated_region = self._validate_aws_identifier(self.region, "region")
+        
         # Set up environment with AWS_PROFILE if specified
         env = os.environ.copy()
         if self.profile:
-            env["AWS_PROFILE"] = self.profile
+            validated_profile = self._validate_aws_profile(self.profile)
+            env["AWS_PROFILE"] = validated_profile
         
         try:
             # Use AWS CLI to list gateways (more reliable than agentcore CLI)
             cmd = [
                 "aws", "bedrock-agentcore-control", "list-gateways",
-                "--region", self.region
+                "--region", validated_region
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             
             if result.returncode == 0:
                 gateways_data = json.loads(result.stdout)
@@ -412,16 +437,18 @@ class AdCPGatewayDeployer:
                 for gw in gateways_data.get("items", []):
                     if gw.get("name") == self.gateway_name:
                         gateway_id = gw.get("gatewayId")
-                        logger.info(f"Found existing gateway: {self.gateway_name} (ID: {gateway_id})")
+                        # Validate gateway_id from API response before using in subprocess
+                        validated_gateway_id = self._validate_aws_identifier(gateway_id, "gateway_id")
+                        logger.info(f"Found existing gateway: {self.gateway_name} (ID: {validated_gateway_id})")
                         
                         # Get full gateway details
                         get_cmd = [
                             "aws", "bedrock-agentcore-control", "get-gateway",
-                            "--gateway-identifier", gateway_id,
-                            "--region", self.region
+                            "--gateway-identifier", validated_gateway_id,
+                            "--region", validated_region
                         ]
                         
-                        get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-tainted-env-args
+                        get_result = subprocess.run(get_cmd, capture_output=True, text=True, timeout=60, env=env)
                         
                         if get_result.returncode == 0:
                             gw_details = json.loads(get_result.stdout)
@@ -541,18 +568,23 @@ class AdCPGatewayDeployer:
         """Fallback: Create MCP Gateway using AgentCore CLI"""
         logger.info(f"Creating MCP Gateway via CLI: {self.gateway_name}")
         
+        # Validate inputs to prevent command injection
+        validated_gateway_name = self._validate_aws_identifier(self.gateway_name, "gateway_name")
+        validated_region = self._validate_aws_identifier(self.region, "region")
+        
         cmd = [
             "agentcore", "gateway", "create-mcp-gateway",
-            "--name", self.gateway_name,
-            "--region", self.region
+            "--name", validated_gateway_name,
+            "--region", validated_region
         ]
         
         env = os.environ.copy()
         if self.profile:
-            env["AWS_PROFILE"] = self.profile
+            validated_profile = self._validate_aws_profile(self.profile)
+            env["AWS_PROFILE"] = validated_profile
         
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             
             if result.returncode != 0:
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
@@ -597,17 +629,22 @@ class AdCPGatewayDeployer:
     
     def get_gateway_targets(self, gateway_id: str) -> list:
         """Get existing targets for a gateway"""
+        # Validate inputs to prevent command injection
+        validated_gateway_id = self._validate_aws_identifier(gateway_id, "gateway_id")
+        validated_region = self._validate_aws_identifier(self.region, "region")
+        
         env = os.environ.copy()
         if self.profile:
-            env["AWS_PROFILE"] = self.profile
+            validated_profile = self._validate_aws_profile(self.profile)
+            env["AWS_PROFILE"] = validated_profile
         
         try:
             cmd = [
                 "aws", "bedrock-agentcore-control", "list-gateway-targets",
-                "--gateway-identifier", gateway_id,
-                "--region", self.region
+                "--gateway-identifier", validated_gateway_id,
+                "--region", validated_region
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -684,23 +721,29 @@ class AdCPGatewayDeployer:
         
         credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
         
+        # Validate inputs to prevent command injection
+        validated_gateway_id = self._validate_aws_identifier(gateway_id or self.gateway_name, "gateway_id")
+        validated_target_name = self._validate_aws_identifier(target_name, "target_name")
+        validated_region = self._validate_aws_identifier(self.region, "region")
+        
         cmd = [
             "aws", "bedrock-agentcore-control", "create-gateway-target",
-            "--gateway-identifier", gateway_id or self.gateway_name,
-            "--name", target_name,
+            "--gateway-identifier", validated_gateway_id,
+            "--name", validated_target_name,
             "--description", "AdCP Lambda target for advertising protocol tools",
             "--target-configuration", json.dumps(target_config),
             "--credential-provider-configurations", json.dumps(credential_config),
-            "--region", self.region
+            "--region", validated_region
         ]
         
         # Set up environment with AWS_PROFILE if specified
         env = os.environ.copy()
         if self.profile:
-            env["AWS_PROFILE"] = self.profile
+            validated_profile = self._validate_aws_profile(self.profile)
+            env["AWS_PROFILE"] = validated_profile
         
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # nosemgrep: dangerous-subprocess-use-audit
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             
             if result.returncode != 0:
                 # Check if target already exists
