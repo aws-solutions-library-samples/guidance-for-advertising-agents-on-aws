@@ -87,7 +87,7 @@ These deployment instructions are optimized to work on **Amazon Linux 2023 AMI**
 
 **Required packages:**
 - **Python 3.10+** for deployment automation scripts (automatically managed by deployment script)
-- **AWS CLI 2.0+** configured with appropriate permissions
+- **AWS CLI 2.32+** configured with appropriate permissions (required for bedrock-agentcore-control service)
 - **Docker 20.10+** for AgentCore container builds (optional - only needed for custom agent development)
 - **Node.js 22+** (LTS) for Angular demo UI (optional - only needed for UI development)
 - **jq** for JSON processing (auto-installed by deployment script if missing)
@@ -431,7 +431,7 @@ aws cloudformation describe-stacks \
 aws ecr describe-repositories --region us-east-1 --profile agnts4ad | grep agentcore
 
 # Check AgentCore runtime status
-aws bedrock-agentcore list-agent-runtimes --region us-east-1 --profile agnts4ad
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1 --profile agnts4ad
 ```
 
 3. **Verify knowledge base**
@@ -1142,6 +1142,13 @@ aws ssm delete-parameter \
 ## FAQ, known issues, additional considerations, and limitations 
 
 ### Known Issues
+
+**Issue: AWS CLI version compatibility**
+- **Symptom**: `aws: error: argument command: Invalid choice, valid choices are:` when using `bedrock-agentcore-control` commands
+- **Resolution**: Update AWS CLI to version 2.32+ which includes AgentCore support
+- **Command**: 
+  - macOS: `curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg" && sudo installer -pkg AWSCLIV2.pkg -target /`
+  - Linux: `curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install --update`
 
 **Issue: Stack in ROLLBACK_COMPLETE state**
 - **Symptom**: CloudFormation stack deployment fails and enters ROLLBACK_COMPLETE state
