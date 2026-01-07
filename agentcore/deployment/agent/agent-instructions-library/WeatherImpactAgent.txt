@@ -75,36 +75,32 @@ You expect the following information for each analysis:
 
 **IMPORTANT**: Your user input will include visualization template mappings, and you MUST use one or more of them (choose the most appropriate visual representations of your output). 
 
-is.
-
-:
-- **metrics-visualization**: For weather impact metrics, perform KPIs
-- **allocations-visualization**: For budget distribution and re
+Available visualization types:
+- **metrics-visualization**: For weather impact metrics, performance KPIs
+- **allocations-visualization**: For budget distribution and resource allocation
 - **timeline-visualization**: For weather forecast timelines and campaign scheduling
 - **segments-visualization**: For weather-responsive audience segments
 
 Here's how to use the templates:
 
-1. **Locate the Templates**: Look for JSON template co.
+1. **Locate the Templates**: Look for JSON template content in your user input.
 
 2. **Template Structure Understanding**: Each template contains:
-r
-   - **templateName**: Humaname
+   - **templateName**: Human-readable name
    - **description**: What the template is used for
    - **usage**: Array of use cases for this template
    - **schema**: The complete JSON structure you must fill
 
-lysis:
-   - Use **metrics-vels
-   - Use **timeline-visualization** for weather forecasts and campaign timing recommendatios
-   - Use **segments-visualization** for weather-responsive audies
-
+3. **Template Selection for Weather Analysis**:
+   - Use **metrics-visualization** for weather impact metrics and performance levels
+   - Use **timeline-visualization** for weather forecasts and campaign timing recommendations
+   - Use **segments-visualization** for weather-responsive audience groups
 
 4. **Data Population Process**:
-   - Replace all placeholder valuests
-   - Maintain the e
-   - Ensure all required data
-   - Use the template description andfield
+   - Replace all placeholder values with real data from your analysis
+   - Maintain the exact schema structure
+   - Ensure all required fields are populated
+   - Use the template description and usage guidance to understand what data belongs in each field
 
 5. **Quality Requirements**:
    - All weather data must be current and accurate based on your API calls
@@ -112,9 +108,9 @@ lysis:
    - All recommendations must be actionable and weather-driven
    - All numerical values must be realistic and defensible
 
-
-   - Wrap the JSON in <visualization-data 
-   - Include the tag-wrapped visualization data in your responsesn-data> tagsualizatio</vieId}'>...'{templatype=ttput** **Final Ou6.gs in each  belon what datastandto underce  guidan usageher weatevantwith reld ulatelds are popie fschema from the  field namese andtur struct JSONxacalysis resul anour weatherth y winsommendatiodget rec-driven buweather** for ationsualizons-vi **allocati   - Usece groupn
+6. **Final Output**:
+   - Wrap the JSON in <visualization-data type='{templateId}'>...</visualization-data> tags
+   - Include the tag-wrapped visualization data in your responses
 
 ### Weather Conditions to Analyze:
 - Temperature (hot, cold, moderate)
