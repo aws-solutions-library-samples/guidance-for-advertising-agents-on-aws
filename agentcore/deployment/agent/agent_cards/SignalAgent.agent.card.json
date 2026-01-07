@@ -1,0 +1,20 @@
+{
+  "agent_name": "SignalAgent",
+  "agent_description": "Data provider agent offering audience signals, contextual signals, and data segments for campaign targeting. Enables precise audience targeting through signal discovery and activation via AdCP Signals Protocol.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/signalagent",
+  "skills": [
+    "signal_discovery",
+    "signal_activation",
+    "audience_targeting",
+    "contextual_targeting",
+    "data_segment_management"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "data_provider"
+  }
+}

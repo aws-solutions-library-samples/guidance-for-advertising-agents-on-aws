@@ -1,0 +1,175 @@
+<div *ngIf="presentationData" class="presentation-container">
+  <!-- Header -->
+  <div class="presentation-header">
+    <h3 *ngIf="presentationData.title" class="presentation-title">{{presentationData.title}}</h3>
+    <p *ngIf="presentationData.subtitle" class="presentation-subtitle">{{presentationData.subtitle}}</p>
+  </div>
+
+  <!-- Executive Summary -->
+  <div *ngIf="getExecutiveSummary()" class="executive-summary">
+    <div class="summary-header">
+      <span class="material-icons">summarize</span>
+      <h4>Executive Summary</h4>
+    </div>
+    
+    <div class="summary-content">
+      <div class="summary-row">
+        <div class="summary-item objective">
+          <span class="item-label">Campaign Objective</span>
+          <span class="item-value">{{getExecutiveSummary()?.campaignObjective}}</span>
+        </div>
+        <div class="summary-item investment">
+          <span class="item-label">Total Investment</span>
+          <span class="item-value highlight">{{getExecutiveSummary()?.totalInvestment}}</span>
+        </div>
+        <div class="summary-item timeline">
+          <span class="item-label">Timeline</span>
+          <span class="item-value">{{getExecutiveSummary()?.timeline}}</span>
+        </div>
+      </div>
+
+      <!-- Key KPIs -->
+      <div *ngIf="getKeyKPIs().length > 0" class="kpi-grid">
+        <div *ngFor="let kpi of getKeyKPIs(); trackBy: trackByLabel" class="kpi-card">
+          <span class="kpi-label">{{kpi.label}}</span>
+          <span class="kpi-value">{{kpi.value}}</span>
+          <div *ngIf="kpi.trend || kpi.change" class="kpi-trend">
+            <span class="material-icons" [style.color]="getKPITrendColor(kpi.trend)">
+              {{getKPITrendIcon(kpi.trend)}}
+            </span>
+            <span *ngIf="kpi.change" class="trend-change">{{kpi.change}}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Highlights -->
+      <div *ngIf="getExecutiveSummary()?.highlights?.length" class="highlights">
+        <span *ngFor="let highlight of getExecutiveSummary()?.highlights; trackBy: trackByIndex" class="highlight-chip">
+          {{highlight}}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sections -->
+  <div class="sections-container">
+    <div *ngFor="let section of getSections(); trackBy: trackBySectionId" 
+         class="section-card"
+         [class.expanded]="isSectionExpanded(section.sectionId)">
+      
+      <div class="section-header" (click)="toggleSection(section.sectionId)">
+        <div class="section-title-row">
+          <span class="material-icons section-icon">{{getSectionIcon(section)}}</span>
+          <h5 class="section-title">{{section.sectionTitle}}</h5>
+        </div>
+        <div class="section-meta">
+          <span class="status-badge" [style.background-color]="getSectionStatusColor(section.status)">
+            {{section.status}}
+          </span>
+          <span *ngIf="section.sourceAgent" class="source-agent">via {{section.sourceAgent}}</span>
+          <span class="material-icons expand-icon">
+            {{isSectionExpanded(section.sectionId) ? 'expand_less' : 'expand_more'}}
+          </span>
+        </div>
+      </div>
+
+      <div *ngIf="isSectionExpanded(section.sectionId)" class="section-content">
+        <div *ngFor="let key of getSectionContentKeys(section.content); trackBy: trackByIndex" class="content-item">
+          <span class="content-label">{{formatContentKey(key)}}</span>
+          
+          <!-- Array values -->
+          <ul *ngIf="isArrayValue(section.content[key])" class="content-list">
+            <li *ngFor="let item of section.content[key]; trackBy: trackByIndex">{{item}}</li>
+          </ul>
+          
+          <!-- Object values -->
+          <div *ngIf="isObjectValue(section.content[key])" class="content-object">
+            <div *ngFor="let subKey of getSectionContentKeys(section.content[key]); trackBy: trackByIndex" class="sub-item">
+              <span class="sub-label">{{formatContentKey(subKey)}}:</span>
+              <span class="sub-value">{{formatContentValue(section.content[key][subKey])}}</span>
+            </div>
+          </div>
+          
+          <!-- Simple values -->
+          <span *ngIf="!isArrayValue(section.content[key]) && !isObjectValue(section.content[key])" class="content-value">
+            {{section.content[key]}}
+          </span>
+        </div>
+        
+        <span *ngIf="section.lastUpdated" class="last-updated">Last updated: {{section.lastUpdated}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adjustment Impact -->
+  <div *ngIf="hasAdjustmentImpact()" class="adjustment-impact">
+    <div class="impact-header">
+      <span class="material-icons">compare_arrows</span>
+      <h4>Adjustment Impact Analysis</h4>
+    </div>
+    
+    <p *ngIf="getAdjustmentImpact()?.description" class="impact-description">
+      {{getAdjustmentImpact()?.description}}
+    </p>
+
+    <div class="changes-grid">
+      <div *ngFor="let change of getAdjustmentChanges(); trackBy: trackByMetric" class="change-card">
+        <div class="change-header">
+          <span class="change-metric">{{change.metric}}</span>
+          <span class="material-icons change-icon" [style.color]="getChangeImpactColor(change.impact)">
+            {{getChangeIcon(change.impact)}}
+          </span>
+        </div>
+        <div class="change-values">
+          <div class="value-row">
+            <span class="value-label">Original:</span>
+            <span class="value-original">{{change.originalValue}}</span>
+          </div>
+          <div class="value-row">
+            <span class="value-label">New:</span>
+            <span class="value-new">{{change.newValue}}</span>
+          </div>
+        </div>
+        <div class="change-delta" [style.color]="getChangeImpactColor(change.impact)">
+          {{change.absoluteChange}} ({{change.percentageChange}})
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Impact -->
+    <div *ngIf="getAdjustmentImpact()?.kpiImpact?.length" class="kpi-impact">
+      <h5>KPI Impact</h5>
+      <div class="kpi-impact-grid">
+        <div *ngFor="let kpi of getAdjustmentImpact()?.kpiImpact; trackBy: trackByLabel" class="kpi-impact-card">
+          <span class="kpi-label">{{kpi.label}}</span>
+          <span class="kpi-value">{{kpi.value}}</span>
+          <span *ngIf="kpi.change" class="kpi-change" [style.color]="getKPITrendColor(kpi.trend)">
+            {{kpi.change}}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommendations -->
+  <div *ngIf="getRecommendations().length > 0" class="recommendations-section">
+    <div class="section-header-simple">
+      <span class="material-icons">lightbulb</span>
+      <h4>Recommendations</h4>
+    </div>
+    <ul class="recommendations-list">
+      <li *ngFor="let rec of getRecommendations(); trackBy: trackByIndex">{{rec}}</li>
+    </ul>
+  </div>
+
+  <!-- Next Steps -->
+  <div *ngIf="getNextSteps().length > 0" class="next-steps-section">
+    <div class="section-header-simple">
+      <span class="material-icons">arrow_forward</span>
+      <h4>Next Steps</h4>
+    </div>
+    <ol class="next-steps-list">
+      <li *ngFor="let step of getNextSteps(); trackBy: trackByIndex">{{step}}</li>
+    </ol>
+  </div>
+</div>

@@ -207,195 +207,308 @@ def format_response(status_code: int, result: Dict) -> Dict:
 # ============================================================================
 
 def handle_get_products(args: Dict) -> Dict:
-    """AdCP Media Buy Protocol - get_products
+    """AdCP Media Buy Protocol - get_products (Official Schema)
     
     Discover publisher inventory products matching campaign criteria.
+    Reference: system reference/schemas/source/media-buy/get-products-response.json
     """
-    channels = args.get("channels", [])
-    tier = args.get("brand_safety_tier", "tier_1")
-    min_budget = args.get("min_budget")
-    max_budget = args.get("max_budget")
+    # Parse official schema request format
     brief = args.get("brief", "")
+    brand_manifest = args.get("brand_manifest")
+    filters = args.get("filters", {})
+    
+    # Extract filters (official schema)
+    channels = filters.get("channels", [])
+    delivery_type = filters.get("delivery_type")
+    budget_range = filters.get("budget_range", {})
+    min_budget = budget_range.get("min")
+    max_budget = budget_range.get("max")
+    countries = filters.get("countries", [])
     
     products = get_products()
     results = []
     
     for p in products:
-        # Filter by channel
+        # Filter by channel (map CSV channel to official channels)
         if channels:
             product_channel = p.get("channel", "")
-            if product_channel not in channels:
+            # Map old channel names to official enum
+            channel_map = {"ctv": "ctv", "online_video": "video", "display": "display", "audio": "audio"}
+            mapped_channel = channel_map.get(product_channel, product_channel)
+            if mapped_channel not in channels and product_channel not in channels:
                 continue
         
-        # Filter by brand safety tier
-        if tier == "tier_1" and p.get("brand_safety_tier") != "tier_1":
-            continue
+        # Filter by delivery type
+        if delivery_type:
+            # Infer delivery type from product data
+            product_delivery = "guaranteed" if p.get("brand_safety_tier") == "tier_1" else "non_guaranteed"
+            if product_delivery != delivery_type:
+                continue
         
         # Filter by budget
         product_min_spend = p.get("min_spend_usd", 0)
         if min_budget and product_min_spend > min_budget:
             continue
         
-        # Build result with relevant fields
-        results.append({
+        # Build official schema product response
+        cpm = p.get("avg_cpm_usd") or p.get("cpm_usd") or 25.0
+        publisher_domain = p.get("publisher_name", "").lower().replace(" ", "") + ".com"
+        
+        # Build format_ids from format_types
+        format_types_str = p.get("format_types", "")
+        format_types = format_types_str.split(",") if format_types_str else ["video_30s", "video_15s"]
+        format_ids = []
+        for ft in format_types:
+            ft = ft.strip()
+            if "video" in ft.lower() or "30s" in ft or "15s" in ft:
+                duration = 30000 if "30" in ft else 15000 if "15" in ft else 6000 if "6" in ft else 30000
+                format_ids.append({
+                    "agent_url": "https://creatives.adcontextprotocol.org",
+                    "id": "video_hosted",
+                    "duration_ms": duration
+                })
+            elif "display" in ft.lower() or "banner" in ft.lower():
+                format_ids.append({
+                    "agent_url": "https://creatives.adcontextprotocol.org",
+                    "id": "display_static",
+                    "width": 300,
+                    "height": 250
+                })
+        
+        if not format_ids:
+            format_ids = [{"agent_url": "https://creatives.adcontextprotocol.org", "id": "video_hosted", "duration_ms": 30000}]
+        
+        # Build official schema product
+        product_result = {
             "product_id": p.get("product_id"),
-            "product_name": p.get("product_name"),
-            "publisher_name": p.get("publisher_name"),
-            "property_name": p.get("property_name"),
-            "channel": p.get("channel"),
-            "cpm_usd": p.get("avg_cpm_usd") or p.get("cpm_usd"),
-            "min_spend_usd": product_min_spend,
-            "estimated_daily_impressions": p.get("estimated_daily_impressions"),
-            "estimated_daily_reach": p.get("estimated_daily_reach"),
-            "brand_safety_tier": p.get("brand_safety_tier"),
-            "audience_composition": p.get("audience_composition"),
-            "format_types": p.get("format_types", "").split(",") if p.get("format_types") else [],
-            "geo_available": p.get("geo_available", "").split(",") if p.get("geo_available") else [],
-        })
+            "name": p.get("product_name"),
+            "description": f"{p.get('product_name')} inventory from {p.get('publisher_name')}",
+            "publisher_properties": [{
+                "publisher_domain": publisher_domain,
+                "selection_type": "by_tag",
+                "property_tags": [p.get("channel", "video"), "premium"]
+            }],
+            "format_ids": format_ids,
+            "delivery_type": "guaranteed" if p.get("brand_safety_tier") == "tier_1" else "non_guaranteed",
+            "pricing_options": [{
+                "pricing_option_id": f"cpm_{p.get('product_id', 'default')}",
+                "pricing_model": "cpm",
+                "rate": cpm,
+                "currency": "USD",
+                "min_spend": product_min_spend
+            }],
+            "estimated_exposures": p.get("estimated_daily_impressions") or 1000000,
+            "delivery_measurement": {
+                "provider": "Nielsen DAR" if p.get("brand_safety_tier") == "tier_1" else "Google Ad Manager",
+                "notes": "MRC-accredited viewability measurement"
+            }
+        }
+        
+        # Add brief_relevance if brief provided
+        if brief:
+            product_result["brief_relevance"] = f"Matches campaign requirements: {brief[:80]}..."
+        
+        results.append(product_result)
     
-    return {
-        "products": results,
-        "total_found": len(results),
-        "brief_received": brief[:100] if brief else "",
-        "filters_applied": {
-            "channels": channels,
-            "brand_safety_tier": tier,
-            "min_budget": min_budget,
-            "max_budget": max_budget
-        },
-        "source": "mcp_gateway",
-        "message": f"Found {len(results)} products matching criteria"
-    }
+    # Return official schema response
+    return {"products": results}
 
 
 def handle_get_signals(args: Dict) -> Dict:
-    """AdCP Signals Protocol - get_signals
+    """AdCP Signals Protocol - get_signals (Official Schema)
     
     Discover audience and contextual signals for targeting.
+    Reference: system reference/schemas/source/signals/get-signals-response.json
     """
-    signal_types = args.get("signal_types", [])
-    platform = args.get("decisioning_platform", "ttd")
-    brief = args.get("brief", "")
+    # Parse official schema request format
+    signal_spec = args.get("signal_spec", args.get("brief", ""))
+    deliver_to = args.get("deliver_to", {})
+    filters = args.get("filters", {})
+    max_results = args.get("max_results")
+    
+    # Extract filters
+    catalog_types = filters.get("catalog_types", [])
+    data_providers = filters.get("data_providers", [])
+    max_cpm = filters.get("max_cpm")
+    min_coverage = filters.get("min_coverage_percentage", 0)
+    
+    # Get requested platforms from deliver_to
+    requested_deployments = deliver_to.get("deployments", [])
+    requested_platforms = []
+    for dep in requested_deployments:
+        if dep.get("type") == "platform":
+            requested_platforms.append(dep.get("platform"))
+    
+    # Default to TTD if no platforms specified
+    if not requested_platforms:
+        requested_platforms = ["the-trade-desk"]
     
     signals = get_signals()
     results = []
     
     for s in signals:
-        # Filter by signal type
-        if signal_types and s.get("signal_type") not in signal_types:
+        # Filter by catalog type (map signal_type to catalog_type)
+        signal_type = s.get("signal_type", "audience")
+        catalog_type = "marketplace" if signal_type == "audience" else "custom" if signal_type == "contextual" else "owned"
+        if catalog_types and catalog_type not in catalog_types:
             continue
         
-        # Check platform availability
-        is_live_key = f"is_live_{platform}"
-        segment_id_key = f"{platform}_segment_id"
+        # Filter by data provider
+        if data_providers and s.get("data_provider") not in data_providers:
+            continue
         
-        is_live = s.get(is_live_key, False)
-        segment_id = s.get(segment_id_key, "")
+        # Filter by max CPM
+        cpm = s.get("cpm_usd", 0)
+        if max_cpm and cpm > max_cpm:
+            continue
         
+        # Calculate coverage percentage from size
+        size = s.get("size_individuals", 0) or 0
+        coverage = (size / 335000000) * 100 if size > 0 else 5.0  # US population base
+        if coverage < min_coverage:
+            continue
+        
+        # Build deployments array for requested platforms
+        deployments = []
+        for platform in requested_platforms:
+            # Map platform names
+            platform_key = platform.replace("-", "_").replace("the_trade_desk", "ttd")
+            is_live_key = f"is_live_{platform_key}"
+            segment_id_key = f"{platform_key}_segment_id"
+            
+            is_live = s.get(is_live_key, s.get("is_live_ttd", False))
+            segment_id = s.get(segment_id_key, s.get("ttd_segment_id", ""))
+            
+            deployment = {
+                "type": "platform",
+                "platform": platform,
+                "is_live": is_live
+            }
+            if is_live and segment_id:
+                deployment["activation_key"] = {"segment_id": segment_id}
+            else:
+                deployment["estimated_activation_duration_minutes"] = 240
+            
+            deployments.append(deployment)
+        
+        # Build official schema signal response
         results.append({
-            "signal_id": s.get("signal_id"),
-            "signal_name": s.get("signal_name"),
-            "signal_type": s.get("signal_type"),
-            "signal_agent": s.get("signal_agent"),
+            "signal_agent_segment_id": s.get("signal_id"),
+            "name": s.get("signal_name"),
+            "description": f"{s.get('signal_name')} - {s.get('data_provider', 'Unknown provider')}",
+            "signal_type": catalog_type,
             "data_provider": s.get("data_provider"),
-            "size_individuals": s.get("size_individuals"),
-            "size_households": s.get("size_households"),
-            "cpm_usd": s.get("cpm_usd"),
-            "accuracy_score": s.get("accuracy_score"),
-            "is_live": is_live,
-            "segment_id": segment_id,
-            "refresh_frequency": s.get("refresh_frequency"),
+            "coverage_percentage": round(coverage, 1),
+            "deployments": deployments,
+            "pricing": {
+                "cpm": cpm,
+                "currency": "USD"
+            }
         })
+        
+        if max_results and len(results) >= max_results:
+            break
     
-    return {
-        "signals": results,
-        "total_found": len(results),
-        "brief_received": brief[:100] if brief else "",
-        "decisioning_platform": platform,
-        "source": "mcp_gateway"
-    }
+    # Return official schema response
+    return {"signals": results}
 
 
 def handle_activate_signal(args: Dict) -> Dict:
-    """AdCP Signals Protocol - activate_signal
+    """AdCP Signals Protocol - activate_signal (Official Schema)
     
-    Activate a signal segment on a decisioning platform.
+    Activate a signal segment on deployment targets.
+    Reference: system reference/schemas/source/signals/activate-signal-response.json
     """
     signal_id = args.get("signal_agent_segment_id")
-    platform = args.get("decisioning_platform", "ttd")
+    deployments_requested = args.get("deployments", [])
+    
+    # Backward compatibility: support old format
+    if not deployments_requested and args.get("decisioning_platform"):
+        platform = args.get("decisioning_platform", "ttd")
+        deployments_requested = [{"type": "platform", "platform": platform}]
     
     signals = get_signals()
     signal = next((s for s in signals if s.get("signal_id") == signal_id), None)
     
     if not signal:
+        # Return error response per official schema
         return {
-            "status": "error",
-            "error_code": "SIGNAL_NOT_FOUND",
-            "message": f"Signal {signal_id} not found"
+            "errors": [{
+                "code": "SIGNAL_NOT_FOUND",
+                "message": f"Signal {signal_id} not found"
+            }]
         }
     
-    is_live_key = f"is_live_{platform}"
-    segment_id_key = f"{platform}_segment_id"
-    
-    segment_id = signal.get(segment_id_key, "")
-    is_live = signal.get(is_live_key, False)
-    
-    if is_live:
-        return {
-            "status": "already_active",
-            "segment_id": segment_id,
-            "signal_name": signal.get("signal_name"),
-            "message": "Signal already activated on this platform"
+    # Build deployment results
+    deployment_results = []
+    for dep in deployments_requested:
+        dep_type = dep.get("type", "platform")
+        platform = dep.get("platform", "the-trade-desk")
+        
+        # Map platform names
+        platform_key = platform.replace("-", "_").replace("the_trade_desk", "ttd")
+        is_live_key = f"is_live_{platform_key}"
+        segment_id_key = f"{platform_key}_segment_id"
+        
+        is_live = signal.get(is_live_key, signal.get("is_live_ttd", False))
+        segment_id = signal.get(segment_id_key, signal.get("ttd_segment_id", ""))
+        
+        deployment_result = {
+            "type": dep_type,
+            "platform": platform,
+            "is_live": is_live
         }
+        
+        if is_live and segment_id:
+            deployment_result["activation_key"] = {"segment_id": segment_id}
+            deployment_result["deployed_at"] = "2025-01-15T14:30:00Z"
+        else:
+            deployment_result["estimated_activation_duration_minutes"] = 240
+        
+        if dep.get("account"):
+            deployment_result["account"] = dep.get("account")
+        
+        deployment_results.append(deployment_result)
     
-    return {
-        "status": "activating",
-        "task_id": f"task_{signal_id}_{platform}",
-        "estimated_completion_hours": 4,
-        "signal_name": signal.get("signal_name"),
-        "message": "Signal activation initiated"
-    }
+    # Return success response per official schema
+    return {"deployments": deployment_results}
 
 
 def handle_create_media_buy(args: Dict) -> Dict:
-    """AdCP Media Buy Protocol - create_media_buy
+    """AdCP Media Buy Protocol - create_media_buy (Official Schema)
     
     Create a media buy with publisher packages.
+    Reference: system reference/schemas/source/media-buy/create-media-buy-response.json
     """
     import uuid
     
     buyer_ref = args.get("buyer_ref", "unknown")
-    packages = args.get("packages", [])
+    packages_input = args.get("packages", [])
+    brand_manifest = args.get("brand_manifest")
     start_time = args.get("start_time")
     end_time = args.get("end_time")
+    po_number = args.get("po_number")
     
     media_buy_id = f"mb_{buyer_ref[:10].replace(' ', '_')}_{uuid.uuid4().hex[:6]}"
     created_packages = []
-    total_budget = 0
     
     products = get_products()
     product_map = {p.get("product_id"): p for p in products}
     
-    for i, pkg in enumerate(packages):
+    for i, pkg in enumerate(packages_input):
         budget = pkg.get("budget", 50000)
-        total_budget += budget
-        
         product_id = pkg.get("product_id")
         product = product_map.get(product_id, {})
         cpm = product.get("avg_cpm_usd") or product.get("cpm_usd") or 40
         
-        estimated_impressions = int(budget / cpm * 1000) if cpm > 0 else 0
-        
+        # Build official schema package response
         created_packages.append({
-            "package_id": f"pkg_{i+1:03d}",
+            "package_id": f"pkg_{media_buy_id}_{i+1:03d}",
+            "buyer_ref": pkg.get("buyer_ref", f"{buyer_ref}_pkg_{i+1}"),
             "product_id": product_id,
-            "product_name": product.get("product_name", "Unknown"),
-            "publisher_name": product.get("publisher_name", "Unknown"),
-            "budget_usd": budget,
-            "status": "active",
-            "estimated_impressions": estimated_impressions,
-            "targeting": pkg.get("targeting", {}),
-            "format_ids": pkg.get("format_ids", ["video_30s", "video_15s"])
+            "budget": budget,
+            "pacing": pkg.get("pacing", "even"),
+            "pricing_option_id": pkg.get("pricing_option_id", f"cpm_{product_id}")
         })
     
     # Store media buy for later retrieval
@@ -403,73 +516,100 @@ def handle_create_media_buy(args: Dict) -> Dict:
         "media_buy_id": media_buy_id,
         "buyer_ref": buyer_ref,
         "packages": created_packages,
-        "total_budget_usd": total_budget,
-        "start_time": start_time or "2025-02-01T00:00:00Z",
+        "start_time": start_time or "asap",
         "end_time": end_time or "2025-03-15T23:59:59Z",
         "status": "active"
     }
     
+    # Return official schema success response
     return {
-        "status": "completed",
         "media_buy_id": media_buy_id,
         "buyer_ref": buyer_ref,
         "creative_deadline": "2025-01-25T23:59:59Z",
-        "packages": created_packages,
-        "total_budget_usd": total_budget,
-        "source": "mcp_gateway",
-        "message": f"Media buy created with {len(created_packages)} packages"
+        "packages": created_packages
     }
 
 
 def handle_get_media_buy_delivery(args: Dict) -> Dict:
-    """AdCP Media Buy Protocol - get_media_buy_delivery
+    """AdCP Media Buy Protocol - get_media_buy_delivery (Official Schema)
     
-    Get delivery metrics for a media buy.
+    Get delivery metrics for media buys.
+    Reference: system reference/schemas/source/media-buy/get-media-buy-delivery-response.json
     """
-    media_buy_id = args.get("media_buy_id", "mb_001")
-    start_date = args.get("start_date")
-    end_date = args.get("end_date")
+    media_buy_ids = args.get("media_buy_ids", [])
+    buyer_refs = args.get("buyer_refs", [])
+    status_filter = args.get("status_filter")
+    start_date = args.get("start_date", "2025-02-01")
+    end_date = args.get("end_date", "2025-02-15")
     
-    # Check if we have this media buy stored
-    media_buy = _MEDIA_BUYS.get(media_buy_id)
+    # Backward compatibility: support old single media_buy_id format
+    if not media_buy_ids and args.get("media_buy_id"):
+        media_buy_ids = [args.get("media_buy_id")]
     
-    # Generate realistic delivery metrics
-    total_budget = media_buy.get("total_budget_usd", 150000) if media_buy else 150000
-    spend = total_budget * 0.5  # 50% spent
-    impressions_target = int(total_budget / 42.5 * 1000)  # Based on avg CPM
-    impressions_delivered = int(impressions_target * 0.5)
+    # Build media buy deliveries
+    media_buy_deliveries = []
+    total_impressions = 0
+    total_spend = 0
     
+    for mb_id in media_buy_ids or ["mb_default_001"]:
+        media_buy = _MEDIA_BUYS.get(mb_id, {})
+        packages = media_buy.get("packages", [])
+        
+        # Generate realistic delivery metrics
+        package_deliveries = []
+        mb_impressions = 0
+        mb_spend = 0
+        
+        for pkg in packages or [{"package_id": "pkg_001", "budget": 50000}]:
+            budget = pkg.get("budget", 50000)
+            spend = budget * 0.5  # 50% spent
+            impressions = int(budget / 42.5 * 1000 * 0.5)  # Based on avg CPM, 50% delivered
+            
+            mb_impressions += impressions
+            mb_spend += spend
+            
+            package_deliveries.append({
+                "package_id": pkg.get("package_id", "pkg_001"),
+                "buyer_ref": pkg.get("buyer_ref"),
+                "impressions": impressions,
+                "spend": spend,
+                "pacing_index": 1.0,
+                "pricing_model": "cpm",
+                "rate": 42.50,
+                "currency": "USD",
+                "delivery_status": "delivering",
+                "paused": False
+            })
+        
+        total_impressions += mb_impressions
+        total_spend += mb_spend
+        
+        media_buy_deliveries.append({
+            "media_buy_id": mb_id,
+            "buyer_ref": media_buy.get("buyer_ref"),
+            "status": "active",
+            "pricing_model": "cpm",
+            "totals": {
+                "impressions": mb_impressions,
+                "spend": mb_spend,
+                "effective_rate": 42.50
+            },
+            "by_package": package_deliveries
+        })
+    
+    # Return official schema response
     return {
-        "media_buy_id": media_buy_id,
         "reporting_period": {
-            "start": start_date or "2025-02-01",
-            "end": end_date or "2025-02-15"
+            "start": f"{start_date}T00:00:00Z",
+            "end": f"{end_date}T23:59:59Z"
         },
-        "summary": {
-            "impressions_delivered": impressions_delivered,
-            "impressions_target": impressions_target,
-            "pacing_status": "on_track",
-            "spend_usd": spend,
-            "budget_usd": total_budget,
-            "budget_utilized_pct": 50.0
+        "currency": "USD",
+        "aggregated_totals": {
+            "impressions": total_impressions,
+            "spend": total_spend,
+            "media_buy_count": len(media_buy_deliveries)
         },
-        "packages": [{
-            "package_id": "pkg_001",
-            "impressions_delivered": impressions_delivered,
-            "reach_households": int(impressions_delivered / 2.94),
-            "frequency": 2.94,
-            "completion_rate": 0.82,
-            "viewability_rate": 0.91,
-            "ivt_rate": 0.011,
-            "brand_safety_incidents": 0
-        }],
-        "projection": {
-            "expected_final_impressions": impressions_target,
-            "expected_final_reach": int(impressions_target / 2.94),
-            "confidence": "high"
-        },
-        "source": "mcp_gateway",
-        "message": "Campaign pacing on track. No delivery concerns."
+        "media_buy_deliveries": media_buy_deliveries
     }
 
 

@@ -147,6 +147,8 @@ ngOnInit(){}
       this.visualData.data = this.visualData.barChartData;
     } else if (this.visualData.donutChartData) {
       this.visualData.data = this.visualData.donutChartData;
+    } else if (this.visualData.adcpInventoryData) {
+      this.visualData.data = this.visualData.adcpInventoryData;
     }
 
     return this.visualData;
@@ -172,7 +174,9 @@ ngOnInit(){}
       this.visualData.histogramData ||
       this.visualData.doubleHistogramData ||
       this.visualData.barChartData ||
-      this.visualData.donutChartData
+      this.visualData.donutChartData ||
+      // ADCP Protocol Visualizations
+      this.visualData.adcpInventoryData
     );
   }
 
@@ -188,6 +192,8 @@ ngOnInit(){}
     if (this.visualData.doubleHistogramData) count++;
     if (this.visualData.barChartData) count++;
     if (this.visualData.donutChartData) count++;
+    // ADCP Protocol Visualizations
+    if (this.visualData.adcpInventoryData) count++;
     return count;
   }
 
@@ -205,6 +211,8 @@ ngOnInit(){}
     if (this.visualData.doubleHistogramData) currentTypes.add('doubleHistogram');
     if (this.visualData.barChartData) currentTypes.add('barChart');
     if (this.visualData.donutChartData) currentTypes.add('donutChart');
+    // ADCP Protocol Visualizations
+    if (this.visualData.adcpInventoryData) currentTypes.add('adcpInventory');
 
     // Find new items that weren't in the previous set
     this.newItems.clear();

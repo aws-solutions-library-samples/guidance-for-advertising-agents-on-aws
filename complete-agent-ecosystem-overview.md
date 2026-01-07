@@ -1057,18 +1057,18 @@ graph TD
 The ecosystem includes an **AdCP MCP Gateway** (deployed in Phase 7) that provides standardized advertising protocol tools for agent collaboration:
 
 **AdCP Media Buy Protocol:**
-- `adcp_get_products`: Discover publisher inventory matching campaign brief
-- `adcp_create_media_buy`: Create media buy with publisher packages
-- `adcp_get_media_buy_delivery`: Get delivery metrics for a media buy
+- `get_products`: Discover publisher inventory matching campaign brief
+- `create_media_buy`: Create media buy with publisher packages
+- `get_media_buy_delivery`: Get delivery metrics for a media buy
 
 **AdCP Signals Protocol:**
-- `adcp_get_signals`: Discover audience and contextual signals
-- `adcp_activate_signal`: Activate segment on DSP platform
+- `get_signals`: Discover audience and contextual signals
+- `activate_signal`: Activate segment on DSP platform
 
 **MCP Services:**
-- `mcp_verify_brand_safety`: Verify brand safety for properties
-- `mcp_resolve_audience_reach`: Estimate cross-device reach
-- `mcp_configure_brand_lift_study`: Configure measurement study
+- `verify_brand_safety`: Verify brand safety for properties
+- `resolve_audience_reach`: Estimate cross-device reach
+- `configure_brand_lift_study`: Configure measurement study
 
 **Gateway Architecture:**
 ```

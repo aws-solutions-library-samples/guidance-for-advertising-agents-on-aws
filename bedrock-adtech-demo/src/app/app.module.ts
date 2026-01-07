@@ -18,10 +18,13 @@ import { CreativeVisualizationComponent } from './components/visualizations/crea
 import { TimelineVisualizationComponent } from './components/visualizations/timeline-visualization/timeline-visualization.component';
 import { DecisionTreeVisualizationComponent } from './components/visualizations/decision-tree-visualization/decision-tree-visualization.component';
 import { VisualizationPopoverComponent } from './components/visualizations/visualization-popover/visualization-popover.component';
+import { VisualizationCompanionPanelComponent } from './components/visualizations/visualization-companion-panel/visualization-companion-panel.component';
 import { HistogramVisualizationComponent } from './components/visualizations/histogram-visualization/histogram-visualization.component';
 import { DoubleHistogramVisualizationComponent } from './components/visualizations/double-histogram-visualization/double-histogram-visualization.component';
 import { BarChartVisualizationComponent } from './components/visualizations/bar-chart-visualization/bar-chart-visualization.component';
 import { DonutChartVisualizationComponent } from './components/visualizations/donut-chart-visualization/donut-chart-visualization.component';
+import { AdcpInventoryVisualizationComponent } from './components/visualizations/adcp_get_products-visualization/adcp_get_products-visualization.component';
+import { PresentationVisualizationComponent } from './components/visualizations/presentation-visualization/presentation-visualization.component';
 import { AgentConfigComponent } from './components/agent-config/agent-config.component';
 import { DemoModalComponent } from './components/demo-modal/demo-modal.component';
 import { ContextPanelComponent } from './components/context-panel/context-panel.component';
@@ -48,10 +51,13 @@ import { AppComponent } from './app.component';
     TimelineVisualizationComponent,
     DecisionTreeVisualizationComponent,
     VisualizationPopoverComponent,
+    VisualizationCompanionPanelComponent,
     HistogramVisualizationComponent,
     DoubleHistogramVisualizationComponent,
     BarChartVisualizationComponent,
     DonutChartVisualizationComponent,
+    AdcpInventoryVisualizationComponent,
+    PresentationVisualizationComponent,
     AgentConfigComponent,
     DemoModalComponent,
     ContextPanelComponent,

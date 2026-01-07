@@ -101,9 +101,10 @@ export interface StreamEvent {
   sources?:any;
   messageType?: 'rationale' | 'supervisor-to-collaborator' | 'collaborator-response' | 'final-response' | 'raw-response' | 'knowledge-base-sources' | 'knowledge-base-query' | 'streaming-chunk' | 'tool-trace' | 'visualization-data' | string;
   metadata?: {
-    type?: 'reasoning' | 'tool-agent' | 'tool-result' | 'response';
+    type?: 'reasoning' | 'tool-agent' | 'tool-result' | 'response'|string;
     originalAgentName?: string;
     toolUseId?: string;
+    name:string;
     [key: string]: any;
   };
 }

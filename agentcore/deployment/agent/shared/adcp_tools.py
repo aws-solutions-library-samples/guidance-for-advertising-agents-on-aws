@@ -140,6 +140,8 @@ def _call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> str:
     This function first tries the direct gateway call (proven to work),
     then falls back to MCPClient if direct call is not available.
     """
+    arguments['record_direct_tool_call']=False
+
     gateway_url = os.environ.get("ADCP_GATEWAY_URL")
     region = os.environ.get("AWS_REGION", "us-east-1")
     
@@ -156,7 +158,7 @@ def _call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> str:
             result = call_gateway_tool_sync(tool_name, arguments, gateway_url, region)
             if result:
                 logger.info(f"✅ Direct gateway call succeeded for {tool_name}")
-                result_str = json.dumps(result) if isinstance(result, dict) else str(result)
+                result_str = f"<visualization-data type='adcp_{tool_name}'>{json.dumps(result) if isinstance(result, dict) else str(result)}</visualization-data>"
                 logger.info(f"   Result preview: {result_str[:200]}...")
                 return result_str
             else:
@@ -241,106 +243,165 @@ def reinitialize_mcp_client():
 
 @tool
 def get_products(
-    brief: str,
-    channels: Optional[List[str]] = None,
-    geo_required: Optional[List[str]] = None,
-    brand_safety_tier: str = "tier_1",
-    min_budget: Optional[float] = None,
-    max_budget: Optional[float] = None
+    brief: Optional[str] = None,
+    brand_manifest: Optional[Dict[str, Any]] = None,
+    filters: Optional[Dict[str, Any]] = None
 ) -> str:
     """
-    Discover publisher inventory products matching campaign brief (AdCP Media Buy Protocol).
+    Discover available advertising products matching campaign criteria (AdCP Media Buy Protocol).
     
     Args:
-        brief: Natural language campaign brief describing target audience and objectives
-        channels: Target channels (ctv, online_video, display, audio)
-        geo_required: Required geographies (e.g., ["US:CA", "US:OR"])
-        brand_safety_tier: Minimum brand safety tier (tier_1, tier_2, tier_3)
-        min_budget: Minimum budget per publisher
-        max_budget: Maximum budget per publisher
+        brief: Natural language description of campaign requirements
+        brand_manifest: Brand information manifest (inline object or URL string) providing 
+                       brand context, assets, and product catalog
+        filters: Structured filters for product discovery:
+            - delivery_type: "guaranteed" or "non_guaranteed"
+            - is_fixed_price: Filter for fixed price vs auction products
+            - format_types: Array of format types (audio, video, display, native, dooh, rich_media, universal)
+            - channels: Array of channels (display, video, audio, native, dooh, ctv, podcast, retail, social)
+            - countries: Array of ISO 3166-1 alpha-2 country codes (e.g., ["US", "CA"])
+            - budget_range: Object with min, max, and currency (ISO 4217)
+            - start_date: Campaign start date (YYYY-MM-DD)
+            - end_date: Campaign end date (YYYY-MM-DD)
     
     Returns:
-        JSON string with matching products from publisher inventory
+        JSON string with products array containing:
+        - product_id, name, description
+        - publisher_properties: Array of {publisher_domain, selection_type, property_ids/property_tags}
+        - format_ids: Array of {agent_url, id, width?, height?, duration_ms?}
+        - delivery_type: "guaranteed" or "non_guaranteed"
+        - pricing_options: Array of pricing models with rates
+        - delivery_measurement: {provider, notes?}
+        - brief_relevance: Explanation of match (when brief provided)
     """
-    logger.info(f"AdCP get_products: brief='{brief[:50]}...', channels={channels}")
+    brief_preview = brief[:50] if brief else "None"
+    logger.info(f"AdCP get_products: brief='{brief_preview}...', filters={filters}")
     
-    result = _call_mcp_tool("get_products", {
-        "brief": brief,
-        "channels": channels,
-        "brand_safety_tier": brand_safety_tier,
-        "min_budget": min_budget,
-        "max_budget": max_budget
-    })
+    # Build request per official schema
+    request = {}
+    if brief:
+        request["brief"] = brief
+    if brand_manifest:
+        request["brand_manifest"] = brand_manifest
+    if filters:
+        request["filters"] = filters
+    
+    
+    result = _call_mcp_tool("get_products", request)
     
     if result:
         return result
     
     # Development-only fallback (only reached if MCP is not required)
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
         "products": [],
-        "total_found": 0
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
 @tool
 def get_signals(
-    brief: str,
-    signal_types: Optional[List[str]] = None,
-    decisioning_platform: str = "ttd",
-    principal_id: Optional[str] = None
+    signal_spec: str,
+    deliver_to: Dict[str, Any],
+    filters: Optional[Dict[str, Any]] = None,
+    max_results: Optional[int] = None
 ) -> str:
     """
     Discover audience and contextual signals for targeting (AdCP Signals Protocol).
-    """
-    logger.info(f"AdCP get_signals: brief='{brief[:50]}...', types={signal_types}")
     
-    result = _call_mcp_tool("get_signals", {
-        "brief": brief,
-        "signal_types": signal_types,
-        "decisioning_platform": decisioning_platform
-    })
+    Args:
+        signal_spec: Natural language description of the desired signals
+        deliver_to: Deployment targets where signals need to be activated:
+            - deployments: Array of destination objects:
+                - type: "platform" or "agent"
+                - platform: Platform ID for DSPs (e.g., "the-trade-desk", "amazon-dsp") - required if type="platform"
+                - agent_url: URL for agent deployment - required if type="agent"
+                - account: Optional account identifier
+            - countries: Array of ISO 3166-1 alpha-2 country codes (e.g., ["US", "CA"])
+        filters: Optional filters to refine results:
+            - catalog_types: Array of "marketplace", "custom", or "owned"
+            - data_providers: Array of provider names
+            - max_cpm: Maximum CPM price filter
+            - min_coverage_percentage: Minimum coverage requirement (0-100)
+        max_results: Maximum number of results to return
+    
+    Returns:
+        JSON string with signals array containing:
+        - signal_agent_segment_id, name, description
+        - signal_type: "marketplace", "custom", or "owned"
+        - data_provider, coverage_percentage
+        - deployments: Array with is_live status and activation_key (if authorized)
+        - pricing: {cpm, currency}
+    """
+    logger.info(f"AdCP get_signals: signal_spec='{signal_spec[:50]}...', deliver_to={deliver_to}")
+    
+    # Build request per official schema
+    request = {
+        "signal_spec": signal_spec,
+        "deliver_to": deliver_to
+    }
+    if filters:
+        request["filters"] = filters
+    if max_results:
+        request["max_results"] = max_results
+    
+    result = _call_mcp_tool("get_signals", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
         "signals": [],
-        "total_found": 0
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
 @tool
 def activate_signal(
     signal_agent_segment_id: str,
-    decisioning_platform: str,
-    principal_id: Optional[str] = None,
-    account_id: Optional[str] = None
+    deployments: List[Dict[str, Any]]
 ) -> str:
     """
-    Activate a signal segment on a decisioning platform (AdCP Signals Protocol).
+    Activate a signal segment on deployment targets (AdCP Signals Protocol).
+    
+    Args:
+        signal_agent_segment_id: The universal identifier for the signal to activate
+        deployments: Target deployment(s) for activation. Array of destination objects:
+            - type: "platform" or "agent" (required)
+            - platform: Platform ID for DSPs (e.g., "the-trade-desk", "amazon-dsp") - required if type="platform"
+            - agent_url: URL for agent deployment - required if type="agent"
+            - account: Optional account identifier
+    
+    Returns:
+        JSON string with either:
+        Success: deployments array with:
+            - type, platform/agent_url
+            - is_live: Whether signal is active
+            - activation_key: Key for targeting (if is_live=true and authorized)
+            - deployed_at: Timestamp when activation completed
+        Error: errors array with error details
     """
-    logger.info(f"AdCP activate_signal: {signal_agent_segment_id} on {decisioning_platform}")
+    logger.info(f"AdCP activate_signal: {signal_agent_segment_id} to {len(deployments)} targets")
     
     result = _call_mcp_tool("activate_signal", {
         "signal_agent_segment_id": signal_agent_segment_id,
-        "decisioning_platform": decisioning_platform,
-        "principal_id": principal_id
+        "deployments": deployments
     })
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
@@ -348,58 +409,125 @@ def activate_signal(
 def create_media_buy(
     buyer_ref: str,
     packages: List[Dict[str, Any]],
-    brand_manifest: Optional[Dict[str, str]] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None
+    brand_manifest: Dict[str, Any],
+    start_time: str,
+    end_time: str,
+    po_number: Optional[str] = None,
+    reporting_webhook: Optional[Dict[str, Any]] = None
 ) -> str:
     """
     Create a media buy with publisher packages (AdCP Media Buy Protocol).
+    
+    Args:
+        buyer_ref: Buyer's reference identifier for this media buy
+        packages: Array of package configurations, each containing:
+            - buyer_ref: Buyer's reference for this package (required)
+            - product_id: Product ID for this package (required)
+            - budget: Budget allocation in media buy's currency (required)
+            - pricing_option_id: ID of selected pricing option from product (required)
+            - bid_price: Bid price for auction-based pricing (if applicable)
+            - pacing: "even", "asap", or "front_loaded"
+            - format_ids: Array of {agent_url, id} for formats to use
+            - targeting_overlay: Additional targeting criteria
+            - creative_ids: IDs of existing library creatives to assign
+            - creatives: Full creative objects to upload and assign
+        brand_manifest: Brand information manifest (inline object or URL string)
+        start_time: Campaign start - "asap" or ISO 8601 date-time
+        end_time: Campaign end date/time in ISO 8601 format
+        po_number: Optional purchase order number for tracking
+        reporting_webhook: Optional webhook config for automated reporting
+    
+    Returns:
+        JSON string with either:
+        Success: media_buy_id, buyer_ref, creative_deadline, packages array
+        Error: errors array with error details
     """
     logger.info(f"AdCP create_media_buy: buyer_ref={buyer_ref}, packages={len(packages)}")
     
-    result = _call_mcp_tool("create_media_buy", {
+    request = {
         "buyer_ref": buyer_ref,
         "packages": packages,
+        "brand_manifest": brand_manifest,
         "start_time": start_time,
         "end_time": end_time
-    })
+    }
+    if po_number:
+        request["po_number"] = po_number
+    if reporting_webhook:
+        request["reporting_webhook"] = reporting_webhook
+    
+    result = _call_mcp_tool("create_media_buy", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
 @tool
 def get_media_buy_delivery(
-    media_buy_id: str,
+    media_buy_ids: Optional[List[str]] = None,
+    buyer_refs: Optional[List[str]] = None,
+    status_filter: Optional[Any] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None
 ) -> str:
     """
-    Get delivery metrics for a media buy (AdCP Media Buy Protocol).
-    """
-    logger.info(f"AdCP get_media_buy_delivery: {media_buy_id}")
+    Get delivery metrics for media buys (AdCP Media Buy Protocol).
     
-    result = _call_mcp_tool("get_media_buy_delivery", {
-        "media_buy_id": media_buy_id,
-        "start_date": start_date,
-        "end_date": end_date
-    })
+    Args:
+        media_buy_ids: Array of publisher media buy IDs to get delivery data for
+        buyer_refs: Array of buyer reference IDs to get delivery data for
+        status_filter: Filter by status - single value or array of:
+            "pending", "active", "paused", "completed", "failed"
+        start_date: Start date for reporting period (YYYY-MM-DD)
+        end_date: End date for reporting period (YYYY-MM-DD)
+    
+    Returns:
+        JSON string with:
+        - reporting_period: {start, end} in ISO 8601 UTC
+        - currency: ISO 4217 currency code
+        - aggregated_totals: {impressions, spend, clicks?, video_completions?, media_buy_count}
+        - media_buy_deliveries: Array of delivery data per media buy:
+            - media_buy_id, buyer_ref?, status
+            - pricing_model, totals: {impressions?, spend, clicks?, effective_rate?}
+            - by_package: Array with package_id, spend, pricing_model, rate, currency, pacing_index?, delivery_status?, paused?
+            - daily_breakdown?: Array of {date, impressions, spend}
+        - errors?: Array of error objects
+    """
+    ids_str = media_buy_ids[0] if media_buy_ids else (buyer_refs[0] if buyer_refs else "none")
+    logger.info(f"AdCP get_media_buy_delivery: {ids_str}")
+    
+    request = {}
+    if media_buy_ids:
+        request["media_buy_ids"] = media_buy_ids
+    if buyer_refs:
+        request["buyer_refs"] = buyer_refs
+    if status_filter:
+        request["status_filter"] = status_filter
+    if start_date:
+        request["start_date"] = start_date
+    if end_date:
+        request["end_date"] = end_date
+    
+    result = _call_mcp_tool("get_media_buy_delivery", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "reporting_period": {"start": "", "end": ""},
+        "currency": "USD",
+        "media_buy_deliveries": [],
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
@@ -411,22 +539,36 @@ def verify_brand_safety(
 ) -> str:
     """
     Verify brand safety for publisher properties (MCP Verification Service).
+    
+    Args:
+        properties: List of properties to verify, each containing:
+            - publisher_domain: Domain of the publisher (required)
+            - property_id: Optional specific property ID
+        brand_safety_tier: Minimum brand safety tier required ("tier_1", "tier_2", "tier_3")
+        categories_blocked: Optional list of content categories to block
+    
+    Returns:
+        JSON string with verification results per property
     """
     logger.info(f"MCP verify_brand_safety: {len(properties)} properties")
     
-    result = _call_mcp_tool("verify_brand_safety", {
+    request = {
         "properties": properties,
         "brand_safety_tier": brand_safety_tier
-    })
+    }
+    if categories_blocked:
+        request["categories_blocked"] = categories_blocked
+    
+    result = _call_mcp_tool("verify_brand_safety", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
@@ -434,28 +576,42 @@ def verify_brand_safety(
 def resolve_audience_reach(
     audience_segments: List[str],
     channels: Optional[List[str]] = None,
-    geo: Optional[List[str]] = None,
+    countries: Optional[List[str]] = None,
     identity_types: Optional[List[str]] = None
 ) -> str:
     """
     Estimate cross-device reach for audience segments (MCP Identity Service).
+    
+    Args:
+        audience_segments: Signal segment IDs to estimate reach for
+        channels: Channels to calculate reach for:
+            "display", "video", "audio", "native", "dooh", "ctv", "podcast", "retail", "social"
+        countries: ISO 3166-1 alpha-2 country codes to calculate reach for (e.g., ["US", "CA"])
+        identity_types: Identity types to include in reach calculation
+    
+    Returns:
+        JSON string with reach estimates per segment and channel
     """
     logger.info(f"MCP resolve_audience_reach: segments={audience_segments}")
     
-    result = _call_mcp_tool("resolve_audience_reach", {
-        "audience_segments": audience_segments,
-        "channels": channels,
-        "identity_types": identity_types
-    })
+    request = {"audience_segments": audience_segments}
+    if channels:
+        request["channels"] = channels
+    if countries:
+        request["countries"] = countries
+    if identity_types:
+        request["identity_types"] = identity_types
+    
+    result = _call_mcp_tool("resolve_audience_reach", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 
@@ -464,7 +620,7 @@ def configure_brand_lift_study(
     study_name: str,
     study_type: str,
     campaign_id: Optional[str] = None,
-    provider: str = "lucid",
+    provider: Optional[str] = None,
     metrics: Optional[List[str]] = None,
     flight_start: Optional[str] = None,
     flight_end: Optional[str] = None,
@@ -472,26 +628,50 @@ def configure_brand_lift_study(
 ) -> str:
     """
     Configure a brand lift or attribution measurement study (MCP Measurement Service).
+    
+    Args:
+        study_name: Name of the study (required)
+        study_type: Type of measurement study (required):
+            "brand_lift", "foot_traffic", "sales_lift", "attribution"
+        campaign_id: Associated campaign or media buy ID
+        provider: Measurement provider (e.g., "lucid", "dynata")
+        metrics: Metrics to measure (e.g., ["awareness", "consideration", "purchase_intent"])
+        flight_start: Study start date in ISO 8601 format
+        flight_end: Study end date in ISO 8601 format
+        sample_size_target: Target sample sizes with "control" and "exposed" counts
+    
+    Returns:
+        JSON string with study configuration confirmation
     """
     logger.info(f"MCP configure_brand_lift_study: {study_name}, type={study_type}")
     
-    result = _call_mcp_tool("configure_brand_lift_study", {
+    request = {
         "study_name": study_name,
-        "study_type": study_type,
-        "provider": provider,
-        "metrics": metrics,
-        "flight_start": flight_start,
-        "flight_end": flight_end
-    })
+        "study_type": study_type
+    }
+    if campaign_id:
+        request["campaign_id"] = campaign_id
+    if provider:
+        request["provider"] = provider
+    if metrics:
+        request["metrics"] = metrics
+    if flight_start:
+        request["flight_start"] = flight_start
+    if flight_end:
+        request["flight_end"] = flight_end
+    if sample_size_target:
+        request["sample_size_target"] = sample_size_target
+    
+    result = _call_mcp_tool("configure_brand_lift_study", request)
     
     if result:
         return result
     
     return json.dumps({
-        "error": "MCP not configured",
-        "message": "Set ADCP_GATEWAY_URL for production use",
-        "source": "development_stub",
-        "status": "error"
+        "errors": [{
+            "code": "MCP_NOT_CONFIGURED",
+            "message": "Set ADCP_GATEWAY_URL for production use"
+        }]
     }, indent=2)
 
 

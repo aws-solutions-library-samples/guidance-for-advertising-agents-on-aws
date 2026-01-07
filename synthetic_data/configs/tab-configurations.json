@@ -1400,6 +1400,679 @@
           }
         }
       }
+    },
+    "generic-tab-3": {
+      "id": "generic-tab-3",
+      "title": "TTD REDS Analytics",
+      "description": "Raw Event Data Streams Analysis & Campaign Intelligence",
+      "icon": "analytics",
+      "defaultAgent": "TTDOptimizationAgent",
+      "contextButtonLabel": "... TTD REDS data",
+      "availableAgents": [
+        "TTDOptimizationAgent",
+        "MeasurementAgent",
+        "CreativeSelectionAgent",
+        "AgencyAgent"
+      ],
+      "scenarios": [
+        {
+          "id": "campaign-performance-analysis",
+          "title": "Multi-Campaign Performance Analysis",
+          "description": "Analyze performance across all active campaigns using REDS impression and conversion data.",
+          "query": "Analyze the performance of our active campaigns across RetailMax, AutoDrive, and TravelEase advertisers. Using the REDS impression and conversion data, compare CTR, CVR, and CPA across campaigns. Identify the top-performing campaigns by ROAS and provide recommendations for budget reallocation. Focus on the Holiday Promo 2024, New Model Launch, and Winter Getaway campaigns.",
+          "category": "Campaign Analytics",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "creative-performance-optimization",
+          "title": "Creative Performance & A/B Testing Analysis",
+          "description": "Evaluate creative performance across ad groups and recommend optimizations.",
+          "query": "Using REDS data, analyze creative performance across our display, video, and CTV formats. Compare completion rates from video events, viewability scores, and click-through rates by creative size and format. Identify underperforming creatives and recommend which to pause. For the Holiday Promo 2024 campaign, which creative variants are driving the best conversion rates?",
+          "category": "Creative Optimization",
+          "agentType": "CreativeSelectionAgent"
+        },
+        {
+          "id": "audience-segment-analysis",
+          "title": "Audience Segment Performance Deep Dive",
+          "description": "Analyze audience targeting effectiveness using TDID and UID2 data.",
+          "query": "Analyze audience segment performance using our REDS data. Examine frequency distribution across TDIDs, identify optimal frequency caps based on conversion data, and analyze recency impact on performance. Which device types and operating systems are delivering the best results? Provide cross-device reach estimates using UID2 data.",
+          "category": "Audience Intelligence",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "supply-path-optimization",
+          "title": "Supply Path & Exchange Analysis",
+          "description": "Optimize supply paths by analyzing SSP performance and bid dynamics.",
+          "query": "Analyze supply path efficiency across our SSP partners using REDS impression data. Compare win rates, clearing prices, and viewability by supply vendor (Google AdX, Magnite, PubMatic, etc.). Identify which exchanges deliver the best value for our campaigns. Recommend supply path optimizations to reduce costs while maintaining quality.",
+          "category": "Supply Optimization",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "video-completion-analysis",
+          "title": "Video Completion & Engagement Analysis",
+          "description": "Deep dive into video event data to optimize video campaign performance.",
+          "query": "Analyze video completion rates across our CTV and online video campaigns using REDS video events data. Compare Start, FirstQuartile, Midpoint, ThirdQuartile, and Complete rates by video duration (15s, 30s, 60s). Identify drop-off patterns and correlate with sound-on rates and autoplay settings. Which placements have the highest completion rates?",
+          "category": "Video Analytics",
+          "agentType": "MeasurementAgent"
+        },
+        {
+          "id": "viewability-brand-safety",
+          "title": "Viewability & Brand Safety Analysis",
+          "description": "Analyze viewability metrics and brand safety scores across placements.",
+          "query": "Using REDS viewability data, analyze viewability rates across our campaigns by vendor (IAS, DoubleVerify, Moat, ComScore). Identify placements with viewability below 70% and flag any bot traffic or invalid traffic concerns. Compare MRC vs GroupM viewability standards. Which publishers and apps deliver the best viewability scores?",
+          "category": "Quality & Safety",
+          "agentType": "MeasurementAgent"
+        },
+        {
+          "id": "attribution-conversion-analysis",
+          "title": "Attribution & Conversion Path Analysis",
+          "description": "Analyze conversion attribution across click-through and view-through paths.",
+          "query": "Analyze conversion attribution using REDS conversion data. Compare click-through vs view-through conversion rates and average order values. Examine attribution windows (1-day, 7-day, 14-day, 30-day) and their impact on reported conversions. Which campaigns and creatives are driving the highest-value conversions? Identify the optimal attribution model for each advertiser vertical.",
+          "category": "Attribution",
+          "agentType": "MeasurementAgent"
+        },
+        {
+          "id": "gdpr-privacy-compliance",
+          "title": "GDPR Consent & Privacy Compliance Analysis",
+          "description": "Analyze EU traffic consent rates and privacy compliance metrics.",
+          "query": "Analyze GDPR consent data for our EU traffic (UK, DE, FR). What percentage of impressions have valid consent? Compare consent rates by country and CMP provider. Identify any compliance gaps in our TCF 2.2 implementation. How does consent status impact our ability to target and measure in EU markets?",
+          "category": "Privacy & Compliance",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "daypart-geo-optimization",
+          "title": "Daypart & Geographic Performance Optimization",
+          "description": "Optimize campaign delivery by time of day and geographic targeting.",
+          "query": "Analyze performance by hour of day and day of week using REDS impression data. Identify peak performance windows for each campaign and recommend daypart bid modifiers. Compare performance across US regions and metros. Which geographic areas are delivering the best ROI? Recommend geo-targeting optimizations.",
+          "category": "Targeting Optimization",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "cost-efficiency-analysis",
+          "title": "Cost Efficiency & Bid Optimization Analysis",
+          "description": "Analyze bid dynamics and cost efficiency across campaigns.",
+          "query": "Analyze cost efficiency using REDS impression cost data. Compare bid prices vs winning prices across campaigns and identify opportunities to reduce costs. Examine media cost, data cost, and fee breakdowns. Which campaigns have the best cost efficiency? Recommend bid strategy adjustments for Koa optimization and predictive clearing.",
+          "category": "Cost Optimization",
+          "agentType": "TTDOptimizationAgent"
+        },
+        {
+          "id": "cross-channel-attribution",
+          "title": "Cross-Channel Performance Comparison",
+          "description": "Compare performance across Display, Video, CTV, and Native channels.",
+          "query": "Compare campaign performance across Display, Video, CTV, and Native channels using REDS data. Analyze CTR, CVR, CPA, and viewability by channel. Which channels are most efficient for each advertiser vertical (Retail, Automotive, Travel, Finance, Tech)? Recommend optimal channel mix for each campaign goal (Conversions, Reach, CPA).",
+          "category": "Channel Strategy",
+          "agentType": "AgencyAgent"
+        },
+        {
+          "id": "advertiser-portfolio-review",
+          "title": "Advertiser Portfolio Performance Review",
+          "description": "Comprehensive review of all advertisers and their campaign portfolios.",
+          "query": "Provide a comprehensive portfolio review across all 21 advertisers in our REDS data. Rank advertisers by total spend, conversion volume, and ROAS. Identify advertisers with underperforming campaigns that need optimization. Which verticals (Retail, Auto, Travel, Finance, Tech, Healthcare, Entertainment, CPG) are performing best? Prepare executive summary with key insights.",
+          "category": "Portfolio Management",
+          "agentType": "AgencyAgent"
+        }
+      ],
+      "visualizations": [
+        {
+          "type": "metrics-visualization",
+          "visualizationType": "metrics",
+          "title": "REDS Data Overview",
+          "gridSpan": 2,
+          "data": {
+            "visualizationType": "metrics",
+            "title": "REDS Data Overview",
+            "subtitle": "Raw Event Data Streams Summary",
+            "metrics": [
+              {
+                "primaryLabel": "Event Volume",
+                "secondaryLabel": "30-Day Period",
+                "items": [
+                  {
+                    "primaryLabel": "Total Impressions",
+                    "actualValue": "10,000",
+                    "format": "number",
+                    "icon": "visibility"
+                  },
+                  {
+                    "primaryLabel": "Total Clicks",
+                    "actualValue": "200",
+                    "format": "number",
+                    "icon": "touch_app"
+                  },
+                  {
+                    "primaryLabel": "Total Conversions",
+                    "actualValue": "177",
+                    "format": "number",
+                    "icon": "shopping_cart"
+                  },
+                  {
+                    "primaryLabel": "Video Events",
+                    "actualValue": "16,516",
+                    "format": "number",
+                    "icon": "play_circle"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "segments-visualization",
+          "visualizationType": "segments",
+          "gridSpan": 2,
+          "title": "Top Performing Campaigns",
+          "subtitle": "Campaign Performance by Conversions",
+          "segments": [
+            {
+              "primaryLabel": "Holiday Promo 2024",
+              "secondaryLabel": "RetailMax - Retail",
+              "description": "Q4 holiday promotional campaign targeting retail shoppers with display and CTV",
+              "actualValue": "$500,000",
+              "targetValue": "$500,000",
+              "actualLabel": "Budget",
+              "targetLabel": "Total Budget",
+              "primaryMetric": {
+                "label": "CTR",
+                "value": "2.1%"
+              },
+              "secondaryMetric": {
+                "label": "CVR",
+                "value": "1.4%"
+              },
+              "revenueAmount": "$142,500",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "4 Ad Groups",
+                "growth": "Display, CTV, Native",
+                "engagement": "Koa Enabled"
+              }
+            },
+            {
+              "primaryLabel": "New Model Launch",
+              "secondaryLabel": "AutoDrive - Automotive",
+              "description": "New vehicle model launch campaign with CTV and display retargeting",
+              "actualValue": "$750,000",
+              "targetValue": "$750,000",
+              "actualLabel": "Budget",
+              "targetLabel": "Total Budget",
+              "primaryMetric": {
+                "label": "CTR",
+                "value": "1.8%"
+              },
+              "secondaryMetric": {
+                "label": "CPA",
+                "value": "$89.50"
+              },
+              "revenueAmount": "$225,000",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "3 Ad Groups",
+                "growth": "CTV, Display",
+                "engagement": "Predictive Clearing"
+              }
+            },
+            {
+              "primaryLabel": "EV Awareness Campaign",
+              "secondaryLabel": "ElectraCar - Automotive",
+              "description": "Electric vehicle brand awareness campaign across video and CTV",
+              "actualValue": "$800,000",
+              "targetValue": "$800,000",
+              "actualLabel": "Budget",
+              "targetLabel": "Total Budget",
+              "primaryMetric": {
+                "label": "Reach",
+                "value": "2.4M"
+              },
+              "secondaryMetric": {
+                "label": "Completion Rate",
+                "value": "78%"
+              },
+              "revenueAmount": "$280,000",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "medium",
+              "metadata": {
+                "size": "3 Ad Groups",
+                "growth": "Video, CTV",
+                "engagement": "Brand Awareness Goal"
+              }
+            }
+          ],
+          "summary": {
+            "totalSegments": 29,
+            "activeSegments": 27,
+            "topPerformer": "Holiday Promo 2024",
+            "growthOpportunity": "Expand CTV inventory for automotive vertical"
+          }
+        },
+        {
+          "type": "channels-visualization",
+          "visualizationType": "channels",
+          "title": "Channel Performance",
+          "gridSpan": 2,
+          "subtitle": "Performance by Ad Format",
+          "channels": [
+            {
+              "primaryLabel": "Display",
+              "secondaryLabel": "Banner & Rich Media",
+              "description": "Standard display advertising across desktop and mobile web",
+              "primaryScore": {
+                "label": "CTR",
+                "value": "2.0%"
+              },
+              "secondaryScore": {
+                "label": "Viewability",
+                "value": "68%"
+              },
+              "qualityScore": "Good",
+              "statusIndicator": "active",
+              "targetValue": "$5.50 CPM",
+              "actualValue": "$4.85 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Actual CPM",
+              "confidenceLevel": "high"
+            },
+            {
+              "primaryLabel": "Video",
+              "secondaryLabel": "Pre-roll & Mid-roll",
+              "description": "Online video advertising with completion tracking",
+              "primaryScore": {
+                "label": "Completion Rate",
+                "value": "72%"
+              },
+              "secondaryScore": {
+                "label": "Viewability",
+                "value": "85%"
+              },
+              "qualityScore": "Premium",
+              "statusIndicator": "active",
+              "targetValue": "$12.00 CPM",
+              "actualValue": "$11.25 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Actual CPM",
+              "confidenceLevel": "high"
+            },
+            {
+              "primaryLabel": "CTV",
+              "secondaryLabel": "Connected TV & OTT",
+              "description": "Premium connected TV inventory with high completion rates",
+              "primaryScore": {
+                "label": "Completion Rate",
+                "value": "94%"
+              },
+              "secondaryScore": {
+                "label": "Viewability",
+                "value": "98%"
+              },
+              "qualityScore": "Premium+",
+              "statusIndicator": "verified",
+              "targetValue": "$28.00 CPM",
+              "actualValue": "$26.50 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Actual CPM",
+              "confidenceLevel": "high"
+            },
+            {
+              "primaryLabel": "Native",
+              "secondaryLabel": "In-feed & Content",
+              "description": "Native advertising integrated with publisher content",
+              "primaryScore": {
+                "label": "CTR",
+                "value": "1.2%"
+              },
+              "secondaryScore": {
+                "label": "Engagement",
+                "value": "4.5%"
+              },
+              "qualityScore": "Good",
+              "statusIndicator": "active",
+              "targetValue": "$6.00 CPM",
+              "actualValue": "$5.75 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Actual CPM",
+              "confidenceLevel": "high"
+            }
+          ],
+          "summary": {
+            "totalChannels": 4,
+            "activeChannels": 4,
+            "topPerformer": "CTV",
+            "recommendedFocus": "Increase CTV allocation for brand campaigns"
+          }
+        },
+        {
+          "type": "metrics-visualization",
+          "visualizationType": "metrics",
+          "title": "Advertiser Portfolio",
+          "gridSpan": 2,
+          "subtitle": "Performance by Vertical",
+          "metrics": [
+            {
+              "primaryLabel": "Advertiser Coverage",
+              "secondaryLabel": "Active Advertisers",
+              "items": [
+                {
+                  "primaryLabel": "Total Advertisers",
+                  "actualValue": "21",
+                  "targetValue": "25",
+                  "actualLabel": "Active",
+                  "targetLabel": "Target",
+                  "unit": "advertisers",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": true
+                },
+                {
+                  "primaryLabel": "Active Campaigns",
+                  "actualValue": "29",
+                  "targetValue": "35",
+                  "actualLabel": "Running",
+                  "targetLabel": "Target",
+                  "unit": "campaigns",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            },
+            {
+              "primaryLabel": "Inventory Utilization",
+              "secondaryLabel": "Ad Groups & Creatives",
+              "items": [
+                {
+                  "primaryLabel": "Active Ad Groups",
+                  "actualValue": "85",
+                  "targetValue": "100",
+                  "actualLabel": "Active",
+                  "targetLabel": "Capacity",
+                  "unit": "ad groups",
+                  "trend": "stable",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                },
+                {
+                  "primaryLabel": "Creative Assets",
+                  "actualValue": "219",
+                  "targetValue": "250",
+                  "actualLabel": "Active",
+                  "targetLabel": "Capacity",
+                  "unit": "creatives",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "segments-visualization",
+          "visualizationType": "segments",
+          "gridSpan": 2,
+          "title": "Supply Vendor Performance",
+          "subtitle": "SSP & Exchange Analysis",
+          "segments": [
+            {
+              "primaryLabel": "Google AdX",
+              "secondaryLabel": "Premium Exchange",
+              "description": "Google's premium programmatic exchange with broad inventory access",
+              "actualValue": "2,150",
+              "targetValue": "2,500",
+              "actualLabel": "Impressions",
+              "targetLabel": "Target",
+              "primaryMetric": {
+                "label": "Win Rate",
+                "value": "68%"
+              },
+              "secondaryMetric": {
+                "label": "Avg CPM",
+                "value": "$8.45"
+              },
+              "revenueAmount": "$18,167",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "high"
+            },
+            {
+              "primaryLabel": "Magnite",
+              "secondaryLabel": "CTV Specialist",
+              "description": "Leading CTV and video supply-side platform",
+              "actualValue": "1,850",
+              "targetValue": "2,000",
+              "actualLabel": "Impressions",
+              "targetLabel": "Target",
+              "primaryMetric": {
+                "label": "Win Rate",
+                "value": "72%"
+              },
+              "secondaryMetric": {
+                "label": "Avg CPM",
+                "value": "$24.80"
+              },
+              "revenueAmount": "$45,880",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "high"
+            },
+            {
+              "primaryLabel": "PubMatic",
+              "secondaryLabel": "Display & Mobile",
+              "description": "Full-stack SSP with strong mobile and display inventory",
+              "actualValue": "1,420",
+              "targetValue": "1,800",
+              "actualLabel": "Impressions",
+              "targetLabel": "Target",
+              "primaryMetric": {
+                "label": "Win Rate",
+                "value": "61%"
+              },
+              "secondaryMetric": {
+                "label": "Avg CPM",
+                "value": "$6.20"
+              },
+              "revenueAmount": "$8,804",
+              "statusIndicator": "active",
+              "confidenceLevel": "medium",
+              "performanceLevel": "medium"
+            }
+          ],
+          "summary": {
+            "totalSegments": 9,
+            "activeSegments": 9,
+            "topPerformer": "Magnite",
+            "growthOpportunity": "Increase Magnite allocation for CTV campaigns"
+          }
+        }
+      ],
+      "contextData": {
+        "userProfile": {
+          "name": "Sarah Chen",
+          "role": "Campaign Analytics Manager at TTD Partner Agency",
+          "challenge": "Optimize campaign performance across multiple advertisers using REDS data insights",
+          "timeline": "Q4 2024 - Q1 2025 campaign optimization cycle"
+        },
+        "redsDataSummary": {
+          "dataRange": "30-day rolling window",
+          "lastUpdated": "2024-12-15T23:59:59Z",
+          "eventCounts": {
+            "impressions": 10000,
+            "clicks": 200,
+            "conversions": 177,
+            "videoEvents": 16516,
+            "viewabilityRecords": 8000,
+            "gdprConsentRecords": 5047
+          },
+          "entityCounts": {
+            "advertisers": 21,
+            "campaigns": 29,
+            "adGroups": 85,
+            "creatives": 219
+          }
+        },
+        "advertiserPortfolio": [
+          {
+            "id": "adv_retail_brand_001",
+            "name": "RetailMax",
+            "vertical": "Retail",
+            "activeCampaigns": 3,
+            "totalBudget": 900000,
+            "topCampaign": "Holiday Promo 2024"
+          },
+          {
+            "id": "adv_auto_brand_001",
+            "name": "AutoDrive",
+            "vertical": "Automotive",
+            "activeCampaigns": 2,
+            "totalBudget": 1200000,
+            "topCampaign": "New Model Launch"
+          },
+          {
+            "id": "adv_auto_brand_003",
+            "name": "ElectraCar",
+            "vertical": "Automotive",
+            "activeCampaigns": 2,
+            "totalBudget": 1150000,
+            "topCampaign": "EV Awareness Campaign"
+          },
+          {
+            "id": "adv_tech_brand_001",
+            "name": "TechGiant",
+            "vertical": "Technology",
+            "activeCampaigns": 2,
+            "totalBudget": 1300000,
+            "topCampaign": "New Product Launch"
+          },
+          {
+            "id": "adv_finance_brand_001",
+            "name": "SecureBank",
+            "vertical": "Finance",
+            "activeCampaigns": 2,
+            "totalBudget": 1100000,
+            "topCampaign": "High Yield Savings"
+          }
+        ],
+        "channelPerformance": {
+          "display": {
+            "impressions": 4200,
+            "clicks": 84,
+            "ctr": 0.02,
+            "avgCPM": 4.85,
+            "viewability": 0.68
+          },
+          "video": {
+            "impressions": 2800,
+            "clicks": 42,
+            "ctr": 0.015,
+            "avgCPM": 11.25,
+            "completionRate": 0.72
+          },
+          "ctv": {
+            "impressions": 1800,
+            "clicks": 27,
+            "ctr": 0.015,
+            "avgCPM": 26.50,
+            "completionRate": 0.94
+          },
+          "native": {
+            "impressions": 1200,
+            "clicks": 47,
+            "ctr": 0.039,
+            "avgCPM": 5.75,
+            "engagement": 0.045
+          }
+        },
+        "supplyVendors": [
+          {"name": "Google AdX", "impressions": 2150, "avgCPM": 8.45, "winRate": 0.68},
+          {"name": "Magnite", "impressions": 1850, "avgCPM": 24.80, "winRate": 0.72},
+          {"name": "PubMatic", "impressions": 1420, "avgCPM": 6.20, "winRate": 0.61},
+          {"name": "OpenX", "impressions": 1180, "avgCPM": 7.15, "winRate": 0.58},
+          {"name": "Index Exchange", "impressions": 1050, "avgCPM": 9.30, "winRate": 0.65},
+          {"name": "Xandr", "impressions": 890, "avgCPM": 5.80, "winRate": 0.54},
+          {"name": "Amazon TAM", "impressions": 720, "avgCPM": 12.40, "winRate": 0.71},
+          {"name": "SpotX", "impressions": 480, "avgCPM": 18.90, "winRate": 0.69},
+          {"name": "FreeWheel", "impressions": 260, "avgCPM": 32.50, "winRate": 0.78}
+        ],
+        "geoPerformance": {
+          "countries": [
+            {"code": "US", "impressions": 6200, "ctr": 0.021, "cvr": 0.014},
+            {"code": "CA", "impressions": 1400, "ctr": 0.019, "cvr": 0.012},
+            {"code": "UK", "impressions": 1100, "ctr": 0.018, "cvr": 0.011},
+            {"code": "DE", "impressions": 650, "ctr": 0.016, "cvr": 0.009},
+            {"code": "FR", "impressions": 400, "ctr": 0.015, "cvr": 0.008},
+            {"code": "AU", "impressions": 250, "ctr": 0.022, "cvr": 0.015}
+          ],
+          "topUSMetros": [
+            {"name": "Los Angeles", "impressions": 1250, "ctr": 0.023},
+            {"name": "New York", "impressions": 1180, "ctr": 0.021},
+            {"name": "Chicago", "impressions": 720, "ctr": 0.019},
+            {"name": "Houston", "impressions": 580, "ctr": 0.018},
+            {"name": "Phoenix", "impressions": 420, "ctr": 0.024}
+          ]
+        },
+        "devicePerformance": {
+          "desktop": {"impressions": 3200, "ctr": 0.018, "cvr": 0.012},
+          "mobile": {"impressions": 3800, "ctr": 0.022, "cvr": 0.015},
+          "tablet": {"impressions": 1200, "ctr": 0.016, "cvr": 0.010},
+          "ctv": {"impressions": 1400, "ctr": 0.015, "cvr": 0.018},
+          "smartTV": {"impressions": 400, "ctr": 0.014, "cvr": 0.016}
+        },
+        "conversionMetrics": {
+          "totalConversions": 177,
+          "clickThroughConversions": 30,
+          "viewThroughConversions": 147,
+          "avgConversionValue": 156.42,
+          "totalRevenue": 27686.34,
+          "conversionTypes": {
+            "purchase": 68,
+            "addToCart": 42,
+            "leadForm": 28,
+            "newsletterSignup": 22,
+            "pageView": 12,
+            "appInstall": 5
+          }
+        },
+        "videoMetrics": {
+          "totalVideoImpressions": 4600,
+          "avgCompletionRate": 0.78,
+          "quartileRates": {
+            "start": 1.0,
+            "firstQuartile": 0.92,
+            "midpoint": 0.85,
+            "thirdQuartile": 0.78,
+            "complete": 0.72
+          },
+          "soundOnRate": 0.68,
+          "autoplayRate": 0.82
+        },
+        "viewabilityMetrics": {
+          "overallViewability": 0.65,
+          "displayViewability": 0.68,
+          "videoViewability": 0.85,
+          "vendorBreakdown": {
+            "IAS": {"viewability": 0.67, "coverage": 0.28},
+            "DoubleVerify": {"viewability": 0.64, "coverage": 0.32},
+            "Moat": {"viewability": 0.66, "coverage": 0.24},
+            "ComScore": {"viewability": 0.63, "coverage": 0.16}
+          },
+          "botTrafficRate": 0.02,
+          "givtRate": 0.03,
+          "sivtRate": 0.01
+        },
+        "gdprCompliance": {
+          "euTrafficPercentage": 0.25,
+          "consentRate": 0.85,
+          "tcfVersion": "2.2",
+          "countryBreakdown": {
+            "UK": {"impressions": 1100, "consentRate": 0.87},
+            "DE": {"impressions": 650, "consentRate": 0.82},
+            "FR": {"impressions": 400, "consentRate": 0.84}
+          }
+        }
+      }
     }
   }
 }

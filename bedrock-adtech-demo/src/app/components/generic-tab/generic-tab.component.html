@@ -24,7 +24,7 @@
 
     <!-- Chat Interface (Full Width) -->
     <div class="chat-area full-width">
-      <app-chat-interface [agentType]="selectedAgent?.name || ''" [tabConfig]="tabConfig" [scenarios]="tabConfig?.scenarios || []"
+      <app-chat-interface [agentType]="selectedAgent?.name || ''" [tabConfig]="tabConfig" [scenarios]="tabConfig.scenarios || []"
         [currentUser]="currentUser" [contextData]="getContextData()" [showScenariosPanel]="showScenariosPanel" [showSessionsPanel]="showSessionsPanel"
         [currentPublisher]="contextData?.publishers&&contextData?.publishers.length>0?contextData.publishers[0]:(contextData?.publisher?[contextData?.publisher]:{})" [currentCampaign]="currentCampaign" [currentContent]="currentContent"
         [publishers]="contextData?.publishers?contextData.publishers:(contextData?.publisher?[contextData?.publisher]:[])" (contextPanelShow)="onContextPanelShow()" (contextPanelHide)="onContextPanelHide()"

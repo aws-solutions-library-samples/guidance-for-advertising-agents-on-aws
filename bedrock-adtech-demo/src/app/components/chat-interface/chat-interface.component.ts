@@ -124,6 +124,13 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
     doubleHistogramData?: any;
     barChartData?: any;
     donutChartData?: any;
+    // ADCP-specific visualizations
+    adcpInventoryData?: any;      // get_products results
+    adcpMediaBuyData?: any;       // create_media_buy results
+    adcpDeliveryData?: any;       // get_media_buy_delivery results
+    adcpSignalsData?: any;        // get_signals results
+    // Presentation visualization
+    //presentationData?: any;
     // Template IDs for each visualization type
     metricTemplateId?: string;
     allocationsTemplateId?: string;
@@ -136,8 +143,23 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
     doubleHistogramTemplateId?: string;
     barChartTemplateId?: string;
     donutChartTemplateId?: string;
+    //presentationTemplateId?: string;
+    
   } = {};
   availableAgents: AgentSuggestion[] = [];
+
+  // Visualization Companion Panel properties
+  showCompanionPanel = false;
+  companionPanelMessage: {
+    id: string;
+    agentName: string;
+    visualData: any;
+    timestamp: Date;
+  } | null = null;
+  companionPanelAgentColor = '#667eea';
+  private messageIntersectionObserver: IntersectionObserver | null = null;
+  private observedMessageElements = new Map<string, Element>();
+  private currentVisibleVisualizationMessageId: string | null = null;
 
   // Voice recording support
   isRecording = false;
@@ -1626,7 +1648,95 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     // Initialize session with user info if available
     this.initializeSession();
 
+    // Initialize Intersection Observer for companion panel
+    this.initializeMessageIntersectionObserver();
+
     // Make test methods available for debugging
+  }
+
+  // Initialize Intersection Observer for tracking visible messages with visualizations
+  private initializeMessageIntersectionObserver(): void {
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    this.messageIntersectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          const messageId = entry.target.getAttribute('data-message-id');
+          if (!messageId) return;
+
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+            // Message is visible - check if it has visualizations
+            this.handleMessageVisible(messageId);
+          } else if (!entry.isIntersecting && this.currentVisibleVisualizationMessageId === messageId) {
+            // Message with visualization exited view
+            this.handleMessageHidden(messageId);
+          }
+        });
+      },
+      {
+        root: null, // viewport
+        rootMargin: '-50px 0px -100px 0px', // Account for header and input
+        threshold: [0, 0.3, 0.5, 1.0]
+      }
+    );
+  }
+
+  // Handle when a message becomes visible
+  private handleMessageVisible(messageId: string): void {
+    const message = this.messages.find(m => m.id === messageId);
+    if (!message || message.sender !== 'agent') return;
+
+    // Get formatted message to check for visualizations
+    const formatted = this.getFormattedAgentMessage(message);
+    if (!formatted.visualData || !this.hasAnyVisualizationData(formatted.visualData)) return;
+
+    // Update companion panel with this message's visualization
+    this.currentVisibleVisualizationMessageId = messageId;
+    this.companionPanelMessage = {
+      id: messageId,
+      agentName: message.agentName || 'Agent',
+      visualData: formatted.visualData,
+      timestamp: message.timestamp
+    };
+    this.companionPanelAgentColor = this.getAgentColor(message.agentName);
+    this.showCompanionPanel = true;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  // Handle when a message exits view
+  private handleMessageHidden(messageId: string): void {
+    if (this.currentVisibleVisualizationMessageId === messageId) {
+      this.showCompanionPanel = false;
+      this.currentVisibleVisualizationMessageId = null;
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  // Check if visualData has any actual visualization content
+  private hasAnyVisualizationData(visualData: any): boolean {
+    if (!visualData) return false;
+    return !!(
+      visualData.metricData || visualData.channelAllocations || visualData.channelCards ||
+      visualData.segmentCards || visualData.creativeData || visualData.timelineData ||
+      visualData.histogramData || visualData.doubleHistogramData || visualData.barChartData ||
+      visualData.donutChartData || visualData.adcpInventoryData
+    );
+  }
+
+  // Observe a message element for visibility tracking
+  observeMessageElement(element: Element, messageId: string): void {
+    if (!this.messageIntersectionObserver || this.observedMessageElements.has(messageId)) return;
+    
+    element.setAttribute('data-message-id', messageId);
+    this.messageIntersectionObserver.observe(element);
+    this.observedMessageElements.set(messageId, element);
+  }
+
+  // Close companion panel
+  onCloseCompanionPanel(): void {
+    this.showCompanionPanel = false;
+    this.currentVisibleVisualizationMessageId = null;
+    this.changeDetectorRef.markForCheck();
   }
 
   // Initialize session with user information
@@ -1643,7 +1753,212 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     return messageType.endsWith('-visualization')
   }
 
+  /**
+   * Check if a visualization type is an ADCP protocol visualization.
+   * ADCP visualizations follow the naming convention: adcp_<type>
+   * This allows easy extension for future ADCP visualization types.
+   * @param visualizationType The visualization type string to check
+   * @returns true if the type starts with 'adcp_'
+   */
+  isAdcpVisualizationType(visualizationType: string): boolean {
+    return visualizationType?.startsWith('adcp_') || false;
+  }
 
+  /**
+   * Registry of AdCP tool result detectors.
+   * Each detector defines how to identify and visualize a specific AdCP tool result type.
+   * 
+   * To add a new AdCP visualization:
+   * 1. Add an entry to this registry with the visualization type, data property, and detector function
+   * 2. Create the corresponding visualization component
+   * 3. Add the data property to the type definitions (popoverVisualData, visualData, etc.)
+   * 4. Add the component to the HTML templates
+   */
+  private adcpToolResultDetectors: Array<{
+    visualizationType: string;
+    dataProperty: string;
+    messageText: (data: any) => string;
+    detect: (parsed: any) => boolean;
+  }> = [
+    {
+      // AdCP get_products - inventory discovery
+      visualizationType: 'adcp_get_products-visualization',
+      dataProperty: 'adcpInventoryData',
+      messageText: (data) => `Found ${data.products?.length || 0} advertising products`,
+      detect: (parsed) => {
+        if (!parsed || !Array.isArray(parsed.products) || parsed.products.length === 0) return false;
+        const firstProduct = parsed.products[0];
+        const hasProductId = firstProduct.product_id !== undefined;
+        const hasName = firstProduct.name !== undefined || firstProduct.product_name !== undefined;
+        const hasPricing = firstProduct.pricing_options !== undefined || 
+                          firstProduct.cpm_usd !== undefined || firstProduct.rate !== undefined;
+        const hasPublisher = firstProduct.publisher_properties !== undefined ||
+                            firstProduct.publisher_name !== undefined || firstProduct.publisher_domain !== undefined;
+        return hasProductId && (hasName || hasPricing || hasPublisher);
+      }
+    },
+    {
+      // AdCP create_media_buy - media buy confirmation
+      visualizationType: 'adcp_media_buy',
+      dataProperty: 'adcpMediaBuyData',
+      messageText: (data) => `Media buy ${data.status === 'completed' ? 'created' : data.status}: ${data.media_buy_id || data.buyer_ref || ''}`,
+      detect: (parsed) => {
+        return parsed && (parsed.media_buy_id !== undefined || parsed.buyer_ref !== undefined) &&
+               (parsed.packages !== undefined || parsed.status !== undefined);
+      }
+    },
+    {
+      // AdCP get_media_buy_delivery - delivery metrics
+      visualizationType: 'adcp_delivery',
+      dataProperty: 'adcpDeliveryData',
+      messageText: (data) => `Delivery report: ${data.summary?.impressions_delivered?.toLocaleString() || 0} impressions`,
+      detect: (parsed) => {
+        return parsed && parsed.media_buy_id !== undefined && 
+               (parsed.summary !== undefined || parsed.packages !== undefined) &&
+               (parsed.reporting_period !== undefined || parsed.impressions_delivered !== undefined);
+      }
+    },
+    {
+      // AdCP get_signals - signal discovery
+      visualizationType: 'adcp_signals',
+      dataProperty: 'adcpSignalsData',
+      messageText: (data) => `Found ${data.signals?.length || 0} audience signals`,
+      detect: (parsed) => {
+        if (!parsed || !Array.isArray(parsed.signals) || parsed.signals.length === 0) return false;
+        const firstSignal = parsed.signals[0];
+        return firstSignal.signal_id !== undefined || firstSignal.segment_id !== undefined;
+      }
+    }
+  ];
+
+  /**
+   * Detect if a tool result contains AdCP data that should be visualized.
+   * Uses the registry of detectors to identify the visualization type.
+   * 
+   * @param toolResultText The raw text content of the tool result
+   * @returns Object with visualizationType, dataProperty, data, and messageText if detected, null otherwise
+   */
+  detectAdcpToolResultVisualization(toolResultText: string): {
+    visualizationType: string;
+    dataProperty: string;
+    data: any;
+    messageText: string;
+  } | null {
+    if (!toolResultText || typeof toolResultText !== 'string') {
+      return null;
+    }
+    
+    try {
+      const parsed = JSON.parse(toolResultText);
+      
+      // Try each detector in order
+      for (const detector of this.adcpToolResultDetectors) {
+        if (detector.detect(parsed)) {
+          // Add visualizationType if not present
+          if (!parsed.visualizationType) {
+            parsed.visualizationType = detector.visualizationType;
+          }
+          return {
+            visualizationType: detector.visualizationType,
+            dataProperty: detector.dataProperty,
+            data: parsed,
+            messageText: detector.messageText(parsed)
+          };
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Detect embedded AdCP visualization data in message text wrapped in <visualization-data> XML tags.
+   * This handles the case where agents output visualization data inline in their responses.
+   * 
+   * @param messageText The raw message text that may contain embedded visualization data
+   * @returns Object with visualization info and remaining text, or null if not detected
+   */
+  detectEmbeddedAdcpVisualization(messageText: string): {
+    visualizationType: string;
+    dataProperty: string;
+    data: any;
+    messageText: string;
+    remainingText: string;
+  } | null {
+    if (!messageText || typeof messageText !== 'string') {
+      return null;
+    }
+    
+    // Look for <visualization-data type="adcp_..."> or type='adcp_...'> tags (handles both single and double quotes)
+    const vizDataRegex = /<visualization-data[^>]*type=['"]?(adcp_[^'">\s]+)['"]?[^>]*>([\s\S]*?)<\/visualization-data>/;
+    const match = messageText.match(vizDataRegex);
+    
+    if (!match) {
+      // Also try to detect raw JSON with products array that looks like AdCP get_products result
+      const toolResult = this.detectAdcpToolResultVisualization(messageText);
+      if (toolResult) {
+        return {
+          ...toolResult,
+          remainingText: '' // Raw JSON detection consumes the whole message
+        };
+      }
+      return null;
+    }
+    
+    const visualizationType = match[1];
+    const jsonContent = match[2].trim();
+    
+    try {
+      const parsed = JSON.parse(jsonContent);
+      
+      // Find the matching detector for this visualization type
+      const detector = this.adcpToolResultDetectors.find(d => d.visualizationType === visualizationType);
+      
+      if (detector) {
+        // Add visualizationType if not present
+        if (!parsed.visualizationType) {
+          parsed.visualizationType = visualizationType;
+        }
+        
+        // Remove the visualization data from the message text
+        const remainingText = messageText.replace(match[0], '').trim();
+        
+        return {
+          visualizationType: detector.visualizationType,
+          dataProperty: detector.dataProperty,
+          data: parsed,
+          messageText: detector.messageText(parsed),
+          remainingText: remainingText
+        };
+      }
+      
+      // If no specific detector, use generic handling for adcp_ types
+      if (visualizationType.startsWith('adcp_')) {
+        const dataProperty = visualizationType === 'adcp_get_products-visualization' ? 'adcpInventoryData' :
+                            visualizationType === 'adcp_media_buy-visualization' ? 'adcpMediaBuyData' :
+                            visualizationType === 'adcp_delivery-visualization' ? 'adcpDeliveryData' :
+                            visualizationType === 'adcp_signals-visualization' ? 'adcpSignalsData' :
+                            'adcpInventoryData'; // fallback
+        
+        const remainingText = messageText.replace(match[0], '').trim();
+        
+        return {
+          visualizationType: visualizationType,
+          dataProperty: dataProperty,
+          data: parsed,
+          messageText: parsed.message || `${visualizationType} data received`,
+          remainingText: remainingText
+        };
+      }
+      
+      return null;
+    } catch (e) {
+      console.warn('Failed to parse embedded visualization JSON:', e);
+      return null;
+    }
+  }
 
   closeContextSelector(): void {
     this.closeContextSelectorEvent.emit();
@@ -1879,6 +2194,25 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
     // Add click handlers to agent mentions in message text
     this.addAgentMentionClickHandlers();
+
+    // Observe message elements for companion panel visibility tracking
+    this.observeNewMessageElements();
+  }
+
+  // Observe new message elements for Intersection Observer
+  private observeNewMessageElements(): void {
+    if (!this.messageIntersectionObserver || !this.messagesContainer) return;
+
+    const container = this.messagesContainer.nativeElement;
+    const messageElements = container.querySelectorAll('.message.agent');
+
+    messageElements.forEach((element: Element) => {
+      // Find the message ID from the DOM or data attribute
+      const messageId = element.getAttribute('data-message-id');
+      if (messageId && !this.observedMessageElements.has(messageId)) {
+        this.observeMessageElement(element, messageId);
+      }
+    });
   }
 
   private scrollToBottom(): void {
@@ -2068,21 +2402,17 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
       if (this.contextData && isFirstMessageToAgent) {
         const contextJson = this.formatContextData();
-        finalQuery = `${contextJson}\n\nUser Question: ${cleanedQuery}`;
-
+        if(contextJson.length > 0)
+          finalQuery = `User Question: ${cleanedQuery}\n\nContext:${contextJson}`;
+        else finalQuery =`User Question: ${cleanedQuery}`
+        console.log(finalQuery)
         // Mark that we've sent the first message to this agent
         this.agentFirstMessages.set(displayName, true);
 
-        console.log(`📋 Context data included for first message to ${displayName}`);
       } else if (isFirstMessageToAgent) {
         // Mark first message even without context data
+        finalQuery =`User Question: ${cleanedQuery}`
         this.agentFirstMessages.set(displayName, true);
-      }
-
-      if (attachedFiles.length > 0) {
-      }
-      if (parsedMessage.mentionedAgent) {
-      } else {
       }
 
       // Use custom session ID from session manager
@@ -2178,6 +2508,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 break;
 
               case 'final-response':
+              case 'tool-result':
               case 'response':
                 // Always create a new message for final responses - don't update existing ones
                 messageText = this.removeLastFinalResponseText(agentName, messageText);
@@ -2541,6 +2872,44 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 messageDisplayName = agentName; // agentName is already formatted by formatToolAgentName
                 messageClass = 'tool-agent-response';
               } else if (contentType === 'tool-result') {
+                // Check if this tool result contains AdCP data that should be visualized
+                const adcpVisualization = this.detectAdcpToolResultVisualization(processedMessageText);
+                if (adcpVisualization) {
+                  // Create a visualization message for the AdCP tool result
+                  const vizMessageId = `${agentName}-adcp-viz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const vizDisplayName = this.getAgentDisplayName(resolvedAgent || agent);
+                  
+                  const visualizationMessage: Message = {
+                    id: vizMessageId,
+                    text: adcpVisualization.messageText,
+                    sender: 'agent',
+                    timestamp: new Date(),
+                    type: 'text',
+                    agentName: agentName,
+                    displayName: vizDisplayName,
+                    data: {
+                      isThinking: false,
+                      finalResponse: adcpVisualization.messageText,
+                      messageType: `${adcpVisualization.visualizationType}-visualization`,
+                      [adcpVisualization.dataProperty]: adcpVisualization.data
+                    }
+                  };
+                  
+                  this.messages = [...this.messages, visualizationMessage];
+                  this.updateAgentParticipant(resolvedAgent || agent);
+                  
+                  // Track visualization for popover display
+                  this.agentVisualizationService.updateAgentVisualization(
+                    agentName,
+                    vizDisplayName,
+                    { [adcpVisualization.dataProperty]: adcpVisualization.data } as any
+                  );
+                  
+                  this.shouldScrollToBottom = true;
+                  this.changeDetectorRef.markForCheck();
+                  return; // Don't create the hidden tool-result message
+                }
+                
                 messageClass = 'tool-result hidden';
                 processedMessageText = `${processedMessageText}`;
               }
@@ -2569,7 +2938,67 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
 
             } else {
-              if (messageType === 'final-response' || this.agentConfig.getAgent(agentName)?.deploymentType != "bedrock") {
+              // Check for embedded visualization data in chunk events (e.g., <visualization-data type="adcp_get_products-visualization">)
+              const embeddedViz = this.detectEmbeddedAdcpVisualization(messageText);
+              console.log('🔍 Checking for embedded AdCP visualization:', embeddedViz ? 'FOUND' : 'not found', messageType);
+              if (embeddedViz) {
+                console.log('✅ Creating AdCP visualization message:', embeddedViz.visualizationType);
+                const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
+                const vizMessageId = `${agentName}-adcp-viz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const vizDisplayName = this.getAgentDisplayName(resolvedAgent || agent);
+                
+                // Create visualization message
+                const visualizationMessage: Message = {
+                  id: vizMessageId,
+                  text: embeddedViz.messageText,
+                  sender: 'agent',
+                  timestamp: new Date(),
+                  type: 'text',
+                  agentName: agentName,
+                  displayName: vizDisplayName,
+                  data: {
+                    isThinking: false,
+                    finalResponse: embeddedViz.messageText,
+                    messageType: `${embeddedViz.visualizationType}-visualization`,
+                    [embeddedViz.dataProperty]: embeddedViz.data
+                  }
+                };
+                
+                this.messages = [...this.messages, visualizationMessage];
+                this.updateAgentParticipant(resolvedAgent || agent);
+                
+                // Track visualization for popover display
+                this.agentVisualizationService.updateAgentVisualization(
+                  agentName,
+                  vizDisplayName,
+                  { [embeddedViz.dataProperty]: embeddedViz.data } as any
+                );
+                
+                // If there's remaining text after the visualization, create a text message for it
+                if (embeddedViz.remainingText && embeddedViz.remainingText.trim()) {
+                  const textMessageId = `${agentName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const textMessage: Message = {
+                    id: textMessageId,
+                    text: embeddedViz.remainingText.trim(),
+                    sender: 'agent',
+                    timestamp: new Date(),
+                    type: 'text',
+                    agentName: agentName,
+                    displayName: vizDisplayName,
+                    data: {
+                      isThinking: false,
+                      finalResponse: embeddedViz.remainingText.trim(),
+                      thinkingHistory: [] as string[],
+                      lastTrace: '',
+                      messageType: messageType
+                    }
+                  };
+                  this.addMessageIfNotDuplicate(textMessage, resolvedAgent || agent);
+                }
+                
+                this.shouldScrollToBottom = true;
+                this.changeDetectorRef.markForCheck();
+              } else if (messageType === 'final-response' || this.agentConfig.getAgent(agentName)?.deploymentType != "bedrock") {
                 console.log('✅ Processing chunk event with messageType:', messageType);
                 // Handle regular streaming chunks - create new message for each chunk
                 const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
@@ -3073,6 +3502,13 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     doubleHistogramData?: any;
     barChartData?: any;
     donutChartData?: any;
+    // ADCP-specific visualizations
+    adcpInventoryData?: any;      // get_products results
+    adcpMediaBuyData?: any;       // create_media_buy results
+    adcpDeliveryData?: any;       // get_media_buy_delivery results
+    adcpSignalsData?: any;        // get_signals results
+    // Presentation visualization
+    //presentationData?: any;
     // Template IDs for each visualization type
     metricTemplateId?: string;
     allocationsTemplateId?: string;
@@ -3085,6 +3521,10 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     doubleHistogramTemplateId?: string;
     barChartTemplateId?: string;
     donutChartTemplateId?: string;
+    adcpInventoryTemplateId?: string;
+    adcpMediaBuyTemplateId?: string;
+    adcpDeliveryTemplateId?: string;
+    adcpSignalsTemplateId?: string;
   } {
     if (!text) return { cleanedText: '' };
 
@@ -3100,6 +3540,10 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     let doubleHistogramData: any = null;
     let barChartData: any = null;
     let donutChartData: any = null;
+    // ADCP-specific visualizations
+    let adcpInventoryData: any = null;
+    // Presentation visualization
+    //let presentationData: any = null;
 
     // Template IDs for each visualization type
     let metricTemplateId: string | undefined = undefined;
@@ -3113,6 +3557,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     let doubleHistogramTemplateId: string | undefined = undefined;
     let barChartTemplateId: string | undefined = undefined;
     let donutChartTemplateId: string | undefined = undefined;
+    let adcpInventoryTemplateId:string | undefined = undefined;
+    //let presentationTemplateId: string | undefined = undefined;
 
     try {
 
@@ -3127,6 +3573,13 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           //console.log('🔍 Processing visualization type:', parsedJson.visualizationType, 'Title:', parsedJson.title);
 
           switch (parsedJson.visualizationType) {
+            case 'adcp_get_products':
+              if (!adcpInventoryData) {
+                adcpInventoryData = parsedJson;
+                adcpInventoryTemplateId = parsedJson.templateId;
+                cleanedText = cleanedText.replace(jsonText, '');
+              }
+              break;
             case 'metrics':
               if (!metricData) {
                 metricData = parsedJson;
@@ -3229,6 +3682,27 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 cleanedText = cleanedText.replace(jsonText, '');
               }
               break;
+
+            // case 'presentation':
+            //   if (!presentationData) {
+            //     presentationData = parsedJson;
+            //     presentationTemplateId = parsedJson.templateId;
+            //     cleanedText = cleanedText.replace(jsonText, '');
+            //   }
+            //   break;
+
+            // ADCP Protocol Visualizations - handle any type starting with 'adcp_'
+            default:
+              if (parsedJson.visualizationType?.startsWith('adcp_')) {
+                const adcpType = parsedJson.visualizationType;
+                if (adcpType.startsWith('adcp_get_products') && !adcpInventoryData) {
+                  adcpInventoryData = parsedJson;
+                  adcpInventoryTemplateId = parsedJson.templateId;
+                  cleanedText = cleanedText.replace(jsonText, '');
+                }
+                // Future ADCP visualization types can be added here
+              }
+              break;
           }
         }
         // FALLBACK: Legacy format support (without visualizationType)
@@ -3258,7 +3732,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       });
 
       // ADDITIONAL FALLBACK: Look for JSON inside ```json blocks (in case agents still use this format)
-      if (!metricData || !channelAllocations || !channelCards || !segmentCards || !creativeData || !timelineData || !histogramData || !doubleHistogramData || !barChartData || !donutChartData) {
+      if (!metricData || !channelAllocations || !channelCards || !segmentCards || !creativeData || !timelineData || !histogramData || !doubleHistogramData || !barChartData || !donutChartData || !adcpInventoryData) {
 
         // Enhanced regex to handle various code block formats
         const jsonBlockRegex = /```(?:json|JSON)?\s*([\s\S]*?)\s*```/g;
@@ -3405,6 +3879,14 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                       cleanedText = cleanedText.replace(match[0], '');
                     }
                     break;
+
+                  case 'adcp_get_products':
+                    if (!adcpInventoryData) {
+                      adcpInventoryData = parsedData;
+                      adcpInventoryTemplateId = parsedData.templateId;
+                      cleanedText = cleanedText.replace(match[0], '');
+                    }
+                    break;
                 }
               }
               // Legacy format fallback for code blocks
@@ -3523,7 +4005,17 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 break;
 
               default:
-                console.warn('❓ Unknown legacy XML visualization type:', type);
+                // Handle ADCP visualization types (adcp_get_products, adcp_*, etc.)
+                if (type.startsWith('adcp_')) {
+                  if (type.startsWith('adcp_get_products') && !adcpInventoryData) {
+                    adcpInventoryData = parsedData;
+                    adcpInventoryTemplateId = parsedData.templateId;
+                    cleanedText = cleanedText.replace(match[0], '');
+                  }
+                  // Future ADCP visualization types can be added here
+                } else {
+                  console.warn('❓ Unknown legacy XML visualization type:', type);
+                }
             }
 
           } catch (e) {
@@ -3624,6 +4116,13 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                     cleanedText = cleanedText.replace(jsonText, '');
                   }
                   break;
+                case 'adcp_get_products':
+                  if (!adcpInventoryData) {
+                    adcpInventoryData = parseResult.data;
+                    adcpInventoryTemplateId = parseResult.data.templateId;
+                    cleanedText = cleanedText.replace(jsonText, '');
+                  }
+                  break;
                 case 'weather-analysis':
                 case 'weather':
                   // Handle weather analysis as a special metrics visualization
@@ -3668,6 +4167,10 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       doubleHistogramData,
       barChartData,
       donutChartData,
+      // ADCP-specific visualizations
+      adcpInventoryData,
+      // Presentation visualization
+      //presentationData,
       // Template IDs for each visualization type
       metricTemplateId,
       allocationsTemplateId,
@@ -3679,14 +4182,15 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       histogramTemplateId,
       doubleHistogramTemplateId,
       barChartTemplateId,
-      donutChartTemplateId
+      donutChartTemplateId,
+      //presentationTemplateId
     };
 
     // Debug templateId detection
     const templateIds = [
       metricTemplateId, allocationsTemplateId, channelsTemplateId, segmentsTemplateId,
       creativeTemplateId, timelineTemplateId, decisionTreeTemplateId, histogramTemplateId,
-      doubleHistogramTemplateId, barChartTemplateId, donutChartTemplateId
+      doubleHistogramTemplateId, barChartTemplateId, donutChartTemplateId, adcpInventoryTemplateId
     ].filter(id => id !== undefined);
 
     if (templateIds.length > 0) {
@@ -3768,6 +4272,10 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
         doubleHistogramData: parsedData.doubleHistogramData,
         barChartData: parsedData.barChartData,
         donutChartData: parsedData.donutChartData,
+        // ADCP-specific visualizations
+        adcpInventoryData: parsedData.adcpInventoryData,
+        // Presentation visualization
+        //presentationData: parsedData.presentationData,
         // Template IDs for each visualization type
         metricTemplateId: parsedData.metricTemplateId,
         allocationsTemplateId: parsedData.allocationsTemplateId,
@@ -3779,7 +4287,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
         histogramTemplateId: parsedData.histogramTemplateId,
         doubleHistogramTemplateId: parsedData.doubleHistogramTemplateId,
         barChartTemplateId: parsedData.barChartTemplateId,
-        donutChartTemplateId: parsedData.donutChartTemplateId
+        donutChartTemplateId: parsedData.donutChartTemplateId,
+        adcpInventoryTemplateId: parsedData.adcpInventoryTemplateId
+        //presentationTemplateId: parsedData.presentationTemplateId
       };
 
       // Track visualizations for popover display (NEW - for popover feature)
@@ -3890,6 +4400,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       doubleHistogramData: parsedData.doubleHistogramData,
       barChartData: parsedData.barChartData,
       donutChartData: parsedData.donutChartData,
+      // Presentation visualization
+      //presentationData: parsedData.presentationData,
       // Template IDs for each visualization type
       metricTemplateId: parsedData.metricTemplateId,
       allocationsTemplateId: parsedData.allocationsTemplateId,
@@ -3901,7 +4413,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       histogramTemplateId: parsedData.histogramTemplateId,
       doubleHistogramTemplateId: parsedData.doubleHistogramTemplateId,
       barChartTemplateId: parsedData.barChartTemplateId,
-      donutChartTemplateId: parsedData.donutChartTemplateId
+      donutChartTemplateId: parsedData.donutChartTemplateId,
+      adcpInventoryTemplateId: parsedData.adcpInventoryTemplateId
     };
 
     // Track visualizations for popover display (NEW - for popover feature)
@@ -3940,6 +4453,12 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       doubleHistogramData?: any;
       barChartData?: any;
       donutChartData?: any;
+      presentationData?: any;
+      // ADCP-specific visualizations
+      adcpInventoryData?: any;      // get_products results
+      adcpMediaBuyData?: any;       // create_media_buy results
+      adcpDeliveryData?: any;       // get_media_buy_delivery results
+      adcpSignalsData?: any;        // get_signals results
       // Template IDs for each visualization type
       metricTemplateId?: string;
       allocationsTemplateId?: string;
@@ -3952,6 +4471,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       doubleHistogramTemplateId?: string;
       barChartTemplateId?: string;
       donutChartTemplateId?: string;
+      presentationTemplateId?: string;
+      adcpInventoryTemplateId?: string;
+      adcpMediaBuyTemplateId?: string;
+      adcpDeliveryTemplateId?: string;
+      adcpSignalsTemplateId?: string;
     };
   } {
     // Create a cache key based on message content and state
@@ -4099,22 +4623,18 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
     try {
       // Filter context data based on visibility settings
-      let filteredContextData = this.contextData;
+      let filteredContextData: any = {};
 
-      if (this.visibilitySettings.includedContextSections.length > 0) {
-        filteredContextData = {};
-
-        // Only include sections that are selected in visibility settings
-        for (const sectionKey of this.visibilitySettings.includedContextSections) {
-          if (this.contextData.hasOwnProperty(sectionKey)) {
-            filteredContextData[sectionKey] = this.contextData[sectionKey];
-          }
+      // Only include sections that are explicitly selected in visibility settings
+      for (const sectionKey of this.visibilitySettings.includedContextSections) {
+        if (this.contextData.hasOwnProperty(sectionKey)) {
+          filteredContextData[sectionKey] = this.contextData[sectionKey];
         }
+      }
 
-        // If no sections were included, fall back to original data
-        if (Object.keys(filteredContextData).length === 0) {
-          filteredContextData = this.contextData;
-        }
+      // If no sections are selected, return empty string (no context sent)
+      if (Object.keys(filteredContextData).length === 0) {
+        return '';
       }
 
       const formattedJson = JSON.stringify(filteredContextData, null, 2);
@@ -5853,6 +6373,12 @@ ${formattedJson}
     this.sourceExpanded.clear();
     this.compressedSources.clear();
 
+    // Cleanup Intersection Observer for companion panel
+    if (this.messageIntersectionObserver) {
+      this.messageIntersectionObserver.disconnect();
+      this.messageIntersectionObserver = null;
+    }
+    this.observedMessageElements.clear();
   }
 
   // Helper method to create tracked timeouts

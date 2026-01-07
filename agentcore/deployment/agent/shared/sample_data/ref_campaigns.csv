@@ -1,0 +1,30 @@
+CampaignId,AdvertiserId,CampaignName,Budget,Goal,StartDate,EndDate,Status,PacingMode,AutoAllocatorEnabled
+cmp_holiday_promo_2024,adv_retail_brand_001,Holiday Promo 2024,500000.0,Conversions,2024-11-15,2024-12-31,Active,Even,True
+cmp_brand_awareness_q4,adv_retail_brand_001,Brand Awareness Q4,250000.0,Reach,2024-10-01,2024-12-31,Active,Even,True
+cmp_retail_clearance,adv_retail_brand_001,Year End Clearance,150000.0,Conversions,2024-12-01,2024-12-31,Active,ASAP,True
+cmp_shopsmart_blackfriday,adv_retail_brand_002,Black Friday Blitz,400000.0,Conversions,2024-11-20,2024-12-02,Completed,ASAP,True
+cmp_shopsmart_loyalty,adv_retail_brand_002,Loyalty Program Push,200000.0,CPA,2024-11-01,2025-01-31,Active,Even,False
+cmp_megamart_grocery,adv_retail_brand_003,Grocery Savings,180000.0,Reach,2024-11-01,2024-12-31,Active,Even,True
+cmp_new_model_launch,adv_auto_brand_001,New Model Launch,750000.0,CPA,2024-11-01,2025-01-31,Active,ASAP,True
+cmp_auto_yearend_sale,adv_auto_brand_001,Year End Sale Event,450000.0,Conversions,2024-12-01,2024-12-31,Active,Even,True
+cmp_speed_performance,adv_auto_brand_002,Performance Series Launch,600000.0,Reach,2024-11-15,2025-02-28,Active,Even,True
+cmp_electra_ev_awareness,adv_auto_brand_003,EV Awareness Campaign,800000.0,Reach,2024-10-01,2025-03-31,Active,Even,True
+cmp_electra_test_drive,adv_auto_brand_003,Test Drive Signups,350000.0,CPA,2024-11-01,2025-01-31,Active,Even,True
+cmp_winter_getaway,adv_travel_brand_001,Winter Getaway Deals,300000.0,Conversions,2024-11-20,2025-02-28,Active,Even,False
+cmp_travel_newyear,adv_travel_brand_001,New Year Escapes,250000.0,Conversions,2024-12-15,2025-01-15,Active,ASAP,True
+cmp_vacation_cruise,adv_travel_brand_002,Cruise Deals 2025,400000.0,CPA,2024-11-01,2025-03-31,Active,Even,True
+cmp_flight_holiday,adv_travel_brand_003,Holiday Flight Deals,350000.0,Conversions,2024-11-15,2024-12-31,Active,Even,True
+cmp_bank_savings,adv_finance_brand_001,High Yield Savings,500000.0,CPA,2024-10-01,2025-03-31,Active,Even,True
+cmp_bank_mortgage,adv_finance_brand_001,Mortgage Refinance,600000.0,CPA,2024-11-01,2025-02-28,Active,Even,True
+cmp_invest_retirement,adv_finance_brand_002,Retirement Planning,450000.0,CPA,2024-11-01,2025-01-31,Active,Even,True
+cmp_credit_rewards,adv_finance_brand_003,Rewards Card Launch,550000.0,CPA,2024-11-15,2025-02-28,Active,Even,True
+cmp_tech_product_launch,adv_tech_brand_001,New Product Launch,900000.0,Reach,2024-11-01,2025-01-31,Active,Even,True
+cmp_tech_holiday_bundle,adv_tech_brand_001,Holiday Bundle Deals,400000.0,Conversions,2024-11-20,2024-12-31,Active,ASAP,True
+cmp_cloud_enterprise,adv_tech_brand_002,Enterprise Cloud Solutions,700000.0,CPA,2024-10-01,2025-03-31,Active,Even,True
+cmp_app_install,adv_tech_brand_003,App Install Campaign,300000.0,CPA,2024-11-01,2025-01-31,Active,Even,True
+cmp_health_enrollment,adv_health_brand_001,Open Enrollment 2025,650000.0,CPA,2024-11-01,2024-12-15,Active,ASAP,True
+cmp_wellness_newyear,adv_health_brand_002,New Year Wellness,250000.0,Conversions,2024-12-15,2025-02-28,Active,Even,True
+cmp_stream_holiday,adv_ent_brand_001,Holiday Streaming Promo,500000.0,CPA,2024-11-15,2025-01-15,Active,Even,True
+cmp_game_launch,adv_ent_brand_002,New Game Launch,450000.0,Conversions,2024-11-20,2025-01-31,Active,ASAP,True
+cmp_fresh_holiday,adv_cpg_brand_001,Holiday Recipes,200000.0,Reach,2024-11-15,2024-12-31,Active,Even,True
+cmp_clean_newyear,adv_cpg_brand_002,New Year Clean Start,180000.0,Reach,2024-12-15,2025-02-28,Active,Even,False

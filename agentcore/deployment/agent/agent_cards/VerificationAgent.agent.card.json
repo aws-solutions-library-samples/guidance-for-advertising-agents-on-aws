@@ -1,0 +1,20 @@
+{
+  "agent_name": "VerificationAgent",
+  "agent_description": "Quality assurance agent providing brand safety verification, fraud detection, viewability measurement, and attention metrics. Ensures campaign quality and protects advertiser brand reputation.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/verificationagent",
+  "skills": [
+    "brand_safety_verification",
+    "fraud_detection",
+    "viewability_measurement",
+    "attention_metrics",
+    "quality_assurance"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "verification_provider"
+  }
+}

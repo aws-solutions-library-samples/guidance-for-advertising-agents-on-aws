@@ -14,16 +14,11 @@
         "CreativeSelectionAgent": "Advertising",
         "TimingStrategyAgent": "Advertising",
         "CurrentEventsAgent": "Advertising",
-        "AgencyAgent": "Advertising",
-        "AdvertiserAgent": "Advertising",
-        "PublisherAgent": "Advertising",
-        "SignalAgent": "Advertising",
-        "VerificationAgent": "Advertising",
-        "MeasurementAgent": "Advertising",
-        "IdentityAgent": "Advertising"
+        "CreativeStrategyAgent": "Advertising"
     },
     "configured_colors": {
         "MediaPlanningAgent": "#41205BFF",
+        "AudienceAgent": "#5E35B1FF",
         "WeatherImpactAgent": "#804294FF",
         "AdLoadOptimizationAgent": "#E63387FF",
         "AudienceIntelligenceAgent": "#804294FF",
@@ -37,14 +32,7 @@
         "CampaignArchitectureAgent": "#845195FF",
         "CreativeSelectionAgent": "#AE427BFF",
         "TimingStrategyAgent": "#E63387FF",
-        "CurrentEventsAgent": "#F56F02FF",
-        "AgencyAgent": "#1E3A5FFF",
-        "AdvertiserAgent": "#2E7D32FF",
-        "PublisherAgent": "#C62828FF",
-        "SignalAgent": "#6A1B9AFF",
-        "VerificationAgent": "#00695CFF",
-        "MeasurementAgent": "#EF6C00FF",
-        "IdentityAgent": "#37474FFF"
+        "CurrentEventsAgent": "#F56F02FF"
     },
     "agent_configs": {
         "AdFabricAgent": {
@@ -67,7 +55,11 @@
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "lookup_events"
+            ]
         },
         "WeatherImpactAgent": {
             "agent_id": "WeatherImpactAgent",
@@ -75,6 +67,13 @@
             "agent_display_name": "WeatherImpactAgent",
             "team_name": "Publisher Revenue Operations",
             "agent_description": "A specialized agent that analyzes how weather conditions affect advertising campaign performance and audience behaviors. You provide strategic insights on weather-driven consumer patterns to optimize campaign timing, messaging, and targeting. You use your http capabilities to retrieve the weather conditions of a given location as part of your analysis.",
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "http_request",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ],
             "tool_agent_names": [],
             "injectable_values": {
                 "weatherAPIKey": "xxx"
@@ -88,7 +87,7 @@
                     "top_p": 0.8
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 64000,
                     "temperature": 0.3,
                     "top_p": 0.8
@@ -114,24 +113,30 @@
                     "temperature": 0.3
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 64000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 64000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 64000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "YieldOptimizationAgent": {
             "agent_id": "YieldOptimizationAgent",
@@ -153,25 +158,31 @@
                     "temperature": 0.3
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
             },
-            "build_timestamp": "2025-10-16T01:48:05.020928Z"
+            "build_timestamp": "2025-10-16T01:48:05.020928Z",
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "CampaignOptimizationAgent": {
             "agent_id": "CampaignOptimizationAgent",
@@ -195,37 +206,43 @@
                     "temperature": 0.3
                 },
                 "AudienceStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 },
                 "ChannelMixOptimizationAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 },
                 "CampaignArchitectureAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 },
                 "CreativeSelectionAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
             },
-            "build_timestamp": "2025-10-16T01:52:31.004603Z"
+            "build_timestamp": "2025-10-16T01:52:31.004603Z",
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "InventoryOptimizationAgent": {
             "agent_id": "InventoryOptimizationAgent",
@@ -244,20 +261,26 @@
                     "temperature": 0.3
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
             },
             "system_prompts": {},
-            "build_timestamp": "2025-10-16T01:45:27.019458Z"
+            "build_timestamp": "2025-10-16T01:45:27.019458Z",
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AudienceIntelligenceAgent": {
             "agent_id": "AudienceIntelligenceAgent",
@@ -275,7 +298,11 @@
                     "temperature": 0.3
                 }
             },
-            "build_timestamp": "2025-10-15T21:36:22.265167Z"
+            "build_timestamp": "2025-10-15T21:36:22.265167Z",
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AdLoadOptimizationAgent": {
             "agent_id": "AdLoadOptimizationAgent",
@@ -293,19 +320,25 @@
                     "temperature": 0.3
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
             },
-            "build_timestamp": "2025-10-15T21:36:22.265167Z"
+            "build_timestamp": "2025-10-15T21:36:22.265167Z",
+            "agent_tools": [
+                "invoke_specialist",
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AdFormatSelectorAgent": {
             "agent_id": "AdFormatSelectorAgent",
@@ -317,12 +350,16 @@
             "external_agents": [],
             "model_inputs": {
                 "AdFormatSelectorAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "BidOptimizationAgent": {
             "agent_id": "BidOptimizationAgent",
@@ -334,12 +371,16 @@
             "external_agents": [],
             "model_inputs": {
                 "BidOptimizationAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "BidSimulatorAgent": {
             "agent_id": "BidSimulatorAgent",
@@ -351,12 +392,16 @@
             "external_agents": [],
             "model_inputs": {
                 "BidSimulatorAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "ContextualAnalysisAgent": {
             "agent_id": "ContextualAnalysisAgent",
@@ -368,12 +413,16 @@
             "external_agents": [],
             "model_inputs": {
                 "ContextualAnalysisAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "CurrentEventsAgent": {
             "agent_id": "CurrentEventsAgent",
@@ -385,12 +434,16 @@
             "external_agents": [],
             "model_inputs": {
                 "CurrentEventsAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "EventsAgent": {
             "agent_id": "EventsAgent",
@@ -402,12 +455,16 @@
             "external_agents": [],
             "model_inputs": {
                 "EventsAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "MediaPlanCompiler": {
             "agent_id": "MediaPlanCompiler",
@@ -419,12 +476,16 @@
             "external_agents": [],
             "model_inputs": {
                 "MediaPlanCompiler": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 12000,
                     "temperature": 0.3,
                     "top_p": 0.8
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AudienceStrategyAgent": {
             "agent_id": "AudienceStrategyAgent",
@@ -436,12 +497,16 @@
             "external_agents": [],
             "model_inputs": {
                 "AudienceStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "ChannelMixOptimizationAgent": {
             "agent_id": "ChannelMixOptimizationAgent",
@@ -453,12 +518,16 @@
             "external_agents": [],
             "model_inputs": {
                 "ChannelMixOptimizationAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "CampaignArchitectureAgent": {
             "agent_id": "CampaignArchitectureAgent",
@@ -470,12 +539,16 @@
             "external_agents": [],
             "model_inputs": {
                 "CampaignArchitectureAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "CreativeSelectionAgent": {
             "agent_id": "CreativeSelectionAgent",
@@ -487,12 +560,21 @@
             "external_agents": [],
             "model_inputs": {
                 "CreativeSelectionAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "generate_image_from_descriptions",                
+                "invoke_specialist",
+
+                "invoke_specialist_with_RAG",
+                "retrieve_knowledge_base_results_tool",
+                "file_read",
+                "lookup_events"
+            ]
         },
         "TimingStrategyAgent": {
             "agent_id": "TimingStrategyAgent",
@@ -504,12 +586,16 @@
             "external_agents": [],
             "model_inputs": {
                 "TimingStrategyAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "FormatStrategyOptimizerAgent": {
             "agent_id": "FormatStrategyOptimizerAgent",
@@ -521,12 +607,16 @@
             "external_agents": [],
             "model_inputs": {
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.95
                 }
-            }
+            },
+            "agent_tools": [
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AgencyAgent": {
             "agent_id": "AgencyAgent",
@@ -534,8 +624,15 @@
             "agent_display_name": "Agency Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Orchestrator agent managing advertising campaigns, coordinating between advertisers, publishers, signal providers, identity services, verification vendors, and measurement partners",
-            "tool_agent_names": [],
-            "external_agents": ["AdvertiserAgent", "PublisherAgent", "SignalAgent", "VerificationAgent", "MeasurementAgent", "IdentityAgent"],
+            "tool_agent_names": [
+                "AdvertiserAgent",
+                "PublisherAgent",
+                "SignalAgent",
+                "VerificationAgent",
+                "MeasurementAgent",
+                "IdentityAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "agency_id": "agy_omni_001",
                 "agency_name": "Omnicom Media Group"
@@ -547,7 +644,17 @@
                     "temperature": 0.3,
                     "top_p": 0.9
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "get_products",
+                "create_media_buy",
+                "get_media_buy_delivery",
+                "get_signals",
+                "activate_signal",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         },
         "AdvertiserAgent": {
             "agent_id": "AdvertiserAgent",
@@ -555,8 +662,12 @@
             "agent_display_name": "Advertiser Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Principal agent representing advertiser interests, initiating campaigns, approving strategies, and ensuring brand standards",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "MeasurementAgent",
+                "VerificationAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "advertiser_id": "adv_cpg_001",
                 "advertiser_name": "Acme Consumer Goods",
@@ -567,10 +678,28 @@
                 "AdvertiserAgent": {
                     "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 12000,
-                    "temperature": 0.3,
-                    "top_p": 0.9
+                    "temperature": 0.3
+                },
+                "MeasurementAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                },
+                "AgencyAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 8000,
+                    "temperature": 0.3
+                },
+                "VerificationAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "lookup_events"
+            ]
         },
         "PublisherAgent": {
             "agent_id": "PublisherAgent",
@@ -578,8 +707,12 @@
             "agent_display_name": "Publisher Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Sales agent representing publisher inventory, responding to discovery requests, negotiating media buys, and managing campaign delivery",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "VerificationAgent",
+                "SignalAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "publisher_id": "pub_espn_001",
                 "publisher_name": "ESPN"
@@ -590,8 +723,25 @@
                     "max_tokens": 12000,
                     "temperature": 0.3,
                     "top_p": 0.9
+                },
+                "SignalAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                },
+                "VerificationAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "get_products",
+                "create_media_buy",
+                "get_media_buy_delivery",
+                "lookup_events"
+            ]
         },
         "SignalAgent": {
             "agent_id": "SignalAgent",
@@ -599,20 +749,30 @@
             "agent_display_name": "Signal Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Data provider agent offering audience signals, contextual signals, and data segments for campaign targeting",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "IdentityAgent",
+                "PublisherAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "provider_id": "sig_lr_001",
                 "provider_name": "LiveRamp"
             },
             "model_inputs": {
                 "SignalAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.9
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "get_signals",
+                "activate_signal",
+                "lookup_events"
+            ]
         },
         "VerificationAgent": {
             "agent_id": "VerificationAgent",
@@ -620,20 +780,30 @@
             "agent_display_name": "Verification Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Quality assurance agent providing brand safety verification, fraud detection, viewability measurement, and attention metrics",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "IdentityAgent",
+                "MeasurementAgent",
+                "AdvertiserAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "provider_id": "ver_dv_001",
                 "provider_name": "DoubleVerify"
             },
             "model_inputs": {
                 "VerificationAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.9
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "verify_brand_safety",
+                "lookup_events"
+            ]
         },
         "MeasurementAgent": {
             "agent_id": "MeasurementAgent",
@@ -641,20 +811,30 @@
             "agent_display_name": "Measurement Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Measurement partner agent providing brand lift studies, attribution analysis, foot traffic measurement, and sales lift studies",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "VerificationAgent",
+                "IdentityAgent",
+                "AdvertiserAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "provider_id": "meas_lucid_001",
                 "provider_name": "Lucid"
             },
             "model_inputs": {
                 "MeasurementAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.9
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "configure_brand_lift_study",
+                "lookup_events"
+            ]
         },
         "IdentityAgent": {
             "agent_id": "IdentityAgent",
@@ -662,20 +842,64 @@
             "agent_display_name": "Identity Agent",
             "team_name": "Agentic Advertising Ecosystem",
             "agent_description": "Identity infrastructure agent providing cross-device resolution, privacy-compliant tokens, and reach estimation",
-            "tool_agent_names": [],
-            "external_agents": ["AgencyAgent"],
+            "tool_agent_names": [
+                "AgencyAgent",
+                "SignalAgent",
+                "MeasurementAgent"
+            ],
+            "external_agents": [],
             "injectable_values": {
                 "provider_id": "id_lr_001",
                 "provider_name": "LiveRamp Identity"
             },
             "model_inputs": {
                 "IdentityAgent": {
-                    "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                     "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.9
                 }
-            }
+            },
+            "agent_tools": [
+                "invoke_specialist",
+                "resolve_audience_reach",
+                "lookup_events"
+            ]
+        },
+        "TTDOptimizationAgent": {
+            "agent_id": "TTDOptimizationAgent",
+            "agent_name": "TTDOptimizationAgent",
+            "agent_display_name": "TTD Campaign Optimization Agent",
+            "team_name": "Programmatic Trading",
+            "agent_description": "Kokai Co-Pilot agent specialized in optimizing programmatic advertising campaigns on The Trade Desk (TTD) platform, automating bidding strategy optimization, outcomes reporting, and measurement analysis using REDS data feeds",
+            "tool_agent_names": [],
+            "external_agents": [],
+            "injectable_values": {
+                "partner_id": "prt_acme_media_001",
+                "partner_name": "Acme Media Partners"
+            },
+            "model_inputs": {
+                "TTDOptimizationAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 64000,
+                    "temperature": 0.3,
+                    "top_p": 0.9
+                }
+            },
+            "agent_tools": [
+                "ttd_query_impressions",
+                "ttd_query_clicks",
+                "ttd_query_conversions",
+                "ttd_query_video_events",
+                "ttd_query_viewability",
+                "ttd_get_campaign_settings",
+                "ttd_get_adgroup_settings",
+                "ttd_update_bid_factors",
+                "ttd_reallocate_budget",
+                "ttd_generate_report",
+                "retrieve_knowledge_base_results_tool",
+                "lookup_events"
+            ]
         }
     }
 }

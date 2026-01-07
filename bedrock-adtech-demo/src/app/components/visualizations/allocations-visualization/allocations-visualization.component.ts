@@ -103,6 +103,7 @@ import { VisualizationCacheService } from '../../../services/visualization-cache
 })
 export class AllocationsVisualizationComponent implements OnChanges {
   @Input() channelAllocations: any;
+  @Input() compactMode: boolean = false;
 
   // Processed data cache
   private processedData: any = null;

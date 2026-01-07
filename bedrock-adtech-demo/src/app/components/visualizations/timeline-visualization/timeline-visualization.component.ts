@@ -218,6 +218,7 @@ export interface TimelineData {
 })
 export class TimelineVisualizationComponent {
   @Input() timelineData!: TimelineData;
+  @Input() compactMode: boolean = false;
 
   // TrackBy functions
   trackByIndex = (index: number): number => {

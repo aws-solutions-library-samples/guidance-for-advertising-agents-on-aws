@@ -1,0 +1,20 @@
+{
+  "agent_name": "PublisherAgent",
+  "agent_description": "Sales agent representing publisher inventory, responding to discovery requests, negotiating media buys, and managing campaign delivery. Provides access to advertising inventory through AdCP protocols.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/publisheragent",
+  "skills": [
+    "inventory_management",
+    "product_discovery",
+    "media_buy_processing",
+    "delivery_reporting",
+    "rate_negotiation"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "supplier"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "agentName": "PublisherAgent",
+  "agentId": "publisher-agent",
+  "templateId": "adcp_get_products-visualization",
+  "usage": "Display publisher's AdCP product inventory from get_products MCP tool calls",
+  "dataMapping": {
+    "visualizationType": "adcp_get_products",
+    "templateId": "adcp_get_products-visualization",
+    "title": "Publisher Inventory Catalog",
+    "subtitle": "Available advertising products and inventory",
+    "products": [
+      {
+        "product_id": "Unique product identifier (e.g., prod_espn_ctv_001)",
+        "product_name": "Product display name",
+        "publisher_name": "Publisher name (e.g., ESPN, Fox Sports)",
+        "property_name": "Property name (e.g., ESPN+, Hulu)",
+        "channel": "Channel type: 'ctv', 'online_video', 'display', 'audio', 'dooh'",
+        "cpm_usd": "CPM price in USD (number)",
+        "min_spend_usd": "Minimum spend requirement in USD (number)",
+        "estimated_daily_impressions": "Estimated daily impressions (number)",
+        "estimated_daily_reach": "Estimated daily unique reach (number)",
+        "brand_safety_tier": "Brand safety tier: 'tier_1', 'tier_2', 'tier_3'",
+        "audience_composition": "Audience composition string (e.g., 'male_25_54:0.68,sports_enthusiasts:0.92')",
+        "format_types": "Array of supported formats (e.g., ['video_standard_30s', 'video_standard_15s'])",
+        "geo_available": "Array of available geographies (e.g., ['US', 'CA', 'MX'])"
+      }
+    ],
+    "total_found": "Total number of products found (number)",
+    "brief_received": "The natural language brief that was sent to get_products",
+    "filters_applied": {
+      "channels": "Array of channel filters applied",
+      "brand_safety_tier": "Brand safety tier filter",
+      "geo_required": "Geographic requirements",
+      "budget_range": "Budget range filter"
+    },
+    "message": "Summary message about the results"
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_get_products-visualization",
+    "products": [
+      {
+        "product_id": "prod_espn_ctv_001",
+        "product_name": "Premium Sports CTV - Live Events",
+        "publisher_name": "ESPN",
+        "property_name": "ESPN+",
+        "channel": "ctv",
+        "cpm_usd": 42.5,
+        "min_spend_usd": 10000.0,
+        "estimated_daily_impressions": 2500000,
+        "estimated_daily_reach": 850000,
+        "brand_safety_tier": "tier_1",
+        "audience_composition": "male_25_54:0.68,sports_enthusiasts:0.92,hhi_100k_plus:0.45",
+        "format_types": ["video_standard_30s", "video_standard_15s"],
+        "geo_available": ["US", "CA", "MX"]
+      },
+      {
+        "product_id": "prod_espn_ctv_002",
+        "product_name": "Sports Highlights CTV",
+        "publisher_name": "ESPN",
+        "property_name": "ESPN App",
+        "channel": "ctv",
+        "cpm_usd": 28.0,
+        "min_spend_usd": 5000.0,
+        "estimated_daily_impressions": 1800000,
+        "estimated_daily_reach": 620000,
+        "brand_safety_tier": "tier_1",
+        "audience_composition": "male_25_54:0.62,sports_enthusiasts:0.88,hhi_75k_plus:0.52",
+        "format_types": ["video_standard_30s", "video_standard_15s", "video_standard_6s"],
+        "geo_available": ["US", "CA"]
+      }
+    ],
+    "total_found": 8,
+    "brief_received": "CTV inventory for sports advertisers",
+    "filters_applied": {
+      "channels": ["ctv"],
+      "brand_safety_tier": "tier_1"
+    },
+    "message": "Found 8 products in ESPN inventory catalog"
+  }
+}

@@ -6155,3 +6155,55 @@ essions Panel Styles - Matching Scenarios Panel Design */
         }
     }
 }
+
+
+// Companion Panel Layout Adjustments
+// When companion panel is visible, adjust chat area to prevent overlap
+.chat-section.companion-panel-visible {
+    .chat-messages {
+        padding-right: 420px; // Account for companion panel width + margin
+        
+        @media (max-width: 1400px) {
+            padding-right: 380px;
+        }
+        
+        @media (max-width: 1200px) {
+            padding-right: 360px;
+        }
+        
+        @media (max-width: 768px) {
+            padding-right: 8px; // Reset on mobile where panel is full width at bottom
+        }
+    }
+    
+    .message.agent .message-content {
+        max-width: 75%; // Slightly narrower to give more room
+        
+        @media (max-width: 768px) {
+            max-width: 90%;
+        }
+    }
+}
+
+// Visualization indicator on messages that have visualizations
+.message.agent.has-visualization {
+    position: relative;
+    
+    &::after {
+        content: '';
+        position: absolute;
+        right: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 40px;
+        background: linear-gradient(180deg, #6842ff 0%, #c300e0 100%);
+        border-radius: 2px;
+        opacity: 0.6;
+        transition: opacity 0.3s ease;
+    }
+    
+    &:hover::after {
+        opacity: 1;
+    }
+}

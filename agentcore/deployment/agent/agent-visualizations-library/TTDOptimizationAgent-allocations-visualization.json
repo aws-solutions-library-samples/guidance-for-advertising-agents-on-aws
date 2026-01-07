@@ -1,0 +1,35 @@
+{
+  "agentName": "TTDOptimizationAgent",
+  "agentId": "ttd-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Budget allocation and reallocation across ad groups and campaigns",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Budget Allocation Strategy",
+    "subtitle": "Performance-based budget distribution across ad groups",
+    "totalBudget": "Total campaign budget",
+    "allocations": [
+      {
+        "primaryLabel": "Ad group or campaign name",
+        "secondaryLabel": "Entity type (e.g., 'Prospecting', 'Retargeting', 'Brand Awareness')",
+        "allocationPercentage": "Budget allocation percentage",
+        "budgetAmount": "Allocated budget amount",
+        "performanceLevel": "ROAS performance level: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Allocation status: 'optimized', 'scaling', 'reducing', 'paused'",
+        "confidenceLevel": "Recommendation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Performance risk: 'low', 'medium', 'high'",
+        "currentROAS": "Current ROAS value",
+        "currentCPA": "Current CPA value",
+        "changeAmount": "Budget change amount from current",
+        "changePercent": "Budget change percentage"
+      }
+    ],
+    "summary": {
+      "totalAdGroups": "Number of ad groups",
+      "averageROAS": "Average ROAS across allocations",
+      "topPerformer": "Best performing ad group",
+      "scalingOpportunity": "Ad group with highest scaling potential"
+    }
+  }
+}

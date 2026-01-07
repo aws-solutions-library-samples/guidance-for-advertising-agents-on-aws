@@ -10,6 +10,7 @@ import { VisualizationCacheService } from '../../../services/visualization-cache
 })
 export class MetricsVisualizationComponent implements OnChanges {
   @Input() metricData: any;
+  @Input() compactMode: boolean = false;
 
   // Processed data cache
   private processedData: any = null;

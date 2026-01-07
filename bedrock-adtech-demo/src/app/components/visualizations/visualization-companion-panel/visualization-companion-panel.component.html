@@ -1,0 +1,200 @@
+<!-- Visualization Companion Panel - Glassmorphic Floating Design -->
+<div 
+  *ngIf="shouldRender()" 
+  class="companion-panel"
+  [class.entering]="animationState === 'entering'"
+  [class.visible]="animationState === 'visible'"
+  [class.exiting]="animationState === 'exiting'"
+  (click)="onPanelClick($event)">
+  
+  <!-- Panel Header -->
+  <div class="panel-header">
+    <div class="agent-indicator">
+      <span class="agent-dot" [style.background]="agentColor"></span>
+      <span class="agent-name" [style.color]="agentColor">{{ getAgentDisplayName() }}</span>
+    </div>
+    
+    <div class="header-actions">
+      <!-- View Mode Toggle -->
+      <button 
+        *ngIf="getVisualizationCount() > 0"
+        class="view-toggle-btn"
+        (click)="toggleViewMode()"
+        [title]="viewMode === 'summary' ? 'Expand to detail view' : 'Collapse to summary'">
+        <span class="material-icons">{{ viewMode === 'summary' ? 'unfold_more' : 'unfold_less' }}</span>
+      </button>
+      
+      <button class="close-btn" (click)="onClose()" title="Close panel">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel Content -->
+  <div class="panel-content" [class.detail-mode]="viewMode === 'detail'">
+    
+    <!-- No Data State -->
+    <div *ngIf="!hasVisualizationData()" class="no-data">
+      <span class="material-icons">analytics</span>
+      <p>No visualizations available</p>
+    </div>
+
+    <!-- Visualization Sections -->
+    <ng-container *ngIf="hasVisualizationData() && visibleMessage?.visualData as vd">
+      
+      <!-- Metrics Visualization -->
+      <div *ngIf="vd.metricData" class="viz-section" [class.expanded]="isSectionExpanded('metrics')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('metrics')" (mouseleave)="toggleSection('metrics')">
+          <span class="material-icons section-icon">analytics</span>
+          <span class="section-label">Metrics</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('metrics') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('metrics')">
+          <app-metrics-visualization 
+            [metricData]="vd.metricData"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('metrics')">
+          </app-metrics-visualization>
+        </div>
+      </div>
+
+      <!-- Allocations Visualization -->
+      <div *ngIf="vd.channelAllocations" class="viz-section" [class.expanded]="isSectionExpanded('allocations')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('allocations')" (mouseleave)="toggleSection('allocations')">
+          <span class="material-icons section-icon">pie_chart</span>
+          <span class="section-label">Allocations</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('allocations') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('allocations')">
+          <app-allocations-visualization 
+            [channelAllocations]="vd.channelAllocations"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('allocations')">
+          </app-allocations-visualization>
+        </div>
+      </div>
+
+      <!-- Segments Visualization -->
+      <div *ngIf="vd.segmentCards" class="viz-section large-viz" [class.expanded]="isSectionExpanded('segments')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('segments')" (mouseleave)="toggleSection('segments')">
+          <span class="material-icons section-icon">group</span>
+          <span class="section-label">Segments</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('segments') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('segments')">
+          <app-segments-visualization 
+            [segmentCards]="vd.segmentCards"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('segments')">
+          </app-segments-visualization>
+        </div>
+      </div>
+
+      <!-- Channel Cards Visualization -->
+      <div *ngIf="vd.channelCards" class="viz-section large-viz" [class.expanded]="isSectionExpanded('channels')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('channels')" (mouseleave)="toggleSection('channels')">
+          <span class="material-icons section-icon">campaign</span>
+          <span class="section-label">Channels</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('channels') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('channels')">
+          <app-channels-visualization 
+            [channelCards]="vd.channelCards"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('channels')">
+          </app-channels-visualization>
+        </div>
+      </div>
+
+      <!-- Creative Visualization -->
+      <div *ngIf="vd.creativeData" class="viz-section large-viz" [class.expanded]="isSectionExpanded('creative')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('creative')" (mouseleave)="toggleSection('creative')">
+          <span class="material-icons section-icon">palette</span>
+          <span class="section-label">Creative</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('creative') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('creative')">
+          <app-creative-visualization 
+            [creativeData]="vd.creativeData"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('creative')">
+          </app-creative-visualization>
+        </div>
+      </div>
+
+      <!-- Timeline Visualization -->
+      <div *ngIf="vd.timelineData" class="viz-section large-viz" [class.expanded]="isSectionExpanded('timeline')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('timeline')" (mouseleave)="toggleSection('timeline')">
+          <span class="material-icons section-icon">timeline</span>
+          <span class="section-label">Timeline</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('timeline') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('timeline')">
+          <app-timeline-visualization 
+            [timelineData]="vd.timelineData"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('timeline')">
+          </app-timeline-visualization>
+        </div>
+      </div>
+
+      <!-- Histogram Visualization -->
+      <div *ngIf="vd.histogramData" class="viz-section" [class.expanded]="isSectionExpanded('histogram')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('histogram')" (mouseleave)="toggleSection('histogram')">
+          <span class="material-icons section-icon">bar_chart</span>
+          <span class="section-label">Distribution</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('histogram') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('histogram')">
+          <app-histogram-visualization [data]="vd.histogramData"></app-histogram-visualization>
+        </div>
+      </div>
+
+      <!-- Double Histogram Visualization -->
+      <div *ngIf="vd.doubleHistogramData" class="viz-section" [class.expanded]="isSectionExpanded('doubleHistogram')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('doubleHistogram')" (mouseleave)="toggleSection('doubleHistogram')">
+          <span class="material-icons section-icon">equalizer</span>
+          <span class="section-label">Comparison</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('doubleHistogram') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('doubleHistogram')">
+          <app-double-histogram-visualization [data]="vd.doubleHistogramData"></app-double-histogram-visualization>
+        </div>
+      </div>
+
+      <!-- Bar Chart Visualization -->
+      <div *ngIf="vd.barChartData" class="viz-section" [class.expanded]="isSectionExpanded('barChart')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('barChart')" (mouseleave)="toggleSection('barChart')">
+          <span class="material-icons section-icon">insert_chart</span>
+          <span class="section-label">Performance</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('barChart') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('barChart')">
+          <app-bar-chart-visualization [data]="vd.barChartData"></app-bar-chart-visualization>
+        </div>
+      </div>
+
+      <!-- Donut Chart Visualization -->
+      <div *ngIf="vd.donutChartData" class="viz-section" [class.expanded]="isSectionExpanded('donutChart')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('donutChart')" (mouseleave)="toggleSection('donutChart')">
+          <span class="material-icons section-icon">donut_large</span>
+          <span class="section-label">Breakdown</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('donutChart') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('donutChart')">
+          <app-donut-chart-visualization [data]="vd.donutChartData"></app-donut-chart-visualization>
+        </div>
+      </div>
+
+      <!-- ADCP Inventory Visualization -->
+      <div *ngIf="vd.adcpInventoryData" class="viz-section large-viz" [class.expanded]="isSectionExpanded('adcpInventory')">
+        <div class="viz-section-header" (mouseenter)="toggleSection('adcpInventory')" (mouseleave)="toggleSection('adcpInventory')">
+          <span class="material-icons section-icon">inventory_2</span>
+          <span class="section-label">Inventory</span>
+          <span class="expand-indicator material-icons">{{ isSectionExpanded('adcpInventory') ? 'expand_less' : 'expand_more' }}</span>
+        </div>
+        <div class="viz-content" [class.summary]="viewMode === 'summary' && !isSectionExpanded('adcpInventory')">
+          <app-adcp_get_products-visualization 
+            [inventoryData]="vd.adcpInventoryData"
+            [compactMode]="viewMode === 'summary' && !isSectionExpanded('adcpInventory')">
+          </app-adcp_get_products-visualization>
+        </div>
+      </div>
+
+    </ng-container>
+  </div>
+</div>

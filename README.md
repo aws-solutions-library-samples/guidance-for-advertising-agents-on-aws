@@ -255,8 +255,8 @@ The deployment process uses a single comprehensive script that handles all infra
 3. **Phase 3**: Lambda deployment for image processing and user management
 4. **Phase 4**: Knowledge base & OpenSearch Index creation with synthetic data
 5. **Phase 5**: Knowledge base data source ingestion (sync)
-6. **Phase 6**: AgentCore container deployment
-7. **Phase 7**: AdCP MCP Gateway deployment for agent collaboration
+6. **Phase 6**: AdCP MCP Gateway deployment for agent collaboration
+7. **Phase 7**: AgentCore container deployment
 8. **Phase 8**: UI configuration generation and deployment
 
 ### Prerequisites Setup
@@ -348,8 +348,9 @@ The deployment script automatically handles:
 - **Phase 3**: Lambda deployment
 - **Phase 4**: Knowledge base & Opensearch Index creation with synthetic data
 - **Phase 5**: Knowledge base data source ingestion (sync)
-- **Phase 6**: AgentCore container deployment
-- **Phase 7**: AdCP MCP Gateway deployment for agent collaboration
+- **Phase 6**: AdCP MCP Gateway deployment for agent 
+- **Phase 7**: AgentCore container deployment
+collaboration
 - **Phase 8**: UI configuration generation and deployment
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-agnt4ad-us-east-1`. The name of the file depends on stack-prefix and region.
@@ -361,8 +362,8 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 3: Lambda deployment
 # Phase 4: Knowledge base & Opensearch Index creation with synthetic data
 # Phase 5: Knowledge base data source ingestion (sync)
-# Phase 6: AgentCore container deployment
-# Phase 7: AdCP MCP Gateway deployment for agent collaboration
+# Phase 6: AdCP MCP Gateway deployment for agent collaboration
+# Phase 7: AgentCore container deployment
 # Phase 8: UI configuration generation and deployment
 
 ./scripts/deploy-ecosystem.sh \
@@ -659,7 +660,7 @@ aws cognito-idp admin-create-user \
 ### 2. External API Integration
 
   **AdCP MCP Gateway (Ad Context Protocol):**
-  The ecosystem includes an AdCP MCP Gateway that provides standardized advertising protocol tools for agent collaboration. The gateway is automatically deployed in Phase 7 and consists of:
+  The ecosystem includes an AdCP MCP Gateway that provides standardized advertising protocol tools for agent collaboration. The gateway is automatically deployed in Phase 6 and consists of:
 
   **Gateway Components:**
   - **MCP Gateway**: Amazon Bedrock AgentCore MCP Gateway that handles authentication, routing, and protocol translation
@@ -898,7 +899,7 @@ aws cognito-idp admin-create-user \
   {
     "model_inputs": {
       "YourAgentName": {
-        "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "max_tokens": 12000,
         "temperature": 0.3,
         "top_p": 0.8

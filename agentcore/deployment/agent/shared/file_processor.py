@@ -170,7 +170,7 @@ def analyze_extracted_text(text: str, doc_type: str) -> str:
     """Analyze extracted text using Bedrock"""
     try:
         model = BedrockModel(
-            model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             max_tokens=8000,
             top_p=0.8,
             temperature=0.3,
@@ -200,7 +200,7 @@ def process_pdf_with_vision(content: bytes, filename: str) -> str:
         base64_pdf = base64.b64encode(content).decode("utf-8")
 
         model = BedrockModel(
-            model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             max_tokens=8000,
             top_p=0.8,
             temperature=0.3,

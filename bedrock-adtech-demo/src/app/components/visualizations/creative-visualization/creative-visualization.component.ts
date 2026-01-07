@@ -98,6 +98,7 @@ import { Component, Input } from '@angular/core';
 })
 export class CreativeVisualizationComponent {
   @Input() creativeData: any;
+  @Input() compactMode: boolean = false;
   processedCreativeData: any =[];
   constructor() { }
 

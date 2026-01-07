@@ -1,0 +1,20 @@
+{
+  "agent_name": "IdentityAgent",
+  "agent_description": "Identity infrastructure agent providing cross-device resolution, privacy-compliant tokens, and reach estimation. Enables unified audience measurement across devices and channels while maintaining privacy compliance.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/identityagent",
+  "skills": [
+    "cross_device_resolution",
+    "reach_estimation",
+    "identity_token_management",
+    "privacy_compliance",
+    "frequency_management"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "identity_provider"
+  }
+}

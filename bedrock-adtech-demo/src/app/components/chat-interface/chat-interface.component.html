@@ -1,6 +1,6 @@
 <!-- Active Participants Bar -->
 
-<div class="chat-section">
+<div class="chat-section" [class.companion-panel-visible]="showCompanionPanel">
 
   <div class="participants-bar">
     <div class="participants-list" *ngIf="getActiveAgentParticipants().length > 0">
@@ -132,7 +132,8 @@
       <ng-container *ngFor="let message of sortedMessages; let i = index; trackBy: trackByMessageId">
         <div *ngIf="!shouldHideMessage(message, i) && message.data?.contentType != 'tool-result'" class="message"
           [class.user]="message.sender === 'user'" [class.agent]="message.sender === 'agent'"
-          [attr.data-agent]="message.agentName">
+          [attr.data-agent]="message.agentName"
+          [attr.data-message-id]="message.id">
 
 
 
@@ -394,6 +395,17 @@
         [data]="formatted.visualData.donutChartData">
       </app-donut-chart-visualization>
 
+      <!-- ADCP Protocol Visualizations -->
+      <!-- ADCP Inventory Visualization -->
+      <app-adcp_get_products-visualization *ngIf="formatted.visualData.adcpInventoryData"
+        [inventoryData]="formatted.visualData.adcpInventoryData">
+      </app-adcp_get_products-visualization>
+
+      <!-- Presentation Visualization -->
+      <app-presentation-visualization *ngIf="formatted.visualData.presentationData"
+        [presentationData]="formatted.visualData.presentationData">
+      </app-presentation-visualization>
+
       <!-- Creative Image Gallery (for backward compatibility) -->
       <div *ngIf="formatted.visualData.creativeData && (formatted.visualData.creativeData.imagery?.length > 0)"
         class="creative-gallery-section">
@@ -472,6 +484,14 @@
 <app-visualization-popover [isVisible]="showVisualizationPopover" [displayName]="popoverAgent?.name||'unknown'"
   [visualData]="popoverVisualData" (closePopover)="onCloseVisualizationPopover()">
 </app-visualization-popover>
+
+<!-- Visualization Companion Panel - Floats beside chat -->
+<app-visualization-companion-panel
+  [visibleMessage]="companionPanelMessage"
+  [agentColor]="companionPanelAgentColor"
+  [isVisible]="showCompanionPanel"
+  (closePanel)="onCloseCompanionPanel()">
+</app-visualization-companion-panel>
 
 <!-- Agent Summary Modal -->
 <app-agent-summary-modal [summaryModalState]="summaryModalState" [summaryRetryCount]="summaryRetryCount"

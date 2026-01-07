@@ -121,6 +121,7 @@ import { VisualizationCacheService } from '../../../services/visualization-cache
 })
 export class ChannelsVisualizationComponent implements OnChanges {
   @Input() channelCards: any;
+  @Input() compactMode: boolean = false;
 
   // Processed data cache
   private processedData: any = null;

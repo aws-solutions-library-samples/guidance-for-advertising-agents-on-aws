@@ -2002,8 +2002,6 @@ Example format:
                             if (contentItem.reasoningContent?.reasoningText?.text) {
                               const fullReasoningText = contentItem.reasoningContent?.reasoningText?.text;
 
-                              // For AgentCore agents, each message should be treated as separate
-                              // Don't accumulate across different messages - just send the full text
                               observer.next({
                                 type: 'chunk',
                                 data: fullReasoningText,
@@ -2015,7 +2013,6 @@ Example format:
                               console.log('reasoning message', message)
                             }
 
-                            // Process tool results as separate agent responses
                             else if (contentItem.toolResult) {
                               const toolResult = contentItem.toolResult;
                               console.log('🔍 Processing toolResult:', toolResult);
@@ -2043,7 +2040,6 @@ Example format:
                                         contentPreview: toolAgentContent.substring(0, 100)
                                       });
 
-                                      // For AgentCore agents, each message should be treated as separate
                                       observer.next({
                                         type: 'chunk',
                                         data: toolAgentContent,
@@ -2053,7 +2049,8 @@ Example format:
                                         metadata: {
                                           type: 'collaborator-response',
                                           originalAgentName: toolAgentName,
-                                          toolUseId: toolResult.toolUseId
+                                          toolUseId: toolResult.toolUseId,
+                                          name:toolResult.name
                                         }
                                       });
                                       console.log('✅ AgentCore tool agent message emitted:', toolAgentDisplayName);
@@ -2065,10 +2062,11 @@ Example format:
                                         data: toolText,
                                         timestamp: new Date(),
                                         agentName: resolvedAgent.name || resolvedAgent.id,
-                                        messageType: 'streaming-chunk',
+                                        messageType: 'tool-result',
                                         metadata: {
                                           type: 'tool-result',
-                                          toolUseId: toolResult.toolUseId
+                                          toolUseId: toolResult.toolUseId,
+                                          name:toolResult.name
                                         }
                                       });
                                       console.log('✅ AgentCore tool result processed:', toolText.substring(0, 100) + '...');
@@ -2077,7 +2075,7 @@ Example format:
                                 }
                               }
                             }
-                            else if (contentItem.toolUse && (contentItem.toolUse.name == "invoke_specialist_with_RAG" && contentItem.text != "[]")) {
+                            else if (contentItem.toolUse && (contentItem.toolUse.name.startsWith("invoke_specialist") && contentItem.text != "[]")) {
 
                               const toolUse = contentItem.toolUse;
                               const toolAgentDisplayName = toolUse.input.agent_name;
@@ -2093,7 +2091,8 @@ Example format:
                                   messageType: 'supervisor-to-collaborator',
                                   metadata: {
                                     type: 'chunk',
-                                    toolUseId: toolUse.toolUseId
+                                    toolUseId: toolUse.toolUseId,
+                                    name:toolUse.name
                                   }
                                 });
 
@@ -2111,9 +2110,6 @@ Example format:
                                 console.log('⚠️ Skipping duplicate agent-message in text content');
                                 continue;
                               }
-
-                              // For AgentCore agents, each message should be treated as separate
-                              // Don't accumulate across different messages - just send the full text
 
                               observer.next({
                                 type: 'chunk',

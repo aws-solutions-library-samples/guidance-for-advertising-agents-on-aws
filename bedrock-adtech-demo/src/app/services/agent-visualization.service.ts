@@ -40,6 +40,11 @@ export class AgentVisualizationService {
       donutChartData?: any;
       timelineData?: any;
       decisionTreeData?: any;
+      // ADCP-specific visualizations
+      adcpInventoryData?: any;      // get_products results
+      adcpMediaBuyData?: any;       // create_media_buy results
+      adcpDeliveryData?: any;       // get_media_buy_delivery results
+      adcpSignalsData?: any;        // get_signals results
     }
   ): void {
     // Only update if there's actual visualization data
@@ -53,7 +58,11 @@ export class AgentVisualizationService {
       visualData.barChartData ||
       visualData.donutChartData ||
       visualData.timelineData ||
-      visualData.decisionTreeData;
+      visualData.decisionTreeData ||
+      visualData.adcpInventoryData ||
+      visualData.adcpMediaBuyData ||
+      visualData.adcpDeliveryData ||
+      visualData.adcpSignalsData;
 
     if (!hasData) {
       return;

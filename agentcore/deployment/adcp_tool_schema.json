@@ -1,94 +1,640 @@
 [
   {
     "name": "get_products",
-    "description": "Get available advertising products/inventory matching criteria",
+    "description": "Discover available advertising products matching campaign criteria (AdCP Media Buy Protocol)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "channels": {"type": "array", "items": {"type": "string"}, "description": "Filter by channels (ctv, online_video, display, etc.)"},
-        "brand_safety_tier": {"type": "string", "description": "Brand safety tier filter (tier_1, tier_2, tier_3)"},
-        "min_budget": {"type": "number", "description": "Minimum budget filter"},
-        "brief": {"type": "string", "description": "Campaign brief description"}
+        "brief": {
+          "type": "string",
+          "description": "Natural language description of campaign requirements"
+        },
+        "brand_manifest": {
+          "oneOf": [
+            {"type": "object", "description": "Inline brand manifest with brand context, assets, and product catalog"},
+            {"type": "string", "format": "uri", "description": "URL reference to a hosted brand manifest"}
+          ],
+          "description": "Brand information manifest providing brand context, assets, and product catalog"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Structured filters for product discovery",
+          "properties": {
+            "delivery_type": {
+              "type": "string",
+              "enum": ["guaranteed", "non_guaranteed"],
+              "description": "Type of inventory delivery"
+            },
+            "is_fixed_price": {
+              "type": "boolean",
+              "description": "Filter for fixed price vs auction products"
+            },
+            "format_types": {
+              "type": "array",
+              "items": {"type": "string", "enum": ["audio", "video", "display", "native", "dooh", "rich_media", "universal"]},
+              "description": "Filter by format types"
+            },
+            "channels": {
+              "type": "array",
+              "items": {"type": "string", "enum": ["display", "video", "audio", "native", "dooh", "ctv", "podcast", "retail", "social"]},
+              "description": "Filter by advertising channels"
+            },
+            "countries": {
+              "type": "array",
+              "items": {"type": "string", "pattern": "^[A-Z]{2}$"},
+              "description": "Filter by target countries using ISO 3166-1 alpha-2 codes"
+            },
+            "budget_range": {
+              "type": "object",
+              "properties": {
+                "min": {"type": "number", "minimum": 0},
+                "max": {"type": "number", "minimum": 0},
+                "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+              },
+              "required": ["currency"]
+            },
+            "start_date": {
+              "type": "string",
+              "format": "date",
+              "description": "Campaign start date (YYYY-MM-DD)"
+            },
+            "end_date": {
+              "type": "string",
+              "format": "date",
+              "description": "Campaign end date (YYYY-MM-DD)"
+            }
+          }
+        }
       }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "products": {
+          "type": "array",
+          "description": "Array of matching products",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": {"type": "string"},
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "publisher_properties": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "publisher_domain": {"type": "string"},
+                    "selection_type": {"type": "string", "enum": ["all", "by_id", "by_tag"]},
+                    "property_ids": {"type": "array", "items": {"type": "string"}},
+                    "property_tags": {"type": "array", "items": {"type": "string"}}
+                  },
+                  "required": ["publisher_domain", "selection_type"]
+                }
+              },
+              "format_ids": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "agent_url": {"type": "string", "format": "uri"},
+                    "id": {"type": "string"},
+                    "width": {"type": "integer"},
+                    "height": {"type": "integer"},
+                    "duration_ms": {"type": "number"}
+                  },
+                  "required": ["agent_url", "id"]
+                }
+              },
+              "delivery_type": {"type": "string", "enum": ["guaranteed", "non_guaranteed"]},
+              "pricing_options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "pricing_option_id": {"type": "string"},
+                    "pricing_model": {"type": "string"},
+                    "rate": {"type": "number"},
+                    "currency": {"type": "string"},
+                    "min_spend": {"type": "number"},
+                    "floor_price": {"type": "number"}
+                  },
+                  "required": ["pricing_option_id", "pricing_model", "currency"]
+                }
+              },
+              "estimated_exposures": {"type": "integer"},
+              "delivery_measurement": {
+                "type": "object",
+                "properties": {
+                  "provider": {"type": "string"},
+                  "notes": {"type": "string"}
+                },
+                "required": ["provider"]
+              },
+              "brief_relevance": {"type": "string"}
+            },
+            "required": ["product_id", "name", "description", "publisher_properties", "format_ids", "delivery_type", "delivery_measurement", "pricing_options"]
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {"type": "object"}
+        }
+      },
+      "required": ["products"]
     }
   },
   {
     "name": "get_signals",
-    "description": "Get available audience signals and targeting data",
+    "description": "Discover audience and contextual signals for targeting (AdCP Signals Protocol)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "signal_types": {"type": "array", "items": {"type": "string"}, "description": "Filter by signal types (audience, contextual)"},
-        "decisioning_platform": {"type": "string", "description": "Target platform (ttd, dv360, etc.)"}
-      }
+        "signal_spec": {
+          "type": "string",
+          "description": "Natural language description of the desired signals"
+        },
+        "deliver_to": {
+          "type": "object",
+          "description": "Deployment targets where signals need to be activated",
+          "properties": {
+            "deployments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string", "enum": ["platform", "agent"]},
+                  "platform": {"type": "string"},
+                  "agent_url": {"type": "string", "format": "uri"},
+                  "account": {"type": "string"}
+                },
+                "required": ["type"]
+              }
+            },
+            "countries": {
+              "type": "array",
+              "items": {"type": "string", "pattern": "^[A-Z]{2}$"}
+            }
+          },
+          "required": ["deployments", "countries"]
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "catalog_types": {
+              "type": "array",
+              "items": {"type": "string", "enum": ["marketplace", "custom", "owned"]}
+            },
+            "data_providers": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "max_cpm": {"type": "number", "minimum": 0},
+            "min_coverage_percentage": {"type": "number", "minimum": 0, "maximum": 100}
+          }
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of results to return"
+        }
+      },
+      "required": ["signal_spec", "deliver_to"]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "signal_agent_segment_id": {"type": "string"},
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "signal_type": {"type": "string", "enum": ["marketplace", "custom", "owned"]},
+              "data_provider": {"type": "string"},
+              "coverage_percentage": {"type": "number", "minimum": 0, "maximum": 100},
+              "deployments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["platform", "agent"]},
+                    "platform": {"type": "string"},
+                    "agent_url": {"type": "string"},
+                    "is_live": {"type": "boolean"},
+                    "activation_key": {"type": "object"},
+                    "estimated_activation_duration_minutes": {"type": "number"}
+                  },
+                  "required": ["type", "is_live"]
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "cpm": {"type": "number", "minimum": 0},
+                  "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+                },
+                "required": ["cpm", "currency"]
+              }
+            },
+            "required": ["signal_agent_segment_id", "name", "description", "signal_type", "data_provider", "coverage_percentage", "deployments", "pricing"]
+          }
+        },
+        "errors": {"type": "array", "items": {"type": "object"}}
+      },
+      "required": ["signals"]
     }
   },
   {
     "name": "activate_signal",
-    "description": "Activate an audience signal on a decisioning platform",
+    "description": "Activate a signal segment on deployment targets (AdCP Signals Protocol)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "signal_agent_segment_id": {"type": "string", "description": "Signal ID to activate"},
-        "decisioning_platform": {"type": "string", "description": "Target platform"}
+        "signal_agent_segment_id": {
+          "type": "string",
+          "description": "The universal identifier for the signal to activate"
+        },
+        "deployments": {
+          "type": "array",
+          "description": "Target deployment(s) for activation",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["platform", "agent"]},
+              "platform": {"type": "string", "description": "Platform identifier for DSPs (e.g., 'the-trade-desk', 'amazon-dsp')"},
+              "agent_url": {"type": "string", "format": "uri", "description": "URL identifying the deployment agent"},
+              "account": {"type": "string", "description": "Optional account identifier"}
+            },
+            "required": ["type"]
+          },
+          "minItems": 1
+        }
       },
-      "required": ["signal_agent_segment_id"]
+      "required": ["signal_agent_segment_id", "deployments"]
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Success response",
+          "properties": {
+            "deployments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {"type": "string"},
+                  "platform": {"type": "string"},
+                  "agent_url": {"type": "string"},
+                  "is_live": {"type": "boolean"},
+                  "activation_key": {"type": "object"},
+                  "deployed_at": {"type": "string", "format": "date-time"}
+                },
+                "required": ["type", "is_live"]
+              }
+            }
+          },
+          "required": ["deployments"]
+        },
+        {
+          "type": "object",
+          "description": "Error response",
+          "properties": {
+            "errors": {"type": "array", "items": {"type": "object"}, "minItems": 1}
+          },
+          "required": ["errors"]
+        }
+      ]
     }
   },
   {
     "name": "create_media_buy",
-    "description": "Create a media buy with specified packages",
+    "description": "Create a media buy with publisher packages (AdCP Media Buy Protocol)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "buyer_ref": {"type": "string", "description": "Buyer reference identifier"},
-        "packages": {"type": "array", "items": {"type": "object"}, "description": "List of packages with product_id and budget"}
+        "buyer_ref": {
+          "type": "string",
+          "description": "Buyer's reference identifier for this media buy"
+        },
+        "packages": {
+          "type": "array",
+          "description": "Array of package configurations",
+          "items": {
+            "type": "object",
+            "properties": {
+              "buyer_ref": {"type": "string", "description": "Buyer's reference identifier for this package"},
+              "product_id": {"type": "string", "description": "Product ID for this package"},
+              "budget": {"type": "number", "minimum": 0, "description": "Budget allocation for this package"},
+              "pricing_option_id": {"type": "string", "description": "ID of the selected pricing option"},
+              "bid_price": {"type": "number", "minimum": 0, "description": "Bid price for auction-based pricing"},
+              "pacing": {"type": "string", "enum": ["even", "asap", "front_loaded"]},
+              "format_ids": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "agent_url": {"type": "string"},
+                    "id": {"type": "string"}
+                  }
+                }
+              }
+            },
+            "required": ["buyer_ref", "product_id", "budget", "pricing_option_id"]
+          }
+        },
+        "brand_manifest": {
+          "oneOf": [
+            {"type": "object"},
+            {"type": "string", "format": "uri"}
+          ],
+          "description": "Brand information manifest"
+        },
+        "po_number": {
+          "type": "string",
+          "description": "Purchase order number for tracking"
+        },
+        "start_time": {
+          "oneOf": [
+            {"type": "string", "const": "asap"},
+            {"type": "string", "format": "date-time"}
+          ],
+          "description": "Campaign start time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Campaign end date/time in ISO 8601 format"
+        }
       },
-      "required": ["buyer_ref", "packages"]
+      "required": ["buyer_ref", "packages", "brand_manifest", "start_time", "end_time"]
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Success response",
+          "properties": {
+            "media_buy_id": {"type": "string"},
+            "buyer_ref": {"type": "string"},
+            "creative_deadline": {"type": "string", "format": "date-time"},
+            "packages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "package_id": {"type": "string"},
+                  "buyer_ref": {"type": "string"},
+                  "product_id": {"type": "string"},
+                  "budget": {"type": "number"},
+                  "pacing": {"type": "string"},
+                  "pricing_option_id": {"type": "string"}
+                },
+                "required": ["package_id"]
+              }
+            }
+          },
+          "required": ["media_buy_id", "buyer_ref", "packages"]
+        },
+        {
+          "type": "object",
+          "description": "Error response",
+          "properties": {
+            "errors": {"type": "array", "items": {"type": "object"}, "minItems": 1}
+          },
+          "required": ["errors"]
+        }
+      ]
     }
   },
   {
     "name": "get_media_buy_delivery",
-    "description": "Get delivery status and metrics for a media buy",
+    "description": "Get delivery metrics for media buys (AdCP Media Buy Protocol)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "media_buy_id": {"type": "string", "description": "Media buy identifier"}
+        "media_buy_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Array of publisher media buy IDs to get delivery data for"
+        },
+        "buyer_refs": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Array of buyer reference IDs to get delivery data for"
+        },
+        "status_filter": {
+          "oneOf": [
+            {"type": "string", "enum": ["pending", "active", "paused", "completed", "failed"]},
+            {"type": "array", "items": {"type": "string", "enum": ["pending", "active", "paused", "completed", "failed"]}}
+          ],
+          "description": "Filter by status"
+        },
+        "start_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Start date for reporting period (YYYY-MM-DD)"
+        },
+        "end_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "End date for reporting period (YYYY-MM-DD)"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "reporting_period": {
+          "type": "object",
+          "properties": {
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"}
+          },
+          "required": ["start", "end"]
+        },
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "aggregated_totals": {
+          "type": "object",
+          "properties": {
+            "impressions": {"type": "number"},
+            "spend": {"type": "number"},
+            "clicks": {"type": "number"},
+            "video_completions": {"type": "number"},
+            "media_buy_count": {"type": "integer"}
+          },
+          "required": ["impressions", "spend", "media_buy_count"]
+        },
+        "media_buy_deliveries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "media_buy_id": {"type": "string"},
+              "buyer_ref": {"type": "string"},
+              "status": {"type": "string", "enum": ["pending", "active", "paused", "completed", "failed", "reporting_delayed"]},
+              "pricing_model": {"type": "string"},
+              "totals": {
+                "type": "object",
+                "properties": {
+                  "impressions": {"type": "number"},
+                  "spend": {"type": "number"},
+                  "clicks": {"type": "number"},
+                  "effective_rate": {"type": "number"}
+                },
+                "required": ["spend"]
+              },
+              "by_package": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "package_id": {"type": "string"},
+                    "buyer_ref": {"type": "string"},
+                    "impressions": {"type": "number"},
+                    "spend": {"type": "number"},
+                    "pacing_index": {"type": "number"},
+                    "pricing_model": {"type": "string"},
+                    "rate": {"type": "number"},
+                    "currency": {"type": "string"},
+                    "delivery_status": {"type": "string"},
+                    "paused": {"type": "boolean"}
+                  },
+                  "required": ["package_id", "spend", "pricing_model", "rate", "currency"]
+                }
+              },
+              "daily_breakdown": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+                    "impressions": {"type": "number"},
+                    "spend": {"type": "number"}
+                  },
+                  "required": ["date", "impressions", "spend"]
+                }
+              }
+            },
+            "required": ["media_buy_id", "status", "totals", "by_package"]
+          }
+        },
+        "errors": {"type": "array", "items": {"type": "object"}}
       },
-      "required": ["media_buy_id"]
+      "required": ["reporting_period", "currency", "media_buy_deliveries"]
     }
   },
   {
     "name": "verify_brand_safety",
-    "description": "Verify brand safety for a list of properties/URLs",
+    "description": "Verify brand safety for publisher properties (MCP Verification Service)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "properties": {"type": "array", "items": {"type": "object"}, "description": "List of properties to verify"}
+        "properties": {
+          "type": "array",
+          "description": "List of properties to verify",
+          "items": {
+            "type": "object",
+            "properties": {
+              "publisher_domain": {"type": "string"},
+              "property_id": {"type": "string"}
+            },
+            "required": ["publisher_domain"]
+          }
+        },
+        "brand_safety_tier": {
+          "type": "string",
+          "enum": ["tier_1", "tier_2", "tier_3"],
+          "description": "Minimum brand safety tier required"
+        },
+        "categories_blocked": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Content categories to block"
+        }
       },
       "required": ["properties"]
     }
   },
   {
     "name": "resolve_audience_reach",
-    "description": "Resolve audience reach across channels",
+    "description": "Estimate cross-device reach for audience segments (MCP Identity Service)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "channels": {"type": "array", "items": {"type": "string"}, "description": "Channels to calculate reach for"}
-      }
+        "audience_segments": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Signal segment IDs to estimate reach for"
+        },
+        "channels": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["display", "video", "audio", "native", "dooh", "ctv", "podcast", "retail", "social"]},
+          "description": "Channels to calculate reach for"
+        },
+        "countries": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Z]{2}$"},
+          "description": "Countries to calculate reach for"
+        },
+        "identity_types": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Identity types to include in reach calculation"
+        }
+      },
+      "required": ["audience_segments"]
     }
   },
   {
     "name": "configure_brand_lift_study",
-    "description": "Configure a brand lift or measurement study",
+    "description": "Configure a brand lift or attribution measurement study (MCP Measurement Service)",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "study_name": {"type": "string", "description": "Name of the study"},
-        "study_type": {"type": "string", "description": "Type of study (brand_lift, foot_traffic, sales_lift, attribution)"},
-        "provider": {"type": "string", "description": "Measurement provider (lucid, etc.)"},
-        "metrics": {"type": "array", "items": {"type": "string"}, "description": "Metrics to measure"}
+        "study_name": {
+          "type": "string",
+          "description": "Name of the study"
+        },
+        "study_type": {
+          "type": "string",
+          "enum": ["brand_lift", "foot_traffic", "sales_lift", "attribution"],
+          "description": "Type of measurement study"
+        },
+        "campaign_id": {
+          "type": "string",
+          "description": "Associated campaign or media buy ID"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Measurement provider (e.g., lucid, dynata)"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Metrics to measure (e.g., awareness, consideration, purchase_intent)"
+        },
+        "flight_start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Study start date"
+        },
+        "flight_end": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Study end date"
+        },
+        "sample_size_target": {
+          "type": "object",
+          "properties": {
+            "control": {"type": "integer"},
+            "exposed": {"type": "integer"}
+          },
+          "description": "Target sample sizes for control and exposed groups"
+        }
       },
       "required": ["study_name", "study_type"]
     }

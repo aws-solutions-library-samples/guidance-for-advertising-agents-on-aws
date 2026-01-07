@@ -133,6 +133,7 @@ import { VisualizationCacheService } from '../../../services/visualization-cache
 })
 export class SegmentsVisualizationComponent implements OnChanges {
   @Input() segmentCards: any;
+  @Input() compactMode: boolean = false;
 
   // Processed data cache
   private processedData: any = null;

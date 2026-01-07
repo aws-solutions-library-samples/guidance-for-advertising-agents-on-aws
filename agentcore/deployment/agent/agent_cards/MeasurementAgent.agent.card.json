@@ -1,0 +1,20 @@
+{
+  "agent_name": "MeasurementAgent",
+  "agent_description": "Measurement partner agent providing brand lift studies, attribution analysis, foot traffic measurement, and sales lift studies. Enables campaign effectiveness measurement and optimization insights.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/measurementagent",
+  "skills": [
+    "brand_lift_studies",
+    "attribution_analysis",
+    "foot_traffic_measurement",
+    "sales_lift_studies",
+    "performance_reporting"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "measurement_provider"
+  }
+}

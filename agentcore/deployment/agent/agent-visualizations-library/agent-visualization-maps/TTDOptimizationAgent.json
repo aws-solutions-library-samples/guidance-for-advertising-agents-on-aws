@@ -1,0 +1,26 @@
+{
+  "agentName": "TTDOptimizationAgent",
+  "agentId": "ttd-optimization-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Campaign performance metrics including impressions, clicks, conversions, ROAS, and CPA"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget allocation and reallocation across ad groups and campaigns"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience segment performance and bid factor optimization"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Device and supply channel performance with bid optimization"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Campaign optimization timeline and performance trends"
+    }
+  ]
+}

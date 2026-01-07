@@ -3,6 +3,10 @@
   "agentId": "agency-agent",
   "templates": [
     {
+      "templateId": "adcp_get_products-visualization",
+      "usage": "AdCP product inventory from get_products calls - displays interactive product grid with pricing, reach, and audience composition"
+    },
+    {
       "templateId": "allocations-visualization",
       "usage": "Budget allocation across publishers and channels"
     },

@@ -27,7 +27,30 @@ from shared.response_model import (
     ResponseModel,
 )
 from shared.image_generator import generate_image_from_descriptions
-from shared.adcp_tools import ADCP_TOOLS, get_adcp_mcp_tools
+from shared.adcp_tools import (
+    ADCP_TOOLS, 
+    get_adcp_mcp_tools,
+    get_products,
+    get_signals,
+    activate_signal,
+    create_media_buy,
+    get_media_buy_delivery,
+    verify_brand_safety,
+    resolve_audience_reach,
+    configure_brand_lift_study,
+)
+from shared.ttd_agent_tools import (
+    query_impressions as ttd_query_impressions,
+    query_clicks as ttd_query_clicks,
+    query_conversions as ttd_query_conversions,
+    query_video_events as ttd_query_video_events,
+    query_viewability as ttd_query_viewability,
+    get_campaign_settings as ttd_get_campaign_settings,
+    get_adgroup_settings as ttd_get_adgroup_settings,
+    update_bid_factors as ttd_update_bid_factors,
+    reallocate_budget as ttd_reallocate_budget,
+    generate_report as ttd_generate_report,
+)
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
 import re
 import json
@@ -560,9 +583,11 @@ def invoke_specialist_with_RAG(
         "session_id": session_id,
         "memory_id": memory_id,
     }
+    # Tools are added in create_agent() based on agent_name - no need to add them here
     agent = create_agent(
         agent_name=agent_name, conversation_context="", is_collaborator=True
     )
+    
     result = agent(f"""{agent_prompt}""")
 
     response_wrapper = (
@@ -598,10 +623,11 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
     # Normalize actor_id to comply with validation pattern
     normalized_actor_id = agent_name.replace("_", "-")
     
-    # Create and invoke the specialist agent
+    # Tools are added in create_agent() based on agent_name - no need to add them here
     agent = create_agent(
         agent_name=agent_name, conversation_context="", is_collaborator=True
     )
+    
     result = agent(f"""{agent_prompt}""")
 
     response_wrapper = (
@@ -818,6 +844,77 @@ def retrieve_knowledge_base_results_tool(
     return result_string
 
 
+def build_tools_for_agent(agent_name: str) -> list:
+    """
+    Build the tools list for an agent based on its agent_tools configuration.
+    
+    Args:
+        agent_name: Name of the agent to build tools for
+        
+    Returns:
+        List of tool functions configured for this agent
+    """
+    # Get agent configuration
+    agent_config = get_agent_config(agent_name)
+    configured_tools = agent_config.get("agent_tools", [])
+    
+    # If no tools configured, provide sensible defaults
+    if not configured_tools:
+        configured_tools = ["retrieve_knowledge_base_results_tool", "lookup_events"]
+        logger.warning(f"⚠️ BUILD_TOOLS: No agent_tools configured for {agent_name}, using defaults")
+    
+    # Map tool names to actual tool functions
+    TOOL_REGISTRY = {
+        # Core tools
+        "lookup_events": lookup_events,
+        "retrieve_knowledge_base_results_tool": retrieve_knowledge_base_results_tool,
+        "invoke_specialist": invoke_specialist,
+        "invoke_specialist_with_RAG": invoke_specialist_with_RAG,
+        
+        # File and media tools
+        "file_read": file_read,
+        "generate_image_from_descriptions": generate_image_from_descriptions,
+        "http_request": http_request,
+        
+        # AdCP Media Buy Protocol tools
+        "get_products": get_products,
+        "create_media_buy": create_media_buy,
+        "get_media_buy_delivery": get_media_buy_delivery,
+        
+        # AdCP Signals Protocol tools
+        "get_signals": get_signals,
+        "activate_signal": activate_signal,
+        
+        # MCP Verification/Identity/Measurement tools
+        "verify_brand_safety": verify_brand_safety,
+        "resolve_audience_reach": resolve_audience_reach,
+        "configure_brand_lift_study": configure_brand_lift_study,
+        
+        # TTD Campaign Optimization tools
+        "ttd_query_impressions": ttd_query_impressions,
+        "ttd_query_clicks": ttd_query_clicks,
+        "ttd_query_conversions": ttd_query_conversions,
+        "ttd_query_video_events": ttd_query_video_events,
+        "ttd_query_viewability": ttd_query_viewability,
+        "ttd_get_campaign_settings": ttd_get_campaign_settings,
+        "ttd_get_adgroup_settings": ttd_get_adgroup_settings,
+        "ttd_update_bid_factors": ttd_update_bid_factors,
+        "ttd_reallocate_budget": ttd_reallocate_budget,
+        "ttd_generate_report": ttd_generate_report,
+    }
+    
+    tools = []
+    
+    for tool_name in configured_tools:
+        if tool_name in TOOL_REGISTRY:
+            tools.append(TOOL_REGISTRY[tool_name])
+        else:
+            logger.warning(f"⚠️ BUILD_TOOLS: Unknown tool '{tool_name}' for {agent_name}")
+    
+    logger.info(f"🔧 BUILD_TOOLS: {agent_name} configured with {len(tools)} tools: {[getattr(t, '__name__', str(t)) for t in tools]}")
+    return tools
+
+
 def create_agent(agent_name, conversation_context, is_collaborator):
     global orchestrator_instance
 
@@ -881,27 +978,8 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         viz_context += "<visualization-data type='[template-id]'>[YOUR_MAPPED_JSON_DATA]</visualization-data>\n"
         enhanced_system_prompt += viz_context
 
-    # Build tools list with A2A agent invocation
-    tools = [
-        # invoke_external_agent_with_a2a,
-        retrieve_knowledge_base_results_tool,
-        lookup_events,
-        file_read,
-        generate_image_from_descriptions,
-        invoke_specialist_with_RAG,
-        http_request,
-    ]
-    
-    # Add AdCP tools for ecosystem agents that need them
-    # These wrapper tools call the MCP gateway directly with correct prefixed tool names
-    ADCP_ENABLED_AGENTS = [
-        "AgencyAgent", "AdvertiserAgent", "PublisherAgent", 
-        "SignalAgent", "VerificationAgent", "MeasurementAgent", "IdentityAgent"
-    ]
-    if agent_name in ADCP_ENABLED_AGENTS:
-        adcp_tools = get_adcp_mcp_tools()
-        tools.extend(adcp_tools)
-        logger.info(f"🔧 CREATE_AGENT: Added {len(adcp_tools)} AdCP tools for {agent_name}")
+    # Build tools list based on agent_tools configuration
+    tools = build_tools_for_agent(agent_name)
     
     collaborator_config = get_collaborator_agent_config(
         agent_name=agent_name, orchestrator_name=orchestrator_instance.agent_name
@@ -920,7 +998,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
             actor_id=normalized_actor_id,
             session_id=orchestrator_instance.session_id,
             region_name=os.environ.get("AWS_REGION", "us-east-1"),
-            use_summarizing_fallback=True,
+            use_summarizing_fallback=False,
         )
     else:
         conversation_manager = None  # Use default behavior
@@ -1177,8 +1255,7 @@ class GenericAgent:
                     f"{agent_name}": {
                         "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
                         "max_tokens": 12000,
-                        "temperature": 0.3,
-                        "top_p": 0.8,
+                        "temperature": 0.3
                     }
                 },
             }
@@ -1190,9 +1267,8 @@ class GenericAgent:
             model_inputs = {
                 "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
                 "max_tokens": 12000,
-                "temperature": 0.3,
-                "top_p": 0.8,
-            }
+                "temperature": 0.3
+                }
 
         try:
             model = BedrockModel(
@@ -1205,8 +1281,6 @@ class GenericAgent:
             )
             if model_inputs.get("temperature"):
                 model.temperature = model_inputs.get("temperature")
-            if model_inputs.get("top_p"):
-                model.top_p = model_inputs.get("top_p")
         except Exception as e:
             logger.error(f"✗ Failed to create Bedrock model: {e}")
             import traceback
@@ -1279,23 +1353,10 @@ class GenericAgent:
             logger.error(f"✗ Failed to build system prompt: {e}")
             print(f"✗ Failed to build system prompt: {e}")
         try:
-            tools = [
-                invoke_specialist_with_RAG,
-                retrieve_knowledge_base_results_tool,
-                generate_image_from_descriptions,
-                lookup_events,
-            ]
-            
-            # Add AdCP tools for ecosystem agents that need them
-            # These wrapper tools call the MCP gateway directly with correct prefixed tool names
-            ADCP_ENABLED_AGENTS = [
-                "AgencyAgent", "AdvertiserAgent", "PublisherAgent", 
-                "SignalAgent", "VerificationAgent", "MeasurementAgent", "IdentityAgent"
-            ]
-            if agent_name in ADCP_ENABLED_AGENTS:
-                adcp_tools = get_adcp_mcp_tools()
-                tools.extend(adcp_tools)
-                logger.info(f"🔧 CREATE_ORCHESTRATOR: Added {len(adcp_tools)} AdCP tools for {agent_name}")
+            # Use build_tools_for_agent to get tools from agent_tools configuration
+            # This ensures tools are driven by global_configuration.json, not hardcoded
+            tools = build_tools_for_agent(agent_name)
+            logger.info(f"🔧 CREATE_ORCHESTRATOR: {agent_name} configured with {len(tools)} tools from config")
         except Exception as e:
             logger.error(f"✗ Failed to build tools list: {e}")
 
@@ -1416,28 +1477,10 @@ async def agent_invocation(payload, context):
     Invoke the orchestrator, unless directed otherwise
     Returns complete response chunks instead of streaming tokens
     """
-    _flush_log("=" * 60)
-    _flush_log("🚀 AGENT_INVOCATION: Entry point called")
-    _flush_log(f"🚀 AGENT_INVOCATION: Payload keys: {list(payload.keys()) if payload else 'None'}")
-    _flush_log(f"🚀 AGENT_INVOCATION: Context type: {type(context)}")
-    
-    # Log all environment variables for debugging
-    _flush_log("=" * 60)
-    _flush_log("🔍 ENVIRONMENT VARIABLES:")
-    for key, value in sorted(os.environ.items()):
-        # Mask sensitive values but show they exist
-        if any(sensitive in key.upper() for sensitive in ['SECRET', 'PASSWORD', 'TOKEN', 'KEY', 'CREDENTIAL']):
-            _flush_log(f"   {key} = ***MASKED*** (length={len(value)})")
-        else:
-            # Truncate long values for readability
-            display_value = value[:100] + '...' if len(value) > 100 else value
-            _flush_log(f"   {key} = {display_value}")
-    _flush_log("=" * 60)
     
     try:
         appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
-        _flush_log(f"🔧 AGENT_INVOCATION: APPSYNC_ENDPOINT = {appsync_endpoint[:50] if appsync_endpoint else 'None'}...")
-
+        
         # Check for APPSYNC variations
         for var_name in [
             "APPSYNC_ENDPOINT",
@@ -1455,25 +1498,20 @@ async def agent_invocation(payload, context):
         global orchestrator_instance
         global current_agent_name
         
-        _flush_log(f"🔧 AGENT_INVOCATION: Global vars accessed. current_agent_name={current_agent_name}, agent={'exists' if agent else 'None'}")
-
+        
         # Process the prompt - it can be a string or a list of content blocks
         raw_prompt = payload.get("prompt")
-        _flush_log(f"📝 AGENT_INVOCATION: raw_prompt type={type(raw_prompt)}, length={len(str(raw_prompt)) if raw_prompt else 0}")
         media = payload.get("media", {})
 
         # Parse the prompt to extract text and file attachments
         user_input = ""
         file_attachments = []
         seen_files = set()  # Track file names to avoid duplicates
-        _flush_log(f"📝 AGENT_INVOCATION: Parsing prompt...")
-
+        
         if isinstance(raw_prompt, str):
             # Simple string prompt
             user_input = raw_prompt
-            _flush_log(f"📝 AGENT_INVOCATION: Prompt is string, length={len(user_input)}")
         elif isinstance(raw_prompt, list):
-            _flush_log(f"📝 AGENT_INVOCATION: Prompt is list with {len(raw_prompt)} blocks")
             # Content blocks format (Bedrock format)
             for idx, block in enumerate(raw_prompt):
                 _flush_log(f"📝 AGENT_INVOCATION: Processing block {idx}: type={type(block)}")
@@ -1554,7 +1592,7 @@ async def agent_invocation(payload, context):
                 try:
                     saved_messages = copy.deepcopy(agent.messages) if hasattr(agent, 'messages') and agent.messages else []
                     # Trim to prevent unbounded memory growth
-                    saved_messages = trim_context_messages(saved_messages)
+                    saved_messages = trim_context_messages(saved_messages, 8)
                     agent_context_store[context_session_key][current_agent_name] = saved_messages
                     _flush_log(f"💾 CONTEXT_SAVE: Saved {len(saved_messages)} messages for {current_agent_name}")
                 except Exception as e:

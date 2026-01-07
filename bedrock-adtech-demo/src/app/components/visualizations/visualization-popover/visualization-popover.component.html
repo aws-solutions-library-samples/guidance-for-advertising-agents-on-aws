@@ -116,6 +116,16 @@
           </div>
           <app-donut-chart-visualization [data]="visualData.data"></app-donut-chart-visualization>
         </div>
+
+        <!-- ADCP Protocol Visualizations -->
+        <!-- ADCP Inventory Visualization -->
+        <div *ngIf="visualData.adcpInventoryData" class="visualization-section" [class.new-item]="isNewItem('adcpInventory')">
+          <div class="section-header">
+            <span class="section-icon material-icons">inventory_2</span>
+            <h4 class="section-title">Available Inventory</h4>
+          </div>
+          <app-adcp_get_products-visualization [inventoryData]="visualData.adcpInventoryData"></app-adcp_get_products-visualization>
+        </div>
       </div>
     </div>
 

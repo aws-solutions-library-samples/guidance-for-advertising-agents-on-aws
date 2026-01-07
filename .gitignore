@@ -124,3 +124,15 @@ agentcore/deployment/agent/my_test_results.txt
 system reference
 scripts/set_credentials_isengard_script.sh
 ProbeScan*
+agentcore/deployment/agent/agent-instructions-library/AudienceAgent.txt
+agentcore/deployment/agent/agent-instructions-library/eba
+bedrock-adtech-demo/src/app/components/visualizations/animated_decision_tree.html
+agentcore/deployment/agent/agent-instructions-library/AdstockDecayAnalysisAgent.md
+agentcore/deployment/agent/agent-instructions-library/TTDOptimizationAgent.txt
+agentcore/deployment/agent/agent-visualizations-library/eba
+*/eba
+agentcore/deployment/agent/agent-visualizations-library/TTDOptimizationAgent-timeline-visualization.json
+agentcore/deployment/agent/agent-visualizations-library/agent-visualization-maps/eba
+agentcore/deployment/eba
+agentcore/deployment/agent/shared/eba
+lambda/audience_tools_handler.py
