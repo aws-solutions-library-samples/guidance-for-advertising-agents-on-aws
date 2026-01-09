@@ -1189,7 +1189,7 @@ Example format:
   }
 
   // Enhanced method specifically for AgentCore visualization extraction
-  private extractAgentCoreVisualizations(text: string): any[] {
+  private extractAgentCoreVisualizations(text: string, toolUseId: string = ''): any[] {
     const visualizations: any[] = [];
     console.log('🔍 Extracting AgentCore visualizations from text length:', text.length);
     console.log('🔍 Text preview:', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
@@ -1263,10 +1263,10 @@ Example format:
         }
       }
 
-      // Method 3: Look for XML-wrapped visualizations
-      const xmlVisualizationRegex = /<visualization-data[^>]*type="([^"]+)"[^>]*>\s*(\{[\s\S]*?)(?:<\/visualization-data>|$)/g;
+      // Method 3: Look for XML-wrapped visualizations (supports both type and templateId attributes)
+      const xmlVisualizationRegex = /<visualization-data[^>]*(?:type|templateId|visualizationType)="([^"]+)"[^>]*>\s*(\{[\s\S]*?)(?:<\/visualization-data>|$)/g;
       while ((match = xmlVisualizationRegex.exec(text)) !== null) {
-        const visualizationType = match[1];
+        const visualizationType = match[1].replace('-visualization', '');
         const jsonContent = match[2].trim();
         try {
           const completeJson = this.extractCompleteJsonObject(jsonContent);
@@ -1284,8 +1284,12 @@ Example format:
       }
 
       // Method 4: Look for templateId patterns (fallback)
-      const templateIdRegex = /"templateId":\s*"([^"]*-visualization)"/g;
-      while ((match = templateIdRegex.exec(text)) !== null) {
+      const templateIdRegex = /["']templateId["']:\s*["']([^"']*)["']/g;
+
+      const typeRegex = /["']type["']:\s*["']([^"']*)["']/g;
+      match = templateIdRegex.exec(text) || typeRegex.exec(text);
+
+      while (match !== null) {
         const templateId = match[1];
         const visualizationType = templateId.replace('-visualization', '');
 
@@ -1300,6 +1304,8 @@ Example format:
               if (!parsed.visualizationType) {
                 parsed.visualizationType = visualizationType;
               }
+              // add toolUseId
+              parsed.toolUseId = toolUseId;
               // Check for duplicates
               const isDuplicate = visualizations.some(v =>
                 v.visualizationType === parsed.visualizationType &&
@@ -1373,13 +1379,16 @@ Example format:
     //console.log('🔍 Extracting visualizations from text:', text.substring(0, 200) + '...' + (isAgentCore ? "agent core" : ""));
 
     try {
-      // First, handle XML-wrapped visualizations (with or without closing tags)
-      const xmlVisualizationRegex = /<visualization-data[^>]*type="([^"]+)"[^>]*>\s*(\{[\s\S]*?)(?:<\/visualization-data>|$)/g;
+      // First, handle XML-wrapped visualizations (with or without closing tags, with or without attributes)
+      const xmlVisualizationRegex = /<visualization-data[^>]*>\s*(\{[\s\S]*?)(?:<\/visualization-data>|$)/g;
       let xmlMatch;
 
       while ((xmlMatch = xmlVisualizationRegex.exec(text)) !== null) {
-        const visualizationType = xmlMatch[1];
-        const jsonContent = xmlMatch[2].trim();
+        const jsonContent = xmlMatch[1].trim();
+        // get the type from the attribute on the visualization-data xml tag, which could be called "type", "templateId", "visualizationType", or "template"
+        const visualizationTypeAttrRegex = /<visualization-data[^>]*(?:type|templateId|visualizationType|template)=['"]?([^'">\s]+)['"]?[^>]*>/;
+        const attrMatch = visualizationTypeAttrRegex.exec(xmlMatch[0]);
+        let visualizationType = attrMatch ? attrMatch[1].replace('-visualization', '') : null;
 
         try {
           // Find the end of the JSON object by counting braces
@@ -1404,9 +1413,14 @@ Example format:
           const completeJson = jsonEnd > 0 ? jsonContent.substring(0, jsonEnd) : jsonContent;
           const parsed = JSON.parse(completeJson);
 
-          // Ensure visualizationType is set
+          // Get visualizationType from JSON content (templateId or visualizationType field)
+          if (!visualizationType)
+            visualizationType = parsed.visualizationType || parsed.templateId?.replace('-visualization', '') || 'unknown';
           if (!parsed.visualizationType) {
             parsed.visualizationType = visualizationType;
+            parsed.type = visualizationType;
+            parsed.templateId = visualizationType;
+            parsed.template = visualizationType;
           }
 
           console.log('✅ Found XML-wrapped visualization:', visualizationType, parsed);
@@ -1492,43 +1506,6 @@ Example format:
           }
         }
       }
-
-      // Fallback: search for visualization patterns with regex
-      const visualizationRegex = /"visualizationType":\s*"([^"]+)"/g;
-      let match;
-
-      while ((match = visualizationRegex.exec(text)) !== null) {
-        const visualizationType = match[1];
-        const visualization = this.extractVisualizationFromText(text, visualizationType);
-
-        if (visualization && !visualizations.some(v =>
-          v.visualizationType === visualization.visualizationType &&
-          JSON.stringify(v) === JSON.stringify(visualization)
-        )) {
-          visualizations.push(visualization);
-        }
-      }
-
-      // Also search for templateId patterns with -visualization suffix
-      const templateIdRegex = /"templateId":\s*"([^"]+)-visualization"/g;
-      let templateMatch;
-
-      while ((templateMatch = templateIdRegex.exec(text)) !== null) {
-        const visualizationType = templateMatch[1];
-        const visualization = this.extractVisualizationFromText(text, visualizationType);
-
-        if (visualization && !visualizations.some(v =>
-          v.visualizationType === visualization.visualizationType &&
-          JSON.stringify(v) === JSON.stringify(visualization)
-        )) {
-          // Add visualizationType property if it doesn't exist
-          if (!visualization.visualizationType) {
-            visualization.visualizationType = visualizationType;
-          }
-          visualizations.push(visualization);
-        }
-      }
-
     } catch (error) {
       //console.warn('Error extracting visualizations from text:', error);
     }
@@ -2050,26 +2027,57 @@ Example format:
                                           type: 'collaborator-response',
                                           originalAgentName: toolAgentName,
                                           toolUseId: toolResult.toolUseId,
-                                          name:toolResult.name
+                                          name: toolResult.name
                                         }
                                       });
                                       console.log('✅ AgentCore tool agent message emitted:', toolAgentDisplayName);
                                     } else {
                                       console.log('⚠️ No agent-message wrapper found in tool result');
                                       // Regular tool result without agent wrapper
-                                      observer.next({
-                                        type: 'chunk',
-                                        data: toolText,
-                                        timestamp: new Date(),
-                                        agentName: resolvedAgent.name || resolvedAgent.id,
-                                        messageType: 'tool-result',
-                                        metadata: {
-                                          type: 'tool-result',
-                                          toolUseId: toolResult.toolUseId,
-                                          name:toolResult.name
-                                        }
-                                      });
+
                                       console.log('✅ AgentCore tool result processed:', toolText.substring(0, 100) + '...');
+                                      try {
+                                        const agentCoreVisualizations = this.extractAllVisualizationsFromText(toolText);
+                                        console.log('🔍 Found AgentCore visualizations:', agentCoreVisualizations.length);
+
+                                        for (const visualization of agentCoreVisualizations) {
+                                          if (visualization && visualization.visualizationType) {
+                                            const messageType = `${visualization.visualizationType}-visualization`;
+                                            const visualContent = visualization;
+                                            this.addToRecentEvents(sessionId, messageType, visualContent);
+                                            observer.next({
+                                              type: 'chunk',
+                                              data: JSON.stringify(visualization),
+                                              timestamp: new Date(),
+                                              agentName: resolvedAgent.name || resolvedAgent.id,
+                                              messageType: "visualization-data",
+                                              metadata: {
+                                                type: 'visualization-data',
+                                                toolUseId: toolResult.toolUseId,
+                                                name: toolResult.name
+                                              }
+                                            });
+
+                                          }
+                                          else {
+                                            observer.next({
+                                              type: 'chunk',
+                                              data: toolText,
+                                              timestamp: new Date(),
+                                              agentName: resolvedAgent.name || resolvedAgent.id,
+                                              messageType: 'tool-result',
+                                              metadata: {
+                                                type: 'tool-result',
+                                                toolUseId: toolResult.toolUseId,
+                                                name: toolResult.name
+                                              }
+                                            });
+                                          }
+                                        }
+                                      }
+                                      catch (ex) {
+                                        console.log('could not extract visualizations from the final response')
+                                      }
                                     }
                                   }
                                 }
@@ -2092,7 +2100,7 @@ Example format:
                                   metadata: {
                                     type: 'chunk',
                                     toolUseId: toolUse.toolUseId,
-                                    name:toolUse.name
+                                    name: toolUse.name
                                   }
                                 });
 
@@ -2140,7 +2148,7 @@ Example format:
                             metadata: { type: 'final-response' }
                           });
                           try {
-                            const agentCoreVisualizations = this.extractAgentCoreVisualizations(text);
+                            const agentCoreVisualizations = this.extractAllVisualizationsFromText(text);
                             console.log('🔍 Found AgentCore visualizations:', agentCoreVisualizations.length);
 
                             for (const visualization of agentCoreVisualizations) {
@@ -2459,6 +2467,139 @@ Example format:
 
   getAppSyncEvents(): Observable<StreamEvent> {
     return this.appSyncEvents$.asObservable();
+  }
+
+  /**
+   * Retrieve memory records for a session to generate a summary
+   * Uses the AgentCore SDK to fetch conversation history
+   */
+  async retrieveSessionMemory(sessionId: string, searchQuery: string = 'summarize the conversation'): Promise<{
+    summary: string;
+    topics: string[];
+    messageCount: number;
+    records: any[];
+  }> {
+    try {
+      // Ensure client is set up
+      if (!this.clientInitialized || !this.agentCoreClient) {
+        await this.setupBedrockClient();
+      }
+
+      if (!this.agentCoreClient) {
+        throw new Error('AgentCore client not initialized');
+      }
+
+      const memoryId = this.memoryRecordId || this.awsConfig.getMemoryRecordId();
+      if (!memoryId) {
+        throw new Error('Memory ID not configured');
+      }
+
+      // Use ListMemoryRecordsCommand to retrieve session memory
+      const command = new ListMemoryRecordsCommand({
+        memoryId: memoryId,
+        namespace: sessionId,
+        maxResults: 50
+      });
+
+      const response = await this.agentCoreClient.send(command);
+      const records = response.memoryRecordSummaries || [];
+
+      if (records.length === 0) {
+        return {
+          summary: 'No conversation history found for this session.',
+          topics: [],
+          messageCount: 0,
+          records: []
+        };
+      }
+
+      // Extract topics and generate summary from memory records
+      const topics = this.extractTopicsFromRecords(records);
+      const summary = this.generateSummaryFromRecords(records);
+
+      return {
+        summary,
+        topics,
+        messageCount: records.length,
+        records
+      };
+    } catch (error: any) {
+      console.error('Error retrieving session memory:', error);
+
+      // Return a graceful fallback
+      return {
+        summary: 'Unable to retrieve session summary. The conversation history may not be available.',
+        topics: [],
+        messageCount: 0,
+        records: []
+      };
+    }
+  }
+
+  /**
+   * Extract topics from memory records
+   */
+  private extractTopicsFromRecords(records: any[]): string[] {
+    const topicSet = new Set<string>();
+
+    records.forEach(record => {
+      // Extract topics from record content or metadata
+      if (record.content) {
+        // Look for common advertising/campaign related keywords
+        const content = typeof record.content === 'string' ? record.content : JSON.stringify(record.content);
+        const keywords = [
+          'campaign', 'budget', 'targeting', 'audience', 'creative',
+          'optimization', 'performance', 'metrics', 'ROI', 'conversion',
+          'impression', 'click', 'CTR', 'CPM', 'inventory', 'publisher',
+          'advertiser', 'media', 'channel', 'segment', 'bidding'
+        ];
+
+        keywords.forEach(keyword => {
+          if (content.toLowerCase().includes(keyword.toLowerCase())) {
+            topicSet.add(keyword.charAt(0).toUpperCase() + keyword.slice(1));
+          }
+        });
+      }
+    });
+
+    return Array.from(topicSet).slice(0, 6); // Limit to 6 topics
+  }
+
+  /**
+   * Generate a summary from memory records
+   */
+  private generateSummaryFromRecords(records: any[]): string {
+    if (records.length === 0) {
+      return 'No conversation history available.';
+    }
+
+    // Get the most recent records for summary
+    const recentRecords = records.slice(0, 5);
+
+    // Try to extract meaningful content from records
+    const contentParts: string[] = [];
+
+    recentRecords.forEach(record => {
+      if (record.content) {
+        const content = typeof record.content === 'string' ? record.content : '';
+        if (content.length > 0 && content.length < 200) {
+          contentParts.push(content);
+        }
+      }
+    });
+
+    if (contentParts.length > 0) {
+      return `Your previous session included ${records.length} interaction${records.length > 1 ? 's' : ''}. Recent topics: ${contentParts.slice(0, 2).join('; ')}...`;
+    }
+
+    return `Your previous session included ${records.length} interaction${records.length > 1 ? 's' : ''} with the advertising agents.`;
+  }
+
+  /**
+   * Get the memory ID for the current stack
+   */
+  getMemoryId(): string | null {
+    return this.memoryRecordId || this.awsConfig.getMemoryRecordId() || null;
   }
 
 }

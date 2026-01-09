@@ -30,6 +30,7 @@ import { DemoModalComponent } from './components/demo-modal/demo-modal.component
 import { ContextPanelComponent } from './components/context-panel/context-panel.component';
 import { AgentSummaryModalComponent } from './components/agent-summary-modal/agent-summary-modal.component';
 import { VisibilitySettingsModalComponent } from './components/visibility-settings-modal/visibility-settings-modal.component';
+import { SessionPromptModalComponent } from './components/session-prompt-modal/session-prompt-modal.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -62,7 +63,8 @@ import { AppComponent } from './app.component';
     DemoModalComponent,
     ContextPanelComponent,
     AgentSummaryModalComponent,
-    VisibilitySettingsModalComponent
+    VisibilitySettingsModalComponent,
+    SessionPromptModalComponent
   ],
   imports: [
     BrowserModule,

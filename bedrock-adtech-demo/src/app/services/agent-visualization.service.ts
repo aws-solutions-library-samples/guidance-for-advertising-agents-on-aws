@@ -150,6 +150,7 @@ export class AgentVisualizationService {
     if (visualData.donutChartData) count++;
     if (visualData.timelineData) count++;
     if (visualData.decisionTreeData) count++;
+    if (visualData.adcpInventoryData) count++;
 
     return count;
   }

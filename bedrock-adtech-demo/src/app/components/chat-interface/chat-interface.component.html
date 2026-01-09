@@ -180,7 +180,7 @@
                 </p>
               </div>
               <!-- Regular agent messages -->
-              <ng-container *ngIf="!message.data?.isWelcomeMessage &&  !isVisualizationChunk(message?.data?.messageType)">
+              <ng-container *ngIf="!message.data?.isWelcomeMessage">
                 <ng-container *ngTemplateOutlet="agentMessageTemplate; context: { message: message }"></ng-container>
               </ng-container>
             </div>
@@ -435,7 +435,7 @@
     <div class="modal-content">
       <div class="agent-options">
         <div class="agent-option" *ngFor="let agent of availableAgents"
-          [class.selected]="selectedAgentForMessage?.agentType === agent.agent?.agentType"
+          [class.selected]="selectedAgentForMessage?.agentType === agent.agentType"
           (click)="selectAgentOption(agent.agent)">
           <div (click)="selectAgentOption(agent.agent)" class="agent-option-header">
             <span class="material-icons agent-icon" [style.color]="agent.color">

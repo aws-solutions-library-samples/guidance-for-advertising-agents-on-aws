@@ -336,6 +336,11 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
     }
   }
+
+  .products-grid{
+        grid-template-columns: repeat(1, minmax(0, 300px)) !important;
+
+  }
   
   // Timeline compact adjustments
   .timeline-container {

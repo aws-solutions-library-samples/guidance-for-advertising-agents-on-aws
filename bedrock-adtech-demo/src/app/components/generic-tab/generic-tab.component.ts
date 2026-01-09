@@ -2,12 +2,13 @@ import { Component, Input, OnInit, OnDestroy, AfterViewInit, ViewChildren, ViewC
 import { BedrockService } from '../../services/bedrock.service';
 import { AwsConfigService } from '../../services/aws-config.service';
 import { AgentConfigService } from '../../services/agent-config.service';
-import { SessionManagerService } from '../../services/session-manager.service';
+import { SessionManagerService, SessionInfo } from '../../services/session-manager.service';
 import { DemoTrackingService } from '../../services/demo-tracking.service';
 import { TextUtils } from '../../utils/text-utils';
 import { Publisher, Content } from '../../models/advertising';
 import { ChatInterfaceComponent } from '../chat-interface/chat-interface.component';
 import { VisibilitySettings } from '../visibility-settings-modal/visibility-settings-modal.component';
+import { SessionSummary } from '../session-prompt-modal/session-prompt-modal.component';
 import { EnrichedAgent, TabConfiguration } from 'src/app/models/application-models';
 
 
@@ -48,6 +49,13 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     includedContextSections: ['currentCampaign', 'selectedAgent', 'userProfile'],
     hiddenAgents: []
   };
+
+  // Session Prompt Modal
+  showSessionPrompt = false;
+  currentSessionInfo: SessionInfo | null = null;
+  sessionSummary: SessionSummary | null = null;
+  isLoadingSessionSummary = false;
+  private hasCheckedSession = false;
 
   // Export state - getter to sync with chat interface
   get isExportingPdf(): boolean {
@@ -97,6 +105,7 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initializeAgentSelection();
     this.loadTabConfig(this.tabConfig);
 
+    // Session check moved to ngAfterViewInit to ensure chatInterface ViewChild is available
   }
 
   ngOnDestroy(): void {
@@ -124,6 +133,11 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
         this.adjustPositions();
       }, 50);
     });
+
+    // Check for existing session after view is initialized (chatInterface ViewChild is now available)
+    setTimeout(() => {
+      this.checkForExistingSession();
+    }, 0);
   }
 
   private loadTabConfig(tabConfig): void {
@@ -1231,5 +1245,133 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
       this.showAgentSelector = false;
       this.showPreferencesSelector = false;
     }
+  }
+
+  /**
+   * Check for existing session on tab load and prompt user
+   */
+  private async checkForExistingSession(): Promise<void> {
+    // Only check once per tab load
+    if (this.hasCheckedSession) return;
+    this.hasCheckedSession = true;
+
+    try {
+      const loginId = this.currentUser?.signInDetails?.loginId;
+      const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
+      
+      // Get existing sessions for this tab
+      const sessions = this.sessionManager.getTabSessions(loginId, customerName, this.tabId);
+      
+      if (sessions.length > 0) {
+        // Found existing session(s) - get the most recent one
+        const mostRecentSession = sessions[0];
+        
+        // Check if session has any activity (more than just creation)
+        if (mostRecentSession.messageCount && mostRecentSession.messageCount > 0) {
+          this.currentSessionInfo = mostRecentSession;
+          
+          // Load session summary from memory
+          await this.loadSessionSummary(mostRecentSession.sessionId);
+          
+          // Show the prompt modal
+          this.showSessionPrompt = true;
+          return; // Wait for user decision before creating session
+        }
+      }
+      
+      // No existing session with messages - create a new one
+      if (this.chatInterface) {
+        this.chatInterface.createNewSession();
+      }
+    } catch (error) {
+      console.error('Error checking for existing session:', error);
+      // On error, create a new session to ensure the chat works
+      if (this.chatInterface) {
+        this.chatInterface.createNewSession();
+      }
+    }
+  }
+
+  /**
+   * Load session summary from AgentCore memory
+   */
+  private async loadSessionSummary(sessionId: string): Promise<void> {
+    this.isLoadingSessionSummary = true;
+    this.sessionSummary = null;
+
+    try {
+      const memoryResult = await this.bedrockService.retrieveSessionMemory(
+        sessionId,
+        'summarize the conversation topics and key points'
+      );
+
+      this.sessionSummary = {
+        sessionId: sessionId,
+        startTime: this.currentSessionInfo?.createdAt || new Date(),
+        lastActivity: this.currentSessionInfo?.lastUsed || new Date(),
+        messageCount: memoryResult.messageCount || this.currentSessionInfo?.messageCount || 0,
+        summary: memoryResult.summary,
+        topics: memoryResult.topics,
+        isLoading: false
+      };
+    } catch (error) {
+      console.error('Error loading session summary:', error);
+      this.sessionSummary = {
+        sessionId: sessionId,
+        startTime: this.currentSessionInfo?.createdAt || new Date(),
+        lastActivity: this.currentSessionInfo?.lastUsed || new Date(),
+        messageCount: this.currentSessionInfo?.messageCount || 0,
+        summary: '',
+        topics: [],
+        isLoading: false,
+        error: 'Unable to load session summary'
+      };
+    } finally {
+      this.isLoadingSessionSummary = false;
+    }
+  }
+
+  /**
+   * Handle user choosing to continue the existing session
+   */
+  onContinueSession(session: SessionInfo): void {
+    // Switch to the existing session
+    const loginId = this.currentUser?.signInDetails?.loginId;
+    const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
+    
+    this.sessionManager.switchSession(session.sessionId, loginId, customerName, this.tabId);
+    this.showSessionPrompt = false;
+    
+    // Notify chat interface to load the session
+    if (this.chatInterface) {
+      this.chatInterface.switchToSession(session.sessionId);
+    }
+  }
+
+  /**
+   * Handle user choosing to start a new session
+   */
+  onStartNewSession(): void {
+    // Create a new session
+    const loginId = this.currentUser?.signInDetails?.loginId;
+    const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
+    
+    this.sessionManager.createNewSession(loginId, customerName, this.tabId);
+    this.showSessionPrompt = false;
+    
+    // Clear first message tracking for fresh context injection
+    this.clearFirstMessageTracking();
+    
+    // Notify chat interface to start fresh
+    if (this.chatInterface) {
+      this.chatInterface.createNewSession();
+    }
+  }
+
+  /**
+   * Handle session prompt modal closed
+   */
+  onSessionPromptClosed(): void {
+    this.showSessionPrompt = false;
   }
 }

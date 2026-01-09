@@ -35,10 +35,12 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
 
   @Input() scenarios: ScenarioExample[] = [];
   @Input() agentType: string = '';
+  @Input() tabId: string = '';
   @Input() currentUser: any;
   @Input() contextData: any = null; // New input for context data
   @Input() showScenariosPanel: boolean = false; // Accept scenarios panel state from parent
   @Input() showSessionsPanel: boolean = false; // Accept scenarios panel state from parent
+  @Input() autoCreateSession: boolean = true; // Control whether to auto-create session on init
   @Input() currentPublisher: Publisher | null = null;
   @Input() currentCampaign: any = null;
   @Input() currentContent: Content | null = null;
@@ -1577,6 +1579,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
         return 'Collaborator Response';
       case 'final-response':
         return 'Final Response';
+      case 'visualization-data':
+        return 'Visualization Data';
       default:
         return message.data.isThinking ? 'Analysis' : 'Response';
     }
@@ -1645,8 +1649,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     this.initializeChat();
     this.updateAvailableAgents();
 
-    // Initialize session with user info if available
-    this.initializeSession();
+    // Session initialization is now controlled by parent component via autoCreateSession input
+    // Do NOT create session here - wait for parent to determine if existing session should be continued
 
     // Initialize Intersection Observer for companion panel
     this.initializeMessageIntersectionObserver();
@@ -1744,7 +1748,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     const loginId = this.currentUser?.signInDetails?.loginId;
     const customerName = this.demoTrackingService.getCurrentCustomer();
 
-    const sessionInfo = this.sessionManager.initializeSession(loginId, customerName);
+    const sessionInfo = this.sessionManager.initializeSession(loginId, customerName,this.tabId);
     console.log(`💬 Chat Interface initialized session: ${sessionInfo.sessionId}`);
   }
 
@@ -1794,7 +1798,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                           firstProduct.cpm_usd !== undefined || firstProduct.rate !== undefined;
         const hasPublisher = firstProduct.publisher_properties !== undefined ||
                             firstProduct.publisher_name !== undefined || firstProduct.publisher_domain !== undefined;
-        return hasProductId && (hasName || hasPricing || hasPublisher);
+        return hasProductId;
+        //return hasProductId && (hasName || hasPricing || hasPublisher);
       }
     },
     {
@@ -1856,7 +1861,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
         if (detector.detect(parsed)) {
           // Add visualizationType if not present
           if (!parsed.visualizationType) {
-            parsed.visualizationType = detector.visualizationType;
+            parsed.visualizationType.indexOf(detector.visualizationType)>0||detector.visualizationType.indexOf(parsed.visualizationType)>0;
           }
           return {
             visualizationType: detector.visualizationType,
@@ -2474,7 +2479,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   }, 50);
                 }
                 break;
-
+              case 'visualization-data':
               case 'collaborator-response':
                 // Create a separate message for each collaborator response
                 {
@@ -3575,8 +3580,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           switch (parsedJson.visualizationType) {
             case 'adcp_get_products':
               if (!adcpInventoryData) {
-                adcpInventoryData = parsedJson;
-                adcpInventoryTemplateId = parsedJson.templateId;
+                adcpInventoryData = parsedJson.products;
+                adcpInventoryTemplateId = parsedJson.visualizationType;
                 cleanedText = cleanedText.replace(jsonText, '');
               }
               break;
@@ -4246,7 +4251,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     }
 
     // If complete, show thinking as context and emphasize final response
-    if (thinkingHistory.length > 0 && finalResponse) {
+    if (thinkingHistory.length > 0 || finalResponse) {
       const rawThinkingContent = `**💭 Thinking Process:**\n\n${unescapeNewlines(thinkingHistory.join('\n\n'))}`;
       const thinkingContent = this.formatAgentMentions(rawThinkingContent);
 
@@ -4254,7 +4259,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       const parsedData = this.parseVisualDataComponents(finalResponse);
 
       // If we have visual data, refresh tour steps to include dynamic steps
-      if (parsedData.metricData || parsedData.channelAllocations || parsedData.channelCards || parsedData.segmentCards || parsedData.creativeData || parsedData.timelineData || parsedData.decisionTreeData || parsedData.histogramData || parsedData.doubleHistogramData || parsedData.barChartData || parsedData.donutChartData) {
+      if (parsedData.metricData || parsedData.channelAllocations || parsedData.channelCards || parsedData.segmentCards || parsedData.creativeData || parsedData.timelineData || parsedData.decisionTreeData || parsedData.histogramData || parsedData.doubleHistogramData || parsedData.barChartData || parsedData.donutChartData || parsedData.adcpInventoryData) {
         this.safeSetTimeout(() => {
           this.tourService.refreshSteps();
         }, 500); // Wait for DOM to update
@@ -7042,10 +7047,18 @@ This analysis shows the impact of weather on audience behavior.`;
   createNewSession(): void {
     const loginId = this.currentUser?.signInDetails?.loginId;
     let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
-    const tabId = this.contextData?.tabContext?.id || this.contextData?.tabId || this.tabConfig?.id;
+    console.log("TAB DATA",this.contextData)
 
     // Clear current messages
-    this.messages = [];
+    this.messages = [{
+      id: '1',
+      text: `This playground shows various applications of Amazon Bedrock AgentCore Agents in the Advertising industry. Select one of the example scenarios or speak or type a question to get started.`,
+      sender: 'agent',
+      timestamp: new Date(),
+      data: {
+        isWelcomeMessage: true
+      }
+    }];
     this.knowledgeBaseSources.clear();
     this.traceQueries.clear();
     this.requestSources.clear();
@@ -7060,7 +7073,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.shouldScrollToBottom = true;
 
     // Create new session
-    const newSession = this.sessionManager.createNewSession(loginId, customerName, tabId);
+    const newSession = this.sessionManager.createNewSession(loginId, customerName, this.tabId);
     this.currentSessionInfo = newSession;
 
     // Refresh available sessions
@@ -7108,6 +7121,13 @@ This analysis shows the impact of weather on audience behavior.`;
 
       console.log(`🔄 Switched to session: ${session.sessionId}`);
     }
+  }
+
+  /**
+   * Load a specific session (called from parent component)
+   */
+  loadSession(session: SessionInfo): void {
+    this.switchToSession(session.sessionId);
   }
 
   deleteSession(sessionId: string, event?: Event): void {

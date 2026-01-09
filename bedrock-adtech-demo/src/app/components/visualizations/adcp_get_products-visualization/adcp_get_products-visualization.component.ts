@@ -1,5 +1,6 @@
 import { Component, Input, ChangeDetectionStrategy, ChangeDetectorRef, OnChanges, SimpleChanges } from '@angular/core';
 import { VisualizationCacheService } from '../../../services/visualization-cache.service';
+import { VisualizationComponent } from '../visualization-component';
 
 /**
  * ADCP Inventory Visualization Component
@@ -59,7 +60,7 @@ import { VisualizationCacheService } from '../../../services/visualization-cache
   styleUrls: ['./adcp_get_products-visualization.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AdcpInventoryVisualizationComponent implements OnChanges {
+export class AdcpInventoryVisualizationComponent extends VisualizationComponent implements OnChanges   {
   @Input() inventoryData: any;
   @Input() compactMode: boolean = false;
 
@@ -69,7 +70,9 @@ export class AdcpInventoryVisualizationComponent implements OnChanges {
   constructor(
     private cdr: ChangeDetectorRef,
     private cacheService: VisualizationCacheService
-  ) { }
+  ) {
+    super();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['inventoryData']) {
@@ -84,13 +87,13 @@ export class AdcpInventoryVisualizationComponent implements OnChanges {
       return;
     }
 
-    const currentHash = this.cacheService.generateKey('adcp_get_products-visualization', this.inventoryData);
+    const currentHash = this.cacheService.generateKey('adcp_get_products-visualization'+this.toolUseId, this.inventoryData);
     
     if (this.lastInputHash === currentHash && this.processedData) {
       return;
     }
 
-    const cached = this.cacheService.getCachedVisualizationData('adcp_get_products-visualization', this.inventoryData);
+    const cached = this.cacheService.getCachedVisualizationData('adcp_get_products-visualization'+this.toolUseId, this.inventoryData);
     if (cached) {
       this.processedData = cached;
       this.lastInputHash = currentHash;
@@ -114,11 +117,12 @@ export class AdcpInventoryVisualizationComponent implements OnChanges {
       errors: this.inventoryData.errors
     };
 
-    this.cacheService.cacheVisualizationData('adcp_get_products-visualization', this.inventoryData, this.processedData);
+    this.cacheService.cacheVisualizationData('adcp_get_products-visualization'+this.toolUseId, this.inventoryData, this.processedData);
     this.lastInputHash = currentHash;
   }
 
   getProducts(): any[] {
+    console.log('Inventory:',this.inventoryData)
     if (!this.inventoryData) return [];
     if (this.inventoryData.products) return this.inventoryData.products;
     if (Array.isArray(this.inventoryData)) return this.inventoryData;
