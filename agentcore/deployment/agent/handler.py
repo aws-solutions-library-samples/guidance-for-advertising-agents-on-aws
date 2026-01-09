@@ -39,26 +39,107 @@ from shared.adcp_tools import (
     resolve_audience_reach,
     configure_brand_lift_study,
 )
-from shared.ttd_agent_tools import (
-    query_impressions as ttd_query_impressions,
-    query_clicks as ttd_query_clicks,
-    query_conversions as ttd_query_conversions,
-    query_video_events as ttd_query_video_events,
-    query_viewability as ttd_query_viewability,
-    get_campaign_settings as ttd_get_campaign_settings,
-    get_adgroup_settings as ttd_get_adgroup_settings,
-    update_bid_factors as ttd_update_bid_factors,
-    reallocate_budget as ttd_reallocate_budget,
-    generate_report as ttd_generate_report,
-)
+
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
 import re
 import json
 import asyncio
 from datetime import datetime
+from functools import lru_cache
 
 # Add the parent directory to path for shared imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+# S3 Configuration for loading agent configs
+def get_s3_config_bucket():
+    """Get the S3 bucket name for agent configurations."""
+    stack_prefix = os.environ.get("STACK_PREFIX", "sim")
+    unique_id = os.environ.get("UNIQUE_ID", "")
+    if unique_id:
+        return f"{stack_prefix}-data-{unique_id}"
+    return None
+
+S3_CONFIG_PREFIX = "configs"
+
+# S3 client for loading configurations
+_s3_client = None
+
+def get_s3_client():
+    """Get or create S3 client for config loading."""
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    return _s3_client
+
+
+def load_from_s3(bucket: str, key: str) -> Optional[str]:
+    """
+    Load a file from S3 and return its contents as a string.
+    
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        
+    Returns:
+        File contents as string, or None if not found
+    """
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=bucket, Key=key)
+        content = response["Body"].read().decode("utf-8")
+        logger.info(f"✅ S3_LOAD: Loaded {key} from s3://{bucket}")
+        return content
+    except s3.exceptions.NoSuchKey:
+        logger.warning(f"⚠️ S3_LOAD: Key not found: s3://{bucket}/{key}")
+        return None
+    except Exception as e:
+        logger.error(f"❌ S3_LOAD: Failed to load s3://{bucket}/{key}: {e}")
+        return None
+
+
+def load_json_from_s3(bucket: str, key: str) -> Optional[dict]:
+    """
+    Load a JSON file from S3 and return as dict.
+    
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        
+    Returns:
+        Parsed JSON as dict, or None if not found/invalid
+    """
+    content = load_from_s3(bucket, key)
+    if content:
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ S3_LOAD: Invalid JSON in s3://{bucket}/{key}: {e}")
+            return None
+    return None
+
+
+def list_s3_objects(bucket: str, prefix: str) -> list:
+    """
+    List objects in S3 bucket with given prefix.
+    
+    Args:
+        bucket: S3 bucket name
+        prefix: S3 key prefix
+        
+    Returns:
+        List of object keys
+    """
+    try:
+        s3 = get_s3_client()
+        paginator = s3.get_paginator("list_objects_v2")
+        keys = []
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                keys.append(obj["Key"])
+        return keys
+    except Exception as e:
+        logger.error(f"❌ S3_LIST: Failed to list s3://{bucket}/{prefix}: {e}")
+        return []
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands.tools.mcp import MCPClient
@@ -111,6 +192,85 @@ os.environ["DEFAULT_TIMEOUT"] = "600"  # set request timeout to 10 minutes
 region = os.environ.get("AWS_REGION", "us-east-1")
 
 os.environ["BYPASS_TOOL_CONSENT"] = "true"
+
+# Cache for SSM parameter values to avoid repeated API calls
+_ssm_cache: Dict[str, str] = {}
+
+
+def get_memory_id_from_ssm() -> str:
+    """
+    Retrieve the AgentCore memory ID from SSM Parameter Store.
+    
+    The memory ID is stored at /{stack_prefix}/{unique_id}/agentcore_memory_id
+    during deployment by the deploy-ecosystem.sh script.
+    
+    Falls back to MEMORY_ID environment variable if SSM retrieval fails.
+    
+    Returns:
+        str: The memory ID, or empty string if not found
+    """
+    global _ssm_cache
+    
+    stack_prefix = os.environ.get("STACK_PREFIX", "")
+    unique_id = os.environ.get("UNIQUE_ID", "")
+    aws_region = os.environ.get("AWS_REGION", "us-east-1")
+    
+    # If stack_prefix or unique_id not set, fall back to environment variable
+    if not stack_prefix or not unique_id:
+        logger.warning("⚠️ MEMORY_SSM: STACK_PREFIX or UNIQUE_ID not set, falling back to MEMORY_ID env var")
+        return os.environ.get("MEMORY_ID", "")
+    
+    # Build SSM parameter name
+    ssm_param_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
+    
+    # Check cache first
+    if ssm_param_name in _ssm_cache:
+        logger.debug(f"📦 MEMORY_SSM: Using cached memory ID for {ssm_param_name}")
+        return _ssm_cache[ssm_param_name]
+    
+    try:
+        logger.info(f"📥 MEMORY_SSM: Retrieving memory ID from SSM: {ssm_param_name}")
+        
+        ssm_client = boto3.client("ssm", region_name=aws_region)
+        response = ssm_client.get_parameter(
+            Name=ssm_param_name,
+            WithDecryption=False  # Memory ID is stored as String, not SecureString
+        )
+        
+        memory_id = response["Parameter"]["Value"]
+        
+        # Cache the result
+        _ssm_cache[ssm_param_name] = memory_id
+        
+        logger.info(f"✅ MEMORY_SSM: Retrieved memory ID from SSM: {memory_id}")
+        return memory_id
+        
+    except boto3.client("ssm").exceptions.ParameterNotFound:
+        logger.warning(f"⚠️ MEMORY_SSM: Parameter not found: {ssm_param_name}")
+        logger.warning("   Falling back to MEMORY_ID environment variable")
+        return os.environ.get("MEMORY_ID", "")
+        
+    except Exception as e:
+        logger.error(f"❌ MEMORY_SSM: Failed to retrieve memory ID from SSM: {e}")
+        logger.warning("   Falling back to MEMORY_ID environment variable")
+        return os.environ.get("MEMORY_ID", "")
+
+
+def clear_ssm_cache(param_name: Optional[str] = None):
+    """
+    Clear the SSM parameter cache.
+    
+    Args:
+        param_name: Specific parameter to clear, or None to clear all
+    """
+    global _ssm_cache
+    if param_name:
+        _ssm_cache.pop(param_name, None)
+        logger.info(f"🗑️ SSM_CACHE: Cleared cache for {param_name}")
+    else:
+        _ssm_cache.clear()
+        logger.info("🗑️ SSM_CACHE: Cleared all SSM cache")
+
 
 knowledgebaseMcpClient = MCPClient(
     lambda: stdio_client(
@@ -210,30 +370,56 @@ def inject_data_into_placeholder(instructions: str, agent_name: str) -> str:
     # Get list of agent names from tool_agent_names and inject into {{AGENT_NAME_LIST}} placeholder
     if "{{AGENT_NAME_LIST}}" in instructions:
         try:
-            # Load all agent cards in the agent_cards directory and create a list of objects following the format [{agent_name:string, agent_description:string}], and replace {{AGENT_NAME_LIST}} in the instructions with a strigified version of that list.
+            # Load all agent cards from S3 or local directory and create a list of objects
+            # following the format [{agent_name:string, agent_description:string}]
             agent_name_list = []
-            agent_cards_dir = os.path.join(os.path.dirname(__file__), "agent_cards")
-            if os.path.exists(agent_cards_dir):
-                for filename in os.listdir(agent_cards_dir):
-                    if filename.endswith(".agent.card.json"):
-                        card_path = os.path.join(agent_cards_dir, filename)
+            
+            # Try S3 first
+            s3_bucket = get_s3_config_bucket()
+            if s3_bucket:
+                s3_prefix = f"{S3_CONFIG_PREFIX}/agent_cards/"
+                logger.info(f"📥 AGENT_CARDS: Attempting to load from s3://{s3_bucket}/{s3_prefix}")
+                
+                card_keys = list_s3_objects(s3_bucket, s3_prefix)
+                for key in card_keys:
+                    if key.endswith(".agent.card.json"):
                         try:
-                            with open(card_path, "r") as f:
-                                card_data = json.load(f)
-                                if (
-                                    "agent_name" in card_data
-                                    and "agent_description" in card_data
-                                ):
-                                    agent_name_list.append(
-                                        {
-                                            "agent_name": card_data["agent_name"],
-                                            "agent_description": card_data[
-                                                "agent_description"
-                                            ],
-                                        }
-                                    )
+                            card_data = load_json_from_s3(s3_bucket, key)
+                            if card_data and "agent_name" in card_data and "agent_description" in card_data:
+                                agent_name_list.append({
+                                    "agent_name": card_data["agent_name"],
+                                    "agent_description": card_data["agent_description"],
+                                })
                         except Exception as e:
-                            logger.warning(f"Failed to load agent card {filename}: {e}")
+                            logger.warning(f"Failed to load agent card {key}: {e}")
+                
+                if agent_name_list:
+                    logger.info(f"✅ AGENT_CARDS: Loaded {len(agent_name_list)} agent cards from S3")
+            
+            # Fall back to local filesystem if S3 didn't work or returned empty
+            if not agent_name_list:
+                agent_cards_dir = os.path.join(os.path.dirname(__file__), "agent_cards")
+                if os.path.exists(agent_cards_dir):
+                    for filename in os.listdir(agent_cards_dir):
+                        if filename.endswith(".agent.card.json"):
+                            card_path = os.path.join(agent_cards_dir, filename)
+                            try:
+                                with open(card_path, "r") as f:
+                                    card_data = json.load(f)
+                                    if (
+                                        "agent_name" in card_data
+                                        and "agent_description" in card_data
+                                    ):
+                                        agent_name_list.append(
+                                            {
+                                                "agent_name": card_data["agent_name"],
+                                                "agent_description": card_data[
+                                                    "agent_description"
+                                                ],
+                                            }
+                                        )
+                            except Exception as e:
+                                logger.warning(f"Failed to load agent card {filename}: {e}")
 
             if agent_name_list:
                 instructions = instructions.replace(
@@ -256,9 +442,37 @@ def inject_data_into_placeholder(instructions: str, agent_name: str) -> str:
 
 
 def load_instructions_for_agent(agent_name: str):
+    """
+    Load agent instructions from S3 bucket or fall back to local filesystem.
+    
+    Priority:
+    1. S3 bucket: {stack_prefix}-data-{unique_id}/configs/agent-instructions-library/{agent_name}.txt
+    2. Local filesystem: agent-instructions-library/{agent_name}.txt
+    
+    Args:
+        agent_name: Name of the agent to load instructions for
+        
+    Returns:
+        Instructions string with placeholders injected
+    """
+    # Try S3 first
+    s3_bucket = get_s3_config_bucket()
+    if s3_bucket:
+        s3_key = f"{S3_CONFIG_PREFIX}/agent-instructions-library/{agent_name}.txt"
+        logger.info(f"📥 INSTRUCTIONS: Attempting to load from s3://{s3_bucket}/{s3_key}")
+        
+        content = load_from_s3(s3_bucket, s3_key)
+        if content:
+            content = content.strip()
+            content = inject_data_into_placeholder(content, agent_name)
+            logger.info(f"✅ INSTRUCTIONS: Loaded {agent_name} instructions from S3 ({len(content)} chars)")
+            return content
+        else:
+            logger.info(f"⚠️ INSTRUCTIONS: Not found in S3, falling back to local filesystem")
+    
+    # Fall back to local filesystem
     try:
         base_dir = os.path.dirname(__file__)
-
         library_dir = os.path.join(base_dir, "agent-instructions-library")
 
         # Try to list the directory to see what's actually there
@@ -293,18 +507,77 @@ def load_instructions_for_agent(agent_name: str):
         return "Couldn't load instructions."
 
 
+# Cache for loaded configurations to avoid repeated S3 calls
+_config_cache: Dict[str, dict] = {}
+
+
 # Load configuration from file
-def load_configs(file_name):
+def load_configs(file_name, use_cache: bool = True):
+    """
+    Load configuration from S3 bucket or fall back to local filesystem.
+    
+    Priority:
+    1. S3 bucket: {stack_prefix}-data-{unique_id}/configs/{file_name}
+    2. Local filesystem: {file_name} (relative to handler.py)
+    
+    Args:
+        file_name: Name of the configuration file (e.g., "global_configuration.json")
+        use_cache: Whether to use cached config (default True). Set False to force reload.
+        
+    Returns:
+        Parsed JSON configuration as dict, or empty dict if not found
+    """
+    global _config_cache
+    
+    # Check cache first
+    if use_cache and file_name in _config_cache:
+        logger.debug(f"📦 CONFIG: Using cached {file_name}")
+        return _config_cache[file_name]
+    
+    # Try S3 first
+    s3_bucket = get_s3_config_bucket()
+    if s3_bucket:
+        s3_key = f"{S3_CONFIG_PREFIX}/{file_name}"
+        logger.info(f"📥 CONFIG: Attempting to load from s3://{s3_bucket}/{s3_key}")
+        
+        config_data = load_json_from_s3(s3_bucket, s3_key)
+        if config_data is not None:
+            logger.info(f"✅ CONFIG: Loaded {file_name} from S3")
+            _config_cache[file_name] = config_data
+            return config_data
+        else:
+            logger.info(f"⚠️ CONFIG: Not found in S3, falling back to local filesystem")
+    
+    # Fall back to local filesystem
     config_path = os.path.join(os.path.dirname(__file__), file_name)
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            config_data = json.load(f)
+            logger.info(f"✅ CONFIG: Loaded {file_name} from local filesystem")
+            _config_cache[file_name] = config_data
+            return config_data
     except FileNotFoundError:
-        print(f"Warning: file not found at {config_path}")
+        logger.warning(f"⚠️ CONFIG: File not found at {config_path}")
         return {}
     except json.JSONDecodeError as e:
-        print(f"Warning: Invalid JSON in {file_name}: {e}")
+        logger.error(f"❌ CONFIG: Invalid JSON in {file_name}: {e}")
         return {}
+
+
+def clear_config_cache(file_name: Optional[str] = None):
+    """
+    Clear the configuration cache.
+    
+    Args:
+        file_name: Specific file to clear from cache, or None to clear all
+    """
+    global _config_cache
+    if file_name:
+        _config_cache.pop(file_name, None)
+        logger.info(f"🗑️ CONFIG: Cleared cache for {file_name}")
+    else:
+        _config_cache.clear()
+        logger.info(f"🗑️ CONFIG: Cleared all config cache")
 
 
 # Load the config once at module level
@@ -433,6 +706,41 @@ def get_agentcore_config_from_ssm():
     except Exception as e:
         logging.error(f"[get_agentcore_config_from_ssm] Error: {e}")
         return None
+
+
+def get_memory_id_from_ssm() -> str:
+    """
+    Retrieve AgentCore memory ID from SSM Parameter Store.
+    
+    The memory ID is stored at: /{stack_prefix}/agentcore_memory_id/{unique_id}
+    
+    Falls back to MEMORY_ID environment variable if SSM retrieval fails.
+
+    Returns:
+        str: Memory ID if found, empty string otherwise
+    """
+    try:
+        stack_prefix = os.environ.get("STACK_PREFIX", "sim")
+        unique_id = os.environ.get("UNIQUE_ID", "")
+        region = os.environ.get("AWS_REGION", "us-east-1")
+
+        if not unique_id:
+            logging.warning("[get_memory_id_from_ssm] UNIQUE_ID not set, falling back to env var")
+            return os.environ.get("MEMORY_ID", "")
+
+        parameter_name = f"/{stack_prefix}/agentcore_memory_id/{unique_id}"
+        ssm = boto3.client("ssm", region_name=region)
+
+        # Retrieve parameter
+        response = ssm.get_parameter(Name=parameter_name)
+        memory_id = response["Parameter"]["Value"]
+        
+        logging.info(f"[get_memory_id_from_ssm] Retrieved memory ID from SSM: {memory_id}")
+        return memory_id
+
+    except Exception as e:
+        logging.warning(f"[get_memory_id_from_ssm] SSM retrieval failed: {e}, falling back to env var")
+        return os.environ.get("MEMORY_ID", "")
 
 
 def get_runtime_arn_and_bearer_token(agent_name: str):
@@ -890,17 +1198,6 @@ def build_tools_for_agent(agent_name: str) -> list:
         "resolve_audience_reach": resolve_audience_reach,
         "configure_brand_lift_study": configure_brand_lift_study,
         
-        # TTD Campaign Optimization tools
-        "ttd_query_impressions": ttd_query_impressions,
-        "ttd_query_clicks": ttd_query_clicks,
-        "ttd_query_conversions": ttd_query_conversions,
-        "ttd_query_video_events": ttd_query_video_events,
-        "ttd_query_viewability": ttd_query_viewability,
-        "ttd_get_campaign_settings": ttd_get_campaign_settings,
-        "ttd_get_adgroup_settings": ttd_get_adgroup_settings,
-        "ttd_update_bid_factors": ttd_update_bid_factors,
-        "ttd_reallocate_budget": ttd_reallocate_budget,
-        "ttd_generate_report": ttd_generate_report,
     }
     
     tools = []
@@ -932,7 +1229,6 @@ def create_agent(agent_name, conversation_context, is_collaborator):
             "model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0"
         ),
         max_tokens=model_inputs.get("max_tokens", 8000),
-        top_p=model_inputs.get("top_p", 0.3),
         temperature=model_inputs.get("temperature", 0.8),
         cache_prompt="default",
         cache_tools="default",
@@ -941,17 +1237,18 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     hooks = []
     if "default" in orchestrator_instance.memory_id:
         logger.info(f"🏗️ CREATE_AGENT: Skipping memory hook for default memory_id")
-    else:
-        # Normalize actor_id to comply with validation pattern
-        normalized_actor_id = agent_name.replace("_", "-")
-        hooks = [
-            ShortTermMemoryHook(
-                memory_client=client,
-                memory_id=orchestrator_instance.memory_id,
-                actor_id=normalized_actor_id,
-                session_id=orchestrator_instance.session_id,
-            )
-        ]
+    else: 
+        if not is_collaborator:
+            # Normalize actor_id to comply with validation pattern
+            normalized_actor_id = agent_name.replace("_", "-")
+            hooks = [
+                ShortTermMemoryHook(
+                    memory_client=client,
+                    memory_id=orchestrator_instance.memory_id,
+                    actor_id=normalized_actor_id,
+                    session_id=orchestrator_instance.session_id,
+                )
+            ]
 
     # Load base instructions and add conversation context if available
     base_instructions = load_instructions_for_agent(agent_name=agent_name)
@@ -1215,7 +1512,8 @@ class GenericAgent:
 
         # Initialize conversation context for memory integration
         self.conversation_context = ""
-        self.memory_id = os.environ.get("MEMORY_ID", "")
+        # Get memory ID from SSM Parameter Store (falls back to env var)
+        self.memory_id = get_memory_id_from_ssm()
         self.session_id = "new_session"
 
         # Initialize sources collection

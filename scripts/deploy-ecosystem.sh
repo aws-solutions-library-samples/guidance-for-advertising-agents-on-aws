@@ -1722,6 +1722,93 @@ deploy_lambda_functions() {
     fi
 }
 
+# Function to upload agent configuration folders to S3
+# This is a separate step so it can run independently of knowledge base deployment
+# These configs are needed by AgentCore agents for instructions and visualizations
+upload_agent_configurations() {
+    print_step "Step 8: Uploading agent configuration folders to S3..."
+    
+    local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
+    local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
+    
+    if [ -z "$data_bucket" ] || [ "$data_bucket" = "None" ]; then
+        print_error "Could not retrieve data bucket name from infrastructure stack"
+        print_error "Please ensure infrastructure deployment (Step 2) completed successfully"
+        return 1
+    fi
+    
+    print_status "Target S3 bucket: $data_bucket"
+    print_status "Uploading agent configuration folders to S3 under 'configs' folder..."
+    print_status "These configurations are used by AgentCore agents for:"
+    print_status "  - agent_cards: Agent metadata and descriptions"
+    print_status "  - agent-instructions-library: Agent system prompts and instructions"
+    print_status "  - agent-visualizations-library: Visualization templates for agent responses"
+    print_status "  - global_configuration.json: Global agent configuration file"
+    
+    local agent_config_base="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local config_folders=("agent_cards" "agent-instructions-library" "agent-visualizations-library")
+    local config_files=("global_configuration.json")
+    local upload_success=true
+    
+    # Upload directories
+    for config_folder in "${config_folders[@]}"; do
+        local source_dir="${agent_config_base}/${config_folder}"
+        
+        if [ -d "$source_dir" ]; then
+            print_status "Uploading ${config_folder} to s3://${data_bucket}/configs/${config_folder}/..."
+            
+            local sync_cmd="aws s3 sync \"$source_dir\" \"s3://$data_bucket/configs/${config_folder}/\" --region $AWS_REGION"
+            
+            if [ -n "$AWS_PROFILE" ]; then
+                sync_cmd="$sync_cmd --profile $AWS_PROFILE"
+            fi
+            
+            if eval "$sync_cmd"; then
+                print_success "✅ ${config_folder} uploaded successfully"
+            else
+                print_warning "⚠️  Failed to upload ${config_folder}"
+                upload_success=false
+            fi
+        else
+            print_warning "⚠️  Config folder not found: ${source_dir}, skipping"
+        fi
+    done
+    
+    # Upload individual files
+    for config_file in "${config_files[@]}"; do
+        local source_file="${agent_config_base}/${config_file}"
+        
+        if [ -f "$source_file" ]; then
+            print_status "Uploading ${config_file} to s3://${data_bucket}/configs/${config_file}..."
+            
+            local cp_cmd="aws s3 cp \"$source_file\" \"s3://$data_bucket/configs/${config_file}\" --region $AWS_REGION"
+            
+            if [ -n "$AWS_PROFILE" ]; then
+                cp_cmd="$cp_cmd --profile $AWS_PROFILE"
+            fi
+            
+            if eval "$cp_cmd"; then
+                print_success "✅ ${config_file} uploaded successfully"
+            else
+                print_warning "⚠️  Failed to upload ${config_file}"
+                upload_success=false
+            fi
+        else
+            print_warning "⚠️  Config file not found: ${source_file}, skipping"
+        fi
+    done
+    
+    if [ "$upload_success" = true ]; then
+        print_success "✅ All agent configuration folders uploaded to S3 successfully"
+        print_status "AgentCore agents will load these configs from: s3://${data_bucket}/configs/"
+    else
+        print_warning "⚠️  Some agent configuration folders failed to upload"
+        print_warning "AgentCore agents may fall back to local filesystem configs"
+    fi
+    
+    return 0
+}
+
 # Function to deploy knowledge bases using organized data structure
 deploy_knowledge_bases() {
     print_step "Step 4: Deploying knowledge bases with organized data sources..."
@@ -1774,7 +1861,7 @@ deploy_knowledge_bases() {
         fi
         
         print_status "Sample uploaded files:"
-        eval "$list_cmd" | head -10
+        eval "$list_cmd" 2>/dev/null | head -10 || true
     else
         print_error "❌ Failed to upload synthetic data files"
         exit 1
@@ -2308,6 +2395,9 @@ except:
             if [ -n "$memory_record_id" ]; then
                 print_status "💾 Memory record ID saved: $memory_record_id"
                 print_status "📄 Memory record file: $memory_record_file"
+                
+                # Store memory ID in SSM Parameter Store for runtime retrieval
+                store_agentcore_memory_id_in_ssm "$memory_record_id"
             else
                 print_warning "⚠️  Could not read memory record ID from file"
             fi
@@ -2319,8 +2409,166 @@ except:
     fi
 }
 
+# Function to store AgentCore memory ID in SSM Parameter Store
+# This allows the handler to retrieve the memory ID at runtime without environment variables
+store_agentcore_memory_id_in_ssm() {
+    local memory_id="$1"
+    
+    if [ -z "$memory_id" ]; then
+        print_warning "⚠️  No memory ID provided, skipping SSM storage"
+        return 1
+    fi
+    
+    local ssm_param_name="/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id"
+    
+    print_status "Storing AgentCore memory ID in SSM Parameter Store..."
+    print_status "  Parameter: $ssm_param_name"
+    print_status "  Memory ID: $memory_id"
+    
+    # Build AWS CLI command with optional profile
+    local ssm_cmd="aws ssm put-parameter"
+    ssm_cmd="$ssm_cmd --name \"$ssm_param_name\""
+    ssm_cmd="$ssm_cmd --value \"$memory_id\""
+    ssm_cmd="$ssm_cmd --type String"
+    ssm_cmd="$ssm_cmd --overwrite"
+    ssm_cmd="$ssm_cmd --region $AWS_REGION"
+    ssm_cmd="$ssm_cmd --description \"AgentCore shared memory ID for ${STACK_PREFIX}-${UNIQUE_ID}\""
+    
+    if [ -n "$AWS_PROFILE" ]; then
+        ssm_cmd="$ssm_cmd --profile $AWS_PROFILE"
+    fi
+    
+    # Execute the command
+    if eval "$ssm_cmd" > /dev/null 2>&1; then
+        print_success "✅ AgentCore memory ID stored in SSM Parameter Store"
+        print_status "   Parameter: $ssm_param_name"
+        print_status "   Memory ID: $memory_id"
+        print_status "   Agents can retrieve this at runtime using:"
+        print_status "   aws ssm get-parameter --name \"$ssm_param_name\" --region $AWS_REGION"
+        return 0
+    else
+        print_warning "⚠️  Failed to store AgentCore memory ID in SSM Parameter Store"
+        print_warning "   Agents will fall back to MEMORY_ID environment variable"
+        return 1
+    fi
+}
+
+# Function to ensure ADCP Gateway URL is available (for resume scenarios)
+# Looks up existing gateway by name pattern and ensures SSM parameter exists
+ensure_adcp_gateway_url() {
+    print_status "Checking for existing AdCP MCP Gateway..."
+    
+    # First check if ADCP_GATEWAY_URL is already set
+    if [ -n "$ADCP_GATEWAY_URL" ]; then
+        print_status "  ✅ ADCP_GATEWAY_URL already set: $ADCP_GATEWAY_URL"
+        return 0
+    fi
+    
+    # Try to get from SSM first (fastest)
+    local ssm_param_name="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
+    local gateway_url=""
+    
+    gateway_url=$(aws_cmd ssm get-parameter \
+        --name "$ssm_param_name" \
+        --region "$AWS_REGION" \
+        --query 'Parameter.Value' \
+        --output text 2>/dev/null || echo "")
+    
+    if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
+        export ADCP_GATEWAY_URL="$gateway_url"
+        print_status "  ✅ Found gateway URL in SSM: $gateway_url"
+        return 0
+    fi
+    
+    # SSM parameter doesn't exist, try to find the gateway via AWS API
+    print_status "  SSM parameter not found, looking up gateway via AWS API..."
+    
+    local gateway_name="${STACK_PREFIX}-adcp-gateway-${UNIQUE_ID}"
+    
+    # Use AWS CLI to list gateways and find ours
+    local gateway_info
+    gateway_info=$(aws_cmd bedrock-agentcore-control list-gateways \
+        --region "$AWS_REGION" \
+        --output json 2>/dev/null || echo "{}")
+    
+    if [ -n "$gateway_info" ] && [ "$gateway_info" != "{}" ]; then
+        # Parse the gateway list to find our gateway
+        gateway_url=$(echo "$gateway_info" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    gateway_name = '${gateway_name}'
+    for gw in data.get('items', []):
+        if gw.get('name') == gateway_name:
+            print(gw.get('gatewayUrl', ''))
+            break
+except:
+    pass
+" 2>/dev/null || echo "")
+        
+        if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
+            export ADCP_GATEWAY_URL="$gateway_url"
+            print_status "  ✅ Found existing gateway: $gateway_url"
+            
+            # Store in SSM for future use
+            if aws_cmd ssm put-parameter \
+                --name "$ssm_param_name" \
+                --value "$gateway_url" \
+                --type "String" \
+                --overwrite \
+                --region "$AWS_REGION" > /dev/null 2>&1; then
+                print_status "  ✅ Stored gateway URL in SSM: $ssm_param_name"
+            fi
+            return 0
+        fi
+    fi
+    
+    # Check local tracking file as last resort
+    local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    if [ -f "$gateway_info_file" ]; then
+        gateway_url=$(cat "$gateway_info_file" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    url = data.get('gateway_result', {}).get('gateway_url') or data.get('gateway_url')
+    if url:
+        print(url)
+except:
+    # Try parsing as log output
+    import re
+    content = sys.stdin.read()
+    match = re.search(r'Gateway URL: (https://[^\s]+)', content)
+    if match:
+        print(match.group(1))
+" 2>/dev/null || echo "")
+        
+        if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
+            export ADCP_GATEWAY_URL="$gateway_url"
+            print_status "  ✅ Found gateway URL in local file: $gateway_url"
+            
+            # Store in SSM for future use
+            if aws_cmd ssm put-parameter \
+                --name "$ssm_param_name" \
+                --value "$gateway_url" \
+                --type "String" \
+                --overwrite \
+                --region "$AWS_REGION" > /dev/null 2>&1; then
+                print_status "  ✅ Stored gateway URL in SSM: $ssm_param_name"
+            fi
+            return 0
+        fi
+    fi
+    
+    print_warning "  ⚠️  Could not find existing AdCP Gateway"
+    print_warning "  Agents will use fallback local tools for AdCP"
+    return 1
+}
+
 detect_and_deploy_agentcore_agents() {
     print_step "Step 7: Deploying AgentCore agents (after MCP Gateway)..."
+    
+    # Ensure ADCP Gateway URL is available (important for resume scenarios)
+    ensure_adcp_gateway_url
     
     local agentcore_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
     
@@ -2540,14 +2788,15 @@ EOF
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
         print_success "🎉 Step 7 Complete: AgentCore agents have been deployed!"
-        print_status "The following step remains:"
-        print_status "  - Step 8: Generate AWS configuration"
+        print_status "The following steps remain:"
+        print_status "  - Step 8: Upload agent configuration folders to S3"
+        print_status "  - Step 9: Generate AWS configuration"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
             print_status "Deployment paused after Step 7. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 8 (UI Config)."
+            print_status "Current progress has been saved and the script will resume from Step 8 (Agent Configs)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
@@ -2592,24 +2841,34 @@ deploy_adcp_mcp_gateway() {
     
     print_status "Executing: $deploy_cmd"
     
-    # Execute deployment
-    # Use a subshell with set +e to prevent script exit on command failure
-    local deploy_output
+    # Execute deployment - capture stdout (JSON) and stderr (logs) separately
+    local json_output_file=$(mktemp)
+    local log_output_file=$(mktemp)
     local deploy_exit_code
+    
     set +e  # Temporarily disable exit on error
-    deploy_output=$(eval "$deploy_cmd" 2>&1)
+    eval "$deploy_cmd" > "$json_output_file" 2> "$log_output_file"
     deploy_exit_code=$?
     set -e  # Re-enable exit on error
+    
+    # Show logs
+    if [ -s "$log_output_file" ]; then
+        cat "$log_output_file"
+    fi
+    
+    local json_output=$(cat "$json_output_file")
+    local log_output=$(cat "$log_output_file")
+    
+    # Clean up temp files
+    rm -f "$json_output_file" "$log_output_file"
     
     if [ $deploy_exit_code -eq 0 ]; then
         print_success "✅ AdCP MCP Gateway deployed successfully"
         
-        # Extract gateway URL from output if available
-        local gateway_url=$(echo "$deploy_output" | grep -o 'gateway_url.*' | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/' 2>/dev/null || echo "")
-        
-        # Also try to extract from JSON format
-        if [ -z "$gateway_url" ] || [ "$gateway_url" = "null" ]; then
-            gateway_url=$(echo "$deploy_output" | $PYTHON_CMD -c "
+        # Extract gateway URL from JSON output for export to AgentCore deployment
+        local gateway_url=""
+        if [ -n "$json_output" ]; then
+            gateway_url=$(echo "$json_output" | $PYTHON_CMD -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -2624,20 +2883,11 @@ except:
         if [ -n "$gateway_url" ] && [ "$gateway_url" != "null" ]; then
             print_status "  Gateway URL: $gateway_url"
             
-            # CRITICAL: Export gateway URL for AgentCore deployment to use
+            # Export gateway URL for AgentCore deployment to use
             export ADCP_GATEWAY_URL="$gateway_url"
             print_status "  ✅ Exported ADCP_GATEWAY_URL for AgentCore agents"
             
-            # Store gateway URL in SSM for agents to use at runtime
-            local ssm_param_name="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
-            if aws_cmd ssm put-parameter \
-                --name "$ssm_param_name" \
-                --value "$gateway_url" \
-                --type "String" \
-                --overwrite \
-                --region "$AWS_REGION" > /dev/null 2>&1; then
-                print_status "  Gateway URL stored in SSM: $ssm_param_name"
-            fi
+            # Note: SSM storage is now handled by the Python script directly
         else
             print_warning "  ⚠️  Could not extract gateway URL from deployment output"
             print_warning "  AgentCore agents will use fallback local tools"
@@ -2645,13 +2895,17 @@ except:
         
         # Save deployment output to file
         local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
-        echo "$deploy_output" > "$gateway_info_file"
+        if [ -n "$json_output" ]; then
+            echo "$json_output" > "$gateway_info_file"
+        else
+            echo "$log_output" > "$gateway_info_file"
+        fi
         print_status "  Deployment info saved to: $gateway_info_file"
         
     else
         print_warning "⚠️  AdCP MCP Gateway deployment had issues (exit code: $deploy_exit_code)"
         print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "$deploy_output"
+        echo "$log_output"
         print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         print_warning "Continuing with deployment - agents will use fallback local tools"
     fi
@@ -2661,7 +2915,7 @@ except:
 
 # Function to generate UI configuration
 generate_ui_config() {
-    print_step "Step 8: Generating UI configuration..."
+    print_step "Step 9: Generating UI configuration..."
     
     # Create assets directory
     ANGULAR_ASSETS_DIR="${PROJECT_ROOT}/bedrock-adtech-demo/src/assets"
@@ -4008,7 +4262,8 @@ confirm_deployment_steps() {
         "Phase 5: Sync data sources (start ingestion jobs)"
         "Phase 6: Deploy AdCP MCP Gateway for agent collaboration (must be before agents)"
         "Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)"
-        "Phase 8: Generate UI configuration"
+        "Phase 8: Upload agent configuration folders to S3"
+        "Phase 9: Generate UI configuration"
     )
     
     print_status "The following steps will be executed:"
@@ -4085,7 +4340,7 @@ main() {
     print_status "Configuration:"
     print_status "  Stack Prefix: $STACK_PREFIX"
     print_status "  AWS Region: $AWS_REGION"
-    print_status "  Unique id: $$UNIQUE_ID"
+    print_status "  Unique id: $UNIQUE_ID"
     print_status "  AWS Profile: ${AWS_PROFILE:-default}"
     print_status "  Clean Deployment: $CLEAN_DEPLOYMENT"
     print_status "  Image Model: ${IMAGE_GENERATION_MODEL:-amazon.nova-canvas-v1:0}"
@@ -4103,7 +4358,8 @@ main() {
     # Phase 5: Sync data sources (start ingestion jobs)
     # Phase 6: Deploy AdCP MCP Gateway for agent collaboration (BEFORE agents!)
     # Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)
-    # Phase 8: Generate UI configuration
+    # Phase 8: Upload agent configuration folders to S3
+    # Phase 9: Generate UI configuration
     
     # Pre-deployment validation
     if [ "$RESUME_AT_STEP" -le 1 ]; then
@@ -4150,7 +4406,13 @@ main() {
         detect_and_deploy_agentcore_agents
     fi
     
+    # Step 8: Upload agent configurations (after agent creation)
+    # This allows AgentCore agents to load instructions and visualizations from S3
     if [ "$RESUME_AT_STEP" -le 8 ]; then
+        upload_agent_configurations
+    fi
+    
+    if [ "$RESUME_AT_STEP" -le 9 ]; then
         generate_ui_config
     fi
     # Final summary

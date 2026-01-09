@@ -718,20 +718,106 @@ cd "${AGENTCORE_DIR}/deployment/agent"
 RUNTIME_NAME=$(echo "${FULL_AGENT_NAME}" | sed 's/-/_/g')
 print_status "Runtime name: $RUNTIME_NAME"
 
-# Check if runtime already exists
+# Check if runtime already exists - first check SSM, then fall back to AWS API
 EXISTING_RUNTIME_ID=""
-print_status "Querying existing AgentCore runtimes for: $RUNTIME_NAME"
+print_status "Checking for existing AgentCore runtime: $RUNTIME_NAME"
+
+# First, try to get runtime ID from SSM Parameter Store (faster and more reliable)
+print_status "Checking SSM Parameter Store for existing runtime..."
+SSM_AGENTCORE_PARAM="/${STACK_PREFIX}/agentcore_values/${UNIQUE_ID}"
 
 if [ -n "$AWS_PROFILE" ]; then
-    EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes --profile "$AWS_PROFILE" --region "$AGENTCORE_REGION" --query "agentRuntimes[?agentRuntimeName=='${RUNTIME_NAME}'].agentRuntimeId" --output text 2>/dev/null || echo "")
+    SSM_AGENTCORE_VALUE=$(aws ssm get-parameter --name "$SSM_AGENTCORE_PARAM" --with-decryption --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
 else
-    EXISTING_RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes --region "$AGENTCORE_REGION" --query "agentRuntimes[?agentRuntimeName=='${RUNTIME_NAME}'].agentRuntimeId" --output text 2>/dev/null || echo "")
+    SSM_AGENTCORE_VALUE=$(aws ssm get-parameter --name "$SSM_AGENTCORE_PARAM" --with-decryption --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+fi
+
+if [ -n "$SSM_AGENTCORE_VALUE" ] && [ "$SSM_AGENTCORE_VALUE" != "None" ]; then
+    print_status "✅ Found AgentCore configuration in SSM: $SSM_AGENTCORE_PARAM"
+    
+    # Parse SSM JSON to find runtime ID for this agent
+    # Also validate that the runtime ARN matches the expected stack prefix
+    EXISTING_RUNTIME_ID=$(echo "$SSM_AGENTCORE_VALUE" | python3 -c "
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+    agents = data.get('agents', [])
+    target_name = '${FULL_AGENT_NAME}'
+    stack_prefix = '${STACK_PREFIX}'
+    
+    for agent in agents:
+        if agent.get('name') == target_name:
+            runtime_arn = agent.get('runtime_arn', '')
+            if runtime_arn:
+                # Extract runtime ID from ARN: arn:aws:bedrock-agentcore:region:account:runtime/ID
+                parts = runtime_arn.split('/')
+                if len(parts) >= 2:
+                    runtime_id = parts[-1]
+                    # Validate that runtime ID starts with the correct stack prefix
+                    # Runtime names use underscores: stack_prefix_AgentName_uniqueid
+                    expected_prefix = stack_prefix.replace('-', '_') + '_'
+                    if runtime_id.startswith(expected_prefix):
+                        print(runtime_id)
+                    else:
+                        # Runtime ARN doesn't match expected stack prefix - data is stale/wrong
+                        print(f'MISMATCH: runtime {runtime_id} does not match stack prefix {stack_prefix}', file=sys.stderr)
+                    break
+except Exception as e:
+    print(f'Error parsing SSM: {e}', file=sys.stderr)
+" 2>&1)
+    
+    # Check if we got a mismatch warning
+    if echo "$EXISTING_RUNTIME_ID" | grep -q "MISMATCH"; then
+        print_warning "⚠️  SSM contains stale runtime ARN from different stack"
+        print_warning "   $EXISTING_RUNTIME_ID"
+        EXISTING_RUNTIME_ID=""
+    elif [ -n "$EXISTING_RUNTIME_ID" ] && [ "$EXISTING_RUNTIME_ID" != "None" ]; then
+        print_status "✅ Found runtime ID from SSM: $EXISTING_RUNTIME_ID"
+    else
+        print_status "Agent '$FULL_AGENT_NAME' not found in SSM configuration"
+        EXISTING_RUNTIME_ID=""
+    fi
+else
+    print_status "SSM parameter not found: $SSM_AGENTCORE_PARAM"
+fi
+
+# Fall back to AWS API query if SSM didn't have the runtime
+if [ -z "$EXISTING_RUNTIME_ID" ] || [ "$EXISTING_RUNTIME_ID" = "None" ]; then
+    print_status "Querying AWS API for existing runtime: $RUNTIME_NAME"
+    
+    # Query all runtimes and filter by exact name match
+    if [ -n "$AWS_PROFILE" ]; then
+        ALL_RUNTIMES=$(aws bedrock-agentcore-control list-agent-runtimes --profile "$AWS_PROFILE" --region "$AGENTCORE_REGION" --output json 2>/dev/null || echo "{}")
+    else
+        ALL_RUNTIMES=$(aws bedrock-agentcore-control list-agent-runtimes --region "$AGENTCORE_REGION" --output json 2>/dev/null || echo "{}")
+    fi
+    
+    # Parse and find exact match for our runtime name
+    EXISTING_RUNTIME_ID=$(echo "$ALL_RUNTIMES" | python3 -c "
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+    runtimes = data.get('agentRuntimes', [])
+    target_name = '${RUNTIME_NAME}'
+    
+    for runtime in runtimes:
+        runtime_name = runtime.get('agentRuntimeName', '')
+        if runtime_name == target_name:
+            print(runtime.get('agentRuntimeId', ''))
+            break
+except Exception as e:
+    pass
+" 2>/dev/null || echo "")
 fi
 
 # Clean up the runtime ID (remove any whitespace/newlines)
 EXISTING_RUNTIME_ID=$(echo "$EXISTING_RUNTIME_ID" | tr -d '\n\r\t ' | head -1)
 
-print_status "Search result for runtime '$RUNTIME_NAME': '$EXISTING_RUNTIME_ID'"
+print_status "Runtime lookup result for '$RUNTIME_NAME': '${EXISTING_RUNTIME_ID:-not found}'"
 
 if [ -n "$EXISTING_RUNTIME_ID" ] && [ "$EXISTING_RUNTIME_ID" != "None" ] && [ "$EXISTING_RUNTIME_ID" != "" ]; then
     print_status "Found existing AgentCore runtime: $EXISTING_RUNTIME_ID"
@@ -848,6 +934,82 @@ if [ -n "$EXISTING_RUNTIME_ID" ] && [ "$EXISTING_RUNTIME_ID" != "None" ] && [ "$
         print_status "✅ AgentCore runtime '$EXISTING_RUNTIME_ID' updated successfully!"
         print_status "Agent: $AGENT_NAME (runtime: $RUNTIME_NAME)"
         print_status "Container URI: $ECR_URI:latest"
+        
+        # Update the tracking file with the correct runtime information
+        # This ensures SSM gets the right data when store_agentcore_values.sh runs
+        print_status "Updating tracking file with runtime information..."
+        TRACKING_FILE="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
+        
+        # Get account ID for ARN construction
+        if [ -n "$AWS_PROFILE" ]; then
+            ACCOUNT_ID=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
+        else
+            ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null || echo "")
+        fi
+        
+        RUNTIME_ARN="arn:aws:bedrock-agentcore:${AGENTCORE_REGION}:${ACCOUNT_ID}:runtime/${EXISTING_RUNTIME_ID}"
+        
+        python3 << TRACKING_EOF
+import json
+import os
+from datetime import datetime
+
+tracking_file = "${TRACKING_FILE}"
+agent_name = "${FULL_AGENT_NAME}"
+runtime_id = "${EXISTING_RUNTIME_ID}"
+runtime_arn = "${RUNTIME_ARN}"
+container_uri = "${ECR_URI}:latest"
+stack_prefix = "${STACK_PREFIX}"
+unique_id = "${UNIQUE_ID}"
+
+# Load existing config or create new one
+if os.path.exists(tracking_file):
+    with open(tracking_file, 'r') as f:
+        config = json.load(f)
+else:
+    config = {
+        "deployed_agents": [],
+        "deployment_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "stack_prefix": stack_prefix,
+        "unique_id": unique_id,
+    }
+
+# Ensure deployed_agents is a list
+if "deployed_agents" not in config:
+    config["deployed_agents"] = []
+
+# Create agent runtime info
+agent_runtime_info = {
+    "name": agent_name,
+    "runtime_id": runtime_id,
+    "runtime_arn": runtime_arn,
+    "container_uri": container_uri,
+    "deployment_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "memory_config": {"memory_id": f"{stack_prefix}memory{unique_id}"},
+    "external_tools": [],
+    "runtime_name": agent_name.replace("-", "_"),
+}
+
+# Check if agent already exists in the list
+existing_agent_index = None
+for i, agent in enumerate(config["deployed_agents"]):
+    if isinstance(agent, dict) and agent.get("name") == agent_name:
+        existing_agent_index = i
+        break
+
+if existing_agent_index is not None:
+    config["deployed_agents"][existing_agent_index] = agent_runtime_info
+    print(f"Updated existing agent in tracking file: {agent_name}")
+else:
+    config["deployed_agents"].append(agent_runtime_info)
+    print(f"Added new agent to tracking file: {agent_name}")
+
+# Write updated config
+with open(tracking_file, 'w') as f:
+    json.dump(config, f, indent=2)
+
+print(f"Tracking file updated: {tracking_file}")
+TRACKING_EOF
         
         # Configure X-Ray trace segment destination for CloudWatch Logs (fixes OTLP export error)
         print_status "Configuring X-Ray trace segment destination for CloudWatch Logs..."

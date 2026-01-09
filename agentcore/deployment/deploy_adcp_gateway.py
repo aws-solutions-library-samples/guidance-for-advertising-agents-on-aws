@@ -297,6 +297,48 @@ class AdCPGatewayDeployer:
             logger.info(f"Using existing gateway invoke role: {response['Role']['Arn']}")
             return response["Role"]["Arn"]
     
+    def store_gateway_url_in_ssm(self, gateway_url: str) -> dict:
+        """
+        Store the gateway URL in SSM Parameter Store for agents to retrieve at runtime.
+        
+        This allows agents to discover the gateway URL without needing it passed as
+        an environment variable during deployment.
+        
+        Args:
+            gateway_url: The MCP gateway URL to store
+            
+        Returns:
+            dict with status and parameter_name
+        """
+        parameter_name = f"/{self.stack_prefix}/adcp_gateway/{self.unique_id}"
+        
+        try:
+            ssm_client = self._session.client('ssm', region_name=self.region)
+            
+            ssm_client.put_parameter(
+                Name=parameter_name,
+                Value=gateway_url,
+                Type='String',
+                Overwrite=True,
+                Description=f'AdCP MCP Gateway URL for {self.stack_prefix}-{self.unique_id}'
+            )
+            
+            logger.info(f"✅ Gateway URL stored in SSM: {parameter_name}")
+            return {
+                "status": "success",
+                "parameter_name": parameter_name,
+                "gateway_url": gateway_url
+            }
+            
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to store gateway URL in SSM: {e}")
+            logger.warning(f"   Agents will need ADCP_GATEWAY_URL environment variable set manually")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "parameter_name": parameter_name
+            }
+    
     def create_adcp_lambda_code(self) -> bytes:
         """
         Create Lambda deployment package with AdCP handlers.
@@ -894,6 +936,16 @@ class AdCPGatewayDeployer:
         else:
             invoke_role_arn = None
         
+        # Step 6: Store Gateway URL in SSM Parameter Store
+        if gateway_result.get("gateway_url"):
+            logger.info("=" * 60)
+            logger.info("Step 6: Storing Gateway URL in SSM Parameter Store")
+            logger.info("=" * 60)
+            ssm_result = self.store_gateway_url_in_ssm(gateway_result["gateway_url"])
+            results["ssm_result"] = ssm_result
+            if ssm_result.get("status") == "success":
+                results["ssm_parameter_name"] = ssm_result.get("parameter_name")
+        
         results["status"] = "success"
         
         # Print summary
@@ -905,6 +957,8 @@ class AdCPGatewayDeployer:
         if gateway_result.get("gateway_url"):
             logger.info(f"Gateway URL: {gateway_result['gateway_url']}")
             logger.info(f"Gateway ID: {gateway_result.get('gateway_id')}")
+            if results.get("ssm_parameter_name"):
+                logger.info(f"SSM Parameter: {results['ssm_parameter_name']}")
             if results.get("invoke_role_arn"):
                 logger.info(f"Invoke Role ARN: {results['invoke_role_arn']}")
             logger.info("")

@@ -65,13 +65,14 @@ class ShortTermMemoryHook(HookProvider):
                     for message in turn:
                         role = message["role"].lower()
                         content = message["content"]["text"]
-                        context_messages.append(f"{role.title()}: {content}")
+                        if "'toolResult'" not in content: 
+                            context_messages.append(f"{role.title()}: {content}")
 
                 context = "\n".join(context_messages)
                 logger.info(f"Context from memory: {context}")
 
                 # Add context to agent's system prompt
-                event.agent.system_prompt += f"\n\nRecent conversation history:\n{context}\n\nContinue the conversation naturally based on this context."
+                event.agent.system_prompt += f"\n\Conversation history:\n{context}\n\nContinue the conversation naturally based on this context."
 
                 logger.info(f"✅ Loaded {len(recent_turns)} recent conversation turns")
             else:
@@ -146,4 +147,6 @@ class ShortTermMemoryHook(HookProvider):
     def register_hooks(self, registry: HookRegistry) -> None:
         # Register memory hooks
         registry.add_callback(MessageAddedEvent, self.on_message_added)
-        registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)
+        # Uncomment the below when not using the AgentCoreMemoryConversationManager
+        # registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)
+        

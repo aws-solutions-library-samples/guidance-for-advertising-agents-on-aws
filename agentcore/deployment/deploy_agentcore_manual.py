@@ -380,18 +380,21 @@ class ManualAgentCoreDeployer:
 
     def gather_runtime_arns(self, stack_prefix: str, unique_id: str) -> str:
         """
-        Gather runtime ARNs that match the stack prefix and unique ID pattern
+        Gather runtime ARNs that match the stack prefix and unique ID pattern.
+        
+        Runtime names follow the pattern: {stack_prefix}_{AgentName}_{unique_id}[-suffix]
+        For example: xia_AdFabricAgent_4208ab or xia_AdFabricAgent_4208ab-ifbXlwC83R
 
         Args:
-            stack_prefix: Stack prefix (e.g., 'sim', 'demo3')
-            unique_id: Unique identifier for the stack
+            stack_prefix: Stack prefix (e.g., 'sim', 'demo3', 'xia')
+            unique_id: Unique identifier for the stack (e.g., '4208ab')
 
         Returns:
             str: Comma-separated list of runtime ARNs
         """
         try:
             logger.info(
-                f"Gathering runtime ARNs for stack: {stack_prefix}-*-{unique_id}"
+                f"Gathering runtime ARNs for stack: {stack_prefix}_*_{unique_id}"
             )
 
             # List all agent runtimes
@@ -399,23 +402,27 @@ class ManualAgentCoreDeployer:
             runtimes = response.get("agentRuntimes", [])
 
             matching_runtime_arns = []
-            expected_pattern_parts = [stack_prefix.lower(), unique_id.lower()]
+            # Runtime names use underscores: stack_prefix_AgentName_uniqueid
+            expected_prefix = f"{stack_prefix.lower()}_"
+            expected_unique_id = unique_id.lower()
 
             for runtime in runtimes:
-                runtime_name = runtime.get("agentRuntimeName", "").lower()
+                runtime_name = runtime.get("agentRuntimeName", "")
+                runtime_name_lower = runtime_name.lower()
                 runtime_arn = runtime.get("agentRuntimeArn", "")
 
                 if runtime_arn:
-                    # Check if runtime name contains both stack prefix and unique ID
-                    contains_stack = any(
-                        part in runtime_name for part in expected_pattern_parts
-                    )
-                    if contains_stack and all(
-                        part in runtime_name for part in expected_pattern_parts
-                    ):
+                    # STRICT matching: runtime name must START with stack_prefix_ 
+                    # AND contain the unique_id (which appears after the agent name)
+                    # This prevents matching "bba_AdFabricAgent_4208ab" when looking for "xia_*_4208ab"
+                    if runtime_name_lower.startswith(expected_prefix) and expected_unique_id in runtime_name_lower:
                         matching_runtime_arns.append(runtime_arn)
                         logger.info(
-                            f"Found matching runtime: {runtime.get('agentRuntimeName')} -> {runtime_arn}"
+                            f"Found matching runtime: {runtime_name} -> {runtime_arn}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Skipping runtime '{runtime_name}' - does not match pattern '{expected_prefix}*_{expected_unique_id}'"
                         )
 
             runtime_env_value = ",".join(matching_runtime_arns)
@@ -476,54 +483,6 @@ class ManualAgentCoreDeployer:
 
         except Exception as e:
             logger.error(f"Error gathering knowledge base IDs: {e}")
-            return ""
-
-    def gather_runtime_arns(self, stack_prefix: str, unique_id: str) -> str:
-        """
-        Gather runtime ARNs that match the stack prefix and unique ID pattern
-
-        Args:
-            stack_prefix: Stack prefix (e.g., 'sim', 'demo3')
-            unique_id: Unique identifier for the stack
-
-        Returns:
-            str: Comma-separated list of runtime ARNs
-        """
-        try:
-            logger.info(
-                f"Gathering runtime ARNs for stack: {stack_prefix}-*-{unique_id}"
-            )
-
-            # List all agent runtimes
-            response = self.agentcore_client.list_agent_runtimes(maxResults=100)
-            runtimes = response.get("agentRuntimes", [])
-
-            matching_runtime_arns = []
-            expected_pattern_parts = [stack_prefix.lower(), unique_id.lower()]
-
-            for runtime in runtimes:
-                runtime_name = runtime.get("agentRuntimeName", "").lower()
-                runtime_arn = runtime.get("agentRuntimeArn", "")
-
-                if runtime_arn:
-                    # Check if runtime name contains both stack prefix and unique ID
-                    contains_stack = any(
-                        part in runtime_name for part in expected_pattern_parts
-                    )
-                    if contains_stack and all(
-                        part in runtime_name for part in expected_pattern_parts
-                    ):
-                        matching_runtime_arns.append(runtime_arn)
-                        logger.info(
-                            f"Found matching runtime: {runtime.get('agentRuntimeName')} -> {runtime_arn}"
-                        )
-
-            runtime_env_value = ",".join(matching_runtime_arns)
-            logger.info(f"Runtime ARNs environment value: {runtime_env_value}")
-            return runtime_env_value
-
-        except Exception as e:
-            logger.error(f"Error gathering runtime ARNs: {e}")
             return ""
 
     def create_ecr_repository(self, repo_name: str) -> str:
@@ -899,11 +858,21 @@ class ManualAgentCoreDeployer:
         agent_name: str = None,
         unique_id: str = None,
     ) -> str:
-        """Find runtime ID by runtime name with comprehensive search"""
+        """
+        Find runtime ID by runtime name with STRICT prefix matching.
+        
+        Runtime names follow the pattern: {stack_prefix}_{AgentName}_{unique_id}[-suffix]
+        For example: xia_AdFabricAgent_4208ab or xia_AdFabricAgent_4208ab-ifbXlwC83R
+        
+        CRITICAL: This method must NOT match runtimes from different stacks.
+        For example, when looking for xia_AdFabricAgent_4208ab, it must NOT match
+        bba_AdFabricAgent_4208ab even though both contain "4208ab".
+        """
         try:
             runtimes = self.list_agent_runtimes()
 
             logger.info(f"Searching for runtime with name: '{runtime_name}'")
+            logger.info(f"Stack prefix: '{stack_prefix}', unique_id: '{unique_id}'")
             logger.info(
                 f"Available runtimes: {[r['agentRuntimeName'] for r in runtimes]}"
             )
@@ -912,18 +881,17 @@ class ManualAgentCoreDeployer:
                 logger.info("No runtimes returned from API")
                 return None
 
-            # Create comprehensive search variations
+            # STRICT MATCHING: Runtime name must START with stack_prefix_
+            # This prevents matching "bba_AdFabricAgent_4208ab" when looking for "xia_*_4208ab"
+            expected_prefix = f"{stack_prefix}_" if stack_prefix else None
+            expected_prefix_lower = expected_prefix.lower() if expected_prefix else None
+
+            # Create search variations for the runtime name
             search_variations = [
                 runtime_name,
-                runtime_name.replace("_", "-"),  # underscores to hyphens
-                runtime_name.replace("-", "_"),  # hyphens to underscores
-                runtime_name.lower(),
-                runtime_name.upper(),
-                runtime_name.replace("_", "-").lower(),
-                runtime_name.replace("-", "_").lower(),
+                runtime_name.replace("_", "-"),
+                runtime_name.replace("-", "_"),
             ]
-
-            # Remove duplicates while preserving order
             search_variations = list(dict.fromkeys(search_variations))
             logger.info(f"Searching with variations: {search_variations}")
 
@@ -932,6 +900,12 @@ class ManualAgentCoreDeployer:
                 for runtime in runtimes:
                     actual_name = runtime["agentRuntimeName"]
                     if actual_name == variation:
+                        # Verify stack prefix if provided
+                        if expected_prefix and not actual_name.startswith(expected_prefix):
+                            logger.warning(
+                                f"Skipping exact match '{actual_name}' - does not start with expected prefix '{expected_prefix}'"
+                            )
+                            continue
                         logger.info(
                             f"Found exact match for '{variation}': {runtime['agentRuntimeId']}"
                         )
@@ -942,117 +916,61 @@ class ManualAgentCoreDeployer:
                 for runtime in runtimes:
                     actual_name = runtime["agentRuntimeName"]
                     if actual_name.lower() == variation.lower():
+                        # Verify stack prefix if provided
+                        if expected_prefix_lower and not actual_name.lower().startswith(expected_prefix_lower):
+                            logger.warning(
+                                f"Skipping case-insensitive match '{actual_name}' - does not start with expected prefix '{expected_prefix}'"
+                            )
+                            continue
                         logger.info(
                             f"Found case-insensitive match for '{variation}': {runtime['agentRuntimeId']}"
                         )
                         return runtime["agentRuntimeId"]
 
-            # Try partial matches as fallback - BUT ONLY if unique_id matches
-            # This prevents matching wrong runtimes with similar names but different unique IDs
+            # Try matching with suffix (runtime IDs often have random suffixes like -ifbXlwC83R)
             for variation in search_variations:
                 for runtime in runtimes:
                     actual_name = runtime["agentRuntimeName"]
-                    if (
-                        variation.lower() in actual_name.lower()
-                        or actual_name.lower() in variation.lower()
-                    ):
-                        # CRITICAL: If unique_id is provided, verify it's in the actual runtime name
-                        # This prevents matching "gthb_AdFabricAgent_yudhef" when looking for "gthb_AdFabricAgent_mmzebk"
-                        if unique_id:
-                            # Check if unique_id is present in the actual runtime name
-                            if unique_id.lower() not in actual_name.lower():
-                                logger.debug(
-                                    f"Skipping partial match '{actual_name}' - unique_id '{unique_id}' not found"
-                                )
-                                continue
-
+                    # Check if actual name starts with our variation (handles suffixes)
+                    if actual_name.lower().startswith(variation.lower()):
+                        # Verify stack prefix if provided
+                        if expected_prefix_lower and not actual_name.lower().startswith(expected_prefix_lower):
+                            logger.warning(
+                                f"Skipping prefix match '{actual_name}' - does not start with expected prefix '{expected_prefix}'"
+                            )
+                            continue
                         logger.info(
-                            f"Found partial match for '{variation}' in '{actual_name}': {runtime['agentRuntimeId']}"
+                            f"Found prefix match for '{variation}' in '{actual_name}': {runtime['agentRuntimeId']}"
                         )
                         return runtime["agentRuntimeId"]
 
-            # Try component-based matching using known values (stack_prefix, agent_name, unique_id)
-            if stack_prefix and agent_name and unique_id:
-                logger.info(
-                    f"Searching for runtime containing: stack_prefix='{stack_prefix}', agent_name='{agent_name}', unique_id='{unique_id}'"
-                )
-
-                for runtime in runtimes:
-                    actual_name = runtime["agentRuntimeName"].lower()
-                    print(actual_name)
-                    # Check if all three known components are present in the actual runtime name
-                    # Handle both underscores and hyphens for component matching
-                    has_stack_prefix = (
-                        stack_prefix.lower() in actual_name
-                        or stack_prefix.lower().replace("_", "-") in actual_name
-                        or stack_prefix.lower().replace("-", "_") in actual_name
-                    )
-
-                    has_agent_name = (
-                        agent_name.lower() in actual_name
-                        or agent_name.lower().replace("_", "-") in actual_name
-                        or agent_name.lower().replace("-", "_") in actual_name
-                    )
-
-                    has_unique_id = (
-                        unique_id.lower() in actual_name
-                        or unique_id.lower().replace("_", "-") in actual_name
-                        or unique_id.lower().replace("-", "_") in actual_name
-                    )
-
-                    if has_stack_prefix and has_agent_name and has_unique_id:
-                        logger.info(
-                            f"Found component match: '{runtime['agentRuntimeName']}' contains stack_prefix='{stack_prefix}', agent_name='{agent_name}', unique_id='{unique_id}': {runtime['agentRuntimeId']}"
-                        )
-                        return runtime["agentRuntimeId"]
-
-            # Additional fallback: Try constructing expected runtime name pattern
+            # Construct expected runtime name pattern and search
             # Expected pattern: {stack_prefix}_{agent_name}_{unique_id}
             if stack_prefix and agent_name and unique_id:
-                # Convert agent name to use underscores (AgentCore naming convention)
                 agent_name_normalized = agent_name.replace("-", "_")
-                expected_runtime_name = (
-                    f"{stack_prefix}_{agent_name_normalized}_{unique_id}"
-                )
+                expected_runtime_name = f"{stack_prefix}_{agent_name_normalized}_{unique_id}"
+                expected_runtime_name_lower = expected_runtime_name.lower()
 
-                logger.info(
-                    f"Trying expected runtime name pattern: '{expected_runtime_name}'"
-                )
+                logger.info(f"Trying expected runtime name pattern: '{expected_runtime_name}'")
 
                 for runtime in runtimes:
                     actual_name = runtime["agentRuntimeName"]
-                    # Try exact match with expected pattern
-                    if actual_name == expected_runtime_name:
+                    actual_name_lower = actual_name.lower()
+                    
+                    # Check if actual name starts with expected pattern (handles suffixes)
+                    if actual_name_lower.startswith(expected_runtime_name_lower):
                         logger.info(
-                            f"Found exact pattern match: '{actual_name}' -> {runtime['agentRuntimeId']}"
+                            f"Found pattern match: '{actual_name}' starts with '{expected_runtime_name}' -> {runtime['agentRuntimeId']}"
                         )
                         return runtime["agentRuntimeId"]
-                    # Try case-insensitive match
-                    if actual_name.lower() == expected_runtime_name.lower():
+                    
+                    # Also try with hyphen separator
+                    expected_with_hyphen = f"{stack_prefix}-{agent_name_normalized}-{unique_id}".lower()
+                    if actual_name_lower.startswith(expected_with_hyphen):
                         logger.info(
-                            f"Found case-insensitive pattern match: '{actual_name}' -> {runtime['agentRuntimeId']}"
+                            f"Found hyphen pattern match: '{actual_name}' -> {runtime['agentRuntimeId']}"
                         )
                         return runtime["agentRuntimeId"]
-
-            # Final fallback: Try substring matching with common patterns
-            # BUT ONLY if unique_id matches to prevent wrong runtime selection
-            base_name = runtime_name.replace(f"{stack_prefix}_", "").replace(
-                f"_{unique_id}", ""
-            )
-            for runtime in runtimes:
-                actual_name = runtime["agentRuntimeName"]
-                if base_name.lower() in actual_name.lower():
-                    # CRITICAL: Verify unique_id is in the actual runtime name
-                    if unique_id and unique_id.lower() not in actual_name.lower():
-                        logger.debug(
-                            f"Skipping base name match '{actual_name}' - unique_id '{unique_id}' not found"
-                        )
-                        continue
-
-                    logger.info(
-                        f"Found base name match for '{base_name}' in '{actual_name}': {runtime['agentRuntimeId']}"
-                    )
-                    return runtime["agentRuntimeId"]
 
             logger.info(f"No runtime found matching any variation of '{runtime_name}'")
             logger.info(f"Searched variations: {search_variations}")
@@ -1726,20 +1644,27 @@ class ManualAgentCoreDeployer:
                             f"All available runtimes: {[(r['agentRuntimeName'], r['agentRuntimeId']) for r in runtimes]}"
                         )
 
-                        # Try fuzzy matching
+                        # Try STRICT prefix matching - runtime must START with stack_prefix_
+                        expected_prefix = f"{stack_prefix}_" if stack_prefix else None
                         for runtime in runtimes:
                             actual_name = runtime["agentRuntimeName"]
-                            # Check if the runtime name contains our target name or vice versa
+                            actual_name_lower = actual_name.lower()
+                            
+                            # CRITICAL: Only match if runtime starts with correct stack prefix
+                            if expected_prefix and not actual_name_lower.startswith(expected_prefix.lower()):
+                                continue
+                            
+                            # Also verify unique_id is present
+                            if unique_id and unique_id.lower() not in actual_name_lower:
+                                continue
+                            
+                            # Check if runtime name matches our target pattern
                             if (
-                                runtime_name.lower() in actual_name.lower()
-                                or actual_name.lower() in runtime_name.lower()
-                                or runtime_name.replace("_", "-").lower()
-                                in actual_name.lower()
-                                or runtime_name.replace("-", "_").lower()
-                                in actual_name.lower()
+                                runtime_name.lower() in actual_name_lower
+                                or actual_name_lower.startswith(runtime_name.lower())
                             ):
                                 logger.info(
-                                    f"Found fuzzy match: '{actual_name}' matches '{runtime_name}'"
+                                    f"Found strict match: '{actual_name}' matches '{runtime_name}' with prefix '{expected_prefix}'"
                                 )
                                 print(f"Runtime object: {json.dumps(runtime)}")
                                 existing_runtime_id = runtime["agentRuntimeId"]

@@ -44,6 +44,37 @@ class MCPConnectionError(Exception):
     pass
 
 
+def _get_gateway_url_from_ssm() -> Optional[str]:
+    """
+    Retrieve the ADCP gateway URL from SSM Parameter Store.
+    
+    The parameter is stored at: /{stack_prefix}/adcp_gateway/{unique_id}
+    
+    Returns:
+        Gateway URL string if found, None otherwise
+    """
+    stack_prefix = os.environ.get("STACK_PREFIX")
+    unique_id = os.environ.get("UNIQUE_ID")
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    
+    if not stack_prefix or not unique_id:
+        logger.debug("STACK_PREFIX or UNIQUE_ID not set, cannot retrieve gateway URL from SSM")
+        return None
+    
+    parameter_name = f"/{stack_prefix}/adcp_gateway/{unique_id}"
+    
+    try:
+        import boto3
+        ssm = boto3.client("ssm", region_name=region)
+        response = ssm.get_parameter(Name=parameter_name)
+        gateway_url = response["Parameter"]["Value"]
+        logger.info(f"✅ Retrieved ADCP gateway URL from SSM: {parameter_name}")
+        return gateway_url
+    except Exception as e:
+        logger.debug(f"Could not retrieve gateway URL from SSM ({parameter_name}): {e}")
+        return None
+
+
 def _get_mcp_client():
     """
     Lazy initialization of MCP client.
@@ -69,6 +100,7 @@ def _get_mcp_client():
     
     # Check if MCP is explicitly disabled
     use_mcp = os.environ.get("ADCP_USE_MCP", "true").lower() == "true"
+    
     if not use_mcp:
         logger.info("AdCP MCP disabled via ADCP_USE_MCP=false (development mode)")
         _mcp_required = False
@@ -96,6 +128,13 @@ def _get_mcp_client():
     logger.info(f"Initializing AdCP MCP client: gateway_url={gateway_url}")
     
     try:
+        # If gateway_url is blank, try to retrieve it from SSM parameter: /{stack_prefix}/adcp_gateway/{unique_id}
+        if not gateway_url:
+            gateway_url = _get_gateway_url_from_ssm()
+            if gateway_url:
+                _mcp_required = True
+                logger.info(f"Retrieved ADCP_GATEWAY_URL from SSM: {gateway_url}")
+        
         if gateway_url:
             _mcp_client = create_adcp_mcp_client(
                 transport="http",

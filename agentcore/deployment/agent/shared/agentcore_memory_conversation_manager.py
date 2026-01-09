@@ -325,10 +325,10 @@ class AgentCoreMemoryConversationManager(ConversationManager):
         else:
             # Simple fallback: remove oldest messages
             messages = agent.messages if hasattr(agent, 'messages') else []
-            if len(messages) > 10:
-                # Keep the most recent 10 messages
-                removed_count = len(messages) - 10
-                agent.messages = messages[-10:]
+            if len(messages) > 5:
+                # Keep the most recent 5 messages
+                removed_count = len(messages) - 5
+                agent.messages = messages[-5:]
                 self.removed_message_count += removed_count
                 self._last_persisted_index = len(agent.messages) - 1
                 self._persisted_message_count = len(agent.messages)

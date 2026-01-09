@@ -136,3 +136,9 @@ agentcore/deployment/agent/agent-visualizations-library/agent-visualization-maps
 agentcore/deployment/eba
 agentcore/deployment/agent/shared/eba
 lambda/audience_tools_handler.py
+synthetic_data/configs/agent-instructions-library/eba
+synthetic_data/configs/agent-visualizations-library/eba
+synthetic_data/configs/agent-visualizations-library/agent-visualization-maps/eba
+agentcore/deployment/eba/audience_tool_schema.json
+agentcore/deployment/eba/perms.json
+agentcore/deployment/agent/shared/ttd_agent_tools.py

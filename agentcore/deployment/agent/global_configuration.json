@@ -32,7 +32,15 @@
         "CampaignArchitectureAgent": "#845195FF",
         "CreativeSelectionAgent": "#AE427BFF",
         "TimingStrategyAgent": "#E63387FF",
-        "CurrentEventsAgent": "#F56F02FF"
+        "CurrentEventsAgent": "#F56F02FF",
+        "AgencyAgent": "#804294FF",
+        "AdvertiserAgent": "#41205BFF",
+        "PublisherAgent": "#C62828FF",
+        "SignalAgent": "#6A1B9AFF",
+        "VerificationAgent": "#AE427BFF",
+        "MeasurementAgent": "#EF6C00FF",
+        "IdentityAgent": "#5E35B1FF"
+        
     },
     "agent_configs": {
         "AdFabricAgent": {
@@ -863,41 +871,6 @@
             "agent_tools": [
                 "invoke_specialist",
                 "resolve_audience_reach",
-                "lookup_events"
-            ]
-        },
-        "TTDOptimizationAgent": {
-            "agent_id": "TTDOptimizationAgent",
-            "agent_name": "TTDOptimizationAgent",
-            "agent_display_name": "TTD Campaign Optimization Agent",
-            "team_name": "Programmatic Trading",
-            "agent_description": "Kokai Co-Pilot agent specialized in optimizing programmatic advertising campaigns on The Trade Desk (TTD) platform, automating bidding strategy optimization, outcomes reporting, and measurement analysis using REDS data feeds",
-            "tool_agent_names": [],
-            "external_agents": [],
-            "injectable_values": {
-                "partner_id": "prt_acme_media_001",
-                "partner_name": "Acme Media Partners"
-            },
-            "model_inputs": {
-                "TTDOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                    "max_tokens": 64000,
-                    "temperature": 0.3,
-                    "top_p": 0.9
-                }
-            },
-            "agent_tools": [
-                "ttd_query_impressions",
-                "ttd_query_clicks",
-                "ttd_query_conversions",
-                "ttd_query_video_events",
-                "ttd_query_viewability",
-                "ttd_get_campaign_settings",
-                "ttd_get_adgroup_settings",
-                "ttd_update_bid_factors",
-                "ttd_reallocate_budget",
-                "ttd_generate_report",
-                "retrieve_knowledge_base_results_tool",
                 "lookup_events"
             ]
         }

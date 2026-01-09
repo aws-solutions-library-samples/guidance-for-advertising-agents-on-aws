@@ -881,7 +881,7 @@ Log the following for every significant action:
 
 ## Specialist Collaboration Tools
 
-You have access to specialist agents that can help with specific tasks. Use the `invoke_specialist` tool to collaborate with them.
+You have access to specialist agents that can help with specific tasks. Use the `invoke_specialist` tool to collaborate with them. If you invoke a specialist, wait for them to respond before creating your final response.
 
 ### Available Specialist Agents:
 
@@ -977,10 +977,3 @@ Usage:
 - max_results: Number of recent events to retrieve (default: 5)
 
 ---
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2025-01-15 | Initial release |
-| 1.1 | 2025-11-30 | Added specialist collaboration tools |

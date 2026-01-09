@@ -2,10 +2,50 @@
 """
 Simple memory creation script for AgentCore ecosystem deployment.
 Creates ONE memory record that all AgentCore agents can share.
+Stores the memory ID in SSM Parameter Store for retrieval by agents.
 """
 
 import sys
 import argparse
+import boto3
+from botocore.exceptions import ClientError
+
+
+def store_memory_id_in_ssm(stack_prefix, unique_id, memory_id, aws_region="us-east-1"):
+    """
+    Store the memory ID in SSM Parameter Store for retrieval by agents.
+    
+    Args:
+        stack_prefix: Stack prefix for resource naming
+        unique_id: Unique identifier for resource naming
+        memory_id: The AgentCore memory ID to store
+        aws_region: AWS region
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    parameter_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
+    
+    try:
+        ssm_client = boto3.client("ssm", region_name=aws_region)
+        
+        ssm_client.put_parameter(
+            Name=parameter_name,
+            Value=memory_id,
+            Type="String",
+            Overwrite=True,
+            Description=f"AgentCore shared memory ID for {stack_prefix}-{unique_id}"
+        )
+        
+        print(f"✅ Memory ID stored in SSM: {parameter_name}")
+        return True
+        
+    except ClientError as e:
+        print(f"❌ Failed to store memory ID in SSM: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Unexpected error storing memory ID in SSM: {e}")
+        return False
 
 
 def create_shared_memory(stack_prefix, unique_id, aws_region="us-east-1"):
@@ -167,6 +207,14 @@ def main():
 
     if memory_record_id:
         print(f"✅ Memory record ID: {memory_record_id}")
+        
+        # Store memory ID in SSM Parameter Store for agent retrieval
+        ssm_success = store_memory_id_in_ssm(
+            args.stack_prefix, args.unique_id, memory_record_id, args.aws_region
+        )
+        
+        if not ssm_success:
+            print("⚠️  Memory created but SSM storage failed - agents may need MEMORY_ID env var")
 
         # Save memory record ID to file if specified
         if args.output_file:
@@ -175,13 +223,16 @@ def main():
                 import os
 
                 # Create directory if it doesn't exist
-                os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+                output_dir = os.path.dirname(args.output_file)
+                if output_dir:
+                    os.makedirs(output_dir, exist_ok=True)
 
                 memory_info = {
                     "memory_record_id": memory_record_id,
                     "stack_prefix": args.stack_prefix,
                     "unique_id": args.unique_id,
                     "aws_region": args.aws_region,
+                    "ssm_parameter": f"/{args.stack_prefix}/agentcore_memory_id/{args.unique_id}",
                     "created_at": __import__("datetime").datetime.utcnow().isoformat()
                     + "Z",
                 }
