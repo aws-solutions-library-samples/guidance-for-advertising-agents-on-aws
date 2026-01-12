@@ -830,16 +830,25 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         agent_config = get_agent_config(agent_name=agent_name)
         model_inputs = agent_config.get("model_inputs", {}).get(agent_name, {})
 
-    model = BedrockModel(
-        model_id=model_inputs.get(
-            "model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0"
-        ),
-        max_tokens=model_inputs.get("max_tokens", 8000),
-        top_p=model_inputs.get("top_p", 0.3),
-        temperature=model_inputs.get("temperature", 0.8),
-        cache_prompt="default",
-        cache_tools="default",
-    )
+    model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0")
+    
+    # Claude 4.5 Haiku doesn't allow both temperature and top_p
+    model_kwargs = {
+        "model_id": model_id,
+        "max_tokens": model_inputs.get("max_tokens", 8000),
+        "cache_prompt": "default",
+        "cache_tools": "default",
+    }
+    
+    if "claude-haiku-4-5" in model_id:
+        # For Claude 4.5 Haiku, only use temperature (prioritize over top_p)
+        model_kwargs["temperature"] = model_inputs.get("temperature", 0.8)
+    else:
+        # For other models, use both parameters
+        model_kwargs["top_p"] = model_inputs.get("top_p", 0.3)
+        model_kwargs["temperature"] = model_inputs.get("temperature", 0.8)
+    
+    model = BedrockModel(**model_kwargs)
 
     hooks = []
     if "default" in orchestrator_instance.memory_id:
@@ -1195,18 +1204,25 @@ class GenericAgent:
             }
 
         try:
+            model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0")
             model = BedrockModel(
-                model_id=model_inputs.get(
-                    "model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0"
-                ),
+                model_id=model_id,
                 max_tokens=model_inputs.get("max_tokens", 12000),
                 cache_prompt="default",
                 cache_tools="default",
             )
-            if model_inputs.get("temperature"):
-                model.temperature = model_inputs.get("temperature")
-            if model_inputs.get("top_p"):
-                model.top_p = model_inputs.get("top_p")
+            
+            # Claude 4.5 Haiku doesn't allow both temperature and top_p
+            if "claude-haiku-4-5" in model_id:
+                # For Claude 4.5 Haiku, only use temperature (prioritize over top_p)
+                if model_inputs.get("temperature"):
+                    model.temperature = model_inputs.get("temperature")
+            else:
+                # For other models, use both parameters
+                if model_inputs.get("temperature"):
+                    model.temperature = model_inputs.get("temperature")
+                if model_inputs.get("top_p"):
+                    model.top_p = model_inputs.get("top_p")
         except Exception as e:
             logger.error(f"✗ Failed to create Bedrock model: {e}")
             import traceback
