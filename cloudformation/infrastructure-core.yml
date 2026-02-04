@@ -140,6 +140,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
                   - !Sub "arn:aws:bedrock:${AWS::Region}::*/*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
 
   # OpenSearch Serverless Collection for Knowledge Bases
   OpenSearchCollection:

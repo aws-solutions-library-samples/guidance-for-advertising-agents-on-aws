@@ -1726,7 +1726,7 @@ deploy_lambda_functions() {
 # This is a separate step so it can run independently of knowledge base deployment
 # These configs are needed by AgentCore agents for instructions and visualizations
 upload_agent_configurations() {
-    print_step "Step 8: Uploading agent configuration folders to S3..."
+    print_step "Step 7: Uploading agent configuration folders to S3..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
@@ -2565,7 +2565,7 @@ except:
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 7: Deploying AgentCore agents (after MCP Gateway)..."
+    print_step "Step 8: Deploying AgentCore agents (after MCP Gateway)..."
     
     # Ensure ADCP Gateway URL is available (important for resume scenarios)
     ensure_adcp_gateway_url
@@ -2787,16 +2787,15 @@ EOF
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
-        print_success "🎉 Step 7 Complete: AgentCore agents have been deployed!"
+        print_success "🎉 Step 8 Complete: AgentCore agents have been deployed!"
         print_status "The following steps remain:"
-        print_status "  - Step 8: Upload agent configuration folders to S3"
         print_status "  - Step 9: Generate AWS configuration"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
-            print_status "Deployment paused after Step 7. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 8 (Agent Configs)."
+            print_status "Deployment paused after Step 8. You can resume later by running the script again."
+            print_status "Current progress has been saved and the script will resume from Step 9 (UI Config)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
@@ -4402,14 +4401,14 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 7 ]; then
-        # Deploy AgentCore agents AFTER gateway so ADCP_GATEWAY_URL is available
-        detect_and_deploy_agentcore_agents
+        # Upload agent configurations BEFORE agent deployment
+        # This ensures AgentCore agents load the latest instructions and visualizations from S3
+        upload_agent_configurations
     fi
     
-    # Step 8: Upload agent configurations (after agent creation)
-    # This allows AgentCore agents to load instructions and visualizations from S3
     if [ "$RESUME_AT_STEP" -le 8 ]; then
-        upload_agent_configurations
+        # Deploy AgentCore agents AFTER configs are uploaded and gateway is available
+        detect_and_deploy_agentcore_agents
     fi
     
     if [ "$RESUME_AT_STEP" -le 9 ]; then

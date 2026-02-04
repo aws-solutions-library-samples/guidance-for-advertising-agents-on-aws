@@ -111,30 +111,36 @@ class AgentCoreMemoryConversationManager(ConversationManager):
     
     def _initialize_memory(self) -> None:
         """Initialize the AgentCore Memory session manager."""
+        logger.info(f"🔧 INIT_MEMORY: Starting initialization for memory_id={self.memory_id}, actor_id={self.actor_id}, session_id={self.session_id}")
+        
         if not MEMORY_AVAILABLE:
-            logger.warning("AgentCore Memory SDK not available, using fallback")
+            logger.warning("🔧 INIT_MEMORY: AgentCore Memory SDK not available, using fallback")
             return
             
         if not self.memory_id or "default" in self.memory_id.lower():
-            logger.info("Skipping memory initialization for default/empty memory_id")
+            logger.info(f"🔧 INIT_MEMORY: Skipping memory initialization for default/empty memory_id: '{self.memory_id}'")
             return
             
         try:
+            logger.info(f"🔧 INIT_MEMORY: Creating MemorySessionManager for memory_id={self.memory_id}")
             self._session_manager = MemorySessionManager(
                 memory_id=self.memory_id,
                 region_name=self.region_name
             )
+            logger.info(f"🔧 INIT_MEMORY: Creating memory session for actor_id={self.actor_id}, session_id={self.session_id}")
             self._memory_session = self._session_manager.create_memory_session(
                 actor_id=self.actor_id,
                 session_id=self.session_id
             )
             self._memory_available = True
             logger.info(
-                f"✅ AgentCoreMemoryConversationManager initialized: "
+                f"✅ INIT_MEMORY: AgentCoreMemoryConversationManager initialized successfully: "
                 f"memory_id={self.memory_id}, actor_id={self.actor_id}, session_id={self.session_id}"
             )
         except Exception as e:
-            logger.error(f"❌ Failed to initialize AgentCore Memory: {e}")
+            logger.error(f"❌ INIT_MEMORY: Failed to initialize AgentCore Memory: {e}")
+            import traceback
+            logger.error(f"❌ INIT_MEMORY: Traceback: {traceback.format_exc()}")
             self._memory_available = False
     
     def restore_from_session(self, state: Dict[str, Any]) -> Optional[List[Message]]:
@@ -151,6 +157,8 @@ class AgentCoreMemoryConversationManager(ConversationManager):
         Returns:
             List of messages to prepend, or None if no history available
         """
+        logger.info(f"📂 RESTORE_FROM_SESSION: Called for actor={self.actor_id}, session={self.session_id}, memory_id={self.memory_id}")
+        
         # First, restore base state
         if STRANDS_AVAILABLE:
             try:
@@ -162,12 +170,13 @@ class AgentCoreMemoryConversationManager(ConversationManager):
                 pass
         
         if not self._memory_available:
-            logger.info("Memory not available, skipping restore")
+            logger.info(f"📂 RESTORE_FROM_SESSION: Memory not available (memory_id={self.memory_id}), skipping restore")
             if self.fallback_manager:
                 return self.fallback_manager.restore_from_session(state)
             return None
         
         try:
+            logger.info(f"📂 RESTORE_FROM_SESSION: Retrieving last {self.max_turns_to_retrieve} turns from memory...")
             # Retrieve recent conversation turns from AgentCore Memory
             recent_turns = self._memory_session.get_last_k_turns(
                 k=self.max_turns_to_retrieve,
@@ -176,8 +185,10 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             )
             
             if not recent_turns:
-                logger.info(f"No conversation history found for session {self.session_id}")
+                logger.info(f"📂 RESTORE_FROM_SESSION: No conversation history found for session {self.session_id}")
                 return None
+            
+            logger.info(f"📂 RESTORE_FROM_SESSION: Found {len(recent_turns)} turns in memory")
             
             # Convert AgentCore Memory format to strands Message format
             messages = []
@@ -202,7 +213,7 @@ class AgentCoreMemoryConversationManager(ConversationManager):
                     messages.append(message)
             
             logger.info(
-                f"📂 Restored {len(messages)} messages from AgentCore Memory "
+                f"📂 RESTORE_FROM_SESSION: Restored {len(messages)} messages from AgentCore Memory "
                 f"for actor={self.actor_id}, session={self.session_id}"
             )
             
@@ -213,7 +224,7 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             return messages
             
         except Exception as e:
-            logger.error(f"❌ Failed to restore from AgentCore Memory: {e}")
+            logger.error(f"❌ RESTORE_FROM_SESSION: Failed to restore from AgentCore Memory: {e}")
             if self.fallback_manager:
                 return self.fallback_manager.restore_from_session(state)
             return None
@@ -343,8 +354,14 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             session_id: New session identifier
         """
         if actor_id != self.actor_id or session_id != self.session_id:
+            old_actor_id = self.actor_id
+            old_session_id = self.session_id
             self.actor_id = actor_id
             self.session_id = session_id
+            
+            # Reset persistence tracking for new session
+            self._persisted_message_count = 0
+            self._last_persisted_index = -1
             
             # Reinitialize memory session with new IDs
             if self._session_manager:
@@ -358,6 +375,85 @@ class AgentCoreMemoryConversationManager(ConversationManager):
                     )
                 except Exception as e:
                     logger.error(f"❌ Failed to update memory session: {e}")
+    
+    def retrieve_conversation_history(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Retrieve conversation history from AgentCore Memory for the current session.
+        
+        This method can be called explicitly to load conversation history
+        when an agent is reused with a different session.
+        
+        Returns:
+            List of messages in strands format, or None if no history available
+        """
+        if not self._memory_available or not self._memory_session:
+            logger.info("Memory not available, cannot retrieve history")
+            return None
+        
+        try:
+            # Retrieve recent conversation turns from AgentCore Memory
+            recent_turns = self._memory_session.get_last_k_turns(
+                k=self.max_turns_to_retrieve,
+                branch_name="main",
+                max_results=self.max_turns_to_retrieve * 2
+            )
+            
+            if not recent_turns:
+                logger.info(f"No conversation history found for session {self.session_id}")
+                return None
+            
+            # Convert AgentCore Memory format to strands Message format
+            # IMPORTANT: Filter out toolUse and toolResult messages to avoid
+            # "Expected toolResult blocks" validation errors from Bedrock
+            messages = []
+            for turn in recent_turns:
+                for msg in turn:
+                    role = msg.get("role", "user").lower()
+                    content = msg.get("content", {})
+                    
+                    # Extract text content
+                    if isinstance(content, dict) and "text" in content:
+                        text = content["text"]
+                    elif isinstance(content, str):
+                        text = content
+                    else:
+                        text = str(content)
+                    
+                    # Skip messages containing tool use/result blocks
+                    # These cause validation errors if not properly paired
+                    if any(marker in text for marker in [
+                        "'toolUse'", '"toolUse"', "toolUse",
+                        "'toolResult'", '"toolResult"', "toolResult",
+                        "tooluse_", "tool_use_id"
+                    ]):
+                        logger.debug(f"Skipping tool-related message in history")
+                        continue
+                    
+                    # Skip empty or very short messages
+                    if not text or len(text.strip()) < 3:
+                        continue
+                    
+                    # Create message in strands format
+                    message = {
+                        "role": role,
+                        "content": [{"text": text}]
+                    }
+                    messages.append(message)
+            
+            logger.info(
+                f"📂 Retrieved {len(messages)} messages from AgentCore Memory "
+                f"for actor={self.actor_id}, session={self.session_id}"
+            )
+            
+            # Update persisted count to avoid re-persisting retrieved messages
+            self._persisted_message_count = len(messages)
+            self._last_persisted_index = len(messages) - 1
+            
+            return messages
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to retrieve conversation history: {e}")
+            return None
 
 
 def create_agentcore_memory_manager(

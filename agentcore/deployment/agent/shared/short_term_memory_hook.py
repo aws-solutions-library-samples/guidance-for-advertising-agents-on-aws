@@ -72,7 +72,7 @@ class ShortTermMemoryHook(HookProvider):
                 logger.info(f"Context from memory: {context}")
 
                 # Add context to agent's system prompt
-                event.agent.system_prompt += f"\n\Conversation history:\n{context}\n\nContinue the conversation naturally based on this context."
+                event.agent.system_prompt += f"\nConversation history:\n{context}\n\nContinue the conversation naturally based on this context."
 
                 logger.info(f"✅ Loaded {len(recent_turns)} recent conversation turns")
             else:
@@ -112,10 +112,18 @@ class ShortTermMemoryHook(HookProvider):
                 ):
                     # Content is a list of objects with text property
                     content_item = last_message["content"][0]
-                    if isinstance(content_item, dict) and "text" in content_item:
-                        text_content = content_item["text"]
+                    
+                    # Skip tool use and tool result messages - these cause validation errors
+                    # when retrieved and used in conversation history
+                    if isinstance(content_item, dict):
+                        if "toolUse" in content_item or "toolResult" in content_item:
+                            logger.debug("Skipping tool use/result message - not storing in memory")
+                            return
+                        if "text" in content_item:
+                            text_content = content_item["text"]
+                        else:
+                            text_content = str(content_item)
                     else:
-                        # Content item might be a string or have different structure
                         text_content = str(content_item)
                 elif isinstance(last_message.get("content"), str):
                     # Content is directly a string
@@ -123,6 +131,20 @@ class ShortTermMemoryHook(HookProvider):
                 else:
                     # Fallback: convert whatever content we have to string
                     text_content = str(last_message.get("content", ""))
+
+                # Skip messages that contain tool-related content in text form
+                if any(marker in text_content for marker in [
+                    "'toolUse'", '"toolUse"', "toolUse",
+                    "'toolResult'", '"toolResult"', "toolResult",
+                    "tooluse_", "tool_use_id"
+                ]):
+                    logger.debug("Skipping tool-related text message - not storing in memory")
+                    return
+
+                # Skip empty or very short messages
+                if not text_content or len(text_content.strip()) < 3:
+                    logger.debug("Skipping empty/short message - not storing in memory")
+                    return
 
                 role = last_message.get("role", "user")
                 formatted_messages = [(text_content[-9000:], role)]

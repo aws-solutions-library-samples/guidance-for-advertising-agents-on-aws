@@ -335,7 +335,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Demo Modal Methods
   private checkDemoModal(): void {
-    if (this.demoTrackingService.shouldShowDemoModal()) {
+    // Only show demo modal if user is authenticated
+    if (this.isAuthenticated && this.currentUser && this.demoTrackingService.shouldShowDemoModal()) {
       this.showDemoModal = true;
     }
   }

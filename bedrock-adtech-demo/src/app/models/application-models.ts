@@ -260,3 +260,21 @@ export interface TabConfiguration {
 export interface TabsConfiguration {
   tabConfigurations: { [key: string]: TabConfiguration };
 }
+
+/**
+ * Tracks pending specialist invocations (invoke_specialist / invoke_specialist_with_RAG)
+ * to correlate tool calls with their responses
+ */
+export interface PendingSpecialistInvocation {
+  toolUseId: string;
+  toolName: string;  // 'invoke_specialist' or 'invoke_specialist_with_RAG'
+  targetAgent: string;  // The specialist being invoked
+  supervisorAgent: string;  // The agent that made the call
+  prompt: string;  // The prompt sent to the specialist
+  timestamp: Date;
+  status: 'pending' | 'completed' | 'timeout';
+  messageId?: string;  // ID of the supervisor-to-collaborator message
+  responseMessageId?: string;  // ID of the collaborator-response message
+  responseTimestamp?: Date;  // When the response was received
+  durationMs?: number;  // Time taken to get response
+}

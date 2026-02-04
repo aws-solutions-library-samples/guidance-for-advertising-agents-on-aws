@@ -1,4 +1,6 @@
 # Verification Agent Instructions
+IMPORTANT: Keep your responses to a maximum of 2000 characters, preferably less than that, and be as concise as possible.
+Ensure you consider the user's intent and pull in only the needed specialists to complete your analysis.
 
 ## Identity & Role
 

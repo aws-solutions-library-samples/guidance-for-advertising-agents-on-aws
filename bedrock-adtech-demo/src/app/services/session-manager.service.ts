@@ -26,10 +26,68 @@ export class SessionManagerService {
   private sessionSubject = new BehaviorSubject<SessionInfo | null>(null);
   private readonly STORAGE_KEY_PREFIX = 'tab-sessions';
   private readonly SESSION_EXPIRY_HOURS = 24;
+  
+  // Deduplication: track recent session creations to prevent duplicates
+  private recentSessionCreations = new Map<string, { sessionId: string; timestamp: number }>();
+  private readonly SESSION_CREATION_DEBOUNCE_MS = 2000; // 2 second window to prevent duplicates
+  
+  // Track which tabs have already been initialized this page load
+  // Using sessionStorage to persist across component re-renders within the same page load
+  private readonly PAGE_LOAD_ID_KEY = 'session-manager-page-load-id';
+  private readonly INITIALIZED_TABS_KEY = 'session-manager-initialized-tabs';
+  private pageLoadId: string;
 
   public session$: Observable<SessionInfo | null> = this.sessionSubject.asObservable();
-
-  constructor() { }
+  
+  constructor() {
+    // Generate or retrieve a unique ID for this page load
+    // This ensures we can track initialization across component re-renders
+    const existingPageLoadId = sessionStorage.getItem(this.PAGE_LOAD_ID_KEY);
+    if (existingPageLoadId) {
+      this.pageLoadId = existingPageLoadId;
+    } else {
+      this.pageLoadId = `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem(this.PAGE_LOAD_ID_KEY, this.pageLoadId);
+      // Clear any previously initialized tabs from a different page load
+      sessionStorage.removeItem(this.INITIALIZED_TABS_KEY);
+    }
+  }
+  
+  /**
+   * Check if a tab has already been initialized this page load
+   * Uses sessionStorage to persist across component re-renders
+   */
+  hasTabBeenInitialized(tabId: string): boolean {
+    try {
+      const initializedTabsJson = sessionStorage.getItem(this.INITIALIZED_TABS_KEY);
+      if (!initializedTabsJson) return false;
+      
+      const initializedTabs: string[] = JSON.parse(initializedTabsJson);
+      return initializedTabs.includes(tabId);
+    } catch (error) {
+      console.warn('Error checking initialized tabs:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Mark a tab as initialized for this page load
+   * Uses sessionStorage to persist across component re-renders
+   */
+  markTabAsInitialized(tabId: string): void {
+    try {
+      const initializedTabsJson = sessionStorage.getItem(this.INITIALIZED_TABS_KEY);
+      const initializedTabs: string[] = initializedTabsJson ? JSON.parse(initializedTabsJson) : [];
+      
+      if (!initializedTabs.includes(tabId)) {
+        initializedTabs.push(tabId);
+        sessionStorage.setItem(this.INITIALIZED_TABS_KEY, JSON.stringify(initializedTabs));
+        console.log(`✅ Marked tab ${tabId} as initialized for page load ${this.pageLoadId}`);
+      }
+    } catch (error) {
+      console.warn('Error marking tab as initialized:', error);
+    }
+  }
 
   /**
    * Initialize or update the current session with user information
@@ -102,6 +160,23 @@ export class SessionManagerService {
    */
   createNewSession(userId?: string, customerName?: string, tabId?: string): SessionInfo {
     const storageKey = this.getStorageKey(userId, customerName, tabId);
+    
+    // Check for recent session creation to prevent duplicates
+    const recentCreation = this.recentSessionCreations.get(storageKey);
+    const now = Date.now();
+    
+    if (recentCreation && (now - recentCreation.timestamp) < this.SESSION_CREATION_DEBOUNCE_MS) {
+      // Return the recently created session instead of creating a new one
+      console.log(`⚠️ Session creation debounced for ${storageKey}, returning existing session: ${recentCreation.sessionId}`);
+      const storedData = this.loadStoredSessions(storageKey);
+      const existingSession = storedData.sessions.find(s => s.sessionId === recentCreation.sessionId);
+      if (existingSession) {
+        this.currentSession = existingSession;
+        this.sessionSubject.next(this.currentSession);
+        return existingSession;
+      }
+    }
+    
     const storedData = this.loadStoredSessions(storageKey);
 
     const newSession = this.createNewSessionInternal(userId, customerName, tabId);
@@ -111,6 +186,15 @@ export class SessionManagerService {
 
     this.currentSession = newSession;
     this.sessionSubject.next(this.currentSession);
+    
+    // Track this creation to prevent duplicates
+    this.recentSessionCreations.set(storageKey, { sessionId: newSession.sessionId, timestamp: now });
+    
+    // Clean up old entries after the debounce window
+    setTimeout(() => {
+      this.recentSessionCreations.delete(storageKey);
+    }, this.SESSION_CREATION_DEBOUNCE_MS + 100);
+    
     return newSession;
   }
 

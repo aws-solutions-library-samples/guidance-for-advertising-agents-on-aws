@@ -1,13 +1,6 @@
 <!-- ADCP Inventory Visualization - Official AdCP Schema -->
 <div *ngIf="inventoryData" class="adcp_get_products-section">
-  <!-- Header with summary -->
-  <div class="inventory-header">
-    <div class="header-title">
-      <span class="material-icons">inventory_2</span>
-      <h4>Available Products</h4>
-      <span class="product-count">{{getTotalFound()}} products</span>
-    </div>
-  </div>
+
 
   <!-- Errors section -->
   <div *ngIf="hasErrors()" class="errors-section">
@@ -22,11 +15,11 @@
     <div class="product-card" *ngFor="let product of getProcessedProducts(); trackBy: trackByProductId">
       <!-- Product header -->
       <div class="product-header">
-        <div class="channel-badge" [style.background]="getChannelColor(getChannelFromFormats(product))">
+        <div class="channel-badge">
           <span class="material-icons">{{getChannelIcon(getChannelFromFormats(product))}}</span>
           <span class="channel-name">{{getChannelFromFormats(product) | uppercase}}</span>
         </div>
-        <div class="delivery-type-badge" [style.background]="getDeliveryTypeColor(product.delivery_type)">
+        <div class="delivery-type-badge" >
           {{formatDeliveryType(product.delivery_type)}}
         </div>
       </div>

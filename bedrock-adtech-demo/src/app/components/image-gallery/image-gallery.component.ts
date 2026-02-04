@@ -484,34 +484,7 @@ export class ImageGalleryComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  private async publishToAppSyncEvents(channel: string, payload: any): Promise<Response> {
-    if (!this.appSyncEventsEndpoint) {
-      throw new Error('AppSync Events endpoint not configured');
-    }
-    const url = `${this.appSyncEventsEndpoint}/channels/images`;
-
-    // Create signed request using AWS credentials
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': await this.getAuthorizationHeader(url, JSON.stringify(payload))
-      },
-      body: JSON.stringify(payload)
-    });
-
-    return response;
-  }
-
-  private async getAuthorizationHeader(url: string, body: string): Promise<string> {
-    // Simplified auth - in production, you'd want proper SigV4 signing
-    // For now, return a basic auth header with Cognito credentials
-    if (this.awsConfig?.credentials?.accessKeyId) {
-      return `AWS4-HMAC-SHA256 Credential=${this.awsConfig.credentials.accessKeyId}`;
-    }
-    return '';
-  }
-
+  
   private simulateImageProgress(imageId: string) {
     // Simulate progress updates for development/fallback
     const image = this.images.find(img => img.id === imageId);

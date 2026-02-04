@@ -172,8 +172,7 @@ def analyze_extracted_text(text: str, doc_type: str) -> str:
         model = BedrockModel(
             model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             max_tokens=8000,
-            top_p=0.8,
-            temperature=0.3,
+            temperature=0.5,
         )
         analysisAgent = Agent(
             model=model,
@@ -202,8 +201,7 @@ def process_pdf_with_vision(content: bytes, filename: str) -> str:
         model = BedrockModel(
             model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             max_tokens=8000,
-            top_p=0.8,
-            temperature=0.3,
+            temperature=0.5,
         )
         analysisAgent = Agent(
             model=model,

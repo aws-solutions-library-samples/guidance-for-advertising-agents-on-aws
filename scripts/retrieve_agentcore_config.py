@@ -105,7 +105,7 @@ def format_as_summary(config):
     lines.append("\n📊 AgentCore Configuration Summary")
     lines.append(f"   Stack: {config.get('stack_prefix')}-{config.get('unique_id')}")
     lines.append(f"   Region: {config.get('region')}")
-    lines.append("\n🤖 Deployed Agents:")
+    lines.append("Deployed Agents:")
     
     agents = config.get('agents', [])
     for i, agent in enumerate(agents, 1):

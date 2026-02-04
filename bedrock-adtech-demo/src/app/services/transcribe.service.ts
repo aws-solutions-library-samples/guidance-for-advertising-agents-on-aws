@@ -72,7 +72,7 @@ export class TranscribeService {
   private async setupTranscribeClient(): Promise<void> {
     try {
       if (this.clientInitialized) {
-        await this.initializeTranscribeClient();
+        return; // Already initialized, skip setup
       }
 
       const awsConfig = await this.awsConfig.getAwsConfig();

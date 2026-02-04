@@ -1251,9 +1251,18 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
    * Check for existing session on tab load and prompt user
    */
   private async checkForExistingSession(): Promise<void> {
-    // Only check once per tab load
+    // Only check once per tab load - use centralized tracking in session manager
     if (this.hasCheckedSession) return;
+    
+    // Check if this tab has already been initialized this page load (prevents duplicate calls across component re-renders)
+    if (this.sessionManager.hasTabBeenInitialized(this.tabId)) {
+      console.log(`⚠️ Tab ${this.tabId} already initialized this page load, skipping session check`);
+      this.hasCheckedSession = true;
+      return;
+    }
+    
     this.hasCheckedSession = true;
+    this.sessionManager.markTabAsInitialized(this.tabId);
 
     try {
       const loginId = this.currentUser?.signInDetails?.loginId;
@@ -1352,17 +1361,13 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
    * Handle user choosing to start a new session
    */
   onStartNewSession(): void {
-    // Create a new session
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
-    
-    this.sessionManager.createNewSession(loginId, customerName, this.tabId);
     this.showSessionPrompt = false;
     
     // Clear first message tracking for fresh context injection
     this.clearFirstMessageTracking();
     
-    // Notify chat interface to start fresh
+    // Only call createNewSession on chat interface - it handles session manager internally
+    // This prevents duplicate session creation
     if (this.chatInterface) {
       this.chatInterface.createNewSession();
     }

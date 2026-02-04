@@ -279,6 +279,60 @@ def extract_session_id_from_payload(payload):
         return None
 
 
+def get_memory_id_from_ssm(stack_prefix: str, unique_id: str) -> Optional[str]:
+    """
+    Retrieve memory ID from SSM parameter store.
+    Pattern: /<stack-prefix>/<unique-id>/agentcore_memory_id
+    """
+    try:
+        import boto3
+        ssm_client = boto3.client('ssm')
+        parameter_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
+        
+        logger.info(f"Retrieving memory ID from SSM parameter: {parameter_name}")
+        
+        response = ssm_client.get_parameter(Name=parameter_name, WithDecryption=False)
+        memory_id = response['Parameter']['Value']
+        
+        logger.info(f"Retrieved memory ID from SSM: {memory_id}")
+        return memory_id
+    except Exception as e:
+        logger.warning(f"Failed to retrieve memory ID from SSM: {e}")
+        return None
+
+
+def validate_and_resolve_memory_id(memory_id: Optional[str]) -> Optional[str]:
+    """
+    Validate memory ID format and resolve from SSM if invalid.
+    Valid memory IDs contain a "-" character (e.g., "mem-abc123").
+    If invalid, retrieves from SSM using pattern: /<stack-prefix>/<unique-id>/agentcore_memory_id
+    """
+    if memory_id and "-" in memory_id:
+        # Memory ID is valid
+        logger.info(f"Memory ID is valid: {memory_id}")
+        return memory_id
+    
+    # Memory ID is invalid or missing, retrieve from SSM
+    logger.warning(f"Memory ID '{memory_id}' is invalid (missing '-' character), retrieving from SSM")
+    
+    stack_prefix = os.environ.get("STACK_PREFIX", "default")
+    unique_id = os.environ.get("UNIQUE_ID", "default")
+    
+    ssm_memory_id = get_memory_id_from_ssm(stack_prefix, unique_id)
+    
+    if ssm_memory_id:
+        return ssm_memory_id
+    
+    # Fallback to environment variable if SSM fails
+    env_memory_id = os.environ.get("MEMORY_ID")
+    if env_memory_id and "-" in env_memory_id:
+        logger.info(f"Using memory ID from environment: {env_memory_id}")
+        return env_memory_id
+    
+    logger.error("Could not resolve valid memory ID from SSM or environment")
+    return None
+
+
 def extract_session_id_and_memory_id_and_actor_from_payload(payload):
     """Extract session ID, memory ID, and agent name from AgentCore payload"""
     try:
@@ -299,6 +353,9 @@ def extract_session_id_and_memory_id_and_actor_from_payload(payload):
         memory_id = payload.get("memory_id") or payload.get("session_metadata", {}).get(
             "memory_id"
         )
+        
+        # Validate memory ID format - if it doesn't contain "-", retrieve from SSM
+        memory_id = validate_and_resolve_memory_id(memory_id)
 
         agent_name = payload.get("agent_name") or payload.get(
             "session_metadata", {}
@@ -307,5 +364,5 @@ def extract_session_id_and_memory_id_and_actor_from_payload(payload):
         return session_id, memory_id, agent_name
 
     except Exception as e:
-        print(f"Failed to extract session ID from payload: {e}")
+        print(f"Failed to extract session ID, memory ID, and agent name from payload: {e}")
         return None, None, None

@@ -17,7 +17,7 @@ import { AgentSummary, SummaryModalState } from '../agent-summary-modal/agent-su
 import { VisibilitySettings } from '../visibility-settings-modal/visibility-settings-modal.component';
 import { BedrockAgentCoreClient, ListEventsCommand } from '@aws-sdk/client-bedrock-agentcore';
 import { from } from 'rxjs';
-import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, AgentSuggestion, EnrichedAgent } from 'src/app/models/application-models';
+import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, AgentSuggestion, EnrichedAgent, PendingSpecialistInvocation } from 'src/app/models/application-models';
 
 
 
@@ -74,6 +74,11 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   // Group thread support
   private agentParticipants = new Map<string, AgentParticipant>();
   private currentAgentResponses = new Map<EnrichedAgent, Message>(); // Track ongoing responses per agent
+
+  // Specialist invocation tracking (invoke_specialist / invoke_specialist_with_RAG)
+  private pendingSpecialistInvocations = new Map<string, PendingSpecialistInvocation>();
+  private readonly SPECIALIST_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+  private specialistTimeoutCheckInterval: any = null;
 
   // Agent mention typeahead support
   showTypeahead = false;
@@ -1655,8 +1660,269 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     // Initialize Intersection Observer for companion panel
     this.initializeMessageIntersectionObserver();
 
+    // Initialize specialist invocation timeout checker (runs every 30 seconds)
+    this.specialistTimeoutCheckInterval = setInterval(() => {
+      this.checkForTimedOutSpecialistInvocations();
+    }, 30000);
+
     // Make test methods available for debugging
   }
+
+  // ==================== SPECIALIST INVOCATION TRACKING ====================
+  // These methods track invoke_specialist and invoke_specialist_with_RAG tool calls
+  // to correlate supervisor requests with specialist responses
+
+  // Check for specialist invocations that have timed out
+  private checkForTimedOutSpecialistInvocations(): void {
+    const now = Date.now();
+    let timedOutCount = 0;
+
+    this.pendingSpecialistInvocations.forEach((invocation, toolUseId) => {
+      if (invocation.status === 'pending' &&
+          now - invocation.timestamp.getTime() > this.SPECIALIST_TIMEOUT_MS) {
+        invocation.status = 'timeout';
+        timedOutCount++;
+        this.logSpecialistInvocation('TIMEOUT', toolUseId, {
+          targetAgent: invocation.targetAgent,
+          supervisorAgent: invocation.supervisorAgent,
+          elapsedMs: now - invocation.timestamp.getTime(),
+          prompt: invocation.prompt.substring(0, 100) + '...'
+        });
+      }
+    });
+
+    if (timedOutCount > 0) {
+      console.warn(`⚠️ [Specialist Tracker] ${timedOutCount} specialist invocation(s) timed out after ${this.SPECIALIST_TIMEOUT_MS / 1000}s`);
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  // Dedicated logging method for specialist invocation tracking
+  private logSpecialistInvocation(action: string, toolUseId: string, details: any): void {
+    const pendingCount = Array.from(this.pendingSpecialistInvocations.values())
+      .filter(inv => inv.status === 'pending').length;
+    const completedCount = Array.from(this.pendingSpecialistInvocations.values())
+      .filter(inv => inv.status === 'completed').length;
+    const timedOutCount = Array.from(this.pendingSpecialistInvocations.values())
+      .filter(inv => inv.status === 'timeout').length;
+
+    console.log(`🔧 [Specialist Tracker] ${action}:`, {
+      toolUseId,
+      ...details,
+      stats: { pending: pendingCount, completed: completedCount, timedOut: timedOutCount },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Track a new specialist invocation (called when supervisor-to-collaborator event is received)
+  private trackSpecialistInvocation(
+    toolUseId: string,
+    toolName: string,
+    targetAgent: string,
+    supervisorAgent: string,
+    prompt: string,
+    messageId: string
+  ): void {
+    const invocation: PendingSpecialistInvocation = {
+      toolUseId,
+      toolName,
+      targetAgent,
+      supervisorAgent,
+      prompt,
+      timestamp: new Date(),
+      status: 'pending',
+      messageId
+    };
+
+    this.pendingSpecialistInvocations.set(toolUseId, invocation);
+
+    this.logSpecialistInvocation('INVOCATION_STARTED', toolUseId, {
+      toolName,
+      targetAgent,
+      supervisorAgent,
+      promptPreview: prompt.substring(0, 100) + (prompt.length > 100 ? '...' : '')
+    });
+  }
+
+  // Mark a specialist invocation as completed (called when collaborator-response is received)
+  private completeSpecialistInvocation(toolUseId: string, responseMessageId: string): PendingSpecialistInvocation | null {
+    const invocation = this.pendingSpecialistInvocations.get(toolUseId);
+
+    if (!invocation) {
+      console.warn(`⚠️ [Specialist Tracker] Received response for unknown toolUseId: ${toolUseId}`);
+      return null;
+    }
+
+    if (invocation.status === 'completed') {
+      console.warn(`⚠️ [Specialist Tracker] Duplicate response for already completed toolUseId: ${toolUseId}`);
+      return invocation;
+    }
+
+    const responseTimestamp = new Date();
+    const durationMs = responseTimestamp.getTime() - invocation.timestamp.getTime();
+
+    invocation.status = 'completed';
+    invocation.responseMessageId = responseMessageId;
+    invocation.responseTimestamp = responseTimestamp;
+    invocation.durationMs = durationMs;
+
+    this.logSpecialistInvocation('INVOCATION_COMPLETED', toolUseId, {
+      targetAgent: invocation.targetAgent,
+      supervisorAgent: invocation.supervisorAgent,
+      durationMs,
+      durationFormatted: `${(durationMs / 1000).toFixed(2)}s`
+    });
+
+    return invocation;
+  }
+
+  // Get the pending invocation for a message (used for UI indicators)
+  getPendingInvocationForMessage(messageId: string): PendingSpecialistInvocation | null {
+    for (const invocation of this.pendingSpecialistInvocations.values()) {
+      if (invocation.messageId === messageId) {
+        return invocation;
+      }
+    }
+    return null;
+  }
+
+  // Check if a message has a pending specialist invocation
+  hasPendingSpecialistInvocation(messageId: string): boolean {
+    const invocation = this.getPendingInvocationForMessage(messageId);
+    return invocation !== null && invocation.status === 'pending';
+  }
+
+  // Check if a message's specialist invocation timed out
+  hasTimedOutSpecialistInvocation(messageId: string): boolean {
+    const invocation = this.getPendingInvocationForMessage(messageId);
+    return invocation !== null && invocation.status === 'timeout';
+  }
+
+  // Check if a message's specialist invocation was completed
+  hasCompletedSpecialistInvocation(messageId: string): boolean {
+    const invocation = this.getPendingInvocationForMessage(messageId);
+    return invocation !== null && invocation.status === 'completed';
+  }
+
+  // Get the linked response message ID for a completed invocation
+  getLinkedResponseMessageId(messageId: string): string | null {
+    const invocation = this.getPendingInvocationForMessage(messageId);
+    return invocation?.responseMessageId || null;
+  }
+
+  // Get specialist invocation stats for debugging
+  getSpecialistInvocationStats(): { pending: number; completed: number; timedOut: number; total: number } {
+    const invocations = Array.from(this.pendingSpecialistInvocations.values());
+    return {
+      pending: invocations.filter(inv => inv.status === 'pending').length,
+      completed: invocations.filter(inv => inv.status === 'completed').length,
+      timedOut: invocations.filter(inv => inv.status === 'timeout').length,
+      total: invocations.length
+    };
+  }
+
+  // Update the status of an invocation message in the messages array (for UI indicators)
+  private updateInvocationMessageStatus(messageId: string, status: 'pending' | 'completed' | 'timeout', responseMessageId?: string): void {
+    const messageIndex = this.messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) {
+      console.warn(`⚠️ [Specialist Tracker] Could not find message to update: ${messageId}`);
+      return;
+    }
+
+    const message = this.messages[messageIndex];
+    if (message.data) {
+      message.data.specialistStatus = status;
+      if (responseMessageId) {
+        message.data.responseMessageId = responseMessageId;
+      }
+      
+      // Trigger change detection to update UI
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  // Check if a message is waiting for a specialist response (used in template)
+  isAwaitingSpecialistResponse(message: Message): boolean {
+    return message.data?.specialistStatus === 'pending';
+  }
+
+  // Check if a specialist invocation timed out (used in template)
+  isSpecialistTimeout(message: Message): boolean {
+    return message.data?.specialistStatus === 'timeout';
+  }
+
+  // Get the correlated response message for an invocation
+  getCorrelatedResponseMessage(message: Message): Message | undefined {
+    if (!message.data?.responseMessageId) return undefined;
+    return this.messages.find(m => m.id === message.data.responseMessageId);
+  }
+
+  // ==================== SPECIALIST PROMPT DISPLAY ====================
+  // Track expanded state for specialist prompt sections
+  private specialistPromptExpanded = new Map<string, boolean>();
+
+  // Toggle the specialist prompt section visibility
+  toggleSpecialistPrompt(messageId: string): void {
+    const currentState = this.specialistPromptExpanded.get(messageId) || false;
+    this.specialistPromptExpanded.set(messageId, !currentState);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  // Check if specialist prompt is expanded for a message
+  isSpecialistPromptExpanded(messageId: string): boolean {
+    return this.specialistPromptExpanded.get(messageId) || false;
+  }
+
+  // Extract the target agent name from a supervisor-to-collaborator message
+  getTargetAgentFromMessage(message: Message): string {
+    if (!message.text) return 'Unknown';
+    
+    // Try to extract from @AgentName pattern
+    const mentionMatch = message.text.match(/@(\w+)/);
+    if (mentionMatch) {
+      return mentionMatch[1];
+    }
+    
+    // Fallback: check pending invocations
+    const invocation = this.getPendingInvocationForMessage(message.id);
+    if (invocation) {
+      return invocation.targetAgent;
+    }
+    
+    return 'Specialist';
+  }
+
+  // Get the specialist prompt content (the actual instructions sent)
+  getSpecialistPromptContent(message: Message): string {
+    if (!message.text) return '';
+    
+    // Remove the @AgentName prefix if present for cleaner display
+    let content = message.text;
+    const mentionMatch = content.match(/^@\w+\s*/);
+    if (mentionMatch) {
+      content = content.substring(mentionMatch[0].length);
+    }
+    
+    return content.trim();
+  }
+
+  // Get clean prompt content (removes @mention prefix)
+  getCleanPromptContent(prompt: string | undefined): string {
+    if (!prompt) return '';
+    
+    // Remove the @AgentName prefix if present for cleaner display
+    let content = prompt;
+    const mentionMatch = content.match(/^@\w+\s*/);
+    if (mentionMatch) {
+      content = content.substring(mentionMatch[0].length);
+    }
+    
+    return content.trim();
+  }
+
+  // ==================== END SPECIALIST PROMPT DISPLAY ====================
+
+  // ==================== END SPECIALIST INVOCATION TRACKING ====================
 
   // Initialize Intersection Observer for tracking visible messages with visualizations
   private initializeMessageIntersectionObserver(): void {
@@ -2448,8 +2714,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'supervisor-to-collaborator':
                 // Create a separate message for each supervisor-to-collaborator interaction
 
+                const supervisorMessageId = `supervisor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const supervisorMessage: Message = {
-                  id: `supervisor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  id: supervisorMessageId,
                   text: messageText,
                   sender: 'agent',
                   timestamp: new Date(),
@@ -2463,7 +2730,39 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   }
                 };
 
-
+                // Track specialist invocations (invoke_specialist / invoke_specialist_with_RAG)
+                const metadata = (event as any).metadata;
+                console.log('🔍 [Specialist Tracker] Supervisor-to-collaborator event:', {
+                  hasMetadata: !!metadata,
+                  toolUseId: metadata?.toolUseId,
+                  name: metadata?.name,
+                  agentName,
+                  messagePreview: messageText.substring(0, 100)
+                });
+                
+                // Track if we have a toolUseId - this indicates an agent invocation
+                if (metadata?.toolUseId) {
+                  const toolUseId = metadata.toolUseId;
+                  const toolName = metadata.name || 'unknown_tool';
+                  
+                  // Extract target agent from the message text (format: @AgentName ...)
+                  const targetAgentMatch = messageText.match(/@(\w+)/);
+                  const targetAgent = targetAgentMatch ? targetAgentMatch[1] : 'unknown';
+                  
+                  // Use dedicated tracking method
+                  this.trackSpecialistInvocation(
+                    toolUseId,
+                    toolName,
+                    targetAgent,
+                    agentName,
+                    messageText,
+                    supervisorMessageId
+                  );
+                  
+                  // Add toolUseId to message data for UI correlation
+                  supervisorMessage.data.toolUseId = toolUseId;
+                  supervisorMessage.data.specialistStatus = 'pending';
+                }
 
                 this.addMessageIfNotDuplicate(supervisorMessage, agentInMessage);
                 //this.saveMessagesToStorage();
@@ -2480,11 +2779,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 }
                 break;
               case 'visualization-data':
-              case 'collaborator-response':
-                // Create a separate message for each collaborator response
+                // Handle visualization data separately - just add the message
                 {
-                  const collaboratorMessage: Message = {
-                    id: `collaborator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  const vizMessageId = `viz-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const vizMessage: Message = {
+                    id: vizMessageId,
                     text: messageText,
                     sender: 'agent',
                     timestamp: new Date(),
@@ -2494,10 +2793,89 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                     data: {
                       isThinking: false,
                       finalResponse: messageText,
-                      messageType: 'collaborator-response'
+                      messageType: 'visualization-data'
                     }
                   };
-                  console.log('response from collaborator:', event)
+                  this.addMessageIfNotDuplicate(vizMessage, agentInMessage);
+                  // Trigger change detection
+                  if (!this.changeDetectionPending) {
+                    this.changeDetectionPending = true;
+                    this.safeSetTimeout(() => {
+                      this.changeDetectorRef.detectChanges();
+                      this.changeDetectionPending = false;
+                    }, 50);
+                  }
+                }
+                break;
+              case 'collaborator-response':
+                // Create a separate message for each collaborator response - SIMPLIFIED to match working version
+                {
+                  const collaboratorMessageId = `collaborator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  
+                  // Get the toolUseId from metadata to link to original prompt
+                  const collaboratorMetadata = (event as any).metadata;
+                  const collaboratorToolUseId = collaboratorMetadata?.toolUseId;
+                  
+                  // Look up the original invocation to get the prompt
+                  let originalPrompt: string | undefined;
+                  let supervisorAgent: string | undefined;
+                  
+                  console.log('🔍 [Collaborator Response] Looking for invocation:', {
+                    collaboratorToolUseId,
+                    agentName,
+                    pendingInvocationsCount: this.pendingSpecialistInvocations.size,
+                    pendingKeys: Array.from(this.pendingSpecialistInvocations.keys())
+                  });
+                  
+                  if (collaboratorToolUseId) {
+                    const invocation = this.pendingSpecialistInvocations.get(collaboratorToolUseId);
+                    if (invocation) {
+                      originalPrompt = invocation.prompt;
+                      supervisorAgent = invocation.supervisorAgent;
+                      // Mark the invocation as completed
+                      this.completeSpecialistInvocation(collaboratorToolUseId, collaboratorMessageId);
+                      console.log('✅ [Collaborator Response] Found invocation by toolUseId:', collaboratorToolUseId);
+                    }
+                  }
+                  
+                  // Fallback: If not found by toolUseId, search by target agent name
+                  if (!originalPrompt) {
+                    for (const [toolUseId, invocation] of this.pendingSpecialistInvocations.entries()) {
+                      if (invocation.targetAgent === agentName && invocation.status === 'pending') {
+                        originalPrompt = invocation.prompt;
+                        supervisorAgent = invocation.supervisorAgent;
+                        // Mark as completed
+                        this.completeSpecialistInvocation(toolUseId, collaboratorMessageId);
+                        console.log('✅ [Collaborator Response] Found invocation by agent name fallback:', agentName, toolUseId);
+                        break;
+                      }
+                    }
+                  }
+                  
+                  console.log('🔍 [Collaborator Response] Final result:', {
+                    hasOriginalPrompt: !!originalPrompt,
+                    supervisorAgent,
+                    promptPreview: originalPrompt?.substring(0, 100)
+                  });
+                  
+                  const collaboratorMessage: Message = {
+                    id: collaboratorMessageId,
+                    text: messageText,
+                    sender: 'agent',
+                    timestamp: new Date(),
+                    type: 'text',
+                    agentName: agentName,
+                    displayName: displayName,
+                    data: {
+                      isThinking: false,
+                      finalResponse: messageText,
+                      messageType: 'collaborator-response',
+                      toolUseId: collaboratorToolUseId,
+                      originalPrompt: originalPrompt,
+                      supervisorAgent: supervisorAgent
+                    }
+                  };
+                  console.log('response from collaborator:', event, 'originalPrompt:', originalPrompt?.substring(0, 100))
 
                   this.addMessageIfNotDuplicate(collaboratorMessage, agentInMessage)
                   //this.saveMessagesToStorage();
@@ -2872,7 +3250,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               if (contentType === 'reasoning' || message.data?.contentType === 'rationale' || message.data?.contentType === 'thinking') {
                 messageClass = 'reasoning-content';
                 processedMessageText = `${processedMessageText}`;
-              } else if (contentType === 'tool-agent') {
+              } else if (contentType === 'tool-agent' || contentType==='collaborator-response') {
                 // Use the tool agent's display name
                 messageDisplayName = agentName; // agentName is already formatted by formatToolAgentName
                 messageClass = 'tool-agent-response';
@@ -3004,7 +3382,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 this.shouldScrollToBottom = true;
                 this.changeDetectorRef.markForCheck();
               } else if (messageType === 'final-response' || this.agentConfig.getAgent(agentName)?.deploymentType != "bedrock") {
-                console.log('✅ Processing chunk event with messageType:', messageType);
+                console.log('✅ Processing chunk event', event);
                 // Handle regular streaming chunks - create new message for each chunk
                 const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
                 const newMessageId = `${agentName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -3093,6 +3471,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           this.isLoading = false;
         },
         complete: () => {
+          console.log('🏁 [Stream] Complete - Total messages:', this.messages.length, 'Pending invocations:', this.pendingSpecialistInvocations.size);
+          console.log('Messages: ',this.messages)
+          console.log('🏁 [Stream] Pending invocation IDs:', Array.from(this.pendingSpecialistInvocations.keys()));
           this.isLoading = false;
 
           // Trigger final change detection
@@ -4551,6 +4932,31 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     const participants = Array.from(this.agentParticipants.values())
       .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
     return participants;
+  }
+
+  // Get truncated session ID for display (first 8 characters)
+  getTruncatedSessionId(): string {
+    const sessionId = this.getCurrentSessionId();
+    if (!sessionId) return 'No session';
+    return sessionId.substring(0, 8) + '...';
+  }
+
+  // Get full session ID for tooltip
+  getFullSessionId(): string {
+    return this.getCurrentSessionId() || 'No active session';
+  }
+
+  // Copy session ID to clipboard
+  copySessionId(): void {
+    const sessionId = this.getCurrentSessionId();
+    if (sessionId) {
+      navigator.clipboard.writeText(sessionId).then(() => {
+        // Brief visual feedback could be added here
+        console.log('Session ID copied to clipboard:', sessionId);
+      }).catch(err => {
+        console.error('Failed to copy session ID:', err);
+      });
+    }
   }
 
   // Helper method to clean up duplicate participants
@@ -6335,6 +6741,13 @@ ${formattedJson}
     this.activeTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
     this.activeTimeouts.clear();
 
+    // Clear specialist invocation timeout checker
+    if (this.specialistTimeoutCheckInterval) {
+      clearInterval(this.specialistTimeoutCheckInterval);
+      this.specialistTimeoutCheckInterval = null;
+    }
+    this.pendingSpecialistInvocations.clear();
+
     // Clear summary retry timeouts
     this.clearSummaryRetryTimeouts();
 
@@ -7044,7 +7457,35 @@ This analysis shows the impact of weather on audience behavior.`;
     this.showSessionsPanel = false;
   }
 
+  // Track if session creation is in progress to prevent duplicate calls
+  private isCreatingSession = false;
+
   createNewSession(): void {
+    // Prevent duplicate session creation within the same component instance
+    if (this.isCreatingSession) {
+      console.log('⚠️ Session creation already in progress, skipping duplicate call');
+      return;
+    }
+    
+    // Additional check: verify this tab hasn't already had a session created this page load
+    // This catches cases where component is destroyed and recreated
+    if (this.sessionManager.hasTabBeenInitialized(this.tabId)) {
+      // Check if we already have a current session for this tab
+      const loginId = this.currentUser?.signInDetails?.loginId;
+      const customerName = this.demoTrackingService.getCurrentCustomer() || 'default';
+      const existingSessions = this.sessionManager.getTabSessions(loginId, customerName, this.tabId);
+      
+      if (existingSessions.length > 0) {
+        console.log(`⚠️ Tab ${this.tabId} already initialized with session, using existing: ${existingSessions[0].sessionId}`);
+        this.currentSessionInfo = existingSessions[0];
+        this.loadAvailableSessions();
+        this.changeDetectorRef.markForCheck();
+        return;
+      }
+    }
+    
+    this.isCreatingSession = true;
+
     const loginId = this.currentUser?.signInDetails?.loginId;
     let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
     console.log("TAB DATA",this.contextData)
@@ -7075,6 +7516,9 @@ This analysis shows the impact of weather on audience behavior.`;
     // Create new session
     const newSession = this.sessionManager.createNewSession(loginId, customerName, this.tabId);
     this.currentSessionInfo = newSession;
+    
+    // Mark this tab as initialized to prevent duplicate session creation on re-renders
+    this.sessionManager.markTabAsInitialized(this.tabId);
 
     // Refresh available sessions
     this.loadAvailableSessions();
@@ -7086,6 +7530,11 @@ This analysis shows the impact of weather on audience behavior.`;
     this.changeDetectorRef.markForCheck();
 
     console.log(`🆕 Created new session: ${newSession.sessionId}`);
+
+    // Reset the flag after a short delay to allow for legitimate new session requests
+    this.safeSetTimeout(() => {
+      this.isCreatingSession = false;
+    }, 500);
   }
 
   switchToSession(sessionId: string): void {

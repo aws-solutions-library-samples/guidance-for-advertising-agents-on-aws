@@ -44,8 +44,8 @@
     <!-- Agent Selector Button -->
     <button class="floating-btn agent-btn" (click)="toggleAgentSelector()"
       [title]="showAgentSelector ? 'Hide Agent Selector' : 'Select Agent'"
-      [style.background-color]="getCurrentAgent().color" style="display: none;">
-      <span class="material-icons">{{ showAgentSelector ? 'close' : getCurrentAgent().icon }}</span>
+      [style.background-color]="getCurrentAgent()?.color || '#6842ff'" style="display: none;">
+      <span class="material-icons">{{ showAgentSelector ? 'close' : (getCurrentAgent()?.icon || 'smart_toy') }}</span>
     </button>
 
     <!-- Scenarios Button -->
@@ -82,12 +82,12 @@
       <div class="current-agent-section" *ngIf="getCurrentAgent()">
         <h3>Current Agent</h3>
         <div class="current-agent-display">
-          <div class="agent-icon" [style.background-color]="getCurrentAgent().color">
-            <span class="material-icons">{{ getCurrentAgent().icon }}</span>
+          <div class="agent-icon" [style.background-color]="getCurrentAgent()?.color || '#6842ff'">
+            <span class="material-icons">{{ getCurrentAgent()?.icon || 'smart_toy' }}</span>
           </div>
           <div class="agent-info">
-            <div class="agent-name">{{ getCurrentAgent().displayName }}</div>
-            <div class="agent-type">{{ getCurrentAgent().agentType }}</div>
+            <div class="agent-name">{{ getCurrentAgent()?.displayName || 'Loading...' }}</div>
+            <div class="agent-type">{{ getCurrentAgent()?.agentType || '' }}</div>
           </div>
         </div>
       </div>

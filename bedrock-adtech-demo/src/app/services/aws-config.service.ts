@@ -32,6 +32,17 @@ export class AwsConfigService implements OnInit {
   private readonly MAX_CACHE_SIZE = 50; // Prevent memory leaks
   private readonly MAX_RETRIES = 3;
   private readonly RETRY_DELAY = 1000; // 1 second
+  
+  // Auth session caching to prevent excessive fetchAuthSession calls
+  private cachedAuthSession: { session: any; timestamp: number } | null = null;
+  private readonly AUTH_SESSION_CACHE_TTL = 60 * 1000; // 1 minute cache for auth session
+  private authSessionPromise: Promise<any> | null = null; // Prevent concurrent fetches
+  
+  // SSM data caching to prevent rate limiting
+  private ssmDataCache: { data: any; timestamp: number } | null = null;
+  private readonly SSM_CACHE_TTL = 10 * 60 * 1000; // 10 minutes for SSM data
+  private ssmLoadPromise: Promise<void> | null = null; // Prevent concurrent SSM loads
+  
   global_config: any={};
   constructor() {
     this.loadConfig().then((config) => {
@@ -42,6 +53,49 @@ export class AwsConfigService implements OnInit {
 
   ngOnInit() {
 
+  }
+
+  /**
+   * Get cached auth session to prevent excessive fetchAuthSession calls
+   * This method ensures only one fetch happens at a time and caches the result
+   */
+  public async getCachedAuthSession(): Promise<any> {
+    // Check if we have a valid cached session
+    if (this.cachedAuthSession) {
+      const age = Date.now() - this.cachedAuthSession.timestamp;
+      if (age < this.AUTH_SESSION_CACHE_TTL) {
+        return this.cachedAuthSession.session;
+      }
+    }
+    
+    // If there's already a fetch in progress, wait for it
+    if (this.authSessionPromise) {
+      return this.authSessionPromise;
+    }
+    
+    // Start a new fetch
+    this.authSessionPromise = (async () => {
+      try {
+        const session = await fetchAuthSession();
+        this.cachedAuthSession = {
+          session,
+          timestamp: Date.now()
+        };
+        return session;
+      } finally {
+        this.authSessionPromise = null;
+      }
+    })();
+    
+    return this.authSessionPromise;
+  }
+
+  /**
+   * Invalidate the cached auth session (call on sign out)
+   */
+  public invalidateAuthSessionCache(): void {
+    this.cachedAuthSession = null;
+    this.authSessionPromise = null;
   }
 
   private async loadConfig(): Promise<void> {
@@ -57,6 +111,7 @@ export class AwsConfigService implements OnInit {
         if (response.ok) {
           config = await response.json();
           this.amplifyConfig = config;
+          
         } else {
           console.warn('AWS config not found. Using default configuration.');
           this.useDefaultConfig();
@@ -66,14 +121,21 @@ export class AwsConfigService implements OnInit {
       // Configure Amplify v6 with the loaded config
       this.configureAmplify(config);
 
-      // Load AgentCore agents from SSM Parameter Store if available
-      await this.loadAgentCoreAgentsFromSSM(config);
-
       // Set the basic config first so getConfig() works
       this.configSubject.next(config);
 
       // Check if user is already authenticated
+      const user = await this.checkAuthState();
+      
+      // Only load AgentCore agents from SSM if user is already authenticated
+      if (user) {
+        await this.loadAgentCoreAgentsFromSSM(config);
+        // Re-emit config after SSM data is loaded
+        this.configSubject.next(config);
+      }
+      // Check if user is already authenticated
       this.userSubject.next(this.checkAuthState());
+      return;
     } catch (error) {
       console.error('Error loading AWS config:', error);
       this.useDefaultConfig();
@@ -82,13 +144,49 @@ export class AwsConfigService implements OnInit {
 
   /**
    * Load AgentCore agents from SSM Parameter Store and merge with config
+   * Uses caching to prevent rate limiting from excessive SSM calls
    */
   private async loadAgentCoreAgentsFromSSM(config: AwsConfig): Promise<void> {
+    // Check if we have cached SSM data
+    if (this.ssmDataCache) {
+      const age = Date.now() - this.ssmDataCache.timestamp;
+      if (age < this.SSM_CACHE_TTL) {
+        console.log('📦 Using cached SSM AgentCore data');
+        this.mergeAgentCoreDataIntoConfig(config, this.ssmDataCache.data);
+        return;
+      }
+    }
+    
+    // If there's already an SSM load in progress, wait for it
+    if (this.ssmLoadPromise) {
+      console.log('⏳ SSM load already in progress, waiting...');
+      await this.ssmLoadPromise;
+      // After waiting, the cache should be populated
+      if (this.ssmDataCache) {
+        this.mergeAgentCoreDataIntoConfig(config, this.ssmDataCache.data);
+      }
+      return;
+    }
+    
+    // Start a new SSM load
+    this.ssmLoadPromise = this.loadAgentCoreAgentsFromSSMInternal(config);
+    
+    try {
+      await this.ssmLoadPromise;
+    } finally {
+      this.ssmLoadPromise = null;
+    }
+  }
+  
+  /**
+   * Internal method to actually load from SSM (called only when cache is invalid)
+   */
+  private async loadAgentCoreAgentsFromSSMInternal(config: AwsConfig): Promise<void> {
     try {
       console.log('🔍 Loading AgentCore agents from SSM Parameter Store...');
 
-      // Get AWS credentials
-      const session = await fetchAuthSession();
+      // Get AWS credentials using cached session
+      const session = await this.getCachedAuthSession();
       if (!session.credentials) {
         console.warn('⚠️  No credentials available, skipping AgentCore SSM load');
         return;
@@ -117,6 +215,12 @@ export class AwsConfigService implements OnInit {
         if (response.Parameter?.Value) {
           const agentcoreData = JSON.parse(response.Parameter.Value);
           console.log(`✅ Found ${agentcoreData.agents?.length || 0} AgentCore agents in SSM`);
+          
+          // Cache the SSM data
+          this.ssmDataCache = {
+            data: agentcoreData,
+            timestamp: Date.now()
+          };
 
           // Merge AgentCore agents into config.bedrock.allAgents
           if (agentcoreData.agents && Array.isArray(agentcoreData.agents) && agentcoreData.agents.length > 0) {
@@ -124,14 +228,14 @@ export class AwsConfigService implements OnInit {
             const response = await fetch('/assets/global_configuration.json');
             if (response.ok) {
               this.global_config = await response.json();
-              console.log(this.global_config)
+              //console.log(this.global_config)
             } else {
               console.warn('AWS config not found. Using default configuration.');
               this.useDefaultConfig();
               return;
             }
             
-            console.log(this.global_config);
+            //console.log(this.global_config);
             // for agentcore agents, we are loading the agent instructions at runtime based on the agent that is mentioned by the user. The global_config.agent_configs JSON keeps track of the orchestration teams. We will load an agent for each team.
 
             // Check if this agent is already in allAgents (avoid duplicates)
@@ -197,6 +301,7 @@ export class AwsConfigService implements OnInit {
             //     console.log(`  ✅ Added AgentCore agent: ${agentcoreAgent.name}`);
             //   }
             // }
+            return;
           }
         }
       } catch (ssmError: any) {
@@ -211,6 +316,58 @@ export class AwsConfigService implements OnInit {
       console.error('❌ Error loading AgentCore agents from SSM:', error);
       // Don't fail the entire config load if SSM retrieval fails
     }
+  }
+
+  /**
+   * Merge cached AgentCore data into config (used when loading from cache)
+   */
+  private async mergeAgentCoreDataIntoConfig(config: AwsConfig, agentcoreData: any): Promise<void> {
+    if (!agentcoreData?.agents || !Array.isArray(agentcoreData.agents) || agentcoreData.agents.length === 0) {
+      return;
+    }
+    
+    const agentcoreAgent = agentcoreData.agents[0];
+    
+    // Load global config if not already loaded
+    if (!this.global_config || !this.global_config.agent_configs) {
+      const response = await fetch('/assets/global_configuration.json');
+      if (response.ok) {
+        this.global_config = await response.json();
+      } else {
+        console.warn('Global config not found for merge');
+        return;
+      }
+    }
+    
+    // Merge agents into config
+    Object.keys(this.global_config.agent_configs).forEach((agentName) => {
+      const existingIndex = config.bedrock.allAgents.findIndex(
+        a => (a.name.indexOf(agentName) > -1 || agentName.indexOf(a.name) > -1)
+      );
+      
+      const agentEntry = {
+        name: agentName,
+        agentType: agentName,
+        status: 'active',
+        id: agentcoreAgent.runtime_arn || '',
+        aliasId: '',
+        displayName: agentName,
+        icon: 'smart_toy',
+        color: this.global_config.configured_colors[agentName],
+        deploymentType: 'agentcore',
+        serviceName: agentName,
+        runtimeArn: agentcoreAgent.runtime_arn || '',
+        runtimeId: agentcoreAgent.runtime_arn?.split('/').pop() || '',
+        collaborators: this.global_config.agent_configs[agentName].tool_agent_names
+      };
+
+      if (existingIndex >= 0) {
+        config.bedrock.allAgents[existingIndex] = agentEntry;
+      } else {
+        config.bedrock.allAgents.push(agentEntry);
+      }
+    });
+    return;
   }
 
   private isAmplifyConfigured(): boolean {
@@ -538,7 +695,7 @@ export class AwsConfigService implements OnInit {
 
   async getAppConfig(applicationId: string, environmentId: string, profileId: string, region: string): Promise<any> {
     try {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
 
       if (!session.credentials) {
         throw new Error('No valid credentials available for AppConfig');
@@ -673,7 +830,7 @@ export class AwsConfigService implements OnInit {
    */
   private async fetchAppConfigData(appConfigSettings: AppConfigSettings, profileId: string): Promise<any> {
     if (!this.appConfigDataClient) {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
       this.appConfigDataClient = new AppConfigDataClient({
         region: appConfigSettings.region,
         credentials: session.credentials,
@@ -751,6 +908,7 @@ export class AwsConfigService implements OnInit {
       // Return default/empty configuration as last resort
       return this.getDefaultConfigData(profileType);
     }
+    return undefined;
   }
 
   /**
@@ -903,7 +1061,7 @@ export class AwsConfigService implements OnInit {
     }
 
     try {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
       if (!session.credentials) {
         return {
           success: false,
@@ -1001,7 +1159,7 @@ export class AwsConfigService implements OnInit {
     }
 
     try {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
       if (!session.credentials) {
         return {
           success: false,
@@ -1092,7 +1250,7 @@ export class AwsConfigService implements OnInit {
     };
 
     try {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
       testResults.credentialsAvailable = !!session.credentials;
 
       if (!session.credentials) {
@@ -1169,6 +1327,15 @@ export class AwsConfigService implements OnInit {
       // Get the user after successful sign in
       const user = await getCurrentUser();
       this.userSubject.next(user);
+      
+      // Load AgentCore agents from SSM now that user is authenticated
+      const config = this.configSubject.value;
+      if (config) {
+        await this.loadAgentCoreAgentsFromSSM(config);
+        // Re-emit config to trigger subscribers with updated agent data
+        this.configSubject.next(config);
+      }
+      
       return user;
     } catch (error) {
       console.error('Sign in error:', error);
@@ -1183,6 +1350,13 @@ export class AwsConfigService implements OnInit {
 
       // Invalidate all cached AppConfig data on sign out
       this.invalidateAllCache();
+      
+      // Invalidate auth session cache
+      this.invalidateAuthSessionCache();
+      
+      // Invalidate SSM cache
+      this.ssmDataCache = null;
+      this.ssmLoadPromise = null;
 
       // Reset AppConfig clients
       this.appConfigClient = null;
@@ -1210,6 +1384,15 @@ export class AwsConfigService implements OnInit {
       // Get the user after successful password change
       const user = await getCurrentUser();
       this.userSubject.next(user);
+      
+      // Load AgentCore agents from SSM now that user is authenticated
+      const config = this.configSubject.value;
+      if (config) {
+        await this.loadAgentCoreAgentsFromSSM(config);
+        // Re-emit config to trigger subscribers with updated agent data
+        this.configSubject.next(config);
+      }
+      
       return user;
     } catch (error) {
       console.error('Complete new password error:', error);
@@ -1297,7 +1480,7 @@ export class AwsConfigService implements OnInit {
 
   async getAwsConfig() {
     try {
-      const session = await fetchAuthSession();
+      const session = await this.getCachedAuthSession();
       if (!this.amplifyConfig) {
         this.loadConfig();
       }

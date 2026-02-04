@@ -4,7 +4,6 @@ import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { AwsConfigService } from './aws-config.service';
 import { TextUtils } from '../utils/text-utils';
-import { fetchAuthSession } from 'aws-amplify/auth';
 import { AgentConfig, DeployedAgent, EnrichedAgent, TabConfiguration, TabsConfiguration } from '../models/application-models';
 import { SessionManagerService } from './session-manager.service';
 import { userInfo } from 'os';
@@ -37,9 +36,9 @@ export class AgentConfigService implements OnInit {
     private sessionManager:SessionManagerService
   ) {
     this.loadAgentConfig();
-    this.getGlobalConfig();
+    this.getGlobalConfig().then(config=>{this.setupEnrichedAgents();})
 
-    this.setupEnrichedAgents();
+    
     // Load global config immediately
 
   }
@@ -102,7 +101,7 @@ export class AgentConfigService implements OnInit {
         // Try to find matching config (optional - graceful fallback if not found)
         const configKey = agentConfig ? this.findConfigKey(deployedAgent.agentType, agentConfig) : null;
         const config = configKey && agentConfig ? agentConfig.agents[configKey] : null;
-        console.log(config)
+        //console.log(config)
         // Generate display name with robust fallbacks
         let displayName: string;
         if (config?.displayName) {
@@ -118,7 +117,7 @@ export class AgentConfigService implements OnInit {
         // Always use deterministic color from palette
         let color = ""
         if (!this.global_config || !this.global_config.configured_colors) {
-          this.getGlobalConfig();
+          this.getGlobalConfig().then(config=>{console.log('loaded config')});
         }
         deployedAgent.color = this.global_config.configured_colors[(deployedAgent as any).serviceName]
         // Use config icon or deployed agent icon or intelligent default based on agent type
@@ -300,27 +299,32 @@ export class AgentConfigService implements OnInit {
 
   private getColorForAgent(agent: string) {
     if (!this.global_config || !this.global_config.configured_colors) {
-      this.getGlobalConfig();
+      this.getGlobalConfig().then(config=>{console.log('loaded config')});
     }
     return this.global_config.configured_colors[agent] || "#9C1453FF";
 
   }
 
-  private getGlobalConfig() {
+  private async getGlobalConfig() {
     if (!this.global_config) {
-      const response = fetch('/assets/global_configuration.json').then(conf => {
+       fetch('/assets/global_configuration.json').then(conf => {
         if (conf.ok) {
           conf.json().then(agentcore_config => {
             console.log('✅ Global config loaded successfully')
             this.global_config = agentcore_config;
-            return this.global_config
           });
           //console.log(this.global_config)
+            return this.global_config
 
         } else {
           console.warn('Global config not found.');
+          return undefined
         }
       })
+    .catch(error => console.log(error));
+
+  // Important: return true to indicate you will send a response asynchronously
+      
 
 
     }
@@ -734,15 +738,10 @@ export class AgentConfigService implements OnInit {
         return appConfigData;
       }
 
-      // If AppConfig data is invalid, fall back to static file
-      console.warn('⚠️ AppConfig agents data invalid, falling back to static file');
-      return await this.getStaticAgentsConfiguration();
 
     } catch (error) {
       console.error('❌ Error retrieving agents configuration from AppConfig:', error);
 
-      // Fall back to static file on error
-      return await this.getStaticAgentsConfiguration();
     }
   }
 
@@ -840,11 +839,11 @@ export class AgentConfigService implements OnInit {
       // Import AWS SDK dynamically
       const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
 
-      // Get AWS config and credentials
+      // Get AWS config and credentials using cached session
       const awsConfig = await this.awsConfig.getConfig();
-      const session = await fetchAuthSession();
+      const awsCredentials = await this.awsConfig.getAwsConfig();
 
-      if (!session?.credentials) {
+      if (!awsCredentials?.credentials) {
         console.warn('No AWS credentials available for S3 access');
         return null;
       }
@@ -857,7 +856,7 @@ export class AgentConfigService implements OnInit {
       // Initialize S3 client
       const s3Client = new S3Client({
         region: awsConfig.aws.region,
-        credentials: session.credentials
+        credentials: awsCredentials.credentials
       });
 
       // Get the configuration file from S3

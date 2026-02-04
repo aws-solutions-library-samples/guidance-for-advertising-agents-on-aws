@@ -1,48 +1,5 @@
 .adcp_get_products-section {
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-
-  .inventory-header {
-    margin-bottom: 20px;
-
-    .header-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-
-      .material-icons {
-        color: #6842ff;
-        font-size: 24px;
-      }
-
-      h4 {
-        margin: 0;
-        color: #1f2937;
-        font-size: 1.1rem;
-        font-weight: 600;
-      }
-
-      .product-count {
-        background: linear-gradient(135deg, #7a42a9 0%, #fda83b 100%);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-      }
-    }
-
-    .inventory-message {
-      margin: 0;
-      color: #6b7280;
-      font-size: 0.85rem;
-    }
-  }
+  
 
   .errors-section {
     margin-bottom: 16px;
@@ -154,15 +111,17 @@
         gap: 4px;
         padding: 5px 12px;
         border-radius: 20px;
-        color: white;
+        color: #6b7280;
         font-size: 0.7rem;
-        font-weight: 600;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        background: linear-gradient(135deg, #7a42a9 0%, #6842ff 100%);
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
 
         .material-icons {
           font-size: 14px;
+          color: #9ca3af;
         }
       }
 
@@ -170,11 +129,12 @@
       .delivery-type-badge {
         padding: 5px 10px;
         border-radius: 6px;
-        color: white;
+        color: #6b7280;
         font-size: 0.65rem;
-        font-weight: 600;
+        font-weight: 500;
         text-transform: uppercase;
-        background: #10b981;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
       }
     }
 

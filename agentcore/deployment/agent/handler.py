@@ -41,6 +41,11 @@ from shared.adcp_tools import (
 )
 
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
+from shared.visualization_loader import (
+    VisualizationLoader,
+    preload_all_visualizations,
+    clear_visualization_cache,
+)
 import re
 import json
 import asyncio
@@ -195,6 +200,19 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 # Cache for SSM parameter values to avoid repeated API calls
 _ssm_cache: Dict[str, str] = {}
+
+# Cache for loaded configurations to avoid repeated S3 calls
+_config_cache: Dict[str, dict] = {}
+
+# Cache for agent instructions to avoid repeated S3/filesystem reads
+_instructions_cache: Dict[str, str] = {}
+
+# Flag to track if initialization has completed
+_initialization_complete = False
+
+# Load the config once at module level
+CONFIG = {}
+GLOBAL_CONFIG = {}
 
 
 def get_memory_id_from_ssm() -> str:
@@ -441,20 +459,29 @@ def inject_data_into_placeholder(instructions: str, agent_name: str) -> str:
     return instructions
 
 
-def load_instructions_for_agent(agent_name: str):
+def load_instructions_for_agent(agent_name: str, use_cache: bool = True):
     """
-    Load agent instructions from S3 bucket or fall back to local filesystem.
+    Load agent instructions from cache, S3 bucket, or local filesystem.
     
     Priority:
-    1. S3 bucket: {stack_prefix}-data-{unique_id}/configs/agent-instructions-library/{agent_name}.txt
-    2. Local filesystem: agent-instructions-library/{agent_name}.txt
+    1. In-memory cache (if use_cache=True)
+    2. S3 bucket: {stack_prefix}-data-{unique_id}/configs/agent-instructions-library/{agent_name}.txt
+    3. Local filesystem: agent-instructions-library/{agent_name}.txt
     
     Args:
         agent_name: Name of the agent to load instructions for
+        use_cache: Whether to use cached instructions (default True)
         
     Returns:
         Instructions string with placeholders injected
     """
+    global _instructions_cache
+    
+    # Check cache first
+    if agent_name in _instructions_cache:
+        logger.info(f"📦 INSTRUCTIONS: Cache HIT for {agent_name}")
+        return _instructions_cache[agent_name]
+    
     # Try S3 first
     s3_bucket = get_s3_config_bucket()
     if s3_bucket:
@@ -466,6 +493,7 @@ def load_instructions_for_agent(agent_name: str):
             content = content.strip()
             content = inject_data_into_placeholder(content, agent_name)
             logger.info(f"✅ INSTRUCTIONS: Loaded {agent_name} instructions from S3 ({len(content)} chars)")
+            _instructions_cache[agent_name] = content
             return content
         else:
             logger.info(f"⚠️ INSTRUCTIONS: Not found in S3, falling back to local filesystem")
@@ -492,7 +520,8 @@ def load_instructions_for_agent(agent_name: str):
                 content = f.read().strip()
                 # Inject agent name placeholder
                 content = inject_data_into_placeholder(content, agent_name)
-
+                # Cache the result
+                _instructions_cache[agent_name] = content
                 return content
         else:
             # File doesn't exist
@@ -505,10 +534,6 @@ def load_instructions_for_agent(agent_name: str):
     except Exception as e:
         logging.error(f"Error loading instructions: {e}")
         return "Couldn't load instructions."
-
-
-# Cache for loaded configurations to avoid repeated S3 calls
-_config_cache: Dict[str, dict] = {}
 
 
 # Load configuration from file
@@ -580,21 +605,40 @@ def clear_config_cache(file_name: Optional[str] = None):
         logger.info(f"🗑️ CONFIG: Cleared all config cache")
 
 
-# Load the config once at module level
-CONFIG = {}
-GLOBAL_CONFIG = {}
+def clear_instructions_cache(agent_name: Optional[str] = None):
+    """
+    Clear the instructions cache.
+    
+    Args:
+        agent_name: Specific agent to clear from cache, or None to clear all
+    """
+    global _instructions_cache
+    if agent_name:
+        _instructions_cache.pop(agent_name, None)
+        logger.info(f"🗑️ INSTRUCTIONS: Cleared cache for {agent_name}")
+    else:
+        _instructions_cache.clear()
+        logger.info(f"🗑️ INSTRUCTIONS: Cleared all instructions cache")
+
+
 response_model_parsed = {}
 
 
 def get_agent_config(agent_name):
     """Get the configuration for a specific agent"""
-    GLOBAL_CONFIG = load_configs("global_configuration.json")
+    global GLOBAL_CONFIG
+    # Use cached GLOBAL_CONFIG if available, otherwise load it
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
     return GLOBAL_CONFIG.get("agent_configs", {}).get(agent_name, {})
 
 
 def get_collaborator_agent_model_inputs(agent_name, orchestrator_name):
     """Get the model inputs for a collaborator agent"""
-    GLOBAL_CONFIG = load_configs("global_configuration.json")
+    global GLOBAL_CONFIG
+    # Use cached GLOBAL_CONFIG if available, otherwise load it
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
     orchestrator_config = GLOBAL_CONFIG.get("agent_configs", {}).get(
         orchestrator_name, {}
     )
@@ -604,7 +648,10 @@ def get_collaborator_agent_model_inputs(agent_name, orchestrator_name):
 
 def get_collaborator_agent_config(agent_name, orchestrator_name):
     """Get the configuration for a collaborator agent"""
-    GLOBAL_CONFIG = load_configs("global_configuration.json")
+    global GLOBAL_CONFIG
+    # Use cached GLOBAL_CONFIG if available, otherwise load it
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
     orchestrator_config = GLOBAL_CONFIG.get("agent_configs", {}).get(
         orchestrator_name, {}
     )
@@ -656,6 +703,128 @@ def get_matching_kb_id(name: str) -> Optional[str]:
         f'{os.environ.get("STACK_PREFIX", "XXX")}-{name}-{os.environ.get("UNIQUE_ID", "XXX")}',
         None,
     )
+
+
+def preload_all_agent_instructions():
+    """
+    Pre-load all agent instructions into cache at startup.
+    This eliminates S3/filesystem reads during agent creation.
+    """
+    global _instructions_cache, GLOBAL_CONFIG
+    
+    logger.info("🚀 PRELOAD: Starting pre-load of all agent instructions...")
+    start_time = datetime.now()
+    
+    # Ensure global config is loaded
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
+    
+    # Get all agent names from config
+    agent_configs = GLOBAL_CONFIG.get("agent_configs", {})
+    agent_names = list(agent_configs.keys())
+    
+    # Also check for agent cards to get additional agent names
+    s3_bucket = get_s3_config_bucket()
+    if s3_bucket:
+        s3_prefix = f"{S3_CONFIG_PREFIX}/agent_cards/"
+        card_keys = list_s3_objects(s3_bucket, s3_prefix)
+        for key in card_keys:
+            if key.endswith(".agent.card.json"):
+                # Extract agent name from filename
+                filename = key.split("/")[-1]
+                agent_name = filename.replace(".agent.card.json", "")
+                if agent_name not in agent_names:
+                    agent_names.append(agent_name)
+    
+    # Also scan local agent-instructions-library directory
+    base_dir = os.path.dirname(__file__)
+    library_dir = os.path.join(base_dir, "agent-instructions-library")
+    if os.path.exists(library_dir):
+        for filename in os.listdir(library_dir):
+            if filename.endswith(".txt"):
+                agent_name = filename.replace(".txt", "")
+                if agent_name not in agent_names and not agent_name.startswith("_"):
+                    agent_names.append(agent_name)
+    
+    logger.info(f"🚀 PRELOAD: Found {len(agent_names)} agents to pre-load instructions for")
+    
+    # Pre-load instructions for each agent
+    loaded_count = 0
+    for agent_name in agent_names:
+        try:
+            # Force load (bypass cache) to populate cache
+            instructions = load_instructions_for_agent(agent_name, use_cache=False)
+            if instructions and "Couldn't load" not in instructions:
+                loaded_count += 1
+                logger.debug(f"✅ PRELOAD: Loaded instructions for {agent_name}")
+        except Exception as e:
+            logger.warning(f"⚠️ PRELOAD: Failed to load instructions for {agent_name}: {e}")
+    
+    elapsed = (datetime.now() - start_time).total_seconds()
+    logger.info(f"🚀 PRELOAD: Completed pre-loading {loaded_count}/{len(agent_names)} agent instructions in {elapsed:.2f}s")
+    
+    return loaded_count
+
+
+def initialize_handler():
+    """
+    Initialize the handler by pre-loading all configurations and instructions.
+    This should be called once at module load time.
+    """
+    global _initialization_complete, GLOBAL_CONFIG, CONFIG, KNOWLEDGEBASE_IDS
+    
+    if _initialization_complete:
+        logger.debug("⏭️ INIT: Handler already initialized, skipping")
+        return
+    
+    logger.info("=" * 60)
+    logger.info("🚀 HANDLER INITIALIZATION STARTING")
+    logger.info("=" * 60)
+    
+    init_start = datetime.now()
+    
+    try:
+        # Step 1: Load global configuration
+        logger.info("📥 INIT: Loading global configuration...")
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
+        logger.info(f"✅ INIT: Global config loaded with {len(GLOBAL_CONFIG.get('agent_configs', {}))} agent configs")
+        
+        # Step 2: Pre-load all agent instructions
+        logger.info("📥 INIT: Pre-loading agent instructions...")
+        preload_all_agent_instructions()
+        
+        # Step 3: Pre-load all visualization templates
+        logger.info("📥 INIT: Pre-loading visualization templates...")
+        agent_names = list(GLOBAL_CONFIG.get("agent_configs", {}).keys())
+        viz_count = preload_all_visualizations(agent_names)
+        logger.info(f"✅ INIT: Pre-loaded visualizations for {viz_count} agents")
+        
+        # Step 4: Refresh knowledge base IDs if needed
+        if not KNOWLEDGEBASE_IDS:
+            logger.info("📥 INIT: Loading knowledge base IDs...")
+            KNOWLEDGEBASE_IDS = load_all_stack_knowledgebase_ids() or {}
+            logger.info(f"✅ INIT: Loaded {len(KNOWLEDGEBASE_IDS)} knowledge base IDs")
+        
+        _initialization_complete = True
+        
+        elapsed = (datetime.now() - init_start).total_seconds()
+        logger.info("=" * 60)
+        logger.info(f"🚀 HANDLER INITIALIZATION COMPLETE in {elapsed:.2f}s")
+        logger.info(f"   - Config cache entries: {len(_config_cache)}")
+        logger.info(f"   - Instructions cache entries: {len(_instructions_cache)}")
+        logger.info(f"   - Visualizations cached: {viz_count} agents")
+        logger.info(f"   - Knowledge bases: {len(KNOWLEDGEBASE_IDS)}")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"❌ INIT: Handler initialization failed: {e}")
+        import traceback
+        logger.error(f"❌ INIT: Traceback: {traceback.format_exc()}")
+        # Don't set _initialization_complete so it can retry
+
+
+# Run initialization at module load time
+initialize_handler()
 
 
 def get_tool_agent_names():
@@ -712,7 +881,7 @@ def get_memory_id_from_ssm() -> str:
     """
     Retrieve AgentCore memory ID from SSM Parameter Store.
     
-    The memory ID is stored at: /{stack_prefix}/agentcore_memory_id/{unique_id}
+    The memory ID is stored at: /{stack_prefix}/{unique_id}/agentcore_memory_id
     
     Falls back to MEMORY_ID environment variable if SSM retrieval fails.
 
@@ -728,7 +897,7 @@ def get_memory_id_from_ssm() -> str:
             logging.warning("[get_memory_id_from_ssm] UNIQUE_ID not set, falling back to env var")
             return os.environ.get("MEMORY_ID", "")
 
-        parameter_name = f"/{stack_prefix}/agentcore_memory_id/{unique_id}"
+        parameter_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
         ssm = boto3.client("ssm", region_name=region)
 
         # Retrieve parameter
@@ -1107,11 +1276,13 @@ def retrieve_knowledge_base_results_tool(
     global collected_sources
     global orchestrator_instance
     global response_model_parsed
-    kb_name = (
-        load_configs("global_configuration.json")
-        .get("knowledge_bases", {})
-        .get(agent_name)
-    )
+    global GLOBAL_CONFIG
+    
+    # Use cached GLOBAL_CONFIG if available
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
+    
+    kb_name = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
     logger.info(f"🔧 TOOL: KB name: {kb_name}")
     result_string = "<sources>"
     kb_id = get_matching_kb_id(kb_name)
@@ -1253,7 +1424,6 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     # Load base instructions and add conversation context if available
     base_instructions = load_instructions_for_agent(agent_name=agent_name)
     enhanced_system_prompt = base_instructions + conversation_context
-    from shared.visualization_loader import VisualizationLoader
 
     loader = VisualizationLoader()
     templates = loader.load_all_templates_for_agent(agent_name)
@@ -1611,7 +1781,6 @@ class GenericAgent:
         print(f"\n📝 Loading agent instructions...")
         try:
             base_instructions = load_instructions_for_agent(agent_name=agent_name)
-            from shared.visualization_loader import VisualizationLoader
 
             loader = VisualizationLoader()
             templates = loader.load_all_templates_for_agent(agent_name)
@@ -1711,10 +1880,24 @@ class GenericAgent:
                 "conversation_manager": conversation_manager,
             }
             
-            # Restore conversation history if provided
+            # Restore conversation history - priority order:
+            # 1. In-memory saved_messages (for fast agent switching within same process)
+            # 2. AgentCore Memory (for persistence across process restarts)
             if saved_messages:
                 agent_kwargs["messages"] = saved_messages
-                logger.info(f"📂 CONTEXT_RESTORE: Restored {len(saved_messages)} messages for {agent_name}")
+                logger.info(f"📂 CONTEXT_RESTORE: Restored {len(saved_messages)} in-memory messages for {agent_name}")
+            elif hasattr(conversation_manager, 'restore_from_session') and "default" not in self.memory_id.lower():
+                # Explicitly restore from AgentCore Memory if no in-memory messages
+                try:
+                    logger.info(f"📂 CONTEXT_RESTORE: Attempting to restore from AgentCore Memory for {agent_name}...")
+                    restored_messages = conversation_manager.restore_from_session({})
+                    if restored_messages:
+                        agent_kwargs["messages"] = restored_messages
+                        logger.info(f"📂 CONTEXT_RESTORE: Restored {len(restored_messages)} messages from AgentCore Memory for {agent_name}")
+                    else:
+                        logger.info(f"📂 CONTEXT_RESTORE: No messages found in AgentCore Memory for {agent_name}")
+                except Exception as restore_err:
+                    logger.warning(f"⚠️ CONTEXT_RESTORE: Failed to restore from AgentCore Memory: {restore_err}")
             
             agent = Agent(**agent_kwargs)
             return agent
@@ -1846,19 +2029,33 @@ async def agent_invocation(payload, context):
 
         # Extract session information from payload for memory integration
         _flush_log("🔍 AGENT_INVOCATION: Extracting session info from payload...")
+        _flush_log(f"🔍 AGENT_INVOCATION: Raw payload keys: {list(payload.keys()) if isinstance(payload, dict) else 'not a dict'}")
         try:
             session_id, extracted_memory_id, agent_name = (
                 extract_session_id_and_memory_id_and_actor_from_payload(payload)
             )
-            _flush_log(f"🔍 AGENT_INVOCATION: session_id={session_id}, memory_id={extracted_memory_id}, agent_name={agent_name}")
+            _flush_log(f"🔍 AGENT_INVOCATION: Extracted - session_id={session_id}, memory_id={extracted_memory_id}, agent_name={agent_name}")
+            
+            # Log the raw memory_id from payload for debugging
+            raw_memory_id = payload.get("memory_id") or payload.get("session_metadata", {}).get("memory_id")
+            _flush_log(f"🔍 AGENT_INVOCATION: Raw memory_id from payload: '{raw_memory_id}'")
+            
+            if not extracted_memory_id or "default" in str(extracted_memory_id).lower():
+                _flush_log(f"⚠️ AGENT_INVOCATION: Memory ID is empty or default - conversation persistence may not work!", "WARNING")
+            elif "-" not in str(extracted_memory_id):
+                _flush_log(f"⚠️ AGENT_INVOCATION: Memory ID '{extracted_memory_id}' missing '-' character - was resolved from SSM", "WARNING")
+            else:
+                _flush_log(f"✅ AGENT_INVOCATION: Valid memory_id received: {extracted_memory_id}")
         except Exception as extract_err:
             _flush_log(f"❌ AGENT_INVOCATION: Failed to extract session info: {extract_err}", "ERROR")
             import traceback
             _flush_log(f"❌ AGENT_INVOCATION: Traceback: {traceback.format_exc()}", "ERROR")
             raise
 
-        _flush_log("📂 AGENT_INVOCATION: Loading global configuration...")
-        GLOBAL_CONFIG = load_configs("global_configuration.json")
+        _flush_log("📂 AGENT_INVOCATION: Using pre-loaded global configuration...")
+        # Use pre-loaded GLOBAL_CONFIG instead of loading again
+        if not GLOBAL_CONFIG:
+            GLOBAL_CONFIG = load_configs("global_configuration.json")
         _flush_log(f"📂 AGENT_INVOCATION: GLOBAL_CONFIG keys: {list(GLOBAL_CONFIG.keys()) if GLOBAL_CONFIG else 'None'}")
 
         _flush_log(f"📂 AGENT_INVOCATION: Getting agent config for {agent_name}...")
@@ -1952,6 +2149,59 @@ async def agent_invocation(payload, context):
                     "actor_id": normalized_actor_id,
                     "memory_id": extracted_memory_id,
                 }
+                
+                # CRITICAL: Update the conversation manager's session info for memory persistence
+                if hasattr(agent, 'conversation_manager') and agent.conversation_manager:
+                    if hasattr(agent.conversation_manager, 'update_session_info'):
+                        agent.conversation_manager.update_session_info(
+                            actor_id=normalized_actor_id,
+                            session_id=session_id
+                        )
+                        _flush_log(f"♻️ Updated conversation_manager session info for {agent_name}")
+                    # Also update memory_id if the manager has it
+                    if hasattr(agent.conversation_manager, 'memory_id'):
+                        agent.conversation_manager.memory_id = extracted_memory_id
+                        _flush_log(f"♻️ Updated conversation_manager memory_id to {extracted_memory_id}")
+                    
+                    # Retrieve conversation history from memory and inject into system prompt
+                    if hasattr(agent.conversation_manager, 'retrieve_conversation_history'):
+                        try:
+                            history = agent.conversation_manager.retrieve_conversation_history()
+                            if history and len(history) > 0:
+                                # Format history for context injection
+                                # Only include clean text messages, skip tool-related content
+                                context_messages = []
+                                for msg in history:
+                                    role = msg.get("role", "user").title()
+                                    content = msg.get("content", [])
+                                    if isinstance(content, list) and len(content) > 0:
+                                        text = content[0].get("text", "") if isinstance(content[0], dict) else str(content[0])
+                                    else:
+                                        text = str(content)
+                                    
+                                    # Skip tool-related messages entirely
+                                    if any(marker in text for marker in [
+                                        "'toolUse'", '"toolUse"', "toolUse",
+                                        "'toolResult'", '"toolResult"', "toolResult",
+                                        "tooluse_", "tool_use_id"
+                                    ]):
+                                        continue
+                                    
+                                    # Skip empty or very short messages
+                                    if not text or len(text.strip()) < 3:
+                                        continue
+                                    
+                                    # Truncate long messages for context
+                                    context_messages.append(f"{role}: {text[:500]}")
+                                
+                                if context_messages:
+                                    history_context = "\n".join(context_messages[-10:])  # Last 10 messages
+                                    if hasattr(agent, 'system_prompt') and agent.system_prompt:
+                                        agent.system_prompt += f"\n\n## Recent Conversation History\n{history_context}\n\nContinue the conversation naturally based on this context."
+                                        _flush_log(f"📂 Injected {len(context_messages)} history messages into system prompt")
+                        except Exception as hist_err:
+                            _flush_log(f"⚠️ Failed to retrieve/inject conversation history: {hist_err}", "WARNING")
+                
                 _flush_log(f"♻️ Agent reused for {agent_name} with session {session_id}")
         
         if session_id:

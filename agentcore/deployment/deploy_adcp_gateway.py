@@ -114,6 +114,23 @@ class AdCPGatewayDeployer:
             }]
         }
         
+        # SSM Parameter access policy for the Lambda
+        ssm_policy = {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Sid": "SSMParameterAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "ssm:GetParameter",
+                    "ssm:GetParameters",
+                    "ssm:GetParametersByPath",
+                    "ssm:PutParameter",
+                    "ssm:DeleteParameter"
+                ],
+                "Resource": f"arn:aws:ssm:{self.region}:{self.account_id}:parameter/{self.stack_prefix}/*"
+            }]
+        }
+        
         try:
             response = self.iam_client.create_role(
                 RoleName=self.role_name,
@@ -129,6 +146,14 @@ class AdCPGatewayDeployer:
                 PolicyArn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
             )
             
+            # Attach inline SSM policy
+            self.iam_client.put_role_policy(
+                RoleName=self.role_name,
+                PolicyName="SSMParameterAccess",
+                PolicyDocument=json.dumps(ssm_policy)
+            )
+            logger.info(f"Attached SSM parameter access policy to role: {self.role_name}")
+            
             # Wait for role propagation
             logger.info("Waiting for IAM role propagation (10 seconds)...")
             time.sleep(10)  # nosemgrep: arbitrary-sleep - Intentional delay for IAM role propagation
@@ -138,6 +163,18 @@ class AdCPGatewayDeployer:
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             response = self.iam_client.get_role(RoleName=self.role_name)
             logger.info(f"Using existing IAM role: {response['Role']['Arn']}")
+            
+            # Update SSM policy on existing role
+            try:
+                self.iam_client.put_role_policy(
+                    RoleName=self.role_name,
+                    PolicyName="SSMParameterAccess",
+                    PolicyDocument=json.dumps(ssm_policy)
+                )
+                logger.info(f"Updated SSM parameter access policy on existing role: {self.role_name}")
+            except Exception as e:
+                logger.warning(f"Could not update SSM policy on existing role: {e}")
+            
             return response["Role"]["Arn"]
     
     def create_gateway_role(self, lambda_arn: str) -> str:

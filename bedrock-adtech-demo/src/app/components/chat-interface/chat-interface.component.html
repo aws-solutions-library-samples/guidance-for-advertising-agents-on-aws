@@ -103,37 +103,43 @@
   <!-- Chat Interface -->
   <div class="chat-container">
 
-
+<span class="session-id-label" [title]="getFullSessionId()" (click)="copySessionId()">
+          <span class="material-icons">fingerprint</span>
+          {{getFullSessionId()}}
+        </span>
     <!-- Chat Header with Export and Clear Buttons -->
-    <div class="chat-header" *ngIf="messages.length > 0">
+    <!-- <div class="chat-header">
       <div class="chat-info">
-        <span class="message-count">{{messages.length}} message{{messages.length > 1 ? 's' : ''}}</span>
-        <span class="storage-info">{{getActiveAgentParticipants().length}} agent{{getActiveAgentParticipants().length >
-          1 ? 's' : ''}} participated</span>
+        
       </div>
       <div class="chat-actions">
-        <button class="export-pdf-btn" (click)="showPdfExportOptions()" title="Export conversation to PDF">
+        <button class="nova-button secondary menu-button" (click)="showPdfExportOptions()" title="Export conversation to PDF">
           <span class="material-icons">picture_as_pdf</span>
           <span class="btn-text">Export PDF</span>
         </button>
-        <button class="visibility-settings-btn" (click)="showVisibilitySettingsModal()"
+        <button class="nova-button secondary menu-button" (click)="showVisibilitySettingsModal()"
           title="Configure message visibility settings">
           <span class="material-icons">list</span>
           <span class="btn-text">Context</span>
         </button>
-        <button class="clear-chat-btn" (click)="clearMessages()" title="Clear all messages">
+        <button class="nova-button secondary menu-button" (click)="clearMessages()" title="Clear all messages">
           <span class="material-icons">clear_all</span>
           <span class="btn-text">Clear Chat</span>
         </button>
       </div>
-    </div>
+    </div> -->
 
     <div class="chat-messages" #messagesContainer>
       <ng-container *ngFor="let message of sortedMessages; let i = index; trackBy: trackByMessageId">
-        <div *ngIf="!shouldHideMessage(message, i) && message.data?.contentType != 'tool-result'" class="message"
-          [class.user]="message.sender === 'user'" [class.agent]="message.sender === 'agent'"
+        <div *ngIf="!shouldHideMessage(message, i)" class="message"
+          [class.user]="message.sender === 'user'" 
+          [class.agent]="message.sender === 'agent'"
+          [class.specialist-pending]="isAwaitingSpecialistResponse(message)"
+          [class.specialist-completed]="message.data?.specialistStatus === 'completed'"
+          [class.specialist-timeout]="isSpecialistTimeout(message)"
           [attr.data-agent]="message.agentName"
-          [attr.data-message-id]="message.id">
+          [attr.data-message-id]="message.id"
+          [attr.data-tool-use-id]="message.data?.toolUseId">
 
 
 
@@ -145,7 +151,50 @@
                 [attr.data-content-type]="message.data?.contentType">
                 {{message.agentName}}
               </div>
+              <!-- Specialist Invocation Status Indicator -->
+              <div class="specialist-status-indicator" 
+                *ngIf="message.data?.toolUseId && message.data?.messageType === 'supervisor-to-collaborator'"
+                [class.pending]="message.data?.specialistStatus === 'pending'"
+                [class.completed]="message.data?.specialistStatus === 'completed'"
+                [class.timeout]="message.data?.specialistStatus === 'timeout'">
+                <span class="material-icons status-icon" *ngIf="message.data?.specialistStatus === 'pending'">hourglass_empty</span>
+                <span class="material-icons status-icon" *ngIf="message.data?.specialistStatus === 'completed'">check_circle</span>
+                <span class="material-icons status-icon" *ngIf="message.data?.specialistStatus === 'timeout'">error_outline</span>
+                <span class="status-text" *ngIf="message.data?.specialistStatus === 'pending'">Awaiting response...</span>
+                <span class="status-text" *ngIf="message.data?.specialistStatus === 'completed'">Response received</span>
+                <span class="status-text" *ngIf="message.data?.specialistStatus === 'timeout'">Response timed out</span>
+              </div>
+              <!-- Original Prompt Toggle Button - shown on collaborator responses -->
+              <button class="specialist-prompt-toggle" 
+                *ngIf="message.data?.messageType === 'collaborator-response' && message.data?.originalPrompt"
+                (click)="toggleSpecialistPrompt(message.id)"
+                [class.expanded]="isSpecialistPromptExpanded(message.id)"
+                [style.border-color]="getAgentColor(message.data?.supervisorAgent || message.agentName)"
+                [style.color]="getAgentColor(message.data?.supervisorAgent || message.agentName)"
+                [title]="isSpecialistPromptExpanded(message.id) ? 'Hide the original prompt from supervisor' : 'View the original prompt from supervisor'">
+                <span class="material-icons">{{isSpecialistPromptExpanded(message.id) ? 'expand_less' : 'chat_bubble_outline'}}</span>
+                <span class="toggle-text">{{isSpecialistPromptExpanded(message.id) ? 'Hide' : 'Prompt'}}</span>
+              </button>
               <div class="agent-timestamp">{{message.timestamp | date:'short'}}</div>
+            </div>
+            
+            <!-- Original Prompt Expandable Section - shown on collaborator responses -->
+            <div class="specialist-prompt-section" 
+              *ngIf="message.data?.messageType === 'collaborator-response' && message.data?.originalPrompt && isSpecialistPromptExpanded(message.id)"
+              [style.border-left-color]="getAgentColor(message.data?.supervisorAgent || message.agentName)">
+              <div class="specialist-prompt-header">
+                <span class="material-icons prompt-icon" [style.color]="getAgentColor(message.data?.supervisorAgent || message.agentName)">chat_bubble_outline</span>
+                <span class="prompt-label">Original Request</span>
+                <span class="supervisor-agent-badge" 
+                  *ngIf="message.data?.supervisorAgent"
+                  [style.background]="getAgentBGColor(message.data?.supervisorAgent)" 
+                  [style.color]="getAgentColor(message.data?.supervisorAgent)">
+                  from {{message.data?.supervisorAgent}}
+                </span>
+              </div>
+              <div class="specialist-prompt-content">
+                <markdown [data]="getCleanPromptContent(message.data?.originalPrompt)" ngPreserveWhitespaces></markdown>
+              </div>
             </div>
             <!-- User messages - simple formatting -->
             <div *ngIf="message.sender === 'user'">
@@ -183,6 +232,22 @@
               <ng-container *ngIf="!message.data?.isWelcomeMessage">
                 <ng-container *ngTemplateOutlet="agentMessageTemplate; context: { message: message }"></ng-container>
               </ng-container>
+              
+              <!-- Specialist invocation status indicator -->
+              <div class="specialist-status-indicator" *ngIf="message.data?.toolUseId && message.data?.messageType === 'supervisor-to-collaborator'">
+                <ng-container *ngIf="isAwaitingSpecialistResponse(message)">
+                  <span class="material-icons status-icon">hourglass_empty</span>
+                  <span class="status-text">Awaiting specialist response...</span>
+                </ng-container>
+                <ng-container *ngIf="message.data?.specialistStatus === 'completed'">
+                  <span class="material-icons status-icon">check_circle</span>
+                  <span class="status-text">Response received</span>
+                </ng-container>
+                <ng-container *ngIf="isSpecialistTimeout(message)">
+                  <span class="material-icons status-icon">warning</span>
+                  <span class="status-text">Response timed out</span>
+                </ng-container>
+              </div>
             </div>
 
             <div class="message-time" style="color: white;" *ngIf="message.sender === 'user'">

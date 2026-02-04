@@ -12,6 +12,8 @@
   transform: translateY(10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  max-height: 90vh !important;
+  overflow: scroll;
 
   &.visible {
     opacity: 1;
@@ -201,6 +203,7 @@
   .agent-typeahead-container {
     max-width: 90vw;
     min-width: 280px;
+    max-height: 90vh;
 
     .agent-suggestion {
       padding: 10px 12px;

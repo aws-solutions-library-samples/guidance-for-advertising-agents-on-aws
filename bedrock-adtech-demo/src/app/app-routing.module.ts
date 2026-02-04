@@ -11,7 +11,7 @@ const routes: Routes = [
     component: GenericTabComponent, 
     canActivate: [AuthGuard] 
   },
-  { path: '**', redirectTo: '/login' }
+  { path: '**', redirectTo: 'login' }
 ];
 
 @NgModule({

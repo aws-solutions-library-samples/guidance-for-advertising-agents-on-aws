@@ -645,7 +645,7 @@ class ManualAgentCoreDeployer:
                         "bedrock:ListKnowledgeBases",
                         "bedrock:ListDataSources",
                     ],
-                    "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*"],
+                    "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*",f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
                 },
                 {
                     "Sid": "AgentCoreAccess",
@@ -693,6 +693,20 @@ class ManualAgentCoreDeployer:
                         "appsync:EventPublish",
                     ],
                     "Resource": f"arn:aws:appsync:{self.region}:{account_id}:*",
+                },
+                {
+                    "Sid": "SSMParameterAccess",
+                    "Effect": "Allow",
+                    "Action": [
+                        "ssm:GetParameter",
+                        "ssm:GetParameters",
+                        "ssm:GetParametersByPath",
+                        "ssm:PutParameter",
+                        "ssm:DeleteParameter",
+                    ],
+                    "Resource": [
+                        f"arn:aws:ssm:{self.region}:{account_id}:parameter/{stack_prefix}/*",
+                    ],
                 },
             ],
         }
@@ -784,7 +798,7 @@ class ManualAgentCoreDeployer:
                                 logger.info(f"Deleted old policy version: {old_version['VersionId']}")
                         
                         # Create new policy version and set as default
-                        self.iam_client.create_policy_version(
+                        self.iam_client.put_role_policy(
                             PolicyArn=policy_arn,
                             PolicyDocument=json.dumps(permissions_policy),
                             SetAsDefault=True

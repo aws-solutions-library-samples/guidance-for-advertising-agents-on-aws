@@ -648,9 +648,29 @@
             "model_inputs": {
                 "AgencyAgent": {
                     "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                    "max_tokens": 16000,
+                    "max_tokens": 8000,
                     "temperature": 0.3,
                     "top_p": 0.9
+                },
+                "SignalAgent": {
+                    "model_id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                },
+                "IdentityAgent": {
+                    "model_id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                },
+                "AdvertiserAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                },
+                "PublisherAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "max_tokens": 4000,
+                    "temperature": 0.3
                 }
             },
             "agent_tools": [

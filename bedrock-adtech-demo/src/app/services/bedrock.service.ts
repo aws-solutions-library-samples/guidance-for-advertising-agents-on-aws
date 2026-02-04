@@ -15,7 +15,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { v4 } from 'uuid';
 import { Amplify } from 'aws-amplify';
-import { fetchAuthSession } from 'aws-amplify/auth';
+// Note: fetchAuthSession is accessed via awsConfig.getCachedAuthSession() to prevent rate limiting
 import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, EnrichedAgent, StreamEvent } from 'src/app/models/application-models';
 
 
@@ -166,22 +166,58 @@ export class BedrockService {
     private sessionManager: SessionManagerService
   ) {
     this.initializeClient();
-    if (!this.memoryRecordId) {
-      let controlClient = new BedrockAgentCoreControlClient({ region: this.awsConfig.getRegion() })
-      let memoryIdPart = this.awsConfig.getStackPrefix() + 'memory' + this.awsConfig.getStackSuffix()
-      controlClient.send(new ListMemoriesCommand({ maxResults: 100 })).then(memoryRecords => {
-        memoryRecords.memories?.forEach(memory => {
-          if (memory.id && memory.id?.indexOf(memoryIdPart) > -1) {
-            this.memoryRecordId = memory.id;
-          }
-        })
-      });
-    }
+    this.initializeMemoryRecordId();
     // Set up periodic cleanup of old session data (every 10 minutes)
     this.cleanupInterval = setInterval(() => {
       this.cleanupOldSessions();
     }, 10 * 60 * 1000);
 
+  }
+
+  /**
+   * Initialize memory record ID from AgentCore ListMemoriesCommand.
+   * This dynamically discovers the correct memory ID based on stack prefix/suffix.
+   */
+  private async initializeMemoryRecordId(): Promise<void> {
+    if (this.memoryRecordId) {
+      console.log(`📝 Memory record ID already set: ${this.memoryRecordId}`);
+      return;
+    }
+
+    try {
+      const controlClient = new BedrockAgentCoreControlClient({ region: this.awsConfig.getRegion() });
+      const memoryIdPart = this.awsConfig.getStackPrefix() + 'memory' + this.awsConfig.getStackSuffix();
+      
+      console.log(`🔍 Searching for memory with pattern: ${memoryIdPart}`);
+      
+      const memoryRecords = await controlClient.send(new ListMemoriesCommand({ maxResults: 100 }));
+      
+      memoryRecords.memories?.forEach(memory => {
+        if (memory.id && memory.id.indexOf(memoryIdPart) > -1) {
+          this.memoryRecordId = memory.id;
+          console.log(`✅ Found memory record ID: ${this.memoryRecordId}`);
+        }
+      });
+
+      if (!this.memoryRecordId) {
+        console.warn(`⚠️ No memory found matching pattern: ${memoryIdPart}. Available memories:`, 
+          memoryRecords.memories?.map(m => m.id));
+        // Fall back to config value if available
+        const configMemoryId = this.awsConfig.getMemoryRecordId();
+        if (configMemoryId) {
+          this.memoryRecordId = configMemoryId;
+          console.log(`📝 Using config memory record ID: ${this.memoryRecordId}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load memory record ID from ListMemoriesCommand:', error);
+      // Fall back to config value
+      const configMemoryId = this.awsConfig.getMemoryRecordId();
+      if (configMemoryId) {
+        this.memoryRecordId = configMemoryId;
+        console.log(`📝 Fallback to config memory record ID: ${this.memoryRecordId}`);
+      }
+    }
   }
 
   traceEvents: Array<any> = [];
@@ -346,16 +382,16 @@ export class BedrockService {
       this.awsConfig.config$.subscribe(config => {
         if (config && this.awsConfig.isAuthenticated()) {
           this.setupBedrockClient();
-          this.loadAppSyncConfig();
+          //this.loadAppSyncConfig();
+          this.awsConfig.user$.subscribe(user => {
+          if (user) {
+            this.loadAppSyncConfig();
+          }
+        });
         }
       });
 
-      this.awsConfig.user$.subscribe(user => {
-        if (user) {
-          this.setupBedrockClient();
-          this.loadAppSyncConfig();
-        }
-      });
+      
     } catch (error) {
       //console.error('Error initializing Bedrock client:', error);
     }
@@ -1668,8 +1704,8 @@ Example format:
    */
   private async uploadFileToS3(file: AttachedFile, uniqueFileName: string): Promise<string> {
     try {
-      const { fetchAuthSession } = await import('aws-amplify/auth');
-      const session = await fetchAuthSession();
+      // Use cached auth session from awsConfig to prevent excessive fetchAuthSession calls
+      const session = await this.awsConfig.getCachedAuthSession();
       const bucketName = this.awsConfig.getCreativesBucket();
       const region = this.awsConfig.getRegion();
 
@@ -1732,9 +1768,31 @@ Example format:
         throw new Error('Bedrock Agent Runtime client not initialized');
       }
 
-      // Check if we have the required runtime ARN
+      // Check if we have the required runtime ARN - retry if not available yet (race condition on first login)
       if (!resolvedAgent.runtimeArn) {
-        throw new Error(`No runtime ARN provided for AgentCore agent: ${resolvedAgent.name}. AgentCore agents require a runtimeArn field in the configuration.`);
+        console.log(`⏳ Runtime ARN not yet available for ${resolvedAgent.name}, waiting for config to load...`);
+        
+        // Retry up to 5 times with 500ms delay to allow SSM config to load
+        const maxRetries = 5;
+        const retryDelay = 500;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          
+          // Re-fetch the agent from config service to get updated runtimeArn
+          const refreshedAgent = this.agentConfig.getAgent(resolvedAgent.name || resolvedAgent.agentType);
+          if (refreshedAgent?.runtimeArn) {
+            console.log(`✅ Runtime ARN loaded on attempt ${attempt}: ${refreshedAgent.runtimeArn}`);
+            resolvedAgent = refreshedAgent;
+            break;
+          }
+          
+          if (attempt === maxRetries) {
+            throw new Error(`No runtime ARN provided for AgentCore agent: ${resolvedAgent.name}. AgentCore agents require a runtimeArn field in the configuration. Please refresh the page to reload agent configuration.`);
+          }
+          
+          console.log(`⏳ Retry ${attempt}/${maxRetries} - still waiting for runtime ARN...`);
+        }
       }
 
       // Emit initial trace event with session info
@@ -1817,28 +1875,32 @@ Example format:
           prompt: query,
           session_id: sessionId,
           user_id: userId,
+          // CRITICAL: memory_id and agent_name must be at top level for backend extraction
+          // Use dynamically loaded memoryRecordId (from ListMemoriesCommand) with fallback to config
+          memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId(),
+          agent_name: resolvedAgent.name,
           enableStreaming: true,
           direct_mention_target: directMentionTarget, // Explicit flag for direct mentions
-          // Add session metadata to help AgentCore maintain context
+          // Add session metadata for additional context
           session_metadata: {
             agent_name: resolvedAgent.name,
             agent_type: resolvedAgent.agentType,
             timestamp: new Date().toISOString(),
             session_id: sessionId,
-            memory_id: this.awsConfig.getMemoryRecordId()
+            memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId()
           },
           context: attachedFiles ? { attachedFiles } : {},
           media: attachedFiles && attachedFiles.length > 0 ? {
             "type": "file",
             "format": this.getFormatCode(attachedFiles[0]),
             "data": attachedFiles[0].base64Content,
-
           } : {},
         })),
       };
 
       const command = new InvokeAgentRuntimeCommand(commandInput);
-      const response = await this.agentCoreClient.send(command);
+      const response = await this.agentCoreClient.send(command,{
+    requestTimeout: 300000    });
       if (response.response) {
         try {
           console.log('🔄 AgentCore streaming response received');
@@ -1990,6 +2052,7 @@ Example format:
                               console.log('reasoning message', message)
                             }
 
+                            // Process tool results as separate agent responses - this gets picked up properly
                             else if (contentItem.toolResult) {
                               const toolResult = contentItem.toolResult;
                               console.log('🔍 Processing toolResult:', toolResult);
@@ -2000,7 +2063,7 @@ Example format:
                                   if (toolContent.text) {
                                     // Parse the tool result text to extract agent information
                                     const toolText = toolContent.text;
-                                    console.log('🔍 Tool result text:', toolText.substring(0, 200));
+                                    console.log('🔍 Tool result text: line 2026', toolText.substring(0, 200));
 
                                     // Look for agent-message format: <agent-message agent='agent_name'>content</agent-message>
                                     const agentMessageMatch = toolText.replace(" direct_mention='true'", '').match(/<agent-message agent='([^']+)'>([\s\S]*?)<\/agent-message>/);
@@ -2014,7 +2077,9 @@ Example format:
                                       console.log('✅ Found agent message in tool result:', {
                                         toolAgentName,
                                         toolAgentDisplayName,
-                                        contentPreview: toolAgentContent.substring(0, 100)
+                                        contentPreview: toolAgentContent.substring(0, 100),
+                                        toolUseId: toolResult.toolUseId,
+                                        toolName: toolResult.name
                                       });
 
                                       observer.next({
@@ -2030,7 +2095,7 @@ Example format:
                                           name: toolResult.name
                                         }
                                       });
-                                      console.log('✅ AgentCore tool agent message emitted:', toolAgentDisplayName);
+                                      console.log('✅ AgentCore tool agent message emitted with toolUseId:', toolResult.toolUseId);
                                     } else {
                                       console.log('⚠️ No agent-message wrapper found in tool result');
                                       // Regular tool result without agent wrapper
@@ -2061,17 +2126,18 @@ Example format:
                                           }
                                           else {
                                             observer.next({
-                                              type: 'chunk',
-                                              data: toolText,
-                                              timestamp: new Date(),
-                                              agentName: resolvedAgent.name || resolvedAgent.id,
-                                              messageType: 'tool-result',
-                                              metadata: {
-                                                type: 'tool-result',
-                                                toolUseId: toolResult.toolUseId,
-                                                name: toolResult.name
-                                              }
-                                            });
+                                        type: 'chunk',
+                                        data: toolText,
+                                        timestamp: new Date(),
+                                        agentName: resolvedAgent.name || resolvedAgent.id,
+                                        messageType: 'streaming-chunk',
+                                        metadata: {
+                                          type: 'tool-result',
+                                          toolUseId: toolResult.toolUseId
+                                        }
+                                      });
+                                      console.log('✅ AgentCore tool result processed:', toolText.substring(0, 100) + '...');
+
                                           }
                                         }
                                       }
@@ -2083,7 +2149,7 @@ Example format:
                                 }
                               }
                             }
-                            else if (contentItem.toolUse && (contentItem.toolUse.name.startsWith("invoke_specialist") && contentItem.text != "[]")) {
+                            else if (contentItem.toolUse && ((contentItem.toolUse.name as string).indexOf("invoke_specialist")>=0 && contentItem.text != "[]")) {
 
                               const toolUse = contentItem.toolUse;
                               const toolAgentDisplayName = toolUse.input.agent_name;
@@ -2091,6 +2157,9 @@ Example format:
                               if (toolUse.input) {
                                 if (!toolUse.input.agent_prompt.startsWith(`@${toolUse.input.agent_name}`) && !toolUse.input.agent_prompt.startsWith(`@${toolAgentDisplayName}`))
                                   toolUse.input.agent_prompt = `@${toolAgentDisplayName} ` + toolUse.input.agent_prompt;
+                                
+                                console.log('🔧 [Specialist Tracker] Emitting supervisor-to-collaborator with toolUseId:', toolUse.toolUseId, 'name:', toolUse.name);
+                                
                                 observer.next({
                                   type: 'chunk',
                                   data: toolUse.input.agent_prompt,
@@ -2110,14 +2179,16 @@ Example format:
 
 
                             }
-                            else if (contentItem.text) {
-                              const text = contentItem.text;
+                            else if (contentItem.text) {                              const text = contentItem.text;
 
                               // Skip if this text contains agent-message XML that was already processed from toolResult
                               if (text.includes('<agent-message') && text.includes('</agent-message>')) {
                                 console.log('⚠️ Skipping duplicate agent-message in text content');
                                 continue;
                               }
+
+                              // For AgentCore agents, each message should be treated as separate
+                              // Don't accumulate across different messages - just send the full text
 
                               observer.next({
                                 type: 'chunk',
@@ -2148,7 +2219,7 @@ Example format:
                             metadata: { type: 'final-response' }
                           });
                           try {
-                            const agentCoreVisualizations = this.extractAllVisualizationsFromText(text);
+                            const agentCoreVisualizations = this.extractAgentCoreVisualizations(text);
                             console.log('🔍 Found AgentCore visualizations:', agentCoreVisualizations.length);
 
                             for (const visualization of agentCoreVisualizations) {
