@@ -305,27 +305,6 @@ class ManualAgentCoreDeployer:
         """Get AWS account ID"""
         return self.sts_client.get_caller_identity()["Account"]
 
-    def get_appsync_endpoint(self, stack_prefix: str, unique_id: str) -> str:
-        """Get AppSync GraphQL endpoint from infrastructure stack"""
-        try:
-            cf_client = self.session.client("cloudformation", region_name=self.region)
-            stack_name = f"{stack_prefix}-infrastructure-core"
-
-            response = cf_client.describe_stacks(StackName=stack_name)
-            outputs = response["Stacks"][0].get("Outputs", [])
-
-            for output in outputs:
-                if output["OutputKey"] == "AppSyncEndpoint":
-                    print(f"AppSync endpoint: {output['OutputValue']}")
-                    return output["OutputValue"]
-
-            logger.warning(f"AppSync endpoint not found in stack {stack_name}")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error retrieving AppSync endpoint: {e}")
-            return None
-
     def gather_knowledge_base_ids(self, stack_prefix: str, unique_id: str) -> str:
         """
         Gather knowledge base IDs that match the stack prefix and unique ID pattern
@@ -660,6 +639,18 @@ class ManualAgentCoreDeployer:
                     "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*gateway*",
                 },
                 {
+                    "Sid": "AgentCoreGatewayInvoke",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:InvokeGateway",
+                        "bedrock-agentcore:GetGateway",
+                        "bedrock-agentcore:ListGateways",
+                        "bedrock-agentcore:ListGatewayTargets",
+                        "bedrock-agentcore:GetGatewayTarget",
+                    ],
+                    "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
+                },
+                {
                     "Sid": "AgentCoreMemory",
                     "Effect": "Allow",
                     "Action": [
@@ -684,15 +675,6 @@ class ManualAgentCoreDeployer:
                         "dynamodb:DescribeTable",
                     ],
                     "Resource": f"arn:aws:dynamodb:{self.region}:{account_id}:table/*",
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "appsync:EventConnect",
-                        "appsync:EventSubscribe",
-                        "appsync:EventPublish",
-                    ],
-                    "Resource": f"arn:aws:appsync:{self.region}:{account_id}:*",
                 },
                 {
                     "Sid": "SSMParameterAccess",
@@ -798,7 +780,7 @@ class ManualAgentCoreDeployer:
                                 logger.info(f"Deleted old policy version: {old_version['VersionId']}")
                         
                         # Create new policy version and set as default
-                        self.iam_client.put_role_policy(
+                        self.iam_client.create_policy_version(
                             PolicyArn=policy_arn,
                             PolicyDocument=json.dumps(permissions_policy),
                             SetAsDefault=True
@@ -1066,7 +1048,7 @@ class ManualAgentCoreDeployer:
                 # Gather environment variables for the container
                 kb_env_value = self.gather_knowledge_base_ids(stack_prefix, unique_id)
 
-                # Get RUNTIMES with bearer tokens from runtime registry
+                # Get RUNTIMES from runtime registry
                 from runtime_registry import RuntimeRegistry
 
                 project_root = os.path.dirname(
@@ -1075,17 +1057,8 @@ class ManualAgentCoreDeployer:
                 registry = RuntimeRegistry(stack_prefix, unique_id, project_root)
                 runtime_env_value = registry.build_runtimes_env_value()
                 logger.info(
-                    f"RUNTIMES environment variable (with bearer tokens): {runtime_env_value[:100]}... (truncated)"
+                    f"RUNTIMES environment variable: {runtime_env_value[:100]}... (truncated)"
                 )
-
-                # Get AppSync endpoint from infrastructure stack
-                appsync_endpoint = self.get_appsync_endpoint(stack_prefix, unique_id)
-                if appsync_endpoint:
-                    logger.info(f"AppSync endpoint: {appsync_endpoint}")
-                else:
-                    logger.warning(
-                        "AppSync endpoint not found - real-time updates will be disabled"
-                    )
 
                 # Prepare container configuration (without environment variables)
                 container_config = {
@@ -1102,54 +1075,11 @@ class ManualAgentCoreDeployer:
                     "RUNTIMES": runtime_env_value,
                 }
 
-                # Get AppSync configuration from SSM
-                if appsync_endpoint:
-                    env_vars["APPSYNC_ENDPOINT"] = appsync_endpoint
-
-                    # Get full AppSync config from SSM to extract realtime domain and channel namespace
-                    try:
-                        import boto3
-
-                        ssm = boto3.client("ssm", region_name=self.region)
-                        param_name = f"/{stack_prefix}/appsync/{unique_id}"
-                        response = ssm.get_parameter(Name=param_name)
-                        appsync_config = json.loads(response["Parameter"]["Value"])
-
-                        # Extract realtime domain from realtimeEndpoint
-                        realtime_endpoint = appsync_config.get("realtimeEndpoint", "")
-                        if realtime_endpoint:
-                            # Extract domain from wss://domain/path
-                            realtime_domain = realtime_endpoint.replace(
-                                "wss://", ""
-                            ).split("/")[0]
-                            env_vars["APPSYNC_REALTIME_DOMAIN"] = realtime_domain
-                            logger.info(f"AppSync realtime domain: {realtime_domain}")
-
-                        # Extract channel namespace
-                        channel_namespace = appsync_config.get(
-                            "channelNamespace", f"{stack_prefix}events{unique_id}"
-                        )
-                        env_vars["APPSYNC_CHANNEL_NAMESPACE"] = channel_namespace
-                        logger.info(f"AppSync channel namespace: {channel_namespace}")
-
-                    except Exception as e:
-                        logger.warning(f"Could not get AppSync config from SSM: {e}")
-                        # Fallback to constructed values
-                        env_vars["APPSYNC_CHANNEL_NAMESPACE"] = (
-                            f"{stack_prefix}events{unique_id}"
-                        )
-
-                    # Also add channel namespace
-                    env_vars["APPSYNC_CHANNEL_NAMESPACE"] = (
-                        f"{stack_prefix}events{unique_id}"
-                    )
-
                 # Add A2A configuration if available (from deploy-ecosystem.sh)
-                if os.environ.get("A2A_BEARER_TOKEN"):
+                if os.environ.get("A2A_POOL_ID"):
                     logger.info(
                         "Adding A2A configuration to runtime environment variables"
                     )
-                    env_vars["A2A_BEARER_TOKEN"] = os.environ.get("A2A_BEARER_TOKEN")
                     env_vars["A2A_POOL_ID"] = os.environ.get("A2A_POOL_ID", "")
                     env_vars["A2A_CLIENT_ID"] = os.environ.get("A2A_CLIENT_ID", "")
                     env_vars["A2A_DISCOVERY_URL"] = os.environ.get(
@@ -1159,9 +1089,6 @@ class ManualAgentCoreDeployer:
                     logger.info(f"  A2A_POOL_ID: {env_vars['A2A_POOL_ID']}")
                     logger.info(f"  A2A_CLIENT_ID: {env_vars['A2A_CLIENT_ID']}")
                     logger.info(f"  A2A_DISCOVERY_URL: {env_vars['A2A_DISCOVERY_URL']}")
-                    logger.info(
-                        f"  A2A_BEARER_TOKEN: {env_vars['A2A_BEARER_TOKEN'][:20]}... (truncated)"
-                    )
                 else:
                     logger.info(
                         "No A2A configuration found - deploying as standard AgentCore agent"
@@ -1276,6 +1203,18 @@ class ManualAgentCoreDeployer:
                             runtime_details = self.get_agent_runtime(existing_runtime)
                             existing_role_arn = runtime_details["roleArn"]
 
+                            # Check if the existing role is the default SDK role
+                            # IMPORTANT: Always use the correct role naming pattern: AgentCoreRole-{prefix}-{agent}-{id}
+                            if "AmazonBedrockAgentCoreSDKRuntime" in existing_role_arn:
+                                logger.warning(f"Runtime uses default SDK role, upgrading to custom role...")
+                                full_agent_name = f"{stack_prefix}-{agent_name}-{unique_id}"
+                                custom_role_name = f"AgentCoreRole-{full_agent_name}"[:64]
+                                try:
+                                    existing_role_arn = self.create_agent_runtime_role(stack_prefix, custom_role_name)
+                                    logger.info(f"Switched to custom role: {existing_role_arn}")
+                                except Exception as role_err:
+                                    logger.warning(f"Could not create custom role: {role_err}")
+
                             # Update the existing runtime
                             updated_runtime_id = self.update_agent_runtime(
                                 existing_runtime,
@@ -1357,7 +1296,7 @@ class ManualAgentCoreDeployer:
                         stack_prefix, unique_id
                     )
 
-                    # Get RUNTIMES with bearer tokens from runtime registry
+                    # Get RUNTIMES from runtime registry
                     from runtime_registry import RuntimeRegistry
 
                     project_root = os.path.dirname(
@@ -1366,7 +1305,7 @@ class ManualAgentCoreDeployer:
                     registry = RuntimeRegistry(stack_prefix, unique_id, project_root)
                     runtime_env_value = registry.build_runtimes_env_value()
                     logger.info(
-                        f"RUNTIMES environment variable (with bearer tokens): {runtime_env_value[:100]}... (truncated)"
+                        f"RUNTIMES environment variable: {runtime_env_value[:100]}... (truncated)"
                     )
 
                 # Prepare container configuration (without environment variables)
@@ -1376,15 +1315,6 @@ class ManualAgentCoreDeployer:
                     }
                 }
 
-                # Get AppSync endpoint from infrastructure stack
-                appsync_endpoint = self.get_appsync_endpoint(stack_prefix, unique_id)
-                if appsync_endpoint:
-                    logger.info(f"AppSync endpoint: {appsync_endpoint}")
-                else:
-                    logger.warning(
-                        "AppSync endpoint not found - real-time updates will be disabled"
-                    )
-
                 # Prepare environment variables as separate parameter
                 env_vars = {
                     "STACK_PREFIX": stack_prefix or "",
@@ -1393,16 +1323,11 @@ class ManualAgentCoreDeployer:
                     "RUNTIMES": runtime_env_value,
                 }
 
-                # Add AppSync endpoint if available
-                if appsync_endpoint:
-                    env_vars["APPSYNC_ENDPOINT"] = appsync_endpoint
-
                 # Add A2A configuration if available (from deploy-ecosystem.sh)
-                if os.environ.get("A2A_BEARER_TOKEN"):
+                if os.environ.get("A2A_POOL_ID"):
                     logger.info(
                         "Adding A2A configuration to runtime environment variables"
                     )
-                    env_vars["A2A_BEARER_TOKEN"] = os.environ.get("A2A_BEARER_TOKEN")
                     env_vars["A2A_POOL_ID"] = os.environ.get("A2A_POOL_ID", "")
                     env_vars["A2A_CLIENT_ID"] = os.environ.get("A2A_CLIENT_ID", "")
                     env_vars["A2A_DISCOVERY_URL"] = os.environ.get(
@@ -1592,6 +1517,23 @@ class ManualAgentCoreDeployer:
                 role_arn = runtime_details["roleArn"]
                 container_uri = agent_config["container_uri"]
 
+                # Check if the existing role is the default SDK role (lacks DynamoDB/SSM permissions)
+                # If so, create/ensure a custom role with full permissions and switch to it
+                # IMPORTANT: Always use the correct role naming pattern: AgentCoreRole-{prefix}-{agent}-{id}
+                if "AmazonBedrockAgentCoreSDKRuntime" in role_arn:
+                    logger.warning(
+                        f"Runtime is using default SDK role which lacks DynamoDB/SSM permissions: {role_arn}"
+                    )
+                    logger.info("Creating/ensuring custom execution role with full permissions...")
+                    full_agent_name = f"{stack_prefix}-{agent_name}-{unique_id}"
+                    custom_role_name = f"AgentCoreRole-{full_agent_name}"[:64]
+                    try:
+                        custom_role_arn = self.create_agent_runtime_role(stack_prefix, custom_role_name)
+                        logger.info(f"Switching runtime to custom role: {custom_role_arn}")
+                        role_arn = custom_role_arn
+                    except Exception as role_error:
+                        logger.warning(f"Could not create custom role, continuing with existing: {role_error}")
+
                 updated_runtime_id = self.update_agent_runtime(
                     existing_runtime_id,
                     container_uri,
@@ -1694,6 +1636,18 @@ class ManualAgentCoreDeployer:
                             )
                             role_arn = runtime_details["roleArn"]
                             container_uri = agent_config["container_uri"]
+
+                            # Check if the existing role is the default SDK role
+                            # IMPORTANT: Always use the correct role naming pattern: AgentCoreRole-{prefix}-{agent}-{id}
+                            if "AmazonBedrockAgentCoreSDKRuntime" in role_arn:
+                                logger.warning(f"Runtime uses default SDK role, upgrading to custom role...")
+                                full_agent_name_for_role = f"{stack_prefix}-{agent_name}-{unique_id}"
+                                custom_role_name = f"AgentCoreRole-{full_agent_name_for_role}"[:64]
+                                try:
+                                    role_arn = self.create_agent_runtime_role(stack_prefix, custom_role_name)
+                                    logger.info(f"Switched to custom role: {role_arn}")
+                                except Exception as role_err:
+                                    logger.warning(f"Could not create custom role: {role_err}")
 
                             updated_runtime_id = self.update_agent_runtime(
                                 existing_runtime_id,

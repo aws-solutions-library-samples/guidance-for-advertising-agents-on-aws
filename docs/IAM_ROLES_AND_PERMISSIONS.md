@@ -94,7 +94,6 @@ The ecosystem consists of several components that require specific IAM roles:
 | SSM | `GetParameter` | `/{stack-prefix}/*` | Read configuration parameters |
 | DynamoDB | `GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan` | `{stack-prefix}-*` tables | Session and state management |
 | Lambda | `InvokeFunction` | `{stack-prefix}-*` functions | Invoke helper functions |
-| AppSync | `EventConnect`, `EventSubscribe`, `EventPublish` | AppSync APIs | Real-time streaming |
 | CloudWatch Logs | `CreateLogGroup`, `CreateLogStream`, `PutLogEvents` | `{stack-prefix}-*` log groups | Client-side logging |
 
 ---
@@ -126,6 +125,7 @@ The ecosystem consists of several components that require specific IAM roles:
 | IAM | `PassRole` | `arn:aws:iam::{account}:role/*` | Pass roles to other services |
 | Bedrock AgentCore Memory | `RetrieveMemoryRecords`, `ListMemoryRecords`, `CreateEvent`, `List*`, `Create*`, `Delete*`, `Update*`, `Start*`, `Stop*` | `arn:aws:bedrock-agentcore:{region}:{account}:memory/*` | Full memory management |
 | Bedrock AgentCore Gateway | `*Gateway*`, `*WorkloadIdentity`, `*CredentialProvider`, `*Token*`, `*Access*` | `arn:aws:bedrock-agentcore:*:{account}:*gateway*` | MCP Gateway access |
+| Bedrock AgentCore Gateway Invoke | `InvokeGateway`, `GetGateway`, `ListGateways`, `ListGatewayTargets`, `GetGatewayTarget` | `arn:aws:bedrock-agentcore:*:{account}:*` | Invoke any gateway on the account |
 | Bedrock AgentCore Identity | `GetWorkloadAccessToken`, `GetWorkloadAccessTokenForJWT`, `GetWorkloadAccessTokenForUserId` | Workload identity directory | Agent identity tokens |
 | S3 | `GetObject`, `ListBucket`, `PutObject` | Data buckets, Generated content buckets | Read/write data |
 | KMS | `DescribeKey`, `CreateGrant`, `Decrypt`, `GenerateDataKey` | KMS keys (via AgentCore service) | Encryption for memory |
@@ -136,7 +136,6 @@ The ecosystem consists of several components that require specific IAM roles:
 | CloudWatch | `PutMetricData` | `arn:aws:cloudwatch:*:{account}:*:*` | Metrics publishing |
 | X-Ray | `PutTraceSegments`, `PutTelemetryRecords`, `GetSamplingRules`, `GetSamplingTargets` | `*` | Distributed tracing |
 | DynamoDB | `GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan`, `DescribeTable` | All tables | State persistence |
-| AppSync | `EventConnect`, `EventSubscribe`, `EventPublish` | AppSync APIs | Real-time streaming |
 
 ---
 

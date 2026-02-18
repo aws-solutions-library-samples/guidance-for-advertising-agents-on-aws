@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Runtime Registry for A2A Bearer Token Management
+Runtime Registry for A2A Authentication Configuration
 
-This module manages a centralized registry of AgentCore runtimes with their A2A bearer tokens.
-All runtimes can access this registry to get bearer tokens for calling other A2A agents.
+This module manages a centralized registry of AgentCore runtimes with their A2A auth config.
+All runtimes can access this registry to get Cognito credentials for authenticating
+with other A2A agents at invocation time.
 
 Registry Format:
 {
     "runtimes": {
         "arn:aws:bedrock-agentcore:region:account:runtime/id": {
             "name": "agent-name",
-            "bearer_token": "token",
             "pool_id": "pool-id",
             "client_id": "client-id",
             "discovery_url": "url",
@@ -28,7 +28,7 @@ from typing import Dict, Any, Optional
 
 
 class RuntimeRegistry:
-    """Manages the runtime registry file for A2A bearer tokens"""
+    """Manages the runtime registry file for A2A authentication configuration"""
 
     def __init__(self, stack_prefix: str, unique_id: str, project_root: str = None):
         self.stack_prefix = stack_prefix
@@ -55,23 +55,24 @@ class RuntimeRegistry:
         self,
         runtime_arn: str,
         agent_name: str,
-        bearer_token: str = None,
         pool_id: str = None,
         client_id: str = None,
         discovery_url: str = None,
         protocol: str = None,
     ):
         """
-        Register a runtime with optional A2A configuration
+        Register a runtime with optional A2A authentication configuration.
+
+        Stores the Cognito credentials needed to authenticate at invocation time,
+        rather than a pre-generated bearer token (which would expire).
 
         Args:
             runtime_arn: The runtime ARN
             agent_name: The agent name
-            bearer_token: Bearer token for A2A (optional)
             pool_id: Cognito pool ID (optional)
             client_id: Cognito client ID (optional)
             discovery_url: OIDC discovery URL (optional)
-            protocol: Protocol type (optional, defaults to "A2A" if bearer_token provided)
+            protocol: Protocol type (optional, defaults to "A2A" if pool_id provided)
         """
         registry = self.load_registry()
 
@@ -80,11 +81,10 @@ class RuntimeRegistry:
             "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
 
-        # Add A2A configuration if provided
-        if bearer_token:
+        # Add A2A auth configuration if provided (credentials for on-demand token generation)
+        if pool_id and client_id:
             runtime_info.update(
                 {
-                    "bearer_token": bearer_token,
                     "pool_id": pool_id or "",
                     "client_id": client_id or "",
                     "discovery_url": discovery_url or "",
@@ -102,11 +102,15 @@ class RuntimeRegistry:
         registry = self.load_registry()
         return registry["runtimes"].get(runtime_arn)
 
-    def get_bearer_token(self, runtime_arn: str) -> Optional[str]:
-        """Get bearer token for a specific runtime"""
+    def get_auth_config(self, runtime_arn: str) -> Optional[Dict[str, str]]:
+        """Get A2A authentication config (pool_id, client_id, discovery_url) for a runtime"""
         runtime_info = self.get_runtime_info(runtime_arn)
-        if runtime_info:
-            return runtime_info.get("bearer_token")
+        if runtime_info and runtime_info.get("pool_id"):
+            return {
+                "pool_id": runtime_info.get("pool_id", ""),
+                "client_id": runtime_info.get("client_id", ""),
+                "discovery_url": runtime_info.get("discovery_url", ""),
+            }
         return None
 
     def get_all_runtimes(self) -> Dict[str, Dict[str, Any]]:
@@ -116,20 +120,16 @@ class RuntimeRegistry:
 
     def build_runtimes_env_value(self) -> str:
         """
-        Build the RUNTIMES environment variable value with bearer tokens
+        Build the RUNTIMES environment variable value.
 
-        Format: arn1|bearer_token1,arn2|bearer_token2,...
-        For non-A2A runtimes: arn|
+        Format: arn1,arn2,...
+        Bearer tokens are no longer included — agents authenticate on demand
+        using Cognito credentials from A2A_POOL_ID/A2A_CLIENT_ID env vars.
         """
         registry = self.load_registry()
         runtimes = registry.get("runtimes", {})
 
-        runtime_entries = []
-        for arn, info in runtimes.items():
-            bearer_token = info.get("bearer_token", "")
-            runtime_entries.append(f"{arn}|{bearer_token}")
-
-        return ",".join(runtime_entries)
+        return ",".join(runtimes.keys())
 
     def remove_runtime(self, runtime_arn: str):
         """Remove a runtime from the registry"""
@@ -153,7 +153,6 @@ def main():
     )
     parser.add_argument("--runtime-arn", help="Runtime ARN")
     parser.add_argument("--agent-name", help="Agent name")
-    parser.add_argument("--bearer-token", help="Bearer token")
     parser.add_argument("--pool-id", help="Cognito pool ID")
     parser.add_argument("--client-id", help="Cognito client ID")
     parser.add_argument("--discovery-url", help="OIDC discovery URL")
@@ -171,7 +170,6 @@ def main():
         info = registry.register_runtime(
             args.runtime_arn,
             args.agent_name,
-            args.bearer_token,
             args.pool_id,
             args.client_id,
             args.discovery_url,

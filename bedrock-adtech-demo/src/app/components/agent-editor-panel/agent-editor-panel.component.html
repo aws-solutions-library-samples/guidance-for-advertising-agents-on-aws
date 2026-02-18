@@ -1,0 +1,737 @@
+<!-- Agent Editor Panel - Form for creating/editing agent configurations -->
+
+<div class="agent-editor-panel" [class.loading]="isLoading">
+  <!-- Loading Overlay -->
+  <div class="editor-loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+    <span>Saving...</span>
+  </div>
+
+  <!-- Editor Header -->
+  <div class="editor-header">
+    <div class="header-content">
+      <div class="header-icon" [style.background-color]="editingAgent.color || '#6842ff'">
+        <span class="material-icons">smart_toy</span>
+      </div>
+      <div class="header-text">
+        <h4>{{ isNew ? 'Add New Agent' : 'Edit Agent' }}</h4>
+        <p class="editor-subtitle">{{ isNew ? 'Configure a new agent' : 'Modify agent configuration' }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Content -->
+  <div class="editor-form">
+    
+    <!-- Basic Information Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">info</span>
+        Basic Information
+      </h5>
+
+      <!-- Agent ID (only for new agents) -->
+      <div class="form-group" *ngIf="isNew">
+        <label for="agent_id">Agent ID <span class="required">*</span></label>
+        <input type="text" id="agent_id" class="form-control"
+          [ngModel]="editingAgent.agent_id"
+          (ngModelChange)="onAgentIdChange($event)"
+          [class.error]="hasError('agent_id')"
+          [disabled]="isLoading"
+          placeholder="e.g., MyCustomAgent"
+          maxlength="64">
+        <span class="error-message" *ngIf="hasError('agent_id')">
+          <span class="material-icons">error_outline</span>
+          {{ getError('agent_id') }}
+        </span>
+        <span class="field-hint">Unique identifier. Letters, numbers, and underscores only.</span>
+      </div>
+
+      <!-- Agent Name (only for new agents) -->
+      <div class="form-group" *ngIf="isNew">
+        <label for="agent_name">Agent Name <span class="required">*</span></label>
+        <input type="text" id="agent_name" class="form-control"
+          [(ngModel)]="editingAgent.agent_name"
+          [class.error]="hasError('agent_name')"
+          [disabled]="isLoading"
+          placeholder="e.g., MyCustomAgent"
+          maxlength="64">
+        <span class="error-message" *ngIf="hasError('agent_name')">
+          <span class="material-icons">error_outline</span>
+          {{ getError('agent_name') }}
+        </span>
+      </div>
+
+      <!-- Display Name -->
+      <div class="form-group">
+        <label for="agent_display_name">Display Name <span class="required">*</span></label>
+        <input type="text" id="agent_display_name" class="form-control"
+          [ngModel]="editingAgent.agent_display_name"
+          (ngModelChange)="onDisplayNameChange($event)"
+          [class.error]="hasError('agent_display_name')"
+          [disabled]="isLoading"
+          placeholder="e.g., My Custom Agent"
+          maxlength="128">
+        <span class="error-message" *ngIf="hasError('agent_display_name')">
+          <span class="material-icons">error_outline</span>
+          {{ getError('agent_display_name') }}
+        </span>
+      </div>
+
+      <!-- Team Name -->
+      <div class="form-group">
+        <label for="team_name">Team Name <span class="required">*</span></label>
+        <input type="text" id="team_name" class="form-control"
+          [(ngModel)]="editingAgent.team_name"
+          [class.error]="hasError('team_name')"
+          [disabled]="isLoading"
+          placeholder="e.g., Analytics Team"
+          maxlength="128">
+        <span class="error-message" *ngIf="hasError('team_name')">
+          <span class="material-icons">error_outline</span>
+          {{ getError('team_name') }}
+        </span>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label for="agent_description">Description <span class="required">*</span></label>
+        <textarea id="agent_description" class="form-control textarea"
+          [(ngModel)]="editingAgent.agent_description"
+          [class.error]="hasError('agent_description')"
+          [disabled]="isLoading"
+          placeholder="Describe what this agent does..."
+          rows="3"
+          maxlength="1024"></textarea>
+        <span class="error-message" *ngIf="hasError('agent_description')">
+          <span class="material-icons">error_outline</span>
+          {{ getError('agent_description') }}
+        </span>
+        <span class="char-count">{{ editingAgent.agent_description.length || 0 }}/1024</span>
+      </div>
+
+    </div>
+
+    <!-- Color Configuration Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">palette</span>
+        Agent Color
+      </h5>
+      <div class="color-picker">
+        <div class="color-preview" [style.background-color]="editingAgent.color || '#6842ff'">
+          <span class="material-icons">smart_toy</span>
+        </div>
+        <div class="color-palette">
+          <button *ngFor="let color of presetColors" class="color-swatch"
+            [style.background-color]="color"
+            [class.selected]="isColorSelected(color)"
+            (click)="selectColor(color)"
+            [disabled]="isLoading"
+            [title]="color">
+            <span class="material-icons check-icon" *ngIf="isColorSelected(color)">check</span>
+          </button>
+        </div>
+        <div class="custom-color">
+          <label for="custom_color">Custom:</label>
+          <input type="color" id="custom_color" [(ngModel)]="editingAgent.color" [disabled]="isLoading" class="color-input">
+          <input type="text" [(ngModel)]="editingAgent.color" class="color-text-input" [disabled]="isLoading" placeholder="#6842ff" maxlength="7">
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Configuration Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">psychology</span>
+        Model Configuration
+      </h5>
+      <div class="form-group">
+        <label for="model_id">Model ID</label>
+        <input type="text" id="model_id" class="form-control"
+          [ngModel]="getDefaultModelInputs()?.model_id"
+          (ngModelChange)="updateModelInput('model_id', $event)"
+          [class.error]="hasError('model_id')"
+          [disabled]="isLoading"
+          placeholder="e.g., anthropic.claude-3-5-sonnet-20241022-v2:0">
+      </div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="max_tokens">Max Tokens</label>
+          <input type="number" id="max_tokens" class="form-control"
+            [ngModel]="getDefaultModelInputs()?.max_tokens"
+            (ngModelChange)="updateModelInput('max_tokens', $event)"
+            [disabled]="isLoading" min="100" max="200000" step="100">
+          <span class="field-hint">100 - 200,000</span>
+        </div>
+        <div class="form-group half">
+          <label for="temperature">Temperature</label>
+          <div class="slider-container">
+            <input type="range" id="temperature" class="slider"
+              [ngModel]="getDefaultModelInputs()?.temperature"
+              (ngModelChange)="updateModelInput('temperature', $event)"
+              [disabled]="isLoading" min="0" max="1" step="0.1">
+            <span class="slider-value">{{ getDefaultModelInputs()?.temperature || 0.3 }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Runtime ARN Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">cloud</span>
+        Runtime ARN
+      </h5>
+      <p class="section-description">AgentCore Runtime ARN for this agent. Select an existing ARN or enter a new one.</p>
+      <div class="form-group">
+        <label for="runtime_arn">Runtime ARN</label>
+        <div class="runtime-arn-combobox" [class.open]="runtimeArnDropdownOpen">
+          <div class="combobox-input-wrapper">
+            <span class="material-icons combobox-icon">cloud_queue</span>
+            <input type="text" id="runtime_arn" class="form-control combobox-input"
+              [ngModel]="editingAgent.runtime_arn"
+              (ngModelChange)="onRuntimeArnInput($event)"
+              (focus)="toggleRuntimeArnDropdown()"
+              (blur)="closeRuntimeArnDropdown()"
+              [disabled]="isLoading"
+              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/..."
+              autocomplete="off">
+            <button class="combobox-clear-btn" *ngIf="editingAgent.runtime_arn" (click)="clearRuntimeArn()" [disabled]="isLoading" type="button" title="Clear">
+              <span class="material-icons">close</span>
+            </button>
+            <button class="combobox-toggle-btn" (click)="toggleRuntimeArnDropdown()" [disabled]="isLoading" type="button">
+              <span class="material-icons">{{ runtimeArnDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+          </div>
+          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length > 0">
+            <div class="combobox-option" *ngFor="let arn of getFilteredRuntimeArns()" (mousedown)="selectRuntimeArn(arn)">
+              <span class="material-icons option-icon">cloud_queue</span>
+              <span class="option-arn">{{ arn }}</span>
+            </div>
+          </div>
+          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length === 0">
+            <div class="combobox-empty">
+              <span class="material-icons">info_outline</span>
+              No runtime ARNs available
+            </div>
+          </div>
+        </div>
+        <span class="field-hint">Optional. If not set, the agent will use the default shared runtime ARN.</span>
+      </div>
+    </div>
+
+    <!-- Tool Agents Section -->
+    <div class="form-section" *ngIf="availableAgents.length > 0">
+      <h5 class="section-title">
+        <span class="material-icons">hub</span>
+        Tool Agents
+      </h5>
+      <p class="section-description">Select agents that this agent can invoke as tools.</p>
+      <div class="tool-agents-grid">
+        <div *ngFor="let agentName of getFilteredAvailableAgents()" class="tool-agent-chip"
+          [class.selected]="isToolAgentSelected(agentName)"
+          [class.disabled]="isLoading"
+          (click)="!isLoading && toggleToolAgent(agentName)">
+          <span class="material-icons">{{ isToolAgentSelected(agentName) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+          <span class="agent-name">{{ agentName }}</span>
+        </div>
+      </div>
+      <div class="selected-count" *ngIf="editingAgent.tool_agent_names?.length">
+        {{ editingAgent.tool_agent_names.length }} agent{{ editingAgent.tool_agent_names.length !== 1 ? 's' : '' }} selected
+      </div>
+    </div>
+
+
+    <!-- Agent Tools Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">build</span>
+        Agent Tools
+      </h5>
+      <p class="section-description">Configure which tools this agent can use (e.g., invoke_specialist, get_products).</p>
+      
+      <div class="agent-tools-list" *ngIf="editingAgent.agent_tools?.length">
+        <div class="tool-tag" *ngFor="let tool of editingAgent.agent_tools; let i = index">
+          <span class="tool-name">{{ tool }}</span>
+          <button class="remove-tool-btn" (click)="removeAgentTool(i)" [disabled]="isLoading" title="Remove tool">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="no-tools-message" *ngIf="!editingAgent.agent_tools?.length">
+        <span class="material-icons">info_outline</span>
+        <span>No tools configured. Add tools from the list below or enter a custom tool name.</span>
+      </div>
+      
+      <div class="add-tool-section">
+        <div class="quick-add-tools">
+          <span class="quick-add-label">Quick add:</span>
+          <div class="quick-add-chips">
+            <button *ngFor="let tool of getAvailableTools()" class="quick-add-chip"
+              (click)="addAgentTool(tool)" [disabled]="isLoading" title="Add {{ tool }}">
+              <span class="material-icons">add</span>
+              {{ tool }}
+            </button>
+          </div>
+        </div>
+        <div class="custom-tool-input">
+          <input type="text" class="form-control" [(ngModel)]="newToolName" [disabled]="isLoading"
+            placeholder="Enter custom tool name..." (keyup.enter)="addAgentTool()">
+          <button class="add-custom-tool-btn" (click)="addAgentTool()" [disabled]="isLoading || !newToolName.trim()">
+            <span class="material-icons">add</span>
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Injectable Values Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">data_object</span>
+        Injectable Values
+      </h5>
+      <p class="section-description">Key-value pairs injected into the agent's context (e.g., agency_id, agency_name).</p>
+      
+      <div class="injectable-values-list" *ngIf="getInjectableValuesArray().length">
+        <div class="injectable-item" *ngFor="let item of getInjectableValuesArray()">
+          <div class="injectable-key">
+            <label>Key</label>
+            <input type="text" class="form-control" [value]="item.key" disabled readonly>
+          </div>
+          <div class="injectable-value">
+            <label>Value</label>
+            <input type="text" class="form-control" [ngModel]="item.value"
+              (ngModelChange)="updateInjectableValue(item.key, $event)" [disabled]="isLoading" placeholder="Enter value...">
+          </div>
+          <button class="remove-injectable-btn" (click)="removeInjectableValue(item.key)" [disabled]="isLoading" title="Remove">
+            <span class="material-icons">delete_outline</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="no-injectable-message" *ngIf="!getInjectableValuesArray().length">
+        <span class="material-icons">info_outline</span>
+        <span>No injectable values configured. Add key-value pairs below.</span>
+      </div>
+      
+      <div class="add-injectable-section">
+        <div class="add-injectable-inputs">
+          <div class="injectable-key-input">
+            <label>New Key</label>
+            <input type="text" class="form-control" [(ngModel)]="newInjectableKey" [disabled]="isLoading" placeholder="e.g., agency_id">
+          </div>
+          <div class="injectable-value-input">
+            <label>Value</label>
+            <input type="text" class="form-control" [(ngModel)]="newInjectableValue" [disabled]="isLoading"
+              placeholder="e.g., agy_omni_001" (keyup.enter)="addInjectableValue()">
+          </div>
+          <button class="add-injectable-btn" (click)="addInjectableValue()" [disabled]="isLoading || !newInjectableKey.trim()">
+            <span class="material-icons">add</span>
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP Servers Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">extension</span>
+        MCP Tool Servers
+        <div class="section-actions">
+          <button class="add-template-button" (click)="addMcpServer()" [disabled]="isLoading">
+            <span class="material-icons">add</span>
+            Add Server
+          </button>
+        </div>
+      </h5>
+      <p class="section-description">Connect to external MCP (Model Context Protocol) servers to extend agent capabilities with additional tools.</p>
+
+      <!-- MCP Server Presets -->
+      <div class="mcp-presets" *ngIf="!editingAgent.mcp_servers?.length">
+        <span class="presets-label">Quick add from templates:</span>
+        <div class="preset-chips">
+          <button *ngFor="let preset of mcpServerPresets" class="preset-chip"
+            (click)="addMcpServer(preset)" [disabled]="isLoading" [title]="preset.config.description || ''">
+            <span class="material-icons">{{ getMcpTransportIcon(preset.config.transport || 'stdio') }}</span>
+            {{ preset.name }}
+          </button>
+        </div>
+      </div>
+
+      <!-- MCP Servers List -->
+      <div class="mcp-servers-list" *ngIf="editingAgent.mcp_servers?.length">
+        <div class="mcp-server-item-wrapper" *ngFor="let server of editingAgent.mcp_servers; let i = index">
+          <div class="mcp-server-item" [class.disabled]="!server.enabled">
+          <div class="server-status">
+            <button class="toggle-enabled-btn" (click)="toggleMcpServerEnabled(i)" [disabled]="isLoading"
+              [title]="server.enabled ? 'Disable server' : 'Enable server'">
+              <span class="material-icons">{{ server.enabled ? 'check_circle' : 'cancel' }}</span>
+            </button>
+          </div>
+          <div class="server-info" (click)="openMcpServerEditor(i)">
+            <div class="server-header">
+              <span class="material-icons transport-icon">{{ getMcpTransportIcon(server.transport) }}</span>
+              <span class="server-name">{{ server.name }}</span>
+              <span class="server-transport-badge">{{ getMcpTransportName(server.transport) }}</span>
+            </div>
+            <div class="server-details">
+              <span class="server-detail" *ngIf="server.transport === 'stdio' && server.command">
+                <span class="material-icons">terminal</span>
+                {{ server.command }} {{ server.args?.join(' ') }}
+              </span>
+              <span class="server-detail" *ngIf="(server.transport === 'http' || server.transport === 'sse') && server.url">
+                <span class="material-icons">link</span>
+                {{ server.url }}
+              </span>
+              <span class="server-detail" *ngIf="server.prefix">
+                <span class="material-icons">label</span>
+                Prefix: {{ server.prefix }}
+              </span>
+              <span class="server-detail" *ngIf="server.awsAuth">
+                <span class="material-icons">security</span>
+                AWS IAM ({{ server.awsAuth.region }})
+              </span>
+            </div>
+            <div class="server-description" *ngIf="server.description">
+              {{ server.description }}
+            </div>
+          </div>
+          <div class="server-actions">
+            <button class="list-tools-btn" (click)="listMcpServerTools(server, $event)"
+              [disabled]="isLoading || getMcpToolListResult(server.id)?.loading"
+              title="List available tools">
+              <span class="material-icons" *ngIf="!getMcpToolListResult(server.id)?.loading">build_circle</span>
+              <span class="material-icons spinning" *ngIf="getMcpToolListResult(server.id)?.loading">sync</span>
+            </button>
+            <button class="edit-server-btn" (click)="openMcpServerEditor(i)" [disabled]="isLoading" title="Edit">
+              <span class="material-icons">edit</span>
+            </button>
+            <button class="remove-server-btn" (click)="removeMcpServer(i)" [disabled]="isLoading" title="Remove">
+              <span class="material-icons">delete_outline</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tool List Results (shown below the server card) -->
+        <div class="mcp-tool-list-results" *ngIf="getMcpToolListResult(server.id) as toolResult"
+          [class.has-error]="toolResult.error" [class.has-tools]="toolResult.tools.length > 0">
+          
+          <!-- Loading state -->
+          <div class="tool-list-loading" *ngIf="toolResult.loading">
+            <div class="loading-spinner small"></div>
+            <span>Connecting to MCP server...</span>
+          </div>
+
+          <!-- Error state -->
+          <div class="tool-list-error" *ngIf="toolResult.error && !toolResult.loading">
+            <div class="tool-list-error-header">
+              <span class="material-icons">error_outline</span>
+              <span>{{ toolResult.error }}</span>
+            </div>
+            <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+
+          <!-- Success state with tools -->
+          <div class="tool-list-success" *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length > 0">
+            <div class="tool-list-header" (click)="toggleMcpToolList(server.id)">
+              <div class="tool-list-summary">
+                <span class="material-icons status-icon connected">check_circle</span>
+                <span class="tool-count">{{ toolResult.tools.length }} tool{{ toolResult.tools.length !== 1 ? 's' : '' }} available</span>
+              </div>
+              <div class="tool-list-actions">
+                <span class="material-icons expand-icon">{{ toolResult.expanded ? 'expand_less' : 'expand_more' }}</span>
+                <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+            </div>
+            <div class="tool-list-items" *ngIf="toolResult.expanded">
+              <div class="tool-item" *ngFor="let tool of toolResult.tools">
+                <div class="tool-item-header">
+                  <span class="material-icons tool-icon">handyman</span>
+                  <span class="tool-item-name">{{ tool.name }}</span>
+                </div>
+                <p class="tool-item-description" *ngIf="tool.description">{{ tool.description }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty tools state -->
+          <div class="tool-list-empty" *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length === 0">
+            <span class="material-icons">info_outline</span>
+            <span>Server responded but no tools were found.</span>
+            <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div class="no-mcp-message" *ngIf="!editingAgent.mcp_servers?.length">
+        <span class="material-icons">info_outline</span>
+        <span>No MCP servers configured. Add servers to extend this agent with external tools.</span>
+      </div>
+
+      <!-- Add more servers button when list exists -->
+      <div class="add-more-servers" *ngIf="editingAgent.mcp_servers?.length">
+        <span class="presets-label">Add more:</span>
+        <div class="preset-chips compact">
+          <button *ngFor="let preset of mcpServerPresets" class="preset-chip small"
+            (click)="addMcpServer(preset)" [disabled]="isLoading" [title]="preset.config.description || ''">
+            <span class="material-icons">add</span>
+            {{ preset.name }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">description</span>
+        Agent Instructions
+        <div class="section-actions">
+          <button class="ai-generate-button" (click)="showGenerateInstructionsDialog()"
+            [disabled]="isLoading || isGeneratingInstructions" title="Generate instructions with AI">
+            <span class="material-icons">auto_awesome</span>
+            {{ editingAgent.instructions ? 'Enhance' : 'Generate' }}
+          </button>
+          <button class="preview-toggle" (click)="toggleMarkdownPreview()" [class.active]="isMarkdownPreview" [disabled]="isLoading">
+            <span class="material-icons">{{ isMarkdownPreview ? 'edit' : 'visibility' }}</span>
+            {{ isMarkdownPreview ? 'Edit' : 'Preview' }}
+          </button>
+        </div>
+      </h5>
+      <p class="section-description">System prompt that defines the agent's behavior and capabilities.</p>
+
+      <div class="ai-prompt-dialog" *ngIf="showInstructionsPrompt">
+        <div class="ai-prompt-content">
+          <h6>{{ editingAgent.instructions ? 'Enhance Instructions' : 'Generate Instructions' }}</h6>
+          <p>{{ editingAgent.instructions ? 'Describe what changes you\'d like:' : 'Describe what this agent should do:' }}</p>
+          <textarea [(ngModel)]="instructionsPromptText"
+            placeholder="{{ editingAgent.instructions ? 'e.g., Add more detail about handling edge cases...' : 'e.g., This agent should help with campaign optimization...' }}"
+            rows="3" [disabled]="isGeneratingInstructions"></textarea>
+          <div class="ai-prompt-actions">
+            <button class="nova-button secondary" (click)="hideGenerateInstructionsDialog()" [disabled]="isGeneratingInstructions">Cancel</button>
+            <button class="nova-button primary" (click)="generateInstructions()" [disabled]="isGeneratingInstructions">
+              <span class="material-icons" *ngIf="isGeneratingInstructions">hourglass_empty</span>
+              <span class="material-icons" *ngIf="!isGeneratingInstructions">auto_awesome</span>
+              {{ isGeneratingInstructions ? 'Generating...' : 'Generate' }}
+            </button>
+          </div>
+          <div class="ai-error" *ngIf="aiGenerationError">
+            <span class="material-icons">error_outline</span>
+            {{ aiGenerationError }}
+          </div>
+        </div>
+      </div>
+
+      <div class="instructions-editor" *ngIf="!isMarkdownPreview">
+        <textarea id="instructions" class="form-control instructions-textarea"
+          [(ngModel)]="editingAgent.instructions"
+          [disabled]="isLoading || isGeneratingInstructions"
+          placeholder="Enter agent instructions (supports Markdown)..."
+          rows="10"></textarea>
+      </div>
+
+      <div class="instructions-preview" *ngIf="isMarkdownPreview">
+        <div class="preview-content" [innerHTML]="editingAgent.instructions || '<em>No instructions provided</em>'"></div>
+      </div>
+    </div>
+
+
+    <!-- Visualization Mappings Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">dashboard</span>
+        Visualization Mappings
+        <div class="section-actions">
+          <button class="json-editor-button" (click)="openVisualizationJsonEditor()"
+            [disabled]="isLoading || isLoadingMappings" title="Edit as JSON">
+            <span class="material-icons">code</span>
+            JSON
+          </button>
+          <button class="ai-generate-button" (click)="showGenerateMappingsDialog()"
+            [disabled]="isLoading || isGeneratingMappings || isLoadingMappings" title="Generate with AI">
+            <span class="material-icons">auto_awesome</span>
+            {{ visualizationMappings?.templates?.length ? 'Enhance' : 'Generate' }}
+          </button>
+          <button class="add-template-button" (click)="addVisualizationTemplate()" [disabled]="isLoading || isLoadingMappings">
+            <span class="material-icons">add</span>
+            Add
+          </button>
+        </div>
+      </h5>
+      <p class="section-description">Configure which visualization templates this agent can use.</p>
+
+      <div class="mappings-loading" *ngIf="isLoadingMappings">
+        <div class="loading-spinner small"></div>
+        <span>Loading mappings...</span>
+      </div>
+
+      <div class="ai-prompt-dialog" *ngIf="showMappingsPrompt">
+        <div class="ai-prompt-content">
+          <h6>{{ visualizationMappings?.templates?.length ? 'Enhance Visualization Mappings' : 'Generate Visualization Mappings' }}</h6>
+          <p>Describe what types of data this agent will display:</p>
+          <textarea [(ngModel)]="mappingsPromptText"
+            placeholder="e.g., This agent shows campaign metrics and budget allocations..."
+            rows="3" [disabled]="isGeneratingMappings"></textarea>
+          <div class="ai-prompt-actions">
+            <button class="nova-button secondary" (click)="hideGenerateMappingsDialog()" [disabled]="isGeneratingMappings">Cancel</button>
+            <button class="nova-button primary" (click)="generateVisualizationMappings()" [disabled]="isGeneratingMappings">
+              <span class="material-icons" *ngIf="isGeneratingMappings">hourglass_empty</span>
+              <span class="material-icons" *ngIf="!isGeneratingMappings">auto_awesome</span>
+              {{ isGeneratingMappings ? 'Generating...' : 'Generate' }}
+            </button>
+          </div>
+          <div class="ai-error" *ngIf="aiGenerationError">
+            <span class="material-icons">error_outline</span>
+            {{ aiGenerationError }}
+          </div>
+        </div>
+      </div>
+
+      <div class="visualization-mappings-list" *ngIf="!isLoadingMappings">
+        <div class="no-mappings" *ngIf="!visualizationMappings?.templates?.length">
+          <span class="material-icons">info_outline</span>
+          <span>No visualization mappings configured. Add templates or use AI to generate suggestions.</span>
+        </div>
+        
+        <div class="mapping-item" *ngFor="let template of visualizationMappings?.templates; let i = index">
+          <div class="mapping-fields">
+            <div class="mapping-field template-select">
+              <label>Template</label>
+              <select [ngModel]="template.templateId" (ngModelChange)="updateVisualizationTemplate(i, 'templateId', $event)"
+                [disabled]="isLoading" class="form-control">
+                <option value="">Select a template...</option>
+                <option *ngFor="let t of availableTemplates" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="mapping-field usage-input">
+              <label>Usage Description</label>
+              <input type="text" [ngModel]="template.usage" (ngModelChange)="updateVisualizationTemplate(i, 'usage', $event)"
+                [disabled]="isLoading" class="form-control" placeholder="When to use this visualization...">
+            </div>
+          </div>
+          <button class="preview-viz-button" (click)="openVisualizationPreview(template.templateId, template.usage)"
+            [disabled]="isLoading || !template.templateId" title="Preview">
+            <span class="material-icons">visibility</span>
+          </button>
+          <button class="remove-mapping-button" (click)="removeVisualizationTemplate(i)" [disabled]="isLoading" title="Remove">
+            <span class="material-icons">delete_outline</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Editor Actions -->
+  <div class="editor-actions">
+    <button class="nova-button secondary" (click)="handleCancel()" [disabled]="isLoading">
+      <span class="material-icons">close</span>
+      Cancel
+    </button>
+    <button class="nova-button primary" (click)="handleSave()" [disabled]="isLoading">
+      <span class="material-icons">{{ isLoading ? 'hourglass_empty' : 'save' }}</span>
+      {{ isLoading ? 'Saving...' : (isNew ? 'Create Agent' : 'Save Changes') }}
+    </button>
+  </div>
+
+  <!-- Visualization Preview Modal -->
+  <div class="visualization-preview-overlay" *ngIf="showVisualizationPreview" (click)="closeVisualizationPreview()">
+    <div class="visualization-preview-modal" (click)="$event.stopPropagation()">
+      <div class="preview-header">
+        <div class="preview-title">
+          <span class="material-icons">dashboard</span>
+          <div>
+            <h5>{{ getTemplateDisplayName(previewTemplateId || '') }}</h5>
+            <p class="preview-template-id">{{ previewTemplateId }}</p>
+          </div>
+        </div>
+        <button class="close-preview-button" (click)="closeVisualizationPreview()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="preview-usage" *ngIf="previewTemplateUsage">
+        <span class="material-icons">info_outline</span>
+        <span>{{ previewTemplateUsage }}</span>
+      </div>
+      <div class="preview-content">
+        <div class="preview-data-section">
+          <h6>Sample Data Structure</h6>
+          <pre class="preview-json">{{ previewSampleData | json }}</pre>
+        </div>
+        <div class="preview-info">
+          <div class="info-card">
+            <span class="material-icons">lightbulb</span>
+            <div>
+              <strong>How to use this template</strong>
+              <p>Include a JSON block with the structure shown above. The visualization will automatically render.</p>
+            </div>
+          </div>
+          <div class="info-card">
+            <span class="material-icons">code</span>
+            <div>
+              <strong>Required Fields</strong>
+              <p>Ensure your output includes <code>visualizationType</code> and <code>templateId</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visualization JSON Editor Modal -->
+  <div class="visualization-json-overlay" *ngIf="showVisualizationJsonEditor" (click)="closeVisualizationJsonEditor()">
+    <div class="visualization-json-modal" (click)="$event.stopPropagation()">
+      <div class="json-editor-header">
+        <div class="json-editor-title">
+          <span class="material-icons">code</span>
+          <div>
+            <h5>Edit Visualization Mappings JSON</h5>
+            <p class="json-editor-subtitle">Directly edit the visualization mapping configuration</p>
+          </div>
+        </div>
+        <button class="close-json-button" (click)="closeVisualizationJsonEditor()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="json-editor-content">
+        <div class="json-editor-info">
+          <span class="material-icons">info_outline</span>
+          <span>Structure: <code>{{ '{' }} agentName, agentId, templates: [{{ '{' }} templateId, usage {{ '}' }}] {{ '}' }}</code></span>
+        </div>
+        <textarea class="json-textarea" [(ngModel)]="visualizationJsonText" placeholder="Enter JSON..." spellcheck="false"></textarea>
+        <div class="json-error" *ngIf="visualizationJsonError">
+          <span class="material-icons">error_outline</span>
+          {{ visualizationJsonError }}
+        </div>
+      </div>
+      <div class="json-editor-actions">
+        <button class="nova-button secondary" (click)="formatVisualizationJson()">
+          <span class="material-icons">auto_fix_high</span>
+          Format
+        </button>
+        <div class="action-spacer"></div>
+        <button class="nova-button secondary" (click)="closeVisualizationJsonEditor()">
+          <span class="material-icons">close</span>
+          Cancel
+        </button>
+        <button class="nova-button primary" (click)="applyVisualizationJson()">
+          <span class="material-icons">check</span>
+          Apply Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MCP Server Editor - Rendered by parent agent-management-modal to avoid overflow clipping -->
+</div>

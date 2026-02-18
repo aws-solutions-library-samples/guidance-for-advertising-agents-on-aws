@@ -333,6 +333,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showAgentConfig = false;
   }
 
+  // Agent Management Modal Methods
+  // Validates: Requirements 1.1, 1.2, 1.3, 1.4
+  showAgentManagement = false;
+
+  openAgentManagement(): void {
+    this.showAgentManagement = true;
+  }
+
+  closeAgentManagement(): void {
+    this.showAgentManagement = false;
+  }
+
   // Demo Modal Methods
   private checkDemoModal(): void {
     // Only show demo modal if user is authenticated

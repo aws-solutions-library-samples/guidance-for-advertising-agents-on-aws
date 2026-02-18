@@ -339,16 +339,36 @@ Resources:
                   - bedrock:RetrieveAndGenerate
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
-                  - !Sub "arn:aws:bedrock:*::foundation-model/*"
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - "arn:aws:bedrock:*::inference-profile/*"
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:InvokeAgentRuntime
                   - bedrock-agentcore:InvokeAgentRuntimeForUser
                   - bedrock-agentcore:GetMemory
-                  - bedrock-agentcore:ListMemories
-                  - bedrock-agentcore:RetrieveMemoryRecords
-                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:ListActors                  
                   - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:GetMemoryRecord
+                  - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:GetAgentCard
+                  - bedrock-agentcore:ListSessions
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:GetAgentRuntimeEndpoint
+                  - bedrock-agentcore:ListAgentRuntimeEndpoints
+                  - bedrock-agentcore:ListPolicyEngines
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:InvokeGateway
+                  - bedrock-agentcore:GetGateway
+                  - bedrock-agentcore:ListGateways
+                  - bedrock-agentcore:ListGatewayTargets
+                  - bedrock-agentcore:GetGatewayTarget
+                  - bedrock-agentcore:AuthorizeAction
+                  - bedrock-agentcore:PartiallyAuthorizeActions
+                  - bedrock-agentcore:GetPolicyEngine
                 Resource: !Sub "arn:aws:bedrock-agentcore:*:${AWS::AccountId}:*"
               - Effect: Allow
                 Action:
@@ -412,14 +432,6 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-*"
-              - Effect: Allow
-                Action:
-                  - appsync:EventConnect
-                  - appsync:EventSubscribe
-                  - appsync:EventPublish
-                Resource:
-                  - !Sub "arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/*"
-
   UnauthenticatedRole:
     Type: AWS::IAM::Role
     Properties:
@@ -762,11 +774,6 @@ Resources:
                 "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${UICloudFrontDistribution}"
         Version: 2012-10-17
 
-  # Placeholder for AppSync Events API
-  # The Events API will be created via CLI/boto3 in deploy-ecosystem.sh after stack deployment
-  # This is necessary because CloudFormation doesn't support ApiType: EVENT yet
-  # The API ID will be stored in SSM Parameter Store for retrieval by other components
-
   # CloudWatch Log Group for Demo Tracking
   DemoLogGroup:
     Type: AWS::Logs::LogGroup
@@ -866,11 +873,6 @@ Outputs:
     Value: !Sub "https://${UICloudFrontDistribution.DomainName}"
     Export:
       Name: !Sub "${StackPrefix}-UIUrl-${UniqueId}"
-
-  # AppSync Outputs
-  # Note: AppSync Events API is created via CLI/boto3 in deploy-ecosystem.sh
-  # API details are stored in SSM Parameter Store: /${StackPrefix}/appsync/${UniqueId}
-  # Outputs will be generated dynamically during deployment
 
   # Demo Tracking Outputs
   DemoLogGroupName:

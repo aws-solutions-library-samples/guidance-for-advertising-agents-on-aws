@@ -30,7 +30,12 @@
               <span class="material-icons">clear_all</span>
               New Demo
             </button>
-            <button class="nova-button secondary menu-button hidden" (click)="openAgentConfig()" title="Agent Configuration"
+            <button class="nova-button secondary menu-button hidden" (click)="openAgentConfig()" title="Agent Configuration (Legacy)"
+              [style.transform]="getButtonTransform(3)" [style.opacity]="getButtonOpacity(3)">
+              <span class="material-icons">settings_applications</span>
+              Legacy Agents
+            </button>
+            <button class="nova-button secondary menu-button" (click)="openAgentManagement()" title="Agent Management"
               [style.transform]="getButtonTransform(3)" [style.opacity]="getButtonOpacity(3)">
               <span class="material-icons">hub</span>
               Agents
@@ -340,12 +345,20 @@
   </div>
 </div>
 
-<!-- Agent Configuration Modal -->
+<!-- Agent Configuration Modal (Legacy) -->
 <div class="agent-config-overlay" *ngIf="showAgentConfig" (click)="closeAgentConfig()">
   <div class="agent-config-modal" (click)="$event.stopPropagation()">
     <app-agent-config (closeModal)="closeAgentConfig()"></app-agent-config>
   </div>
 </div>
+
+<!-- Agent Management Modal -->
+<!-- Validates: Requirements 1.1, 1.2, 1.3, 1.4 -->
+<app-agent-management-modal
+  [isOpen]="showAgentManagement"
+  [currentUser]="currentUser?.signInDetails?.loginId || ''"
+  (closeModal)="closeAgentManagement()">
+</app-agent-management-modal>
 
 <!-- Demo Modal -->
 <app-demo-modal *ngIf="showDemoModal" [currentUser]="currentUser" (closeModal)="closeDemoModal()">

@@ -36,24 +36,6 @@
     </div>
     
     <!-- Progress Bar -->
-    <div class="tooltip-progress">
-      <div class="progress-bar">
-        <div 
-          class="progress-fill" 
-          [style.width.%]="getProgressPercentage()">
-        </div>
-      </div>
-      <div class="progress-dots">
-        <button 
-          *ngFor="let step of [].constructor(totalSteps); let i = index"
-          class="progress-dot"
-          [class.active]="i === currentStepIndex"
-          [class.completed]="i < currentStepIndex"
-          (click)="goToStep(i)"
-          [attr.aria-label]="'Go to step ' + (i + 1)">
-        </button>
-      </div>
-    </div>
     
     <!-- Tooltip Content -->
     <div class="tooltip-content">
@@ -80,6 +62,25 @@
         </span>
       </button>
     </div>
+    <div class="tooltip-progress">
+      <div class="progress-bar">
+        <div 
+          class="progress-fill" 
+          [style.width.%]="getProgressPercentage()">
+        </div>
+      </div>
+      <div class="progress-dots">
+        <button 
+          *ngFor="let step of [].constructor(totalSteps); let i = index"
+          class="progress-dot"
+          [class.active]="i === currentStepIndex"
+          [class.completed]="i < currentStepIndex"
+          (click)="goToStep(i)"
+          [attr.aria-label]="'Go to step ' + (i + 1)">
+        </button>
+      </div>
+    </div>
+    
     
     <!-- Tooltip Arrow -->
     <div 

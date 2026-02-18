@@ -1,0 +1,401 @@
+<!-- Agent Management Modal -->
+<div class="agent-modal-overlay" *ngIf="isOpen" (click)="onOverlayClick($event)">
+  <div class="agent-modal standard-modal-panel" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="agent-modal-header">
+      <div class="modal-title">
+        <span class="material-icons">smart_toy</span>
+        <h3>Agent Management</h3>
+      </div>
+      <div class="header-actions">
+        <button 
+          class="nova-button secondary" 
+          (click)="triggerBackendCacheRefresh()" 
+          [disabled]="isLoading || isRefreshingCache"
+          title="Refresh backend agent cache to pick up config changes">
+          <span class="material-icons" [class.spinning]="isRefreshingCache">{{ isRefreshingCache ? 'sync' : 'refresh' }}</span>
+          {{ isRefreshingCache ? 'Refreshing...' : 'Sync Backend' }}
+        </button>
+        <button class="nova-button secondary" (click)="addNewAgent()" [disabled]="isLoading">
+          <span class="material-icons">add</span>
+          Add Agent
+        </button>
+        <button class="close-btn" (click)="close()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="agent-modal-content">
+      
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="isLoading">
+        <div class="loading-spinner"></div>
+        <span>Loading agents...</span>
+      </div>
+
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="errorMessage && !isLoading">
+        <span class="material-icons">error_outline</span>
+        <span>{{ errorMessage }}</span>
+        <button class="retry-btn" (click)="loadAgents()">
+          <span class="material-icons">refresh</span>
+          Retry
+        </button>
+      </div>
+
+      <!-- Success Message -->
+      <div class="success-message" *ngIf="successMessage">
+        <span class="material-icons">check_circle</span>
+        <span>{{ successMessage }}</span>
+      </div>
+
+      <!-- Agent List View -->
+      <div class="agent-list" *ngIf="!isLoading && !isEditing && !errorMessage">
+        
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="agents.length === 0">
+          <span class="material-icons">smart_toy</span>
+          <h4>No Agents Configured</h4>
+          <p>Get started by adding your first agent configuration.</p>
+          <button class="nova-button primary" (click)="addNewAgent()">
+            <span class="material-icons">add</span>
+            Add Your First Agent
+          </button>
+        </div>
+
+        <!-- Agent Cards -->
+        <div class="agent-cards" *ngIf="agents.length > 0">
+          <div 
+            class="agent-card" 
+            *ngFor="let agent of agents"
+            [style.border-left-color]="getAgentColor(agent)"
+            [class.readonly]="!canEditAgent(agent)"
+            (click)="selectAgent(agent)">
+            
+            <div class="agent-card-header">
+              <div class="agent-icon" [style.background-color]="getAgentColor(agent)">
+                <span class="material-icons">smart_toy</span>
+              </div>
+              <div class="agent-info">
+                <span class="agent-name">{{ agent.agent_display_name }}</span>
+                <span class="agent-team">{{ agent.team_name }}</span>
+              </div>
+              <div class="agent-actions">
+                <button 
+                  class="icon-btn" 
+                  (click)="editAgent(agent); $event.stopPropagation()" 
+                  [title]="canEditAgent(agent) ? 'Edit Agent' : 'Only the author can edit this agent'"
+                  [disabled]="!canEditAgent(agent)">
+                  <span class="material-icons">edit</span>
+                </button>
+                <button 
+                  class="icon-btn delete" 
+                  (click)="deleteAgent(agent); $event.stopPropagation()" 
+                  [title]="canEditAgent(agent) ? 'Delete Agent' : 'Only the author can delete this agent'"
+                  [disabled]="!canEditAgent(agent)">
+                  <span class="material-icons">delete</span>
+                </button>
+              </div>
+            </div>
+            
+            <div class="agent-card-body">
+              <p class="agent-description">{{ agent.agent_description }}</p>
+            </div>
+
+            <div class="agent-card-footer">
+              <span class="agent-id">ID: {{ agent.agent_name }}</span>
+              <span class="agent-author">
+                <span class="material-icons">person</span>
+                {{ getAuthorDisplay(agent) }}
+              </span>
+              <span class="tool-count" *ngIf="agent.tool_agent_names?.length">
+                <span class="material-icons">build</span>
+                {{ agent.tool_agent_names.length }} tool{{ agent.tool_agent_names.length !== 1 ? 's' : '' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Editor Panel -->
+      <!-- Validates: Requirements 3.1, 3.4, 3.6, 3.7, 9.1 -->
+      <div class="agent-editor" *ngIf="isEditing && selectedAgent">
+        <app-agent-editor-panel
+          [agent]="selectedAgent"
+          [isNew]="isAddingNew"
+          [availableAgents]="getAvailableAgentNames()"
+          [availableRuntimeArns]="getAvailableRuntimeArns()"
+          [isLoading]="isLoading"
+          [currentUser]="currentUser"
+          (onSave)="onEditorSave($event)"
+          (onCancel)="onEditorCancel()"
+          (mcpEditorOpened)="onMcpEditorOpened()"
+          (mcpEditorClosed)="onMcpEditorClosed()"
+          (mcpEditorSaved)="onMcpEditorSaved()">
+        </app-agent-editor-panel>
+      </div>
+
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <!-- Validates: Requirements 5.1, 5.2, 5.4, 5.5 -->
+    <div class="delete-confirmation-overlay" *ngIf="showDeleteConfirmation" (click)="cancelDelete()">
+      <div class="delete-confirmation-dialog" (click)="$event.stopPropagation()">
+        <div class="delete-dialog-header">
+          <span class="material-icons warning-icon">warning</span>
+          <h4>Delete Agent</h4>
+        </div>
+        
+        <div class="delete-dialog-content">
+          <p>Are you sure you want to delete <strong>{{ agentToDelete?.agent_display_name }}</strong>?</p>
+          
+          <!-- Dependency Warning -->
+          <!-- Validates: Requirement 5.2, 5.5 - Display dependency warning -->
+          <div class="dependency-warning" *ngIf="agentDependencies.length > 0">
+            <span class="material-icons">link</span>
+            <div class="dependency-info">
+              <strong>Warning: This agent is referenced by other agents</strong>
+              <p>The following agents use this agent as a tool:</p>
+              <ul>
+                <li *ngFor="let dep of agentDependencies">{{ dep }}</li>
+              </ul>
+              <p class="dependency-note">Deleting this agent may affect the functionality of these agents.</p>
+            </div>
+          </div>
+          
+          <p class="delete-warning">This action will delete:</p>
+          <ul class="delete-items">
+            <li>Agent configuration</li>
+            <li>Agent instructions</li>
+            <li>Agent card configuration</li>
+            <li>Visualization mappings</li>
+            <li>Visualization templates</li>
+          </ul>
+          <p class="delete-note"><strong>This action cannot be undone.</strong></p>
+        </div>
+        
+        <div class="delete-dialog-actions">
+          <button class="nova-button secondary" (click)="cancelDelete()">
+            Cancel
+          </button>
+          <button class="nova-button delete-confirm" (click)="confirmDelete()" [disabled]="isLoading">
+            <span class="material-icons">delete</span>
+            {{ isLoading ? 'Deleting...' : 'Delete Agent' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MCP Server Editor Overlay - Rendered at modal level to escape overflow clipping -->
+<ng-container *ngIf="showMcpEditorOverlay && editorPanel?.editingMcpServer as mcpServer">
+  <div class="mcp-editor-top-overlay" (click)="editorPanel.closeMcpServerEditor()">
+    <div class="mcp-editor-top-modal" (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="mcp-editor-header">
+        <div class="mcp-editor-title">
+          <span class="material-icons">extension</span>
+          <div>
+            <h5>{{ mcpServer.name || 'MCP Server' }}</h5>
+            <p class="mcp-editor-subtitle">Configure MCP server connection</p>
+          </div>
+        </div>
+        <button class="close-mcp-button" (click)="editorPanel.closeMcpServerEditor()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="mcp-editor-content">
+
+        <!-- Basic Info -->
+        <div class="mcp-form-section">
+          <h6><span class="material-icons">info</span> Basic Information</h6>
+          <div class="mcp-form-group">
+            <label>Server Name <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="mcpServer.name"
+              placeholder="e.g., My MCP Server" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+          </div>
+          <div class="mcp-form-group">
+            <label>Description</label>
+            <input type="text" class="form-control" [(ngModel)]="mcpServer.description"
+              placeholder="What does this server provide?" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+          </div>
+          <div class="mcp-form-group">
+            <label>Tool Prefix</label>
+            <input type="text" class="form-control" [(ngModel)]="mcpServer.prefix"
+              placeholder="Optional prefix for tool names" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+            <span class="field-hint">Adds a prefix to all tool names from this server to prevent conflicts.</span>
+          </div>
+          <div class="mcp-form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="mcpServer.enabled"
+                (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+              Server Enabled
+            </label>
+          </div>
+        </div>
+
+        <!-- Transport -->
+        <div class="mcp-form-section">
+          <h6><span class="material-icons">swap_horiz</span> Transport</h6>
+          <div class="transport-options">
+            <div class="transport-option" [class.selected]="mcpServer.transport === 'stdio'"
+              (click)="mcpServer.transport = 'stdio'; editorPanel.updateMcpServerJsonFromForm()">
+              <span class="material-icons">terminal</span> Command Line (stdio)
+            </div>
+            <div class="transport-option" [class.selected]="mcpServer.transport === 'http'"
+              (click)="mcpServer.transport = 'http'; editorPanel.updateMcpServerJsonFromForm()">
+              <span class="material-icons">http</span> HTTP
+            </div>
+            <div class="transport-option" [class.selected]="mcpServer.transport === 'sse'"
+              (click)="mcpServer.transport = 'sse'; editorPanel.updateMcpServerJsonFromForm()">
+              <span class="material-icons">stream</span> SSE
+            </div>
+          </div>
+
+          <!-- stdio config -->
+          <div class="transport-config" *ngIf="mcpServer.transport === 'stdio'">
+            <div class="mcp-form-group">
+              <label>Command <span class="required">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="mcpServer.command"
+                placeholder="e.g., uvx, python, npx" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+            </div>
+            <div class="mcp-form-group">
+              <label>Arguments</label>
+              <div class="args-list" *ngIf="mcpServer.args?.length">
+                <div class="arg-item" *ngFor="let arg of mcpServer.args; let i = index">
+                  <span class="arg-value">{{ arg }}</span>
+                  <button class="remove-arg-btn" (click)="editorPanel.removeMcpServerArg(i)">
+                    <span class="material-icons">close</span>
+                  </button>
+                </div>
+              </div>
+              <div class="add-arg-row">
+                <input type="text" class="form-control" #newArgInput placeholder="Add argument..."
+                  (keyup.enter)="editorPanel.addMcpServerArg(newArgInput.value); newArgInput.value = ''">
+                <button class="add-arg-btn" (click)="editorPanel.addMcpServerArg(newArgInput.value); newArgInput.value = ''">
+                  <span class="material-icons">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- HTTP/SSE config -->
+          <div class="transport-config" *ngIf="mcpServer.transport === 'http' || mcpServer.transport === 'sse'">
+            <div class="mcp-form-group">
+              <label>URL <span class="required">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="mcpServer.url"
+                placeholder="e.g., http://localhost:8000/mcp" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+            </div>
+
+            <!-- AWS IAM Auth -->
+            <div class="mcp-form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" [checked]="!!mcpServer.awsAuth"
+                  (change)="mcpServer.awsAuth = $any($event.target).checked ? { region: 'us-east-1', service: 'bedrock-agentcore' } : undefined; editorPanel.updateMcpServerJsonFromForm()">
+                Use AWS IAM Authentication (SigV4)
+              </label>
+            </div>
+            <div class="aws-auth-config" *ngIf="mcpServer.awsAuth">
+              <div class="mcp-form-row">
+                <div class="mcp-form-group">
+                  <label>Region</label>
+                  <input type="text" class="form-control" [(ngModel)]="mcpServer.awsAuth.region"
+                    placeholder="us-east-1" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+                </div>
+                <div class="mcp-form-group">
+                  <label>Service</label>
+                  <input type="text" class="form-control" [(ngModel)]="mcpServer.awsAuth.service"
+                    placeholder="bedrock-agentcore" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+                </div>
+              </div>
+            </div>
+
+            <!-- HTTP Headers -->
+            <div class="mcp-form-group">
+              <label>HTTP Headers</label>
+              <div class="headers-list" *ngIf="editorPanel.getMcpServerHeadersArray().length">
+                <div class="header-item" *ngFor="let header of editorPanel.getMcpServerHeadersArray()">
+                  <span class="header-key">{{ header.key }}</span>
+                  <span>=</span>
+                  <span class="header-value">{{ header.value }}</span>
+                  <button class="remove-header-btn" (click)="editorPanel.removeMcpServerHeader(header.key)">
+                    <span class="material-icons">close</span>
+                  </button>
+                </div>
+              </div>
+              <div class="add-header-row">
+                <input type="text" class="form-control" #newHeaderKey placeholder="Header name">
+                <input type="text" class="form-control" #newHeaderValue placeholder="Header value"
+                  (keyup.enter)="editorPanel.addMcpServerHeader(newHeaderKey.value, newHeaderValue.value); newHeaderKey.value = ''; newHeaderValue.value = ''">
+                <button class="add-header-btn" (click)="editorPanel.addMcpServerHeader(newHeaderKey.value, newHeaderValue.value); newHeaderKey.value = ''; newHeaderValue.value = ''">
+                  <span class="material-icons">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Environment Variables -->
+        <div class="mcp-form-section">
+          <h6><span class="material-icons">settings</span> Environment Variables</h6>
+          <div class="env-vars-list" *ngIf="editorPanel.getMcpServerEnvArray().length">
+            <div class="env-var-item" *ngFor="let env of editorPanel.getMcpServerEnvArray()">
+              <span class="env-key">{{ env.key }}</span>
+              <span>=</span>
+              <span class="env-value">{{ env.value }}</span>
+              <button class="remove-env-btn" (click)="editorPanel.removeMcpServerEnv(env.key)">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+          </div>
+          <div class="add-env-row">
+            <input type="text" class="form-control" #newEnvKey placeholder="Variable name">
+            <input type="text" class="form-control" #newEnvValue placeholder="Value"
+              (keyup.enter)="editorPanel.addMcpServerEnv(newEnvKey.value, newEnvValue.value); newEnvKey.value = ''; newEnvValue.value = ''">
+            <button class="add-env-btn" (click)="editorPanel.addMcpServerEnv(newEnvKey.value, newEnvValue.value); newEnvKey.value = ''; newEnvValue.value = ''">
+              <span class="material-icons">add</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- JSON Editor -->
+        <div class="mcp-form-section">
+          <h6><span class="material-icons">code</span> JSON Configuration</h6>
+          <textarea class="mcp-json-textarea" [(ngModel)]="editorPanel.mcpServerJsonText" spellcheck="false"></textarea>
+          <div class="mcp-json-actions">
+            <button class="nova-button secondary small" (click)="editorPanel.formatMcpServerJson()">
+              <span class="material-icons">auto_fix_high</span> Format
+            </button>
+            <button class="nova-button secondary small" (click)="editorPanel.applyMcpServerJson()">
+              <span class="material-icons">check</span> Apply JSON
+            </button>
+          </div>
+          <div class="mcp-json-error" *ngIf="editorPanel.mcpServerJsonError">
+            <span class="material-icons">error_outline</span>
+            {{ editorPanel.mcpServerJsonError }}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="mcp-editor-actions">
+        <button class="nova-button secondary" (click)="editorPanel.closeMcpServerEditor()">
+          <span class="material-icons">close</span> Cancel
+        </button>
+        <button class="nova-button primary" (click)="editorPanel.saveMcpServerChanges()">
+          <span class="material-icons">save</span> Save Server
+        </button>
+      </div>
+
+    </div>
+  </div>
+</ng-container>

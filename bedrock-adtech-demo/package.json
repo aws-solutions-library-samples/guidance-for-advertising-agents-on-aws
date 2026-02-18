@@ -32,6 +32,7 @@
     "@aws-sdk/client-cloudwatch-logs": "3.848.0",
     "@aws-sdk/client-cognito-identity": "3.848.0",
     "@aws-sdk/client-dynamodb": "3.848.0",
+    "@aws-sdk/util-dynamodb": "3.848.0",
     "@aws-sdk/client-lambda": "3.848.0",
     "@aws-sdk/client-s3": "3.848.0",
     "@aws-sdk/client-ssm": "3.848.0",

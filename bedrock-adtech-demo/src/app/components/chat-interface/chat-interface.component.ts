@@ -7,6 +7,8 @@ import { TourService } from '../../services/tour.service';
 import { AgentMentionService } from '../../services/agent-mention.service';
 import { AgentVisualizationService } from '../../services/agent-visualization.service';
 import { TranscribeService } from '../../services/transcribe.service';
+import { NovaSonicService, NovaSonicEvent } from '../../services/nova-sonic.service';
+import { AgentDynamoDBService } from '../../services/agent-dynamodb.service';
 import { DemoTrackingService } from '../../services/demo-tracking.service';
 import { PdfExportService, ChatExportOptions } from '../../services/pdf-export.service';
 import { AgentMentionTypeaheadComponent } from '../agent-mention-typeahead/agent-mention-typeahead.component';
@@ -17,7 +19,8 @@ import { AgentSummary, SummaryModalState } from '../agent-summary-modal/agent-su
 import { VisibilitySettings } from '../visibility-settings-modal/visibility-settings-modal.component';
 import { BedrockAgentCoreClient, ListEventsCommand } from '@aws-sdk/client-bedrock-agentcore';
 import { from } from 'rxjs';
-import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, AgentSuggestion, EnrichedAgent, PendingSpecialistInvocation } from 'src/app/models/application-models';
+import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, AgentSuggestion, EnrichedAgent, PendingSpecialistInvocation, VisualizationAnalysisResult, ViewMode } from 'src/app/models/application-models';
+import { VisualizationAnalyzerService } from '../../services/visualization-analyzer.service';
 
 
 
@@ -170,14 +173,26 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
 
   // Voice recording support
   isRecording = false;
+  isVoiceSessionActive = false;
   private transcriptionSubscription: any = null;
+  private novaSonicSubscription: any = null;
   private partialTranscript = '';
+
+  // Nova Sonic audio playback
+  private sonicPlaybackContext: AudioContext | null = null;
+  private sonicAudioQueue: Uint8Array[] = [];
+  private sonicIsPlaying = false;
+  private sonicResponseText = ''; // Accumulate text-response chunks
 
   // Sources modal support
   showSourcesModal = false;
   currentSources: any[] = [];
   currentSourcesMessageId = '';
   currentSourceQueries: string[] = [];
+  currentSourceIndex = 0;
+  sourcesTooltipPosition = { top: '50%', left: '50%' };
+  private isSourcesDragging = false;
+  private sourcesDragOffset = { x: 0, y: 0 };
 
   // Track knowledge base sources by trace ID
   private knowledgeBaseSources = new Map<string, KnowledgeBaseSource[]>();
@@ -1629,6 +1644,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     visualData?: any;
   }>();
 
+  // Per-message view mode tracking (text-only, summary-visuals, visuals-only)
+  messageViewModes: Map<string, ViewMode> = new Map();
+
   // NEW: LocalStorage functionality
   private storageKey: string = '';
 
@@ -1642,8 +1660,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     private agentMentionService: AgentMentionService,
     private agentVisualizationService: AgentVisualizationService,
     private transcribeService: TranscribeService,
+    private novaSonicService: NovaSonicService,
+    private agentDynamoDBService: AgentDynamoDBService,
     private demoTrackingService: DemoTrackingService,
-    private pdfExportService: PdfExportService
+    private pdfExportService: PdfExportService,
+    private visualizationAnalyzerService: VisualizationAnalyzerService
   ) {
     // Session management is now handled by SessionManagerService
   }
@@ -1926,6 +1947,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // Initialize Intersection Observer for tracking visible messages with visualizations
   private initializeMessageIntersectionObserver(): void {
+    // Companion panel disabled — early return to skip observer setup
+    return;
+
     if (typeof IntersectionObserver === 'undefined') return;
 
     this.messageIntersectionObserver = new IntersectionObserver(
@@ -1960,17 +1984,17 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     const formatted = this.getFormattedAgentMessage(message);
     if (!formatted.visualData || !this.hasAnyVisualizationData(formatted.visualData)) return;
 
-    // Update companion panel with this message's visualization
-    this.currentVisibleVisualizationMessageId = messageId;
-    this.companionPanelMessage = {
-      id: messageId,
-      agentName: message.agentName || 'Agent',
-      visualData: formatted.visualData,
-      timestamp: message.timestamp
-    };
-    this.companionPanelAgentColor = this.getAgentColor(message.agentName);
-    this.showCompanionPanel = true;
-    this.changeDetectorRef.markForCheck();
+    // Update companion panel with this message's visualization — DISABLED
+    // this.currentVisibleVisualizationMessageId = messageId;
+    // this.companionPanelMessage = {
+    //   id: messageId,
+    //   agentName: message.agentName || 'Agent',
+    //   visualData: formatted.visualData,
+    //   timestamp: message.timestamp
+    // };
+    // this.companionPanelAgentColor = this.getAgentColor(message.agentName);
+    // this.showCompanionPanel = true;
+    // this.changeDetectorRef.markForCheck();
   }
 
   // Handle when a message exits view
@@ -1983,14 +2007,24 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
   }
 
   // Check if visualData has any actual visualization content
-  private hasAnyVisualizationData(visualData: any): boolean {
+  hasAnyVisualizationData(visualData: any): boolean {
     if (!visualData) return false;
     return !!(
       visualData.metricData || visualData.channelAllocations || visualData.channelCards ||
       visualData.segmentCards || visualData.creativeData || visualData.timelineData ||
       visualData.histogramData || visualData.doubleHistogramData || visualData.barChartData ||
-      visualData.donutChartData || visualData.adcpInventoryData
+      visualData.donutChartData || visualData.adcpInventoryData || visualData.presentationData
     );
+  }
+
+  // View mode methods for per-message toggle (text-only, summary-visuals, visuals-only)
+  getViewMode(messageId: string): ViewMode {
+    return this.messageViewModes.get(messageId) || 'summary-visuals';
+  }
+
+  setViewMode(messageId: string, mode: ViewMode): void {
+    this.messageViewModes.set(messageId, mode);
+    this.changeDetectorRef.markForCheck();
   }
 
   // Observe a message element for visibility tracking
@@ -2522,7 +2556,6 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   sendMessage(agentType: EnrichedAgent | null): void {
     // Check for empty message
-    if (!agentType) agentType = this.lastAgent;
     if (!this.currentMessage.trim() && this.attachedFiles.length === 0) {
       console.warn('⚠️ Cannot send message: empty message');
       return;
@@ -2536,7 +2569,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     // Check if there's an agent mention in the message
     const parsedAgent = this.agentMentionService.parseAgentMentions(this.currentMessage);
 
-    // Use mentioned agent, provided agentType, selectedAgentForMessage, or lastAgentName as fallback
+    // Use mentioned agent first (highest priority from typeahead/@mention),
+    // then explicitly provided agentType, then selectedAgentForMessage, then lastAgent as fallback
     const targetAgent = parsedAgent.mentionedAgent || agentType || this.selectedAgentForMessage || this.lastAgent;
 
     // If still no agent is determined, prompt user to select one
@@ -2878,6 +2912,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   console.log('response from collaborator:', event, 'originalPrompt:', originalPrompt?.substring(0, 100))
 
                   this.addMessageIfNotDuplicate(collaboratorMessage, agentInMessage)
+
+                  // Trigger client-side visualization analysis for collaborator (agent) responses
+                  if (messageText && messageText.trim()) {
+                    this.triggerVisualizationAnalysis(agentName, messageText, collaboratorMessageId);
+                  }
                   //this.saveMessagesToStorage();
                   // Trigger change detection
                   if (!this.changeDetectionPending) {
@@ -2911,6 +2950,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 };
                 if (this.messages.findIndex(m => m.text == finalResponseMessage.text) == -1) {
                   this.addMessageIfNotDuplicate(finalResponseMessage, agentInMessage);
+
+                  // Trigger client-side visualization analysis for final-response
+                  if (messageText &&messageText.trim()) {
+                    this.triggerVisualizationAnalysis(agentName, messageText, finalResponseMessage.id);
+                  }
                 }
                 break;
 
@@ -3403,6 +3447,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   }
                 };
                 this.addMessageIfNotDuplicate(newMessage, resolvedAgent || agent);
+
+                // Trigger client-side visualization analysis for chunk final-response
+                if (messageText &&messageText.trim()) {
+                  this.triggerVisualizationAnalysis(agentName, messageText, newMessageId);
+                }
               }
             }
           }
@@ -3562,6 +3611,46 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   public getKeys(obj: any): string[] {
     return Object.keys(obj);
+  }
+
+  /**
+   * Triggers client-side visualization analysis for an agent response message.
+   * Calls VisualizationAnalyzerService.analyzeResponse() and stores the result
+   * on the message's data object as visualizationAnalysis.
+   */
+  private triggerVisualizationAnalysis(agentName: string, responseText: string, messageId: string): void {
+    this.visualizationAnalyzerService.analyzeResponse(agentName, responseText).then(
+      (analysisResult: VisualizationAnalysisResult | null) => {
+        if (!analysisResult) {
+          return;
+        }
+
+        // Find the message and store the analysis result on its data object
+        const messageIndex = this.messages.findIndex(m => m.id === messageId);
+        if (messageIndex !== -1) {
+          const existingMessage = this.messages[messageIndex];
+          existingMessage.data = {
+            ...existingMessage.data,
+            visualizationAnalysis: analysisResult
+          };
+
+          // Invalidate the message cache so getFormattedAgentMessage re-renders
+          if (this.messageCache) {
+            // Remove all cache entries for this message ID
+            for (const key of Array.from(this.messageCache.keys())) {
+              if (key.startsWith(messageId)) {
+                this.messageCache.delete(key);
+              }
+            }
+          }
+
+          // Trigger change detection to re-render the message with visualizations
+          this.changeDetectorRef.detectChanges();
+        }
+      }
+    ).catch((error) => {
+      console.warn(`⚠️ Visualization analysis failed for ${agentName}:`, error);
+    });
   }
 
   // Helper method to determine if a trace is meaningful enough to preserve
@@ -3790,6 +3879,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       const beforeMention = this.currentMessage.substring(0, mentionStart);
       const agentMention = `@[${agent.agent.name}] `;
       this.currentMessage = beforeMention + agentMention + textAfterCursor;
+
+      // Set the selected agent so sendMessage routes to it directly
+      this.selectedAgentForMessage = agent.agent;
 
       // Set cursor position after the mention
       this.safeSetTimeout(() => {
@@ -4593,6 +4685,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     finalContent: string;
     isThinking: boolean;
     delegationContent?: string | undefined;
+    summary?: string;
     visualData?: any
   } {
     const isThinking = message.data?.isThinking || false;
@@ -4636,7 +4729,79 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       const rawThinkingContent = `**💭 Thinking Process:**\n\n${unescapeNewlines(thinkingHistory.join('\n\n'))}`;
       const thinkingContent = this.formatAgentMentions(rawThinkingContent);
 
-      // Parse visual data components from final response
+      // Check if the message has a client-side visualization analysis result
+      const vizAnalysis: VisualizationAnalysisResult | undefined = message.data?.visualizationAnalysis;
+
+      if (vizAnalysis && vizAnalysis.visualizations.length > 0) {
+        // Use the analysis result's visualizations and summary instead of parsing JSON from text
+        const visualDataResult: any = {};
+
+        // Map visualizationType from templates to the UI's expected data key names
+        const vizTypeToDataKey: Record<string, string> = {
+          'metric': 'metricData',
+          'metrics': 'metricData',
+          'allocations': 'channelAllocations',
+          'channels': 'channelCards',
+          'segments': 'segmentCards',
+          'creative': 'creativeData',
+          'timeline': 'timelineData',
+          'histogram': 'histogramData',
+          'doubleHistogram': 'doubleHistogramData',
+          'barChart': 'barChartData',
+          'donutChart': 'donutChartData',
+          'decisionTree': 'decisionTreeData',
+          'adcpInventory': 'adcpInventoryData',
+          'presentation': 'presentationData',
+        };
+        const vizTypeToTemplateKey: Record<string, string> = {
+          'metric': 'metricTemplateId',
+          'metrics': 'metricTemplateId',
+          'allocations': 'allocationsTemplateId',
+          'channels': 'channelsTemplateId',
+          'segments': 'segmentsTemplateId',
+          'creative': 'creativeTemplateId',
+          'timeline': 'timelineTemplateId',
+          'histogram': 'histogramTemplateId',
+          'doubleHistogram': 'doubleHistogramTemplateId',
+          'barChart': 'barChartTemplateId',
+          'donutChart': 'donutChartTemplateId',
+          'decisionTree': 'decisionTreeTemplateId',
+          'adcpInventory': 'adcpInventoryTemplateId',
+          'presentation': 'presentationTemplateId',
+        };
+
+        for (const viz of vizAnalysis.visualizations) {
+          const vizType = viz.visualizationType;
+          const dataKey = vizTypeToDataKey[vizType] || `${vizType}Data`;
+          const templateKey = vizTypeToTemplateKey[vizType] || `${vizType}TemplateId`;
+          visualDataResult[dataKey] = viz.data;
+          visualDataResult[templateKey] = viz.templateId;
+        }
+
+        // Refresh tour steps for visualization
+        this.safeSetTimeout(() => {
+          this.tourService.refreshSteps();
+        }, 500);
+
+        // Track visualizations for popover display
+        const displayName = message.displayName || 'Unknown Agent';
+        const normalizedDisplayName = displayName || TextUtils.pascalOrCamelToDisplayName(message.agentName || 'unknown');
+        this.agentVisualizationService.updateAgentVisualization(
+          message.agentName || 'unknown',
+          normalizedDisplayName,
+          visualDataResult
+        );
+
+        return {
+          thinkingContent,
+          finalContent: unescapeNewlines(finalResponse),
+          summary: vizAnalysis.summary,
+          isThinking: false,
+          visualData: visualDataResult
+        };
+      }
+
+      // Fallback: Parse visual data components from final response (legacy path)
       const parsedData = this.parseVisualDataComponents(finalResponse);
 
       // If we have visual data, refresh tour steps to include dynamic steps
@@ -4827,6 +4992,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     finalContent: string;
     isThinking: boolean;
     delegationContent?: string | undefined;
+    summary?: string;
     visualData?: {
       metricData?: any;
       channelAllocations?: any;
@@ -4865,7 +5031,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     };
   } {
     // Create a cache key based on message content and state
-    const cacheKey = `${message.id}-${message.data?.isThinking}-${message.data?.thinkingHistory?.length || 0}-${message.data?.finalResponse?.length || 0}`;
+    const cacheKey = `${message.id}-${message.data?.isThinking}-${message.data?.thinkingHistory?.length || 0}-${message.data?.finalResponse?.length || 0}-${message.data?.visualizationAnalysis ? 'va' : ''}`;
 
     // Simple cache to avoid reformatting the same message multiple times per render cycle
     if (!this.messageCache) {
@@ -6157,7 +6323,7 @@ ${formattedJson}
 
   // Voice recording methods
   async toggleVoiceRecording(): Promise<void> {
-    if (this.isRecording) {
+    if (this.isVoiceSessionActive) {
       this.stopVoiceRecording();
     } else {
       await this.startVoiceRecording();
@@ -6166,45 +6332,42 @@ ${formattedJson}
 
   private async startVoiceRecording(): Promise<void> {
     try {
-      // Check if transcription is supported
-      if (!this.transcribeService.isSupported()) {
+      // Check if Nova Sonic is supported
+      if (!this.novaSonicService.isSupported()) {
         console.warn('Voice recording not supported in this browser');
         return;
       }
 
       // Request microphone permission
-      const hasPermission = await this.transcribeService.requestMicrophonePermission();
+      const hasPermission = await this.novaSonicService.requestMicrophonePermission();
       if (!hasPermission) {
         console.warn('Microphone permission denied');
         return;
       }
 
       this.isRecording = true;
+      this.isVoiceSessionActive = true;
       this.partialTranscript = '';
 
-      // Start transcription
-      this.transcriptionSubscription = this.transcribeService.startTranscription().subscribe({
-        next: (event) => {
+      // Retrieve agent cards from DynamoDB for tool-use routing
+      let agentCards: any[] = [];
+      try {
+        agentCards = await this.agentDynamoDBService.getAllAgents();
+      } catch (err) {
+        console.warn('Could not load agent cards for voice routing, falling back to text-only mode:', err);
+      }
 
-          if (event.type === 'partial') {
-            // Update the text area with partial transcript in real-time
-            this.partialTranscript = event.text;
-            this.currentMessage = event.text;
-            this.changeDetectorRef.detectChanges();
-          } else if (event.type === 'final') {
-            // Final transcript received
-            this.currentMessage = event.text;
-            this.partialTranscript = event.text;
-            this.changeDetectorRef.detectChanges();
-          } else if (event.type === 'error') {
-            console.error('Transcription error:', event.text);
-            this.stopVoiceRecording();
-          } else if (event.type === 'complete') {
-            this.stopVoiceRecording();
-          }
+      // Start Nova Sonic session with agent routing
+      const session$ = agentCards.length > 0
+        ? this.novaSonicService.startSessionWithAgents(agentCards)
+        : this.novaSonicService.startSession();
+
+      this.novaSonicSubscription = session$.subscribe({
+        next: (event: NovaSonicEvent) => {
+          this.handleNovaSonicEvent(event);
         },
         error: (error) => {
-          console.error('Voice recording error:', error);
+          console.error('Nova Sonic session error:', error);
           this.stopVoiceRecording();
         }
       });
@@ -6212,19 +6375,227 @@ ${formattedJson}
     } catch (error) {
       console.error('Error starting voice recording:', error);
       this.isRecording = false;
+      this.isVoiceSessionActive = false;
     }
   }
 
+  /**
+   * Handle incoming NovaSonicEvent from the voice session.
+   * - partial-transcript / final-transcript: show user speech in input, then post as user message
+   * - tool-use: extract agentName/query, resolve EnrichedAgent, invoke via existing flow
+   * - text-response: create an agent message in the chat and speak it via audio
+   * - audio-response: queue PCM audio chunks for playback
+   * - error / complete: stop the session
+   */
+  private handleNovaSonicEvent(event: NovaSonicEvent): void {
+    switch (event.type) {
+      case 'partial-transcript':
+        // Show partial transcript in the input area as visual feedback
+        this.partialTranscript = event.text || '';
+        this.currentMessage = event.text || '';
+        this.changeDetectorRef.detectChanges();
+        break;
+
+      case 'final-transcript':
+        // Final user transcript — add as a user message in the chat
+        if (event.text && event.text.trim()) {
+          const userVoiceMessage: Message = {
+            id: `voice-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            text: event.text.trim(),
+            sender: 'user',
+            timestamp: new Date()
+          };
+          this.messages = [...this.messages, userVoiceMessage];
+          this.messagesUpdated.emit(this.messages);
+          this.bedrockService.updateChatMessages(this.messages);
+          this.shouldScrollToBottom = true;
+        }
+        // Clear the input field
+        this.currentMessage = '';
+        this.partialTranscript = '';
+        // Reset accumulated response text for the upcoming assistant reply
+        this.sonicResponseText = '';
+        this.changeDetectorRef.detectChanges();
+        break;
+
+      case 'tool-use':
+        // Agent routing via tool use — extract agentName and query, invoke the agent
+        if (event.toolUse && event.toolUse.toolName === 'route_to_agent') {
+          const { agentName, query } = event.toolUse.parameters;
+          this.handleVoiceAgentRouting(agentName, query);
+        }
+        break;
+
+      case 'text-response':
+        // Assistant text response — create a message in the chat messages area
+        if (event.text) {
+          this.sonicResponseText += event.text;
+          const agentForMessage = this.lastAgent || this.selectedAgentForMessage;
+          const sonicMessage: Message = {
+            id: `voice-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            text: this.sonicResponseText,
+            sender: 'agent',
+            timestamp: new Date(),
+            agentName: agentForMessage?.name || 'Nova Sonic',
+            displayName: agentForMessage?.displayName || 'Nova Sonic',
+            agent: agentForMessage || undefined
+          };
+
+          // Replace existing sonic message or add new one
+          const existingSonicIdx = this.messages.findIndex(m => m.id.startsWith('voice-agent-'));
+          if (existingSonicIdx >= 0 && this.messages[existingSonicIdx].id.startsWith('voice-agent-')) {
+            // Update the last voice-agent message in place
+            const updated = [...this.messages];
+            updated[existingSonicIdx] = sonicMessage;
+            this.messages = updated;
+          } else {
+            this.messages = [...this.messages, sonicMessage];
+          }
+          this.messagesUpdated.emit(this.messages);
+          this.bedrockService.updateChatMessages(this.messages);
+          this.shouldScrollToBottom = true;
+          this.changeDetectorRef.detectChanges();
+
+          // If no audio data comes through, use browser TTS as fallback
+          if (this.sonicAudioQueue.length === 0) {
+            this.speakWithBrowserTTS(this.sonicResponseText);
+          }
+        }
+        // Stop the session after receiving the text response
+        this.stopVoiceRecording();
+        break;
+
+      case 'audio-response':
+        // Queue PCM audio chunks and start playback
+        if (event.audioData) {
+          this.sonicAudioQueue.push(event.audioData);
+          this.playSonicAudioQueue();
+        }
+        break;
+
+      case 'error':
+        console.error('Nova Sonic error:', event.text);
+        this.stopVoiceRecording();
+        break;
+
+      case 'complete':
+        this.stopVoiceRecording();
+        break;
+    }
+  }
+
+  /**
+   * Play queued PCM audio chunks from Nova Sonic through the Web Audio API.
+   * Audio is 24kHz, 16-bit signed PCM, mono.
+   */
+  private async playSonicAudioQueue(): Promise<void> {
+    if (this.sonicIsPlaying) return;
+    this.sonicIsPlaying = true;
+
+    try {
+      if (!this.sonicPlaybackContext) {
+        this.sonicPlaybackContext = new AudioContext({ sampleRate: 24000 });
+      }
+      const ctx = this.sonicPlaybackContext;
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      while (this.sonicAudioQueue.length > 0) {
+        const pcmBytes = this.sonicAudioQueue.shift()!;
+        // Convert 16-bit signed PCM to Float32
+        const int16 = new Int16Array(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength / 2);
+        const float32 = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) {
+          float32[i] = int16[i] / 32768;
+        }
+
+        const audioBuffer = ctx.createBuffer(1, float32.length, 24000);
+        audioBuffer.getChannelData(0).set(float32);
+
+        await new Promise<void>(resolve => {
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(ctx.destination);
+          source.onended = () => resolve();
+          source.start();
+        });
+      }
+    } catch (err) {
+      console.error('Error playing Nova Sonic audio:', err);
+    } finally {
+      this.sonicIsPlaying = false;
+      // Check if more audio arrived while we were playing
+      if (this.sonicAudioQueue.length > 0) {
+        this.playSonicAudioQueue();
+      }
+    }
+  }
+
+  /**
+   * Fallback: use browser SpeechSynthesis to speak text when no audio data is available.
+   */
+  private speakWithBrowserTTS(text: string): void {
+    if (!text || !('speechSynthesis' in window)) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  /**
+   * Handle agent routing from a Nova Sonic tool-use event.
+   * Resolves the EnrichedAgent by name and invokes it with the transcribed query.
+   */
+  private handleVoiceAgentRouting(agentName: string, query: string): void {
+    // Stop the voice session first
+    this.stopVoiceRecording();
+
+    // Resolve the EnrichedAgent from the available agents list
+    const resolvedAgent = this.agentConfig.getAgent(agentName);
+    if (!resolvedAgent) {
+      console.warn(`Could not resolve agent "${agentName}" from voice routing. Placing query in input field.`);
+      this.currentMessage = query;
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    // Set the message and invoke via the existing sendMessage flow
+    this.currentMessage = query;
+    this.changeDetectorRef.detectChanges();
+    this.sendMessage(resolvedAgent);
+  }
+
   private stopVoiceRecording(): void {
-
     this.isRecording = false;
+    this.isVoiceSessionActive = false;
 
+    // Clean up Nova Sonic subscription
+    if (this.novaSonicSubscription) {
+      this.novaSonicSubscription.unsubscribe();
+      this.novaSonicSubscription = null;
+    }
+
+    // Stop Nova Sonic session
+    this.novaSonicService.stopSession();
+
+    // Cancel any browser TTS in progress
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Reset sonic audio state
+    this.sonicAudioQueue = [];
+    this.sonicIsPlaying = false;
+    this.sonicResponseText = '';
+
+    // Also clean up legacy transcribe subscription if present
     if (this.transcriptionSubscription) {
       this.transcriptionSubscription.unsubscribe();
       this.transcriptionSubscription = null;
     }
-
-    this.transcribeService.stopTranscription();
 
     // If we have a final transcript, focus the input for potential editing
     if (this.currentMessage.trim()) {
@@ -6240,7 +6611,7 @@ ${formattedJson}
 
   // Check if voice recording is supported
   isVoiceRecordingSupported(): boolean {
-    return this.transcribeService.isSupported();
+    return this.novaSonicService.isSupported();
   }
 
 
@@ -6760,8 +7131,20 @@ ${formattedJson}
     this.activeSubscriptions.clear();
 
     // Stop voice recording if active
-    if (this.isRecording) {
+    if (this.isRecording || this.isVoiceSessionActive) {
       this.stopVoiceRecording();
+    }
+
+    // Clear Nova Sonic subscription
+    if (this.novaSonicSubscription) {
+      this.novaSonicSubscription.unsubscribe();
+      this.novaSonicSubscription = null;
+    }
+
+    // Close sonic playback audio context
+    if (this.sonicPlaybackContext) {
+      this.sonicPlaybackContext.close().catch(() => {});
+      this.sonicPlaybackContext = null;
     }
 
     // Clear transcription subscription
@@ -6887,6 +7270,8 @@ ${formattedJson}
       // Set up the sources modal with agent-specific data
       this.currentSources = agentSources;
       this.currentSourceQueries = this.extractQueriesFromSources(agentSources);
+      this.currentSourceIndex = 0;
+      this.sourcesTooltipPosition = { top: 'calc(50% - 200px)', left: 'calc(50% - 240px)' };
       let sources = {}
       sources[agentName] = agentSources.filter(source => source.output.text != "Sorry, I am unable to assist you with this request.")
       // Wrap sources in object with agent name as key to match new structure
@@ -7405,6 +7790,8 @@ This analysis shows the impact of weather on audience behavior.`;
 
       this.currentSources = uniqueSources;
       this.currentSourceQueries = Array.from(uniqueQueries);
+      this.currentSourceIndex = 0;
+      this.sourcesTooltipPosition = { top: 'calc(50% - 200px)', left: 'calc(50% - 240px)' };
       this.showSourcesModal = true;
     }
   }
@@ -7413,6 +7800,67 @@ This analysis shows the impact of weather on audience behavior.`;
     this.showSourcesModal = false;
     this.currentSources = [];
     this.currentSourceQueries = [];
+    this.currentSourceIndex = 0;
+  }
+
+  // Sources navigation methods (tour-step style)
+  nextSource(): void {
+    if (this.currentSourceIndex < this.currentSources.length - 1) {
+      this.currentSourceIndex++;
+    } else {
+      this.closeSources();
+    }
+  }
+
+  previousSource(): void {
+    if (this.currentSourceIndex > 0) {
+      this.currentSourceIndex--;
+    }
+  }
+
+  goToSource(index: number): void {
+    if (index >= 0 && index < this.currentSources.length) {
+      this.currentSourceIndex = index;
+    }
+  }
+
+  getSourcesProgressPercentage(): number {
+    if (this.currentSources.length === 0) return 0;
+    return ((this.currentSourceIndex + 1) / this.currentSources.length) * 100;
+  }
+
+  // Sources dragging methods
+  onSourcesDragStart(event: MouseEvent): void {
+    this.isSourcesDragging = true;
+    const tooltip = (event.target as HTMLElement).closest('.sources-tour-tooltip');
+    if (tooltip) {
+      const rect = tooltip.getBoundingClientRect();
+      this.sourcesDragOffset = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
+    event.preventDefault();
+  }
+
+  onSourcesDrag(event: MouseEvent): void {
+    if (!this.isSourcesDragging) return;
+    
+    const newLeft = event.clientX - this.sourcesDragOffset.x;
+    const newTop = event.clientY - this.sourcesDragOffset.y;
+    
+    // Keep within viewport
+    const maxLeft = window.innerWidth - 500; // approximate tooltip width
+    const maxTop = window.innerHeight - 400; // approximate tooltip height
+    
+    this.sourcesTooltipPosition = {
+      left: `${Math.max(16, Math.min(newLeft, maxLeft))}px`,
+      top: `${Math.max(16, Math.min(newTop, maxTop))}px`
+    };
+  }
+
+  onSourcesDragEnd(): void {
+    this.isSourcesDragging = false;
   }
 
   // Helper to count unique references in a source

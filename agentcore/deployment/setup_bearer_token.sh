@@ -228,55 +228,16 @@ if [[ $CREATE_USER_EXIT_CODE -ne 0 ]]; then
   fi
 fi
 
-# Set Permanent Password
-echo "Setting permanent password for user" >&2
-SET_PASSWORD_OUTPUT=$(aws cognito-idp admin-set-user-password \
-  --user-pool-id "$POOL_ID" \
-  --username "$USERNAME" \
-  --password "$PASSWORD" \
-  --region "$REGION" \
-  $PROFILE_FLAG \
-  --permanent 2>&1)
-
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Failed to set user password" >&2
-  echo "$SET_PASSWORD_OUTPUT" >&2
-  exit 1
-fi
-
-# Authenticate User and capture Access Token
-echo "Authenticating user and generating bearer token..." >&2
-AUTH_OUTPUT=$(aws cognito-idp initiate-auth \
-  --client-id "$CLIENT_ID" \
-  --auth-flow USER_PASSWORD_AUTH \
-  --auth-parameters USERNAME="$USERNAME",PASSWORD="$PASSWORD" \
-  --region "$REGION" \
-  $PROFILE_FLAG 2>&1)
-
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Failed to authenticate user and generate bearer token" >&2
-  echo "$AUTH_OUTPUT" >&2
-  exit 1
-fi
-
-export BEARER_TOKEN=$(echo "$AUTH_OUTPUT" | jq -r '.AuthenticationResult.AccessToken')
-
-if [[ -z "$BEARER_TOKEN" || "$BEARER_TOKEN" == "null" ]]; then
-  echo "ERROR: Failed to extract bearer token from authentication response" >&2
-  echo "$AUTH_OUTPUT" >&2
-  exit 1
-fi
-
 # Construct discovery URL
 DISCOVERY_URL="https://cognito-idp.$REGION.amazonaws.com/$POOL_ID/.well-known/openid-configuration"
 
-# Output JSON with all required values (to stdout only)
-echo "Bearer token generated successfully" >&2
+# Output JSON with Cognito auth configuration (to stdout only)
+# Bearer tokens are NOT generated here — they must be obtained on demand at invocation time
+echo "Cognito auth configuration resolved successfully" >&2
 echo "Outputting JSON configuration..." >&2
 
 # Use printf to ensure clean JSON output to stdout
 printf '{\n'
-printf '  "bearer_token": "%s",\n' "$BEARER_TOKEN"
 printf '  "pool_id": "%s",\n' "$POOL_ID"
 printf '  "client_id": "%s",\n' "$CLIENT_ID"
 printf '  "discovery_url": "%s"\n' "$DISCOVERY_URL"

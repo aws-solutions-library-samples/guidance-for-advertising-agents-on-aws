@@ -46,15 +46,6 @@ export interface AwsConfig {
     bucketName: string;
     cloudFrontDistributionId: string;
   };
-  appSyncEvents?: {
-    apiId: string;
-    eventsEndpoint: string;
-    realtimeEndpoint: string;
-  };
-  appSyncEndpoint?: string;
-  appSyncApiId?: string;
-  appSyncRealtimeEndpoint?: string;
-  appSyncChannelNamespace?: string;
   memoryRecordId: string;
 
   appConfig?: AppConfigSettings;
@@ -277,4 +268,18 @@ export interface PendingSpecialistInvocation {
   responseMessageId?: string;  // ID of the collaborator-response message
   responseTimestamp?: Date;  // When the response was received
   durationMs?: number;  // Time taken to get response
+}
+
+// --- Nova Sonic & Client-Side Visualization Types ---
+
+export type ViewMode = 'text-only' | 'summary-visuals' | 'visuals-only';
+
+export interface VisualizationAnalysisResult {
+  summary: string;           // Max 5 sentences
+  visualizations: {
+    visualizationType: string; // e.g. 'metrics', 'timeline', 'allocations'
+    templateId: string;        // e.g. 'metrics-visualization'
+    data: any;                 // Structured JSON matching template schema
+  }[];
+  originalText: string;       // The raw agent response text
 }

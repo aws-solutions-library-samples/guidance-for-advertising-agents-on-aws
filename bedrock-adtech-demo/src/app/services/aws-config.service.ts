@@ -225,14 +225,20 @@ export class AwsConfigService implements OnInit {
           // Merge AgentCore agents into config.bedrock.allAgents
           if (agentcoreData.agents && Array.isArray(agentcoreData.agents) && agentcoreData.agents.length > 0) {
             let agentcoreAgent = agentcoreData.agents[0]
-            const response = await fetch('/assets/global_configuration.json');
-            if (response.ok) {
-              this.global_config = await response.json();
-              //console.log(this.global_config)
-            } else {
-              console.warn('AWS config not found. Using default configuration.');
-              this.useDefaultConfig();
-              return;
+            
+            // Try loading from DynamoDB first, then fall back to static file
+            this.global_config = await this.loadGlobalConfigFromDynamoDB(config, session.credentials);
+            
+            if (!this.global_config || !this.global_config.agent_configs) {
+              console.log('📁 DynamoDB config not available, falling back to static file...');
+              const response = await fetch('/assets/global_configuration.json');
+              if (response.ok) {
+                this.global_config = await response.json();
+              } else {
+                console.warn('AWS config not found. Using default configuration.');
+                this.useDefaultConfig();
+                return;
+              }
             }
             
             //console.log(this.global_config);
@@ -244,19 +250,20 @@ export class AwsConfigService implements OnInit {
                 a => (a.name.indexOf(agentName)>-1||agentName.indexOf(a.name)>-1)
               );
               console.log(agentName + " added to agents list")
+              const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || agentcoreAgent.runtime_arn || '';
               const agentEntry = {
                 name: agentName,
                 agentType: agentName,
                 status: 'active',
-                id: agentcoreAgent.runtime_arn || '',
+                id: perAgentArn,
                 aliasId: '',
                 displayName: agentName,
                 icon: 'smart_toy',
                 color: this.global_config.configured_colors[agentName],
                 deploymentType: 'agentcore',
                 serviceName: agentName,
-                runtimeArn: agentcoreAgent.runtime_arn || '',
-                runtimeId: agentcoreAgent.runtime_arn?.split('/').pop() || '',
+                runtimeArn: perAgentArn,
+                runtimeId: perAgentArn?.split('/').pop() || '',
                 collaborators:this.global_config.agent_configs[agentName].tool_agent_names
               };
 
@@ -319,6 +326,57 @@ export class AwsConfigService implements OnInit {
   }
 
   /**
+   * Load global configuration from DynamoDB
+   * This loads agents dynamically from the database instead of static files
+   */
+  private async loadGlobalConfigFromDynamoDB(config: AwsConfig, credentials: any): Promise<any | null> {
+    try {
+      // Check if agentConfigTable is configured
+      const agentConfigTable = (config as any)?.agentConfigTable;
+      if (!agentConfigTable?.tableName) {
+        console.log('📋 DynamoDB agentConfigTable not configured, will use static file');
+        return null;
+      }
+
+      console.log('🔍 Loading global config from DynamoDB...');
+
+      // Import DynamoDB client
+      const { DynamoDBClient, GetItemCommand } = await import('@aws-sdk/client-dynamodb');
+      const { unmarshall } = await import('@aws-sdk/util-dynamodb');
+
+      const dynamoDBClient = new DynamoDBClient({
+        region: agentConfigTable.region || config.aws.region,
+        credentials: credentials
+      });
+
+      // Get global config from DynamoDB
+      const command = new GetItemCommand({
+        TableName: agentConfigTable.tableName,
+        Key: {
+          pk: { S: 'GLOBAL_CONFIG' },
+          sk: { S: 'v1' }
+        }
+      });
+
+      const response = await dynamoDBClient.send(command);
+
+      if (!response.Item) {
+        console.warn('⚠️ No global config found in DynamoDB');
+        return null;
+      }
+
+      const item = unmarshall(response.Item);
+      const globalConfig = JSON.parse(item['content'] as string);
+
+      console.log(`✅ Loaded global config from DynamoDB with ${Object.keys(globalConfig.agent_configs || {}).length} agents`);
+      return globalConfig;
+    } catch (error) {
+      console.error('❌ Error loading global config from DynamoDB:', error);
+      return null;
+    }
+  }
+
+  /**
    * Merge cached AgentCore data into config (used when loading from cache)
    */
   private async mergeAgentCoreDataIntoConfig(config: AwsConfig, agentcoreData: any): Promise<void> {
@@ -328,14 +386,23 @@ export class AwsConfigService implements OnInit {
     
     const agentcoreAgent = agentcoreData.agents[0];
     
-    // Load global config if not already loaded
+    // Load global config if not already loaded - try DynamoDB first
     if (!this.global_config || !this.global_config.agent_configs) {
-      const response = await fetch('/assets/global_configuration.json');
-      if (response.ok) {
-        this.global_config = await response.json();
-      } else {
-        console.warn('Global config not found for merge');
-        return;
+      const session = await this.getCachedAuthSession();
+      if (session?.credentials) {
+        this.global_config = await this.loadGlobalConfigFromDynamoDB(config, session.credentials);
+      }
+      
+      // Fall back to static file if DynamoDB didn't work
+      if (!this.global_config || !this.global_config.agent_configs) {
+        console.log('📁 DynamoDB config not available for merge, falling back to static file...');
+        const response = await fetch('/assets/global_configuration.json');
+        if (response.ok) {
+          this.global_config = await response.json();
+        } else {
+          console.warn('Global config not found for merge');
+          return;
+        }
       }
     }
     
@@ -345,19 +412,20 @@ export class AwsConfigService implements OnInit {
         a => (a.name.indexOf(agentName) > -1 || agentName.indexOf(a.name) > -1)
       );
       
+      const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || agentcoreAgent.runtime_arn || '';
       const agentEntry = {
         name: agentName,
         agentType: agentName,
         status: 'active',
-        id: agentcoreAgent.runtime_arn || '',
+        id: perAgentArn,
         aliasId: '',
         displayName: agentName,
         icon: 'smart_toy',
         color: this.global_config.configured_colors[agentName],
         deploymentType: 'agentcore',
         serviceName: agentName,
-        runtimeArn: agentcoreAgent.runtime_arn || '',
-        runtimeId: agentcoreAgent.runtime_arn?.split('/').pop() || '',
+        runtimeArn: perAgentArn,
+        runtimeId: perAgentArn?.split('/').pop() || '',
         collaborators: this.global_config.agent_configs[agentName].tool_agent_names
       };
 
@@ -401,11 +469,6 @@ export class AwsConfigService implements OnInit {
       ui: {
         bucketName: envVars.ui?.bucketName || '',
         cloudFrontDistributionId: envVars.ui?.cloudFrontDistributionId || ''
-      },
-      appSyncEvents: {
-        apiId: envVars.appSyncEvents?.apiId || '',
-        eventsEndpoint: envVars.appSyncEvents?.eventsEndpoint || '',
-        realtimeEndpoint: envVars.appSyncEvents?.realtimeEndpoint || ''
       },
       stackPrefix: envVars.stackPrefix || 'sim',
       stackSuffix: envVars.stackSuffix || '1234',
@@ -468,11 +531,6 @@ export class AwsConfigService implements OnInit {
       ui: {
         bucketName: '',
         cloudFrontDistributionId: ''
-      },
-      appSyncEvents: {
-        apiId: '',
-        eventsEndpoint: '',
-        realtimeEndpoint: ''
       },
       stackPrefix: 'sim',
       stackSuffix: '1234',
@@ -1486,11 +1544,7 @@ export class AwsConfigService implements OnInit {
       }
       return {
         region: this.getRegion(),
-        credentials: session.credentials,
-        appsyncEvents: {
-          eventsEndpoint: this.amplifyConfig?.appSyncEvents?.eventsEndpoint,
-          realtimeEndpoint: this.amplifyConfig?.appSyncEvents?.realtimeEndpoint
-        }
+        credentials: session.credentials
       };
     } catch (error) {
       console.error('Error getting AWS config:', error);

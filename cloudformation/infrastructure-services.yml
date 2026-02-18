@@ -113,6 +113,37 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
 
+  # DynamoDB Table for Agent Configurations (instructions, cards, visualizations)
+  # This table provides fast access to agent configs compared to S3
+  AgentConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackPrefix}-AgentConfig-${UniqueId}'
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: config_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: ConfigTypeIndex
+          KeySchema:
+            - AttributeName: config_type
+              KeyType: HASH
+            - AttributeName: pk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
   # IAM Role for Async Image Processor
   AsyncImageProcessorRole:
     Type: AWS::IAM::Role
@@ -501,6 +532,18 @@ Outputs:
     Value: !GetAtt VisualizationsTable.Arn
     Export:
       Name: !Sub '${StackPrefix}-VisualizationsTableArn-${UniqueId}'
+
+  AgentConfigTableName:
+    Description: 'Name of the Agent Configuration DynamoDB table'
+    Value: !Ref AgentConfigTable
+    Export:
+      Name: !Sub '${StackPrefix}-AgentConfigTableName-${UniqueId}'
+
+  AgentConfigTableArn:
+    Description: 'ARN of the Agent Configuration DynamoDB table'
+    Value: !GetAtt AgentConfigTable.Arn
+    Export:
+      Name: !Sub '${StackPrefix}-AgentConfigTableArn-${UniqueId}'
 
   CreativeImageGeneratorLambdaArn:
     Description: 'ARN of the Creative Image Generator Lambda function'

@@ -11,10 +11,7 @@ import os
 import sys
 from boto3 import Session as AWSSession
 import requests
-from requests_aws_sign import AWSV4Sign
-import websocket
 import base64
-import threading
 import uuid
 from typing import Dict, List, Optional, Any, Union
 import copy
@@ -41,10 +38,15 @@ from shared.adcp_tools import (
 )
 
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
-from shared.visualization_loader import (
-    VisualizationLoader,
-    preload_all_visualizations,
-    clear_visualization_cache,
+# DynamoDB configuration loader for fast agent config access
+from shared.dynamodb_config_loader import (
+    load_agent_instructions as ddb_load_instructions,
+    load_agent_card as ddb_load_card,
+    load_all_agent_cards as ddb_load_all_cards,
+    load_global_config as ddb_load_global_config,
+    preload_all_configs as ddb_preload_all,
+    get_agent_config_table_name,
+    clear_config_cache as ddb_clear_cache,
 )
 import re
 import json
@@ -145,6 +147,7 @@ def list_s3_objects(bucket: str, prefix: str) -> list:
     except Exception as e:
         logger.error(f"❌ S3_LIST: Failed to list s3://{bucket}/{prefix}: {e}")
         return []
+
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands.tools.mcp import MCPClient
@@ -305,8 +308,6 @@ app = BedrockAgentCoreApp()
 client = MemoryClient(region_name=os.environ.get("AWS_REGION", "us-east-1"))
 memory_name = "Agents_for_Advertising_%s" % datetime.now().strftime("%Y%m%d%H%M%S")
 
-# AppSync Events API configuration
-APPSYNC_CHANNEL_NAMESPACE = os.environ.get("APPSYNC_CHANNEL_NAMESPACE", "sessions")
 os.environ["AGENT_OBSERVABILITY_ENABLED"] = "true"
 
 
@@ -388,31 +389,44 @@ def inject_data_into_placeholder(instructions: str, agent_name: str) -> str:
     # Get list of agent names from tool_agent_names and inject into {{AGENT_NAME_LIST}} placeholder
     if "{{AGENT_NAME_LIST}}" in instructions:
         try:
-            # Load all agent cards from S3 or local directory and create a list of objects
+            # Load all agent cards and create a list of objects
             # following the format [{agent_name:string, agent_description:string}]
             agent_name_list = []
             
-            # Try S3 first
-            s3_bucket = get_s3_config_bucket()
-            if s3_bucket:
-                s3_prefix = f"{S3_CONFIG_PREFIX}/agent_cards/"
-                logger.info(f"📥 AGENT_CARDS: Attempting to load from s3://{s3_bucket}/{s3_prefix}")
-                
-                card_keys = list_s3_objects(s3_bucket, s3_prefix)
-                for key in card_keys:
-                    if key.endswith(".agent.card.json"):
-                        try:
-                            card_data = load_json_from_s3(s3_bucket, key)
-                            if card_data and "agent_name" in card_data and "agent_description" in card_data:
-                                agent_name_list.append({
-                                    "agent_name": card_data["agent_name"],
-                                    "agent_description": card_data["agent_description"],
-                                })
-                        except Exception as e:
-                            logger.warning(f"Failed to load agent card {key}: {e}")
-                
+            # Try DynamoDB AgentConfigTable first (fastest - new primary source)
+            ddb_cards = ddb_load_all_cards(use_cache=True)
+            if ddb_cards:
+                for card_data in ddb_cards:
+                    if card_data and "agent_name" in card_data and "agent_description" in card_data:
+                        agent_name_list.append({
+                            "agent_name": card_data["agent_name"],
+                            "agent_description": card_data["agent_description"],
+                        })
                 if agent_name_list:
-                    logger.info(f"✅ AGENT_CARDS: Loaded {len(agent_name_list)} agent cards from S3")
+                    logger.info(f"✅ AGENT_CARDS: Loaded {len(agent_name_list)} agent cards from DynamoDB AgentConfigTable")
+            
+            # Try S3 if DynamoDB didn't return results
+            if not agent_name_list:
+                s3_bucket = get_s3_config_bucket()
+                if s3_bucket:
+                    s3_prefix = f"{S3_CONFIG_PREFIX}/agent_cards/"
+                    logger.info(f"📥 AGENT_CARDS: Attempting to load from s3://{s3_bucket}/{s3_prefix}")
+                    
+                    card_keys = list_s3_objects(s3_bucket, s3_prefix)
+                    for key in card_keys:
+                        if key.endswith(".agent.card.json"):
+                            try:
+                                card_data = load_json_from_s3(s3_bucket, key)
+                                if card_data and "agent_name" in card_data and "agent_description" in card_data:
+                                    agent_name_list.append({
+                                        "agent_name": card_data["agent_name"],
+                                        "agent_description": card_data["agent_description"],
+                                    })
+                            except Exception as e:
+                                logger.warning(f"Failed to load agent card {key}: {e}")
+                    
+                    if agent_name_list:
+                        logger.info(f"✅ AGENT_CARDS: Loaded {len(agent_name_list)} agent cards from S3")
             
             # Fall back to local filesystem if S3 didn't work or returned empty
             if not agent_name_list:
@@ -461,28 +475,40 @@ def inject_data_into_placeholder(instructions: str, agent_name: str) -> str:
 
 def load_instructions_for_agent(agent_name: str, use_cache: bool = True):
     """
-    Load agent instructions from cache, S3 bucket, or local filesystem.
+    Load agent instructions from cache, DynamoDB, S3 bucket, or local filesystem.
     
     Priority:
     1. In-memory cache (if use_cache=True)
-    2. S3 bucket: {stack_prefix}-data-{unique_id}/configs/agent-instructions-library/{agent_name}.txt
-    3. Local filesystem: agent-instructions-library/{agent_name}.txt
+    2. DynamoDB AgentConfigTable (fastest)
+    3. S3 bucket: {stack_prefix}-data-{unique_id}/configs/agent-instructions-library/{agent_name}.txt
+    4. Local filesystem: agent-instructions-library/{agent_name}.txt
     
     Args:
         agent_name: Name of the agent to load instructions for
-        use_cache: Whether to use cached instructions (default True)
+        use_cache: Whether to use cached instructions (default True). 
+                   When False, forces a consistent read from DynamoDB.
         
     Returns:
         Instructions string with placeholders injected
     """
     global _instructions_cache
     
-    # Check cache first
-    if agent_name in _instructions_cache:
+    # Check handler's local cache first
+    if use_cache and agent_name in _instructions_cache:
         logger.info(f"📦 INSTRUCTIONS: Cache HIT for {agent_name}")
         return _instructions_cache[agent_name]
     
-    # Try S3 first
+    # Try DynamoDB AgentConfigTable first (fastest)
+    # Pass use_cache through - when False, DynamoDB loader uses consistent read
+    content = ddb_load_instructions(agent_name, use_cache=use_cache)
+    if content:
+        content = content.strip()
+        content = inject_data_into_placeholder(content, agent_name)
+        logger.info(f"✅ INSTRUCTIONS: Loaded {agent_name} instructions from DynamoDB ({len(content)} chars, use_cache={use_cache})")
+        _instructions_cache[agent_name] = content
+        return content
+    
+    # Try S3 second
     s3_bucket = get_s3_config_bucket()
     if s3_bucket:
         s3_key = f"{S3_CONFIG_PREFIX}/agent-instructions-library/{agent_name}.txt"
@@ -539,11 +565,13 @@ def load_instructions_for_agent(agent_name: str, use_cache: bool = True):
 # Load configuration from file
 def load_configs(file_name, use_cache: bool = True):
     """
-    Load configuration from S3 bucket or fall back to local filesystem.
+    Load configuration from DynamoDB, S3 bucket, or fall back to local filesystem.
     
     Priority:
-    1. S3 bucket: {stack_prefix}-data-{unique_id}/configs/{file_name}
-    2. Local filesystem: {file_name} (relative to handler.py)
+    1. In-memory cache (if use_cache=True)
+    2. DynamoDB AgentConfigTable (fastest)
+    3. S3 bucket: {stack_prefix}-data-{unique_id}/configs/{file_name}
+    4. Local filesystem: {file_name} (relative to handler.py)
     
     Args:
         file_name: Name of the configuration file (e.g., "global_configuration.json")
@@ -559,34 +587,18 @@ def load_configs(file_name, use_cache: bool = True):
         logger.debug(f"📦 CONFIG: Using cached {file_name}")
         return _config_cache[file_name]
     
-    # Try S3 first
-    s3_bucket = get_s3_config_bucket()
-    if s3_bucket:
-        s3_key = f"{S3_CONFIG_PREFIX}/{file_name}"
-        logger.info(f"📥 CONFIG: Attempting to load from s3://{s3_bucket}/{s3_key}")
-        
-        config_data = load_json_from_s3(s3_bucket, s3_key)
+    # Try DynamoDB AgentConfigTable first (fastest)
+    # Pass use_cache through to DynamoDB loader - when False, it uses consistent read
+    if file_name == "global_configuration.json":
+        config_data = ddb_load_global_config(use_cache=use_cache)
         if config_data is not None:
-            logger.info(f"✅ CONFIG: Loaded {file_name} from S3")
+            logger.info(f"✅ CONFIG: Loaded {file_name} from DynamoDB (use_cache={use_cache})")
             _config_cache[file_name] = config_data
             return config_data
-        else:
-            logger.info(f"⚠️ CONFIG: Not found in S3, falling back to local filesystem")
     
-    # Fall back to local filesystem
-    config_path = os.path.join(os.path.dirname(__file__), file_name)
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config_data = json.load(f)
-            logger.info(f"✅ CONFIG: Loaded {file_name} from local filesystem")
-            _config_cache[file_name] = config_data
-            return config_data
-    except FileNotFoundError:
-        logger.warning(f"⚠️ CONFIG: File not found at {config_path}")
-        return {}
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ CONFIG: Invalid JSON in {file_name}: {e}")
-        return {}
+    # DynamoDB is the primary config source - if not found, return empty dict
+    logger.warning(f"⚠️ CONFIG: {file_name} not found in DynamoDB. Check AGENT_CONFIG_TABLE, STACK_PREFIX, UNIQUE_ID env vars and execution role permissions.")
+    return {}
 
 
 def clear_config_cache(file_name: Optional[str] = None):
@@ -619,6 +631,191 @@ def clear_instructions_cache(agent_name: Optional[str] = None):
     else:
         _instructions_cache.clear()
         logger.info(f"🗑️ INSTRUCTIONS: Cleared all instructions cache")
+
+def refresh_all_caches(force_reinitialize: bool = False) -> Dict[str, Any]:
+    """
+    Refresh all configuration caches to load the latest data from DynamoDB/S3.
+
+    This function clears all in-memory caches and reloads configurations from
+    the primary data sources (DynamoDB first, then S3, then filesystem).
+
+    Use this when agent configurations have been updated in DynamoDB and you
+    want the running agent to pick up the changes without restarting.
+
+    Args:
+        force_reinitialize: If True, also reset the initialization flag to force
+                           full re-initialization on next request
+
+    Returns:
+        Dict with refresh statistics including counts of reloaded items
+    """
+    global _config_cache, _instructions_cache, _initialization_complete, GLOBAL_CONFIG, CONFIG
+
+    logger.info("=" * 60)
+    logger.info("🔄 CACHE REFRESH: Starting full cache refresh...")
+    logger.info("=" * 60)
+
+    refresh_start = datetime.now()
+    stats = {
+        "timestamp": refresh_start.isoformat(),
+        "caches_cleared": [],
+        "items_reloaded": {},
+        "errors": []
+    }
+
+    try:
+        # Step 1: Clear all local caches
+        logger.info("🗑️ CACHE_REFRESH: Clearing local caches...")
+
+        # Clear handler.py local caches
+        old_config_count = len(_config_cache)
+        old_instructions_count = len(_instructions_cache)
+        _config_cache.clear()
+        _instructions_cache.clear()
+        stats["caches_cleared"].append(f"config_cache ({old_config_count} entries)")
+        stats["caches_cleared"].append(f"instructions_cache ({old_instructions_count} entries)")
+
+        # Clear DynamoDB config loader cache - this also resets _cache_initialized
+        ddb_clear_cache()
+        stats["caches_cleared"].append("dynamodb_config_cache")
+
+        # Clear SSM cache
+        clear_ssm_cache()
+        stats["caches_cleared"].append("ssm_cache")
+
+        logger.info(f"✅ CACHE_REFRESH: Cleared {len(stats['caches_cleared'])} caches")
+
+        # Step 2: Reset initialization flags - ALWAYS reset to force fresh loads
+        _initialization_complete = False
+        GLOBAL_CONFIG = {}
+        CONFIG = {}
+        stats["force_reinitialize"] = True
+        logger.info("🔄 CACHE_REFRESH: Reset all initialization flags for fresh reload")
+
+        # Step 3: Reload global configuration with use_cache=False to force DynamoDB consistent read
+        logger.info("📥 CACHE_REFRESH: Reloading global configuration (consistent read)...")
+        GLOBAL_CONFIG = load_configs("global_configuration.json", use_cache=False)
+        agent_configs = GLOBAL_CONFIG.get("agent_configs", {})
+        agent_names = list(agent_configs.keys())
+        stats["items_reloaded"]["global_config"] = 1
+        stats["items_reloaded"]["agent_configs_found"] = len(agent_names)
+        stats["items_reloaded"]["agent_names"] = agent_names[:10]  # First 10 for logging
+        logger.info(f"✅ CACHE_REFRESH: Loaded global config with {len(agent_names)} agents: {agent_names[:5]}...")
+
+        # Step 4: Reload agent instructions directly with use_cache=False
+        # This bypasses the preload mechanism and forces fresh reads from DynamoDB
+        logger.info("📥 CACHE_REFRESH: Reloading agent instructions (consistent read)...")
+        instructions_loaded = 0
+        for agent_name in agent_names:
+            try:
+                # Force fresh read from DynamoDB with consistent read
+                content = ddb_load_instructions(agent_name, use_cache=False)
+                if content:
+                    # Apply placeholder injection and cache in handler's _instructions_cache
+                    content = content.strip()
+                    content = inject_data_into_placeholder(content, agent_name)
+                    _instructions_cache[agent_name] = content
+                    instructions_loaded += 1
+                    logger.debug(f"✅ CACHE_REFRESH: Reloaded instructions for {agent_name} ({len(content)} chars)")
+            except Exception as instr_err:
+                logger.warning(f"⚠️ CACHE_REFRESH: Failed to reload instructions for {agent_name}: {instr_err}")
+                stats["errors"].append(f"Instructions {agent_name}: {str(instr_err)}")
+        
+        stats["items_reloaded"]["instructions_from_ddb"] = instructions_loaded
+        logger.info(f"✅ CACHE_REFRESH: Reloaded {instructions_loaded} agent instructions from DynamoDB")
+
+        # Step 5: Preload remaining agent instructions from S3/filesystem (fallback for agents not in DynamoDB)
+        logger.info("📥 CACHE_REFRESH: Loading remaining instructions from S3/filesystem...")
+        fallback_count = preload_all_agent_instructions()
+        stats["items_reloaded"]["total_instructions"] = len(_instructions_cache)
+        stats["items_reloaded"]["instructions_from_fallback"] = fallback_count - instructions_loaded if fallback_count > instructions_loaded else 0
+
+        # Step 6: Preload agent cards from DynamoDB
+        logger.info("📥 CACHE_REFRESH: Reloading agent cards...")
+        try:
+            cards = ddb_load_all_cards(use_cache=False)
+            stats["items_reloaded"]["cards"] = len(cards) if cards else 0
+            logger.info(f"✅ CACHE_REFRESH: Reloaded {len(cards) if cards else 0} agent cards")
+        except Exception as cards_err:
+            logger.warning(f"⚠️ CACHE_REFRESH: Failed to reload agent cards: {cards_err}")
+            stats["errors"].append(f"Agent cards: {str(cards_err)}")
+
+        # Mark initialization as complete
+        _initialization_complete = True
+
+        elapsed = (datetime.now() - refresh_start).total_seconds()
+        stats["elapsed_seconds"] = elapsed
+        stats["success"] = True
+
+        logger.info("=" * 60)
+        logger.info(f"🔄 CACHE REFRESH COMPLETE in {elapsed:.2f}s")
+        logger.info(f"   - Caches cleared: {len(stats['caches_cleared'])}")
+        logger.info(f"   - Instructions reloaded: {stats['items_reloaded'].get('total_instructions', 0)}")
+        logger.info(f"   - Instructions from DynamoDB: {stats['items_reloaded'].get('instructions_from_ddb', 0)}")
+        if stats["errors"]:
+            logger.warning(f"   - Errors: {len(stats['errors'])}")
+        logger.info("=" * 60)
+
+        return stats
+
+    except Exception as e:
+        elapsed = (datetime.now() - refresh_start).total_seconds()
+        stats["elapsed_seconds"] = elapsed
+        stats["success"] = False
+        stats["errors"].append(f"Fatal error: {str(e)}")
+
+        logger.error(f"❌ CACHE_REFRESH: Failed after {elapsed:.2f}s: {e}")
+        import traceback
+        logger.error(f"❌ CACHE_REFRESH: Traceback: {traceback.format_exc()}")
+
+        return stats
+
+
+def get_cache_diagnostics() -> Dict[str, Any]:
+    """
+    Get diagnostic information about all caches for debugging.
+    
+    Returns:
+        Dict with cache statistics and sample data
+    """
+    global _config_cache, _instructions_cache, _initialization_complete, GLOBAL_CONFIG
+    
+    # Get DynamoDB loader stats
+    from shared.dynamodb_config_loader import get_cache_stats as ddb_get_stats
+    
+    diagnostics = {
+        "timestamp": datetime.now().isoformat(),
+        "initialization_complete": _initialization_complete,
+        "handler_caches": {
+            "config_cache_entries": len(_config_cache),
+            "config_cache_keys": list(_config_cache.keys())[:10],
+            "instructions_cache_entries": len(_instructions_cache),
+            "instructions_cache_keys": list(_instructions_cache.keys())[:20],
+            "instructions_sample": {}
+        },
+        "global_config": {
+            "loaded": GLOBAL_CONFIG is not None and len(GLOBAL_CONFIG) > 0,
+            "agent_count": len(GLOBAL_CONFIG.get("agent_configs", {})) if GLOBAL_CONFIG else 0,
+            "agent_names": list(GLOBAL_CONFIG.get("agent_configs", {}).keys())[:10] if GLOBAL_CONFIG else []
+        },
+        "dynamodb_loader": ddb_get_stats(),
+        "environment": {
+            "AGENT_CONFIG_TABLE": os.environ.get("AGENT_CONFIG_TABLE", "NOT_SET"),
+            "STACK_PREFIX": os.environ.get("STACK_PREFIX", "NOT_SET"),
+            "UNIQUE_ID": os.environ.get("UNIQUE_ID", "NOT_SET"),
+        }
+    }
+    
+    # Add sample instruction lengths (first 5 agents)
+    for agent_name in list(_instructions_cache.keys())[:5]:
+        content = _instructions_cache.get(agent_name)
+        if content:
+            diagnostics["handler_caches"]["instructions_sample"][agent_name] = {
+                "length": len(content),
+                "preview": content[:100] + "..." if len(content) > 100 else content
+            }
+    
+    return diagnostics
 
 
 response_model_parsed = {}
@@ -708,7 +905,10 @@ def get_matching_kb_id(name: str) -> Optional[str]:
 def preload_all_agent_instructions():
     """
     Pre-load all agent instructions into cache at startup.
-    This eliminates S3/filesystem reads during agent creation.
+    This eliminates DynamoDB/S3/filesystem reads during agent creation.
+    
+    Note: DynamoDB batch preloading is now handled by ddb_preload_all() in initialize_handler().
+    This function handles S3 and filesystem fallback for any agents not in DynamoDB.
     """
     global _instructions_cache, GLOBAL_CONFIG
     
@@ -723,6 +923,16 @@ def preload_all_agent_instructions():
     agent_configs = GLOBAL_CONFIG.get("agent_configs", {})
     agent_names = list(agent_configs.keys())
     
+    # Check which agents already have cached instructions (from DynamoDB preload)
+    missing_agents = [name for name in agent_names if name not in _instructions_cache]
+    if not missing_agents:
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.info(f"🚀 PRELOAD: All {len(_instructions_cache)} agent instructions already cached in {elapsed:.2f}s")
+        return len(_instructions_cache)
+    
+    logger.info(f"⚠️ PRELOAD: {len(missing_agents)} agents need instructions from S3/filesystem")
+    agent_names = missing_agents  # Only load missing agents from other sources
+    
     # Also check for agent cards to get additional agent names
     s3_bucket = get_s3_config_bucket()
     if s3_bucket:
@@ -733,7 +943,7 @@ def preload_all_agent_instructions():
                 # Extract agent name from filename
                 filename = key.split("/")[-1]
                 agent_name = filename.replace(".agent.card.json", "")
-                if agent_name not in agent_names:
+                if agent_name not in agent_names and agent_name not in _instructions_cache:
                     agent_names.append(agent_name)
     
     # Also scan local agent-instructions-library directory
@@ -743,14 +953,16 @@ def preload_all_agent_instructions():
         for filename in os.listdir(library_dir):
             if filename.endswith(".txt"):
                 agent_name = filename.replace(".txt", "")
-                if agent_name not in agent_names and not agent_name.startswith("_"):
+                if agent_name not in agent_names and not agent_name.startswith("_") and agent_name not in _instructions_cache:
                     agent_names.append(agent_name)
     
-    logger.info(f"🚀 PRELOAD: Found {len(agent_names)} agents to pre-load instructions for")
+    logger.info(f"🚀 PRELOAD: Found {len(agent_names)} additional agents to pre-load instructions for")
     
-    # Pre-load instructions for each agent
-    loaded_count = 0
+    # Pre-load instructions for each remaining agent
+    loaded_count = len(_instructions_cache)
     for agent_name in agent_names:
+        if agent_name in _instructions_cache:
+            continue
         try:
             # Force load (bypass cache) to populate cache
             instructions = load_instructions_for_agent(agent_name, use_cache=False)
@@ -761,7 +973,7 @@ def preload_all_agent_instructions():
             logger.warning(f"⚠️ PRELOAD: Failed to load instructions for {agent_name}: {e}")
     
     elapsed = (datetime.now() - start_time).total_seconds()
-    logger.info(f"🚀 PRELOAD: Completed pre-loading {loaded_count}/{len(agent_names)} agent instructions in {elapsed:.2f}s")
+    logger.info(f"🚀 PRELOAD: Completed pre-loading {loaded_count} agent instructions in {elapsed:.2f}s")
     
     return loaded_count
 
@@ -770,6 +982,11 @@ def initialize_handler():
     """
     Initialize the handler by pre-loading all configurations and instructions.
     This should be called once at module load time.
+    
+    Priority for loading:
+    1. DynamoDB AgentConfigTable (fastest - new primary source)
+    2. S3 bucket
+    3. Local filesystem
     """
     global _initialization_complete, GLOBAL_CONFIG, CONFIG, KNOWLEDGEBASE_IDS
     
@@ -784,22 +1001,32 @@ def initialize_handler():
     init_start = datetime.now()
     
     try:
-        # Step 1: Load global configuration
+        # Step 1: Load global configuration (tries DynamoDB first)
         logger.info("📥 INIT: Loading global configuration...")
         GLOBAL_CONFIG = load_configs("global_configuration.json")
         logger.info(f"✅ INIT: Global config loaded with {len(GLOBAL_CONFIG.get('agent_configs', {}))} agent configs")
         
-        # Step 2: Pre-load all agent instructions
-        logger.info("📥 INIT: Pre-loading agent instructions...")
+        # Get agent names for preloading
+        agent_names = list(GLOBAL_CONFIG.get("agent_configs", {}).keys())
+        
+        # Step 2: Try DynamoDB batch preload first (fastest)
+        ddb_table_name = get_agent_config_table_name()
+        if ddb_table_name:
+            logger.info(f"📥 INIT: Attempting DynamoDB batch preload from {ddb_table_name}...")
+            try:
+                ddb_counts = ddb_preload_all(agent_names)
+                if ddb_counts.get("status") != "already_initialized":
+                    logger.info(f"✅ INIT: DynamoDB preload completed:")
+                    logger.info(f"   - Instructions: {ddb_counts.get('instructions', 0)}")
+                    logger.info(f"   - Cards: {ddb_counts.get('cards', 0)}")
+            except Exception as e:
+                logger.warning(f"⚠️ INIT: DynamoDB preload failed, falling back to S3/filesystem: {e}")
+        
+        # Step 3: Pre-load any remaining agent instructions (S3/filesystem fallback)
+        logger.info("📥 INIT: Pre-loading remaining agent instructions...")
         preload_all_agent_instructions()
         
-        # Step 3: Pre-load all visualization templates
-        logger.info("📥 INIT: Pre-loading visualization templates...")
-        agent_names = list(GLOBAL_CONFIG.get("agent_configs", {}).keys())
-        viz_count = preload_all_visualizations(agent_names)
-        logger.info(f"✅ INIT: Pre-loaded visualizations for {viz_count} agents")
-        
-        # Step 4: Refresh knowledge base IDs if needed
+        # Step 5: Refresh knowledge base IDs if needed
         if not KNOWLEDGEBASE_IDS:
             logger.info("📥 INIT: Loading knowledge base IDs...")
             KNOWLEDGEBASE_IDS = load_all_stack_knowledgebase_ids() or {}
@@ -812,7 +1039,6 @@ def initialize_handler():
         logger.info(f"🚀 HANDLER INITIALIZATION COMPLETE in {elapsed:.2f}s")
         logger.info(f"   - Config cache entries: {len(_config_cache)}")
         logger.info(f"   - Instructions cache entries: {len(_instructions_cache)}")
-        logger.info(f"   - Visualizations cached: {viz_count} agents")
         logger.info(f"   - Knowledge bases: {len(KNOWLEDGEBASE_IDS)}")
         logger.info("=" * 60)
         
@@ -848,7 +1074,7 @@ def get_agentcore_config_from_ssm():
     Retrieve AgentCore configuration from SSM Parameter Store.
 
     Returns:
-        dict: Configuration with agents list containing runtime ARNs and bearer tokens
+        dict: Configuration with agents list containing runtime ARNs and auth config
     """
     try:
         stack_prefix = os.environ.get("STACK_PREFIX", "sim")
@@ -912,20 +1138,31 @@ def get_memory_id_from_ssm() -> str:
         return os.environ.get("MEMORY_ID", "")
 
 
-def get_runtime_arn_and_bearer_token(agent_name: str):
+def get_runtime_arn_and_auth_config(agent_name: str):
     """
-    Get runtime URL and bearer token for an agent from SSM Parameter Store or RUNTIMES env var.
+    Get runtime ARN and A2A auth config for an agent from SSM Parameter Store or RUNTIMES env var.
 
     This function retrieves runtime configuration from SSM Parameter Store first,
     then falls back to the RUNTIMES environment variable if SSM is unavailable.
+
+    A2A authentication credentials (pool_id, client_id) are retrieved from
+    environment variables — bearer tokens are generated on demand at invocation time.
 
     Args:
         agent_name: Name of the agent to look up
 
     Returns:
-        tuple: (runtime_url, bearer_token) or (None, None) if not found
+        tuple: (runtime_arn, auth_config_dict) or (None, None) if not found.
+               auth_config_dict contains pool_id, client_id, discovery_url from env vars.
     """
     region_name = os.environ.get("AWS_REGION", "us-east-1")
+
+    # Build auth config from environment variables (shared across all A2A agents)
+    auth_config = {
+        "pool_id": os.environ.get("A2A_POOL_ID", ""),
+        "client_id": os.environ.get("A2A_CLIENT_ID", ""),
+        "discovery_url": os.environ.get("A2A_DISCOVERY_URL", ""),
+    }
 
     # Try SSM first
     ssm_config = get_agentcore_config_from_ssm()
@@ -937,32 +1174,36 @@ def get_runtime_arn_and_bearer_token(agent_name: str):
             # Match agent name (handle both hyphen and underscore variations)
             if search_name_normalized in agent_name_normalized:
                 runtime_arn = agent.get("runtime_arn", "")
-                bearer_token = agent.get("bearer_token", "")
 
                 if runtime_arn:
-                    return runtime_arn, bearer_token if bearer_token else ""
+                    # Override auth config with per-agent values from SSM if present
+                    if agent.get("pool_id"):
+                        auth_config["pool_id"] = agent["pool_id"]
+                    if agent.get("client_id"):
+                        auth_config["client_id"] = agent["client_id"]
+                    if agent.get("discovery_url"):
+                        auth_config["discovery_url"] = agent["discovery_url"]
+                    return runtime_arn, auth_config
 
     runtimes_env = os.environ.get("RUNTIMES", "")
 
     if not runtimes_env:
         return None, None
 
-    # Parse RUNTIMES: format is "arn1|token1,arn2|token2,..."
+    # Parse RUNTIMES: format is "arn1,arn2,..." (no bearer tokens)
     for entry in runtimes_env.split(","):
-        if "|" not in entry:
-            # Handle entries without bearer token
-            arn = entry
-            bearer_token = None
-        else:
-            arn, bearer_token = entry.split("|", 1)
-            bearer_token = bearer_token if bearer_token else None
+        arn = entry.strip()
+        if not arn:
+            continue
+
+        # Handle legacy format "arn|token" by stripping the token part
+        if "|" in arn:
+            arn = arn.split("|", 1)[0]
 
         # Check if this runtime matches the agent name
         if agent_name.lower().replace("_", "-") in arn.lower():
             print(f"Found runtime for {agent_name} in RUNTIMES env var: {arn[:60]}...")
-            if bearer_token:
-                print(f"Found bearer token: {bearer_token[:20]}... (truncated)")
-            return arn, bearer_token
+            return arn, auth_config
 
     print(f"No runtime found for {agent_name}")
     return None, None
@@ -973,48 +1214,44 @@ def get_runtime_arn_and_bearer_token(agent_name: str):
 #     agent_name: str, prompt: str, session_id: str
 # ) -> str:
 #     """
-#     Invoke an external A2A agent using bearer token authentication.
-
+#     Invoke an external A2A agent, authenticating on demand via Cognito.
+#
 #     Args:
 #         agent_name: Name of the external agent to invoke
 #         prompt: The prompt/message to send to the agent
-
+#
 #     Returns:
 #         Response from the external agent
 #     """
 #     print(f"[invoke_external_agent_with_a2a] ===== STARTING A2A INVOCATION =====")
 #     print(f"[invoke_external_agent_with_a2a] Invoking external A2A agent: {agent_name}")
-#     logging.info(
-#         f"[invoke_external_agent_with_a2a] Invoking external A2A agent: {agent_name}"
-#     )
-
-#     # Get runtime URL and bearer token from RUNTIMES environment variable
-#     print(
-#         f"[invoke_external_agent_with_a2a] Calling get_runtime_arn_and_bearer_token..."
-#     )
-#     runtime_arn, bearer_token = get_runtime_arn_and_bearer_token(agent_name)
-#     print(
-#         f"[invoke_external_agent_with_a2a] Returned from get_runtime_arn_and_bearer_token"
-#     )
-
+#
+#     # Get runtime ARN and auth config
+#     runtime_arn, auth_config = get_runtime_arn_and_auth_config(agent_name)
+#
 #     if not runtime_arn:
 #         error_msg = f"Could not find runtime URL for agent: {agent_name}"
 #         print(error_msg)
 #         return f"Error: {error_msg}"
-
-#     if not bearer_token:
-#         error_msg = f"No bearer token found for agent: {agent_name}. Agent may not be A2A-enabled."
+#
+#     if not auth_config.get("pool_id") or not auth_config.get("client_id"):
+#         error_msg = f"No A2A auth config (pool_id/client_id) found for agent: {agent_name}. Agent may not be A2A-enabled."
 #         print(error_msg)
 #         return f"Error: {error_msg}"
-
+#
 #     try:
-#         # Import the A2A tool creator
+#         # Authenticate on demand to get a fresh bearer token
+#         from shared.a2a_auth import get_bearer_token_from_cognito
+#         bearer_token = get_bearer_token_from_cognito(
+#             pool_id=auth_config["pool_id"],
+#             client_id=auth_config["client_id"],
+#             region=os.environ.get("AWS_REGION", "us-east-1"),
+#         )
+#
 #         from shared.a2a_agent_as_tool import send_sync_message
-
-#         # Create A2A tool with bearer token
-#         print(f"Creating A2A tool for {agent_name} with bearer token authentication")
-
-#         # Use await instead of asyncio.run() since we're already in an async context
+#
+#         print(f"Creating A2A tool for {agent_name} with fresh bearer token")
+#
 #         response = await send_sync_message(
 #             message=prompt,
 #             region=os.environ.get("AWS_REGION", "us-east-1"),
@@ -1024,7 +1261,7 @@ def get_runtime_arn_and_bearer_token(agent_name: str):
 #         )
 #         print(f"Received response from {agent_name}: {response[:100]}...")
 #         return f"<agent-message agent='{agent_name}'>{response}</agent-message>"
-
+#
 #     except Exception as e:
 #         error_msg = f"Error invoking A2A agent {agent_name}: {str(e)}"
 #         print(error_msg)
@@ -1326,6 +1563,7 @@ def retrieve_knowledge_base_results_tool(
 def build_tools_for_agent(agent_name: str) -> list:
     """
     Build the tools list for an agent based on its agent_tools configuration.
+    Also includes MCP tools if mcp_servers are configured.
     
     Args:
         agent_name: Name of the agent to build tools for
@@ -1379,8 +1617,280 @@ def build_tools_for_agent(agent_name: str) -> list:
         else:
             logger.warning(f"⚠️ BUILD_TOOLS: Unknown tool '{tool_name}' for {agent_name}")
     
+    # Build MCP tools from mcp_servers configuration
+    mcp_tools = build_mcp_tools_for_agent(agent_name, agent_config)
+    if mcp_tools:
+        tools.extend(mcp_tools)
+        logger.info(f"🔌 BUILD_TOOLS: Added {len(mcp_tools)} MCP tool providers for {agent_name}")
+    
     logger.info(f"🔧 BUILD_TOOLS: {agent_name} configured with {len(tools)} tools: {[getattr(t, '__name__', str(t)) for t in tools]}")
     return tools
+
+
+def build_mcp_tools_for_agent(agent_name: str, agent_config: dict) -> list:
+    """
+    Build MCP tool providers from the agent's mcp_servers configuration.
+    
+    Follows the Strands Agents MCP integration pattern:
+    https://strandsagents.com/latest/documentation/docs/user-guide/concepts/tools/mcp-tools/
+    
+    Args:
+        agent_name: Name of the agent
+        agent_config: Agent configuration dict containing mcp_servers
+        
+    Returns:
+        List of MCPClient instances configured for this agent
+    """
+    mcp_servers = agent_config.get("mcp_servers", [])
+    
+    # Debug logging to trace MCP config loading
+    logger.info(f"🔍 MCP_TOOLS: Checking mcp_servers for {agent_name}")
+    logger.info(f"   Agent config keys: {list(agent_config.keys())}")
+    logger.info(f"   mcp_servers count: {len(mcp_servers)}")
+    
+    if not mcp_servers:
+        logger.info(f"⚠️ MCP_TOOLS: No mcp_servers configured for {agent_name}")
+        return []
+    
+    logger.info(f"🔌 MCP_TOOLS: Found {len(mcp_servers)} MCP server(s) for {agent_name}")
+    for i, srv in enumerate(mcp_servers):
+        logger.info(f"   [{i+1}] {srv.get('name', 'unnamed')} - transport: {srv.get('transport', 'unknown')}, enabled: {srv.get('enabled', True)}")
+    
+    mcp_tools = []
+    
+    for server_config in mcp_servers:
+        # Skip disabled servers
+        if not server_config.get("enabled", True):
+            logger.info(f"⏭️ MCP_TOOLS: Skipping disabled MCP server '{server_config.get('name', 'unknown')}' for {agent_name}")
+            continue
+        
+        try:
+            mcp_client = create_mcp_client_from_config(server_config, agent_name)
+            if mcp_client:
+                mcp_tools.append(mcp_client)
+                logger.info(f"✅ MCP_TOOLS: Created MCP client '{server_config.get('name')}' for {agent_name}")
+        except Exception as e:
+            logger.error(f"❌ MCP_TOOLS: Failed to create MCP client '{server_config.get('name')}' for {agent_name}: {e}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
+    
+    return mcp_tools
+
+
+def create_mcp_client_from_config(server_config: dict, agent_name: str) -> Optional[MCPClient]:
+    """
+    Create an MCPClient instance from a server configuration.
+    
+    Supports three transport types:
+    - stdio: Command-line tools (uvx, python, npx, etc.)
+    - http: HTTP-based MCP servers (Streamable HTTP)
+    - sse: Server-Sent Events transport
+    
+    Args:
+        server_config: MCP server configuration dict
+        agent_name: Name of the agent (for logging)
+        
+    Returns:
+        MCPClient instance or None if creation fails
+    """
+    transport = server_config.get("transport", "stdio")
+    server_name = server_config.get("name", "unknown")
+    prefix = server_config.get("prefix", "")
+    
+    # Build tool filters if configured
+    tool_filters = {}
+    if server_config.get("allowedTools"):
+        tool_filters["allowed"] = server_config["allowedTools"]
+    if server_config.get("rejectedTools"):
+        tool_filters["rejected"] = server_config["rejectedTools"]
+    
+    try:
+        if transport == "stdio":
+            return create_stdio_mcp_client(server_config, prefix, tool_filters)
+        elif transport == "http":
+            return create_http_mcp_client(server_config, prefix, tool_filters)
+        elif transport == "sse":
+            return create_sse_mcp_client(server_config, prefix, tool_filters)
+        else:
+            logger.error(f"❌ MCP_TOOLS: Unknown transport type '{transport}' for server '{server_name}'")
+            return None
+    except Exception as e:
+        logger.error(f"❌ MCP_TOOLS: Failed to create {transport} MCP client for '{server_name}': {e}")
+        return None
+
+
+def create_stdio_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
+    """
+    Create an MCPClient with stdio transport for command-line MCP servers.
+    
+    Example configuration:
+    {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": ["awslabs.aws-documentation-mcp-server@latest"],
+        "env": {"FASTMCP_LOG_LEVEL": "ERROR"}
+    }
+    """
+    command = server_config.get("command")
+    args = server_config.get("args", [])
+    env = server_config.get("env", {})
+    
+    if not command:
+        logger.error(f"❌ MCP_TOOLS: stdio transport requires 'command' field")
+        return None
+    
+    logger.info(f"🔌 MCP_TOOLS: Creating stdio MCP client: {command} {' '.join(args)}")
+    
+    # Build environment dict - merge with current environment
+    full_env = dict(os.environ)
+    full_env.update(env)
+    
+    # Create the MCPClient with stdio transport
+    mcp_client_kwargs = {}
+    if prefix:
+        mcp_client_kwargs["prefix"] = prefix
+    if tool_filters:
+        mcp_client_kwargs["tool_filters"] = tool_filters
+    
+    return MCPClient(
+        lambda cmd=command, a=args, e=full_env: stdio_client(
+            StdioServerParameters(
+                command=cmd,
+                args=a,
+                env=e
+            )
+        ),
+        **mcp_client_kwargs
+    )
+
+
+def create_http_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
+    """
+    Create an MCPClient with HTTP (Streamable HTTP) transport.
+    
+    Supports:
+    - AWS IAM authentication via mcp-proxy-for-aws
+    - Custom headers (e.g., OAuth tokens)
+    
+    Example configuration:
+    {
+        "transport": "http",
+        "url": "https://api.example.com/mcp/",
+        "headers": {
+            "Authorization": "Bearer your-token-here"
+        },
+        "awsAuth": {
+            "region": "us-east-1",
+            "service": "bedrock-agentcore"
+        }
+    }
+    """
+    url = server_config.get("url")
+    aws_auth = server_config.get("awsAuth")
+    headers = server_config.get("headers", {})
+    server_name = server_config.get("name", "unknown")
+    
+    if not url:
+        logger.error(f"❌ MCP_TOOLS: http transport requires 'url' field for server '{server_name}'")
+        return None
+    
+    logger.info(f"🔌 MCP_TOOLS: Creating HTTP MCP client for '{server_name}': {url}")
+    logger.info(f"   AWS Auth: {aws_auth is not None}")
+    logger.info(f"   Custom Headers: {list(headers.keys()) if headers else 'None'}")
+    logger.info(f"   Prefix: '{prefix}' | Tool filters: {bool(tool_filters)}")
+    
+    mcp_client_kwargs = {}
+    if prefix:
+        mcp_client_kwargs["prefix"] = prefix
+    if tool_filters:
+        mcp_client_kwargs["tool_filters"] = tool_filters
+    
+    if aws_auth:
+        # Use AWS IAM authentication via mcp-proxy-for-aws
+        try:
+            from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
+            
+            aws_region = aws_auth.get("region", os.environ.get("AWS_REGION", "us-east-1"))
+            aws_service = aws_auth.get("service", "bedrock-agentcore")
+            
+            logger.info(f"🔐 MCP_TOOLS: Using AWS IAM auth for {url} (region={aws_region}, service={aws_service})")
+            
+            return MCPClient(
+                lambda u=url, r=aws_region, s=aws_service: aws_iam_streamablehttp_client(
+                    endpoint=u,
+                    aws_region=r,
+                    aws_service=s
+                ),
+                **mcp_client_kwargs
+            )
+        except ImportError:
+            logger.error(f"❌ MCP_TOOLS: mcp-proxy-for-aws not installed. Install with: pip install mcp-proxy-for-aws")
+            return None
+    else:
+        # Standard HTTP transport (with optional custom headers for auth)
+        try:
+            from mcp.client.streamable_http import streamablehttp_client
+            
+            logger.info(f"✅ MCP_TOOLS: Successfully imported streamablehttp_client, creating MCPClient for '{server_name}'")
+            
+            # If headers are provided, pass them to streamablehttp_client
+            if headers:
+                logger.info(f"🔑 MCP_TOOLS: Using custom headers for authentication")
+                mcp_client = MCPClient(
+                    lambda u=url, h=headers: streamablehttp_client(url=u, headers=h),
+                    **mcp_client_kwargs
+                )
+            else:
+                mcp_client = MCPClient(
+                    lambda u=url: streamablehttp_client(u),
+                    **mcp_client_kwargs
+                )
+            logger.info(f"✅ MCP_TOOLS: MCPClient created successfully for '{server_name}'")
+            return mcp_client
+        except ImportError as e:
+            logger.error(f"❌ MCP_TOOLS: mcp.client.streamable_http not available: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ MCP_TOOLS: Failed to create MCPClient for '{server_name}': {e}")
+            import traceback
+            logger.error(f"   Traceback: {traceback.format_exc()}")
+            return None
+
+
+def create_sse_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
+    """
+    Create an MCPClient with Server-Sent Events (SSE) transport.
+    
+    Example configuration:
+    {
+        "transport": "sse",
+        "url": "http://localhost:8000/sse"
+    }
+    """
+    url = server_config.get("url")
+    
+    if not url:
+        logger.error(f"❌ MCP_TOOLS: sse transport requires 'url' field")
+        return None
+    
+    logger.info(f"🔌 MCP_TOOLS: Creating SSE MCP client: {url}")
+    
+    mcp_client_kwargs = {}
+    if prefix:
+        mcp_client_kwargs["prefix"] = prefix
+    if tool_filters:
+        mcp_client_kwargs["tool_filters"] = tool_filters
+    
+    try:
+        from mcp.client.sse import sse_client
+        
+        return MCPClient(
+            lambda u=url: sse_client(u),
+            **mcp_client_kwargs
+        )
+    except ImportError:
+        logger.error(f"❌ MCP_TOOLS: mcp.client.sse not available")
+        return None
 
 
 def create_agent(agent_name, conversation_context, is_collaborator):
@@ -1425,26 +1935,6 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     base_instructions = load_instructions_for_agent(agent_name=agent_name)
     enhanced_system_prompt = base_instructions + conversation_context
 
-    loader = VisualizationLoader()
-    templates = loader.load_all_templates_for_agent(agent_name)
-
-    # Build visualization context
-    if templates:
-        viz_context = f"\n\n## Available Visualization Templates for {agent_name}\n\n"
-        viz_context += "You have the following visualization templates available:\n\n"
-
-        for template_id, template_data in templates.items():
-            usage = template_data.get("usage", "")
-            data_mapping = template_data.get("dataMapping", {})
-
-            viz_context += f"### Template: {template_id}\n"
-            viz_context += f"**Usage**: {usage}\n\n"
-            viz_context += f"**Data Mapping Structure**:\n```json\n{json.dumps(data_mapping, indent=2)}\n```\n\n"
-
-        viz_context += "\n**Instructions**: Map your analysis data to the template fields without modifying the schema, make sure you include the visualizationType and templateId fields in the JSON, and wrap each visualization in the XML tags below:\n"
-        viz_context += "<visualization-data type='[template-id]'>[YOUR_MAPPED_JSON_DATA]</visualization-data>\n"
-        enhanced_system_prompt += viz_context
-
     # Build tools list based on agent_tools configuration
     tools = build_tools_for_agent(agent_name)
     
@@ -1488,69 +1978,11 @@ def create_agent(agent_name, conversation_context, is_collaborator):
 
 session = boto3.session.Session()
 credentials = session.get_credentials()
-appsync_region = session.region_name or os.environ.get("AWS_REGION")
-
-headers = {"Content-Type": "application/json"}
-global auth
-auth = AWSV4Sign(credentials, appsync_region, "appsync")
-
-# WebSocket connection management
-websocket_connections = {}
-websocket_lock = threading.Lock()
 
 
 def transform_response_handler(**event):
     logger.info("transforming response to a structured result")
     yield (ResponseModel.parse_event_loop_structure_to_response_model(event))
-
-
-def get_websocket_connection(realtime_domain, http_domain):
-    """Get or create WebSocket connection for AppSync Events API using IAM authentication"""
-    global websocket_connections, websocket_lock
-
-    connection_key = f"{realtime_domain}_{http_domain}"
-
-    with websocket_lock:
-        if connection_key in websocket_connections:
-            ws = websocket_connections[connection_key]
-            if ws and ws.sock and ws.sock.connected:
-                return ws
-            else:
-                # Clean up dead connection
-                websocket_connections.pop(connection_key, None)
-
-    try:
-        # Use IAM authentication with current session credentials
-        global session, credentials
-        authorization = {"host": http_domain, "x-amz-user-agent": "aws-sdk-python"}
-
-        # Add AWS credentials to authorization header
-        if credentials:
-            authorization["authorization"] = (
-                f"AWS4-HMAC-SHA256 Credential={credentials.access_key}"
-            )
-            if credentials.token:
-                authorization["x-amz-security-token"] = credentials.token
-
-        header = base64.b64encode(json.dumps(authorization).encode()).decode()
-        header = header.replace("+", "-").replace("/", "_").replace("=", "")
-        auth_protocol = f"header-{header}"
-
-        # Create WebSocket connection - realtime_domain already includes full domain
-        ws_url = f"wss://{realtime_domain}/event/realtime"
-        ws = websocket.create_connection(
-            ws_url, subprotocols=["aws-appsync-event-ws"], timeout=10
-        )
-
-        with websocket_lock:
-            websocket_connections[connection_key] = ws
-
-        logger.info(f"✅ CALLBACK: WebSocket connected to {realtime_domain} using IAM")
-        return ws
-
-    except Exception as e:
-        logger.error(f"❌ CALLBACK: WebSocket connection failed: {e}")
-        return None
 
 
 def set_session_context(session_id):
@@ -1559,66 +1991,6 @@ def set_session_context(session_id):
     token = context.attach(ctx)
     logging.info(f"Session ID '{session_id}' attached to telemetry context")
     return token
-
-
-def appsync_publisher_callback_handler(**kwargs):
-    global orchestrator_instance
-
-    # Get AppSync configuration from environment
-    appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
-    appsync_realtime_domain = os.getenv("APPSYNC_REALTIME_DOMAIN")
-    appsync_channel_namespace = os.getenv("APPSYNC_CHANNEL_NAMESPACE")
-
-    if not appsync_realtime_domain or not appsync_channel_namespace:
-        return
-
-    try:
-        serializable_data = {}
-        for key, value in kwargs.items():
-            try:
-                json.dumps(value)
-                serializable_data[key] = value
-            except (TypeError, ValueError):
-                if hasattr(value, "__class__"):
-                    serializable_data[key] = f"<{value.__class__.__name__}>"
-                else:
-                    serializable_data[key] = str(value)
-
-        session_id = (
-            orchestrator_instance.session_id
-            if orchestrator_instance and orchestrator_instance.session_id
-            else "default"
-        )
-
-        # AppSync Events API WebSocket message
-        channel = f"/{appsync_channel_namespace}/{session_id}"
-        message = {
-            "id": str(uuid.uuid4()),
-            "type": "publish",
-            "channel": channel,
-            "events": [json.dumps(serializable_data)],
-        }
-
-        # Extract HTTP domain from endpoint for auth
-        http_domain = (
-            appsync_endpoint.replace("https://", "").replace("/graphql", "")
-            if appsync_endpoint
-            else appsync_realtime_domain.replace(
-                ".appsync-realtime-api.", ".appsync-api."
-            )
-        )
-
-        # TODO: publish over http
-    except Exception as e:
-        logger.error(f"❌ CALLBACK: Failed to publish via WebSocket: {e}")
-
-    # Track tool usage
-    if "current_tool_use" in kwargs and kwargs["current_tool_use"].get("name"):
-        tool_name = kwargs["current_tool_use"]["name"]
-        print(f"🔧 Using tool: {tool_name}")
-
-    if "message" in kwargs and kwargs["message"].get("role") == "assistant":
-        print(json.dumps(kwargs["message"], indent=2))
 
 
 # Global variable to collect sources from tool calls
@@ -1689,7 +2061,6 @@ class GenericAgent:
         # Initialize sources collection
         global collected_sources
         collected_sources = {}
-        global appsync_publisher_callback_handler
         global CONFIG
         # Create the summarizing conversation manager with default settings
 
@@ -1782,29 +2153,6 @@ class GenericAgent:
         try:
             base_instructions = load_instructions_for_agent(agent_name=agent_name)
 
-            loader = VisualizationLoader()
-            templates = loader.load_all_templates_for_agent(agent_name)
-
-            # Build visualization context
-            if templates:
-                viz_context = (
-                    f"\n\n## Available Visualization Templates for {agent_name}\n\n"
-                )
-                viz_context += (
-                    "You have the following visualization templates available:\n\n"
-                )
-
-                for template_id, template_data in templates.items():
-                    usage = template_data.get("usage", "")
-                    data_mapping = template_data.get("dataMapping", {})
-
-                    viz_context += f"### Template: {template_id}\n"
-                    viz_context += f"**Usage**: {usage}\n\n"
-                    viz_context += f"**Data Mapping Structure**:\n```json\n{json.dumps(data_mapping, indent=2)}\n```\n\n"
-
-                viz_context += "\n**Instructions**: Map your analysis data to the appropriate template fields without modifying the schema and wrap each visualization in the XML tags below:\n"
-                viz_context += "<visualization-data type='[template-id]'>[YOUR_MAPPED_JSON_DATA]</visualization-data>\n"
-                base_instructions = base_instructions + viz_context
             instruction_length = len(base_instructions) if base_instructions else 0
             if instruction_length == 0:
                 logger.warning(f"⚠️  WARNING: Instructions are empty!")
@@ -1826,10 +2174,6 @@ class GenericAgent:
             logger.info(f"🔧 CREATE_ORCHESTRATOR: {agent_name} configured with {len(tools)} tools from config")
         except Exception as e:
             logger.error(f"✗ Failed to build tools list: {e}")
-
-        # Check environment variables
-        appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
-        appsync_vars = [k for k in os.environ.keys() if "APPSYNC" in k.upper()]
 
         try:
             agent_description = config.get("agent_description", "")
@@ -1960,17 +2304,6 @@ async def agent_invocation(payload, context):
     """
     
     try:
-        appsync_endpoint = os.getenv("APPSYNC_ENDPOINT")
-        
-        # Check for APPSYNC variations
-        for var_name in [
-            "APPSYNC_ENDPOINT",
-            "AppSyncEndpoint",
-            "appsync_endpoint",
-            "APPSYNC_URL",
-        ]:
-            value = os.getenv(var_name)
-
         global collected_sources
         global agent
         global CONFIG
@@ -1979,6 +2312,61 @@ async def agent_invocation(payload, context):
         global orchestrator_instance
         global current_agent_name
         
+        # ============================================
+        # CHECK FOR CACHE REFRESH REQUEST
+        # ============================================
+        # If the payload contains refresh_cache=True, refresh all caches
+        # to load the latest agent configurations from DynamoDB
+        refresh_cache_requested = payload.get("refresh_cache", False)
+        force_reinitialize = payload.get("force_reinitialize", False)
+        get_diagnostics = payload.get("get_cache_diagnostics", False)
+        
+        # Handle cache diagnostics request
+        if get_diagnostics:
+            _flush_log("🔍 AGENT_INVOCATION: Cache diagnostics requested")
+            try:
+                diagnostics = get_cache_diagnostics()
+                yield {
+                    "type": "cache_diagnostics",
+                    "data": diagnostics,
+                    "timestamp": datetime.now().isoformat(),
+                    "message": "Cache diagnostics retrieved successfully"
+                }
+                return
+            except Exception as diag_err:
+                _flush_log(f"❌ AGENT_INVOCATION: Cache diagnostics failed: {diag_err}", "ERROR")
+                yield {"type": "error", "message": f"Failed to get cache diagnostics: {diag_err}"}
+                return
+        
+        if refresh_cache_requested:
+            _flush_log("🔄 AGENT_INVOCATION: Cache refresh requested via payload flag")
+            try:
+                refresh_stats = refresh_all_caches(force_reinitialize=force_reinitialize)
+                _flush_log(f"✅ AGENT_INVOCATION: Cache refresh completed: {refresh_stats.get('items_reloaded', {})}")
+                
+                # CRITICAL: Null out the agent so it gets recreated with fresh config
+                # Without this, the old agent object (with stale tools/instructions) persists
+                agent = None
+                _flush_log("🔄 AGENT_INVOCATION: Agent nulled — will be recreated with fresh config")
+                
+                # If this is a cache-refresh-only request (no prompt), return the stats with diagnostics
+                if not payload.get("prompt"):
+                    _flush_log("📤 AGENT_INVOCATION: Cache refresh only request - returning stats")
+                    # Include diagnostics in the response for verification
+                    diagnostics = get_cache_diagnostics()
+                    yield {
+                        "type": "cache_refresh_complete",
+                        "data": refresh_stats,
+                        "diagnostics": diagnostics,
+                        "timestamp": datetime.now().isoformat(),
+                        "message": "Cache refresh completed successfully"
+                    }
+                    return
+                    
+            except Exception as refresh_err:
+                _flush_log(f"❌ AGENT_INVOCATION: Cache refresh failed: {refresh_err}", "ERROR")
+                # Continue with the request even if cache refresh fails
+                # The agent will use whatever cached data is available
         
         # Process the prompt - it can be a string or a list of content blocks
         raw_prompt = payload.get("prompt")

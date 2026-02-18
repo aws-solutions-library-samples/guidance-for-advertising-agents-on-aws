@@ -228,6 +228,31 @@ def list_infrastructure_stacks(stack_prefix, region, profile):
     return []
 
 
+def get_agent_config_table_name(stack_prefix, unique_id, region, profile):
+    """Get AgentConfigTable name from CloudFormation services stack"""
+    services_stack_name = f"{stack_prefix}-infrastructure-services"
+    
+    print(f"    🔍 Retrieving AgentConfigTable name from {services_stack_name}...")
+    
+    # Try to get from CloudFormation output
+    table_name = get_stack_output(
+        services_stack_name, "AgentConfigTableName", region, profile
+    )
+    
+    if table_name:
+        print(f"    ✅ AgentConfigTable name: {table_name}")
+        return table_name
+    
+    # Fallback: construct the expected table name based on naming convention
+    if unique_id:
+        fallback_name = f"{stack_prefix}-AgentConfig-{unique_id}"
+        print(f"    ⚠️  Could not retrieve AgentConfigTable from CloudFormation, using fallback: {fallback_name}")
+        return fallback_name
+    
+    print(f"    ⚠️  Could not determine AgentConfigTable name")
+    return None
+
+
 def get_infrastructure_config(stack_prefix, stack_suffix, region, profile):
     """Get infrastructure configuration from CloudFormation stacks"""
     core_stack_name = f"{stack_prefix}-infrastructure-core"
@@ -487,25 +512,6 @@ def get_agentcore_runtime_info(stack_prefix, unique_id):
             )
 
     return {}
-
-
-def get_appsync_config(stack_prefix, unique_id, region, profile):
-    """Retrieve AppSync Events API configuration from SSM Parameter Store"""
-    try:
-        import boto3
-
-        session = boto3.Session(profile_name=profile, region_name=region)
-        ssm = session.client("ssm")
-
-        param_name = f"/{stack_prefix}/appsync/{unique_id}"
-        response = ssm.get_parameter(Name=param_name)
-
-        import json
-
-        return json.loads(response["Parameter"]["Value"])
-    except Exception as e:
-        print(f"    ⚠️  Could not retrieve AppSync config from SSM: {e}")
-        return None
 
 
 def get_memory_record_id(stack_prefix, unique_id):
@@ -989,6 +995,11 @@ def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file
             )
             skipped_agents.append(agent_name)
 
+    # Get AgentConfigTable name for agent management UI
+    agent_config_table_name = get_agent_config_table_name(
+        stack_prefix, unique_id or stack_suffix, region, profile
+    )
+
     # Generate the complete AWS config in the requested structure
     aws_config = {
         "aws": {"region": region},
@@ -1016,6 +1027,14 @@ def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file
         "demoLogGroupName": infrastructure_config.get("demoLogGroupName", ""),
     }
 
+    # Add agentConfigTable configuration for agent management UI (Requirements 12.1, 12.2, 12.3)
+    if agent_config_table_name:
+        aws_config["agentConfigTable"] = {
+            "tableName": agent_config_table_name,
+            "region": region,
+        }
+        print(f"    ✅ Added agentConfigTable to configuration: {agent_config_table_name}")
+
     # Add memory record ID if available (for AgentCore agents)
     if memory_record_id:
         aws_config["memoryRecordId"] = memory_record_id
@@ -1024,22 +1043,6 @@ def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file
         print(
             f"    ⚠️  No memory record ID available - AgentCore agents may not have memory functionality"
         )
-
-    # Add AppSync Events API configuration from SSM
-    appsync_config = get_appsync_config(
-        stack_prefix, unique_id or stack_suffix, region, profile
-    )
-    if appsync_config:
-        aws_config["appSyncApiId"] = appsync_config.get("apiId", "")
-        aws_config["appSyncRealtimeEndpoint"] = appsync_config.get(
-            "realtimeEndpoint", ""
-        )
-        aws_config["appSyncChannelNamespace"] = appsync_config.get(
-            "channelNamespace", ""
-        )
-        print(f"    ✅ AppSync Events API configuration added")
-    else:
-        print(f"    ⚠️  AppSync Events API configuration not available")
 
     # Add Cognito configuration if available
     if "cognito" in infrastructure_config:
@@ -1191,6 +1194,12 @@ def main():
                 print(f"   ✅ Memory record ID: {aws_config['memoryRecordId']}")
             else:
                 print(f"   ⚠️  Memory record ID not available")
+
+            # Show agentConfigTable status
+            if "agentConfigTable" in aws_config:
+                print(f"   ✅ Agent Config Table: {aws_config['agentConfigTable']['tableName']}")
+            else:
+                print(f"   ⚠️  Agent Config Table not available")
 
         elif args.command == "validate":
             stack_prefix = args.prefix

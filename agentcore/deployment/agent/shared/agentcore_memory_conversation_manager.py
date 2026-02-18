@@ -69,7 +69,7 @@ class AgentCoreMemoryConversationManager(ConversationManager):
         actor_id: str,
         session_id: str,
         region_name: Optional[str] = None,
-        max_turns_to_retrieve: int = 10,
+        max_turns_to_retrieve: int = 3,
         auto_persist: bool = True,
         fallback_manager: Optional[ConversationManager] = None,
     ):

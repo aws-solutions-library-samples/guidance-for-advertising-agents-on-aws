@@ -1,8 +1,14 @@
 """
 Programmatic visualization loader for AgentCore agents.
-Loads visualization maps and template data from S3 or local filesystem.
+Loads visualization maps and template data from DynamoDB, S3, or local filesystem.
 
-Implements caching to avoid repeated S3/filesystem reads during agent creation.
+Uses the AgentConfig table from infrastructure-services.yml with schema:
+- pk (HASH): "VIZ_MAP#{agent_name}" or "VIZ_TEMPLATE#{agent_name}"
+- sk (RANGE): "v1" or "{template_id}"
+- config_type: For GSI queries
+- content: The actual configuration content (JSON string)
+
+Implements caching to avoid repeated DynamoDB/S3/filesystem reads during agent creation.
 Cache is populated at module load time and shared across all VisualizationLoader instances.
 """
 
@@ -22,6 +28,34 @@ _all_templates_cache: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
 # Flag to track if pre-loading has been done
 _preload_complete = False
+
+# Lazy-loaded DynamoDB loader functions (to avoid circular imports)
+_ddb_load_viz_map = None
+_ddb_load_viz_template = None
+_ddb_loader_initialized = False
+
+
+def _ensure_new_ddb_loader():
+    """Lazy-load the DynamoDB config loader functions to avoid circular imports."""
+    global _ddb_load_viz_map, _ddb_load_viz_template, _ddb_loader_initialized
+    
+    if _ddb_loader_initialized:
+        return
+    
+    try:
+        from shared.dynamodb_config_loader import (
+            load_visualization_map,
+            load_visualization_template,
+        )
+        _ddb_load_viz_map = load_visualization_map
+        _ddb_load_viz_template = load_visualization_template
+        logger.debug("✅ VIZ_LOADER: DynamoDB config loader initialized")
+    except ImportError as e:
+        logger.warning(f"⚠️ VIZ_LOADER: Could not import DynamoDB config loader: {e}")
+        _ddb_load_viz_map = None
+        _ddb_load_viz_template = None
+    
+    _ddb_loader_initialized = True
 
 
 def clear_visualization_cache(agent_name: Optional[str] = None):
@@ -122,8 +156,9 @@ class VisualizationLoader:
         
         Priority:
         1. In-memory cache (if use_cache=True)
-        2. S3: configs/agent-visualizations-library/agent-visualization-maps/{agent_name}.json
-        3. Local filesystem
+        2. DynamoDB AgentConfigTable (fastest)
+        3. S3: configs/agent-visualizations-library/agent-visualization-maps/{agent_name}.json
+        4. Local filesystem
         
         Args:
             agent_name: Name of the agent (e.g., "AdLoadOptimizationAgent")
@@ -140,7 +175,16 @@ class VisualizationLoader:
         
         data = None
         
-        # Try S3 first
+        # Try DynamoDB AgentConfigTable first (fastest)
+        _ensure_new_ddb_loader()
+        if _ddb_load_viz_map:
+            data = _ddb_load_viz_map(agent_name, use_cache=False)
+            if data:
+                logger.info(f"✅ VIZ_LOADER: Loaded visualization map for {agent_name} from DynamoDB")
+                _visualization_map_cache[agent_name] = data
+                return data
+        
+        # Try S3 second
         if self.s3_bucket:
             s3_key = f"{self.s3_prefix}/agent-visualization-maps/{agent_name}.json"
             data = self._load_json_from_s3(s3_key)
@@ -171,8 +215,9 @@ class VisualizationLoader:
         
         Priority:
         1. In-memory cache (if use_cache=True)
-        2. S3: configs/agent-visualizations-library/{agent_name}-{template_id}.json
-        3. Local filesystem
+        2. DynamoDB AgentConfigTable (fastest)
+        3. S3: configs/agent-visualizations-library/{agent_name}-{template_id}.json
+        4. Local filesystem
         
         Args:
             agent_name: Name of the agent (e.g., "AdLoadOptimizationAgent")
@@ -193,7 +238,17 @@ class VisualizationLoader:
         data = None
         data_mapping = None
         
-        # Try S3 first
+        # Try DynamoDB AgentConfigTable first (fastest)
+        _ensure_new_ddb_loader()
+        if _ddb_load_viz_template:
+            data = _ddb_load_viz_template(agent_name, template_id, use_cache=False)
+            if data:
+                data_mapping = data.get("dataMapping", data)
+                logger.info(f"✅ VIZ_LOADER: Loaded template {template_id} for {agent_name} from DynamoDB")
+                _template_data_cache[cache_key] = data_mapping
+                return data_mapping
+        
+        # Try S3 second
         if self.s3_bucket:
             s3_key = f"{self.s3_prefix}/{agent_name}-{template_id}.json"
             data = self._load_json_from_s3(s3_key)
@@ -226,8 +281,9 @@ class VisualizationLoader:
         
         Priority:
         1. In-memory cache (if use_cache=True)
-        2. S3: configs/agent-visualizations-library/generic-visualization-templates/{template_id}.json
-        3. Local filesystem
+        2. DynamoDB AgentConfigTable (fastest)
+        3. S3: configs/agent-visualizations-library/generic-visualization-templates/{template_id}.json
+        4. Local filesystem
         
         Args:
             template_id: Template ID (e.g., "adcp_get_products-visualization")
@@ -244,7 +300,17 @@ class VisualizationLoader:
         
         data = None
         
-        # Try S3 first
+        # Try DynamoDB AgentConfigTable first (fastest)
+        _ensure_new_ddb_loader()
+        if _ddb_load_viz_template:
+            # Generic templates are stored with agent_name="_GENERIC"
+            data = _ddb_load_viz_template("_GENERIC", template_id, use_cache=False)
+            if data:
+                logger.info(f"✅ VIZ_LOADER: Loaded generic template {template_id} from DynamoDB")
+                _generic_template_cache[template_id] = data
+                return data
+        
+        # Try S3 second
         if self.s3_bucket:
             s3_key = f"{self.s3_prefix}/generic-visualization-templates/{template_id}.json"
             data = self._load_json_from_s3(s3_key)

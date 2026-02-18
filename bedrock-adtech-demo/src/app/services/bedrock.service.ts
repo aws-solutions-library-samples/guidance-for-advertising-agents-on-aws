@@ -14,7 +14,6 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { v4 } from 'uuid';
-import { Amplify } from 'aws-amplify';
 // Note: fetchAuthSession is accessed via awsConfig.getCachedAuthSession() to prevent rate limiting
 import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, EnrichedAgent, StreamEvent } from 'src/app/models/application-models';
 
@@ -151,12 +150,6 @@ export class BedrockService {
   private chatMessages: any[] = []; // Track messages for AgentCore sources
   private cleanupInterval: any = null; // Track the cleanup interval
   memoryRecordId: any;
-  // AppSync Events API subscription using Amplify
-  private appSyncEvents$ = new Subject<StreamEvent>();
-  private appSyncChannel: any = null;
-  private appSyncApiId: string | null = null;
-  private appSyncRealtimeEndpoint: string | null = null;
-  private appSyncChannelNamespace: string | null = null;
 
   // Removed visualization detection during streaming to avoid conflicts
 
@@ -382,113 +375,12 @@ export class BedrockService {
       this.awsConfig.config$.subscribe(config => {
         if (config && this.awsConfig.isAuthenticated()) {
           this.setupBedrockClient();
-          //this.loadAppSyncConfig();
-          this.awsConfig.user$.subscribe(user => {
-          if (user) {
-            this.loadAppSyncConfig();
-          }
-        });
         }
       });
 
       
     } catch (error) {
       //console.error('Error initializing Bedrock client:', error);
-    }
-  }
-
-  private async loadAppSyncConfig(): Promise<void> {
-    try {
-      const config = this.awsConfig.getConfig();
-      if (config) {
-        this.appSyncApiId = config.appSyncApiId || null;
-        this.appSyncRealtimeEndpoint = config.appSyncRealtimeEndpoint || null;
-        this.appSyncChannelNamespace = config.appSyncChannelNamespace || null;
-
-        console.log('AppSync configuration loaded:', {
-          apiId: this.appSyncApiId,
-          endpoint: this.appSyncRealtimeEndpoint,
-          namespace: this.appSyncChannelNamespace
-        });
-      }
-    } catch (error) {
-      console.error('Error loading AppSync config:', error);
-    }
-  }
-
-  private async initializeAppSyncSubscription(sessionId: string): Promise<void> {
-    try {
-      // Close existing channel if any
-      if (this.appSyncChannel) {
-        await this.appSyncChannel.close();
-        this.appSyncChannel = null;
-      }
-
-      if (!this.appSyncChannelNamespace || !this.appSyncRealtimeEndpoint) {
-        console.warn('AppSync configuration incomplete - skipping real-time events');
-        return;
-      }
-
-      const channel = `/${this.appSyncChannelNamespace}/${sessionId}`;
-      console.log('Connecting to AppSync Events channel:', channel);
-
-      // Ensure Amplify is configured before using events
-      const awsConfig = await this.awsConfig.getConfig();
-      if (awsConfig) {
-        Amplify.configure({
-          API: {
-            Events: {
-              endpoint: awsConfig.appSyncRealtimeEndpoint as string,
-              region: awsConfig.aws.region,
-              defaultAuthMode: 'identityPool'
-            }
-
-          }
-        });
-      }
-
-      // Import events from aws-amplify/data
-      const { events } = await import('aws-amplify/data');
-
-      // Connect to the channel
-      const channelPromise = events.connect(channel);
-
-      channelPromise.then((connectedChannel) => {
-        this.appSyncChannel = connectedChannel;
-
-        // Subscribe to events
-        connectedChannel.subscribe({
-          next: (data) => {
-            try {
-              // Parse the event data and emit as StreamEvent
-              const streamEvent: StreamEvent = {
-                type: 'appsync-event',
-                data: data,
-                timestamp: new Date(),
-                agentName: data.agentName || 'AgentCore',
-                messageType: data.messageType || 'streaming-chunk'
-              };
-
-              this.appSyncEvents$.next(streamEvent);
-              console.log('AppSync event received:', streamEvent);
-            } catch (error) {
-              console.error('Error processing AppSync event:', error);
-            }
-          },
-          error: (error) => {
-            console.error('AppSync subscription error:', error);
-          }
-        });
-
-        console.log('✅ AppSync Events subscription established for session:', sessionId);
-      }).catch((error) => {
-        console.error('Failed to connect to AppSync Events:', error);
-        // Gracefully handle connection failure - don't throw
-        this.appSyncChannel = null;
-      });
-
-    } catch (error) {
-      console.error('Error initializing AppSync subscription:', error);
     }
   }
 
@@ -809,7 +701,6 @@ Example format:
       if (this.lastSessionId !== sessionId) {
         console.log('📡 Subscribing to new session:', sessionId);
         this.lastSessionId = sessionId;
-        // put this back when event subscription works: this.initializeAppSyncSubscription(sessionId);
       }
       return this.invokeAgentCoreStreamInternal(resolvedAgent, query, observer, sessionId, attachedFiles, resolvedAgent.agentType);
     }
@@ -916,6 +807,128 @@ Example format:
     this.responseAccumulators.clear();
     this.agentCoreAccumulators.clear();
     this.sessionSources.clear();
+  }
+
+  /**
+   * Trigger a cache refresh on the backend to reload agent configurations from DynamoDB.
+   * This is useful after updating agent configs in DynamoDB to have the running agent
+   * pick up the changes without restarting.
+   * 
+   * @param resolvedAgent - The agent to use for the refresh request (any agent works)
+   * @param forceReinitialize - If true, forces full re-initialization of the agent
+   * @returns Observable that emits the cache refresh result
+   */
+  refreshAgentCache(resolvedAgent: EnrichedAgent, forceReinitialize: boolean = false): Observable<StreamEvent> {
+    console.log('🔄 Triggering backend cache refresh...');
+    
+    return new Observable<StreamEvent>(observer => {
+      this.triggerCacheRefreshInternal(resolvedAgent, forceReinitialize, observer).catch(error => {
+        console.error('Error triggering cache refresh:', error);
+        observer.error(error);
+      });
+    });
+  }
+
+  /**
+   * Internal method to trigger cache refresh on the backend
+   */
+  private async triggerCacheRefreshInternal(resolvedAgent: EnrichedAgent, forceReinitialize: boolean, observer: any): Promise<void> {
+    try {
+      // Ensure client is set up
+      if (!this.clientInitialized || !this.agentCoreClient) {
+        await this.setupBedrockClient();
+      }
+
+      if (!this.agentCoreClient) {
+        throw new Error('Bedrock Agent Runtime client not initialized');
+      }
+
+      if (!resolvedAgent.runtimeArn) {
+        throw new Error('No runtime ARN available for cache refresh request');
+      }
+
+      const currentUser = await getCurrentUser();
+      const userId = currentUser.signInDetails?.loginId || 'anonymous';
+      const sessionId = this.sessionManager.getCurrentSessionId();
+
+      console.log('🔄 Sending cache refresh request to backend...');
+
+      // Send a cache-refresh-only request (no prompt)
+      const commandInput: InvokeAgentRuntimeCommandInput = {
+        agentRuntimeArn: resolvedAgent.runtimeArn,
+        runtimeSessionId: sessionId,
+        runtimeUserId: userId,
+        qualifier: 'DEFAULT',
+        payload: new TextEncoder().encode(JSON.stringify({
+          refresh_cache: true,
+          force_reinitialize: forceReinitialize,
+          session_id: sessionId,
+          user_id: userId,
+          memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId(),
+          agent_name: resolvedAgent.name,
+        })),
+      };
+
+      const command = new InvokeAgentRuntimeCommand(commandInput);
+      const response = await this.agentCoreClient.send(command, { requestTimeout: 60000 });
+
+      if (response.response) {
+        // Process the response
+        let responseText = '';
+        
+        if (typeof response.response.transformToString === 'function') {
+          responseText = await response.response.transformToString();
+        } else if (typeof response.response.transformToByteArray === 'function') {
+          const bytes = await response.response.transformToByteArray();
+          responseText = new TextDecoder().decode(bytes);
+        } else if (response.response instanceof Uint8Array) {
+          responseText = new TextDecoder().decode(response.response);
+        } else if (typeof response.response === 'string') {
+          responseText = response.response;
+        }
+
+        // Parse the response to extract cache refresh stats
+        try {
+          // Look for cache_refresh_complete event in the response
+          const lines = responseText.split('\n');
+          for (const line of lines) {
+            if (line.trim().startsWith('data: ')) {
+              const dataContent = line.substring(6);
+              try {
+                const eventData = JSON.parse(dataContent);
+                if (eventData.type === 'cache_refresh_complete') {
+                  console.log('✅ Cache refresh completed:', eventData.data);
+                  observer.next({
+                    type: 'cache_refresh_complete',
+                    data: eventData.data,
+                    timestamp: new Date(),
+                    agentName: resolvedAgent.name,
+                    messageType: 'cache-refresh'
+                  });
+                }
+              } catch (parseError) {
+                // Skip unparseable lines
+              }
+            }
+          }
+        } catch (parseError) {
+          console.warn('Could not parse cache refresh response:', parseError);
+        }
+
+        observer.next({
+          type: 'complete',
+          data: 'Cache refresh request completed',
+          timestamp: new Date()
+        });
+        observer.complete();
+      } else {
+        throw new Error('No response received from cache refresh request');
+      }
+
+    } catch (error: any) {
+      console.error('❌ Cache refresh error:', error);
+      observer.error(error);
+    }
   }
 
   /**
@@ -1412,7 +1425,7 @@ Example format:
   // Generic method to extract all visualizations from text
   private extractAllVisualizationsFromText(text: string, isAgentCore = false): any[] {
     const visualizations: any[] = [];
-    //console.log('🔍 Extracting visualizations from text:', text.substring(0, 200) + '...' + (isAgentCore ? "agent core" : ""));
+    console.log('🔍 Extracting visualizations from text:', text.substring(0, 200) + '...' + (isAgentCore ? "agent core" : ""));
 
     try {
       // First, handle XML-wrapped visualizations (with or without closing tags, with or without attributes)
@@ -1700,6 +1713,141 @@ Example format:
   }
 
   /**
+   * Invoke Claude Opus 4.5 for AI-assisted content generation
+   * Used for generating agent instructions and visualization mappings
+   * @param prompt The prompt to send to Claude Opus 4.5
+   * @param maxTokens Maximum tokens for the response (default: 8000)
+   * @returns The generated text content
+   */
+  async invokeClaudeOpus(prompt: string, maxTokens: number = 8000): Promise<string> {
+    try {
+      // Ensure client is set up
+      if (!this.clientInitialized || !this.bedrockRuntimeClient) {
+        await this.setupBedrockClient();
+      }
+
+      if (!this.bedrockRuntimeClient) {
+        throw new Error('Bedrock Runtime client not initialized');
+      }
+
+      // Use the Converse API for Claude Opus 4.5
+      const command = new ConverseCommand({
+        modelId: 'us.anthropic.claude-opus-4-20250514-v1:0',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        inferenceConfig: {
+          maxTokens: maxTokens,
+          temperature: 0.7,
+          topP: 0.9
+        }
+      });
+
+      const response = await this.bedrockRuntimeClient.send(command);
+
+      if (!response.output?.message?.content) {
+        throw new Error('No content received from Claude Opus 4.5');
+      }
+
+      // Extract the text content from the response
+      const textContent = response.output.message.content
+        .filter(item => item.text)
+        .map(item => item.text)
+        .join('\n');
+
+      return textContent;
+
+    } catch (error) {
+      console.error('Error invoking Claude Opus 4.5:', error);
+
+      // Check for expired token specifically
+      const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
+      const isExpiredToken = errorMessage.includes('ExpiredTokenException') ||
+        errorMessage.includes('The security token included in the request is expired');
+
+      if (isExpiredToken) {
+        console.error('🔑 Token expired in Claude Opus call, user needs to refresh:', errorMessage);
+        const expiredTokenError = new Error('Your session has expired. Please refresh the page to sign in again.');
+        (expiredTokenError as any).isExpiredToken = true;
+        throw expiredTokenError;
+      }
+
+      // Re-throw the error so the calling code can handle it appropriately
+      throw error;
+    }
+  }
+  /**
+   * Invoke Claude Haiku 4.5 for visualization generation and other structured tasks.
+   * Uses the cross-region inference profile for optimal availability.
+   * @param prompt The prompt to send to Claude Haiku 4.5
+   * @param maxTokens Maximum tokens for the response (default: 8000)
+   * @returns The generated text content
+   */
+  async invokeClaudeHaiku(prompt: string, maxTokens: number = 8000): Promise<string> {
+    try {
+      if (!this.clientInitialized || !this.bedrockRuntimeClient) {
+        await this.setupBedrockClient();
+      }
+
+      if (!this.bedrockRuntimeClient) {
+        throw new Error('Bedrock Runtime client not initialized');
+      }
+
+      const command = new ConverseCommand({
+        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        messages: [
+          {
+            role: 'user',
+            content: [{ text: prompt }]
+          }
+        ],
+        inferenceConfig: {
+          maxTokens,
+          temperature: 0.5
+        }
+      });
+
+      const response = await this.bedrockRuntimeClient.send(command);
+
+      if (!response.output?.message?.content) {
+        throw new Error('No content received from Claude Haiku 4.5');
+      }
+
+      const textContent = response.output.message.content
+        .filter(item => item.text)
+        .map(item => item.text)
+        .join('\n');
+
+      return textContent;
+
+    } catch (error) {
+      console.error('Error invoking Claude Haiku 4.5:', error);
+
+      const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
+      const isExpiredToken = errorMessage.includes('ExpiredTokenException') ||
+        errorMessage.includes('The security token included in the request is expired');
+
+      if (isExpiredToken) {
+        console.error('🔑 Token expired in Claude Haiku 4.5 call, user needs to refresh:', errorMessage);
+        const expiredTokenError = new Error('Your session has expired. Please refresh the page to sign in again.');
+        (expiredTokenError as any).isExpiredToken = true;
+        throw expiredTokenError;
+      }
+
+      throw error;
+    }
+  }
+
+
+
+  /**
    * Upload file to S3 and return the S3 URI
    */
   private async uploadFileToS3(file: AttachedFile, uniqueFileName: string): Promise<string> {
@@ -1757,7 +1905,7 @@ Example format:
   }
 
   // AgentCore invocation method using proper AWS SDK
-  private async invokeAgentCoreStreamInternal(resolvedAgent: any, query: any, observer: any, sessionId: string, attachedFiles?: AttachedFile[], directMentionTarget?: string | null): Promise<void> {
+  private async invokeAgentCoreStreamInternal(resolvedAgent: any, query: any, observer: any, sessionId: string, attachedFiles?: AttachedFile[], directMentionTarget?: string | null, refreshCache: boolean = false): Promise<void> {
     try {
       // Ensure client is set up
       if (!this.clientInitialized || !this.agentCoreClient) {
@@ -1832,7 +1980,7 @@ Example format:
           })
             }</file>`
           query = [
-            { "text": query + "\nDon't forget to include visualizations in your response." },
+            { "text": query },
             {
               "document": {
                 name: uniqueDocName,
@@ -1849,7 +1997,7 @@ Example format:
           // Fallback to bytes if S3 upload fails
 
           query = [
-            { "text": query + "\nDon't forget to include visualizations in your response." },
+            { "text": query },
             {
               "document": {
                 name: uniqueDocName,
@@ -1881,6 +2029,8 @@ Example format:
           agent_name: resolvedAgent.name,
           enableStreaming: true,
           direct_mention_target: directMentionTarget, // Explicit flag for direct mentions
+          // Cache refresh flag - when true, backend will reload configs from DynamoDB
+          refresh_cache: refreshCache,
           // Add session metadata for additional context
           session_metadata: {
             agent_name: resolvedAgent.name,
@@ -2504,9 +2654,6 @@ Example format:
       this.cleanupInterval = null;
     }
 
-    // Cleanup AppSync subscription
-    this.cleanupAppSyncSubscription();
-
     // Clear all session data
     this.recentEvents.clear();
     this.responseAccumulators.clear();
@@ -2523,21 +2670,6 @@ Example format:
   // Method to update chat messages for AgentCore sources tracking
   updateChatMessages(messages: any[]): void {
     this.chatMessages = [...messages];
-  }
-
-
-
-  // Cleanup AppSync subscription
-  private cleanupAppSyncSubscription(): void {
-    if (this.appSyncChannel) {
-      this.appSyncChannel.close();
-      this.appSyncChannel = null;
-      console.log('AppSync Events subscription cleaned up');
-    }
-  }
-
-  getAppSyncEvents(): Observable<StreamEvent> {
-    return this.appSyncEvents$.asObservable();
   }
 
   /**

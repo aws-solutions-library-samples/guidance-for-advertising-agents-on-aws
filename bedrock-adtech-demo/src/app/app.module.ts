@@ -31,6 +31,8 @@ import { ContextPanelComponent } from './components/context-panel/context-panel.
 import { AgentSummaryModalComponent } from './components/agent-summary-modal/agent-summary-modal.component';
 import { VisibilitySettingsModalComponent } from './components/visibility-settings-modal/visibility-settings-modal.component';
 import { SessionPromptModalComponent } from './components/session-prompt-modal/session-prompt-modal.component';
+import { AgentManagementModalComponent } from './components/agent-management-modal/agent-management-modal.component';
+import { AgentEditorPanelComponent } from './components/agent-editor-panel/agent-editor-panel.component';
 import { AuthGuard } from './guards/auth.guard';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -64,7 +66,9 @@ import { AppComponent } from './app.component';
     ContextPanelComponent,
     AgentSummaryModalComponent,
     VisibilitySettingsModalComponent,
-    SessionPromptModalComponent
+    SessionPromptModalComponent,
+    AgentManagementModalComponent,
+    AgentEditorPanelComponent
   ],
   imports: [
     BrowserModule,

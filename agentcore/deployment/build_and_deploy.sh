@@ -526,45 +526,8 @@ else
     print_warning "No knowledge bases found for stack pattern"
 fi
 
-# Get AppSync endpoint from infrastructure stack for Docker build
-print_status "Retrieving AppSync endpoint from SSM parameter for Docker build..."
-SSM_PARAM_NAME="/${STACK_PREFIX}/appsync/${UNIQUE_ID}"
-APPSYNC_ENDPOINT=""
-
-if [ -n "$AWS_PROFILE" ]; then
-    APPSYNC_CONFIG=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
-else
-    APPSYNC_CONFIG=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
-fi
-
-if [ -n "$APPSYNC_CONFIG" ] && [ "$APPSYNC_CONFIG" != "None" ]; then
-    APPSYNC_ENDPOINT=$(echo "$APPSYNC_CONFIG" | jq -r '.httpEndpoint' 2>/dev/null || echo "")
-fi
-
-if [ -n "$APPSYNC_ENDPOINT" ] && [ "$APPSYNC_ENDPOINT" != "None" ] && [ "$APPSYNC_ENDPOINT" != "null" ]; then
-    print_status "Found AppSync endpoint for Docker build: $APPSYNC_ENDPOINT"
-    
-    # Extract realtime domain from AppSync config
-    APPSYNC_REALTIME_DOMAIN=$(echo "$APPSYNC_CONFIG" | jq -r '.realtimeEndpoint' 2>/dev/null || echo "")
-    if [ -n "$APPSYNC_REALTIME_DOMAIN" ] && [ "$APPSYNC_REALTIME_DOMAIN" != "null" ]; then
-        # Extract just the domain from wss://domain/path
-        APPSYNC_REALTIME_DOMAIN=$(echo "$APPSYNC_REALTIME_DOMAIN" | sed 's|wss://||' | sed 's|/.*||')
-    fi
-    
-    if [ -n "$APPSYNC_REALTIME_DOMAIN" ] && [ "$APPSYNC_REALTIME_DOMAIN" != "null" ]; then
-        print_status "Found AppSync realtime domain: $APPSYNC_REALTIME_DOMAIN"
-    else
-        print_warning "AppSync realtime domain not found in config"
-        APPSYNC_REALTIME_DOMAIN=""
-    fi
-else
-    print_warning "AppSync endpoint not found - real-time updates will be disabled in container"
-    APPSYNC_ENDPOINT=""
-    APPSYNC_REALTIME_DOMAIN=""
-fi
-
-# Gather runtime ARNs with bearer tokens from SSM Parameter Store
-print_status "Gathering runtime ARNs with bearer tokens for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
+# Gather runtime ARNs from SSM Parameter Store
+print_status "Gathering runtime ARNs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
 RUNTIMES=""
 
 # Try to retrieve from SSM Parameter Store first
@@ -582,7 +545,7 @@ fi
 if [ -n "$SSM_VALUE" ] && [ "$SSM_VALUE" != "None" ]; then
     print_status "✅ Found runtime configuration in SSM Parameter Store"
     
-    # Parse SSM JSON and generate RUNTIMES format
+    # Parse SSM JSON and generate RUNTIMES format (ARNs only, no bearer tokens)
     RUNTIMES=$(echo "$SSM_VALUE" | python3 -c "
 import json
 import sys
@@ -594,13 +557,9 @@ try:
     runtime_entries = []
     for agent in agents:
         runtime_arn = agent.get('runtime_arn', '')
-        bearer_token = agent.get('bearer_token', '')
         
         if runtime_arn:
-            if bearer_token:
-                runtime_entries.append(f'{runtime_arn}|{bearer_token}')
-            else:
-                runtime_entries.append(f'{runtime_arn}|')
+            runtime_entries.append(runtime_arn)
     
     print(','.join(runtime_entries))
     sys.exit(0)
@@ -612,8 +571,8 @@ except Exception as e:
 " 2>&1)
     
     if [ -n "$RUNTIMES" ]; then
-        print_status "Loaded RUNTIMES with bearer tokens from SSM"
-        print_status "RUNTIMES format: arn|token,arn|token,... (${#RUNTIMES} characters)"
+        print_status "Loaded RUNTIMES from SSM"
+        print_status "RUNTIMES format: arn,arn,... (${#RUNTIMES} characters)"
     else
         print_warning "SSM parameter exists but no runtimes could be parsed"
     fi
@@ -637,9 +596,9 @@ try:
     runtime_entries = []
     
     for agent in agents:
-        bearer_token = agent.get('bearer_token', '')
         runtime_arn = agent.get('runtime_arn','')
-        runtime_entries.append(f'{runtime_arn}|{bearer_token}')
+        if runtime_arn:
+            runtime_entries.append(runtime_arn)
     
     print(','.join(runtime_entries))
 except Exception as e:
@@ -649,15 +608,15 @@ except Exception as e:
 " 2>&1)
         
         if [ -n "$RUNTIMES" ]; then
-            print_status "Loaded RUNTIMES with bearer tokens from local registry"
-            print_status "RUNTIMES format: arn|token,arn|token,... (${#RUNTIMES} characters)"
+            print_status "Loaded RUNTIMES from local registry"
+            print_status "RUNTIMES format: arn,arn,... (${#RUNTIMES} characters)"
         else
             print_warning "Runtime registry exists but no runtimes found"
         fi
     else
         print_warning "Runtime registry not found: $REGISTRY_FILE"
         print_warning "RUNTIMES environment variable will be empty"
-        print_warning "A2A agent invocation will not work until bearer tokens are registered"
+        print_warning "A2A agent invocation will not work until runtimes are registered"
     fi
 fi
 
@@ -691,9 +650,6 @@ docker build \
     --build-arg UNIQUE_ID="$UNIQUE_ID" \
     --build-arg KNOWLEDGEBASES="$KNOWLEDGEBASES" \
     --build-arg RUNTIMES="$RUNTIMES" \
-    --build-arg APPSYNC_ENDPOINT="$APPSYNC_ENDPOINT" \
-    --build-arg APPSYNC_REALTIME_DOMAIN="$APPSYNC_REALTIME_DOMAIN" \
-    --build-arg APPSYNC_CHANNEL_NAMESPACE="${STACK_PREFIX}events${UNIQUE_ID}" \
     --build-arg ADCP_GATEWAY_URL="$ADCP_GATEWAY_URL_VALUE" \
     --build-arg ADCP_USE_MCP="true" \
     -t "$ECR_REPO_NAME:latest" .
@@ -707,7 +663,7 @@ docker build \
 docker tag "$ECR_REPO_NAME:latest" "$ECR_URI:latest"
 
 # Push to ECR
-print_status "Puxshing image to ECR..."
+print_status "Pushing image to ECR..."
 docker push "$ECR_URI:latest"
 
 # Check for existing AgentCore runtime and update or create
@@ -841,63 +797,366 @@ if [ -n "$EXISTING_RUNTIME_ID" ] && [ "$EXISTING_RUNTIME_ID" != "None" ] && [ "$
     
     print_status "Using existing role ARN: $EXISTING_ROLE_ARN"
     
-    # Get AppSync endpoint from infrastructure stack
-    print_status "Retrieving AppSync endpoint from SSM parameter..."
-    SSM_PARAM_NAME="/${STACK_PREFIX}/appsync/${UNIQUE_ID}"
-    APPSYNC_ENDPOINT=""
+    # Check if the existing role is the default SDK role (lacks DynamoDB, SSM, etc. permissions)
+    # If so, create/ensure a custom role with full permissions and switch to it
+    if echo "$EXISTING_ROLE_ARN" | grep -q "AmazonBedrockAgentCoreSDKRuntime"; then
+        print_warning "⚠️  Runtime is using the default AgentCore SDK role which lacks DynamoDB/SSM permissions"
+        print_status "Creating/ensuring custom execution role with full permissions..."
+        
+        CUSTOM_ROLE_NAME="AgentCoreRole-${FULL_AGENT_NAME}"
+        # Truncate role name to 64 chars (IAM limit)
+        CUSTOM_ROLE_NAME=$(echo "$CUSTOM_ROLE_NAME" | cut -c1-64)
+        
+        CUSTOM_ROLE_ARN=$(python3 << ROLE_EOF
+import json
+import boto3
+import sys
+import time
+
+stack_prefix = "${STACK_PREFIX}"
+unique_id = "${UNIQUE_ID}"
+region = "${AWS_REGION}"
+agentcore_region = "${AGENTCORE_REGION}"
+role_name = "${CUSTOM_ROLE_NAME}"
+profile = "${AWS_PROFILE}" if "${AWS_PROFILE}" else None
+
+session_kwargs = {}
+if profile:
+    session_kwargs["profile_name"] = profile
+session = boto3.Session(**session_kwargs)
+iam = session.client("iam")
+sts = session.client("sts")
+account_id = sts.get_caller_identity()["Account"]
+
+trust_policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+            "Action": "sts:AssumeRole",
+        }
+    ],
+}
+
+permissions_policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PassRoleAccess",
+            "Effect": "Allow",
+            "Action": ["iam:PassRole"],
+            "Resource": f"arn:aws:iam::{account_id}:role/*",
+        },
+        {
+            "Sid": "SpecificNamespaceAccess",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:RetrieveMemoryRecords",
+                "bedrock-agentcore:ListMemoryRecords",
+                "bedrock-agentcore:CreateEvent",
+                "s3:GetObject", "s3:ListBucket", "s3:PutObject",
+            ],
+            "Resource": [
+                f"arn:aws:bedrock-agentcore:{agentcore_region}:{account_id}:memory/*",
+                f"arn:aws:s3:::{stack_prefix}-data-*",
+                f"arn:aws:s3:::{stack_prefix}-data-*/*",
+                f"arn:aws:s3:::{stack_prefix}-generated-content-*",
+                f"arn:aws:s3:::{stack_prefix}-generated-content-*/*",
+            ],
+        },
+        {
+            "Sid": "AllowAgentCoreMemoryKMS",
+            "Effect": "Allow",
+            "Action": ["kms:DescribeKey", "kms:CreateGrant", "kms:Decrypt", "kms:GenerateDataKey"],
+            "Resource": "arn:aws:kms:*:*:key/*",
+            "Condition": {"StringEquals": {"kms:ViaService": f"bedrock-agentcore.{agentcore_region}.amazonaws.com"}},
+        },
+        {
+            "Sid": "ECRAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken", "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage",
+                "ecr:DescribeRepositories", "ecr:DescribeImages", "ecr:ListImages",
+            ],
+            "Resource": "*",
+        },
+        {
+            "Sid": "GenerateImagesLambda",
+            "Effect": "Allow",
+            "Action": ["lambda:InvokeFunction"],
+            "Resource": [f"arn:aws:lambda:{region}:{account_id}:function:{stack_prefix}-CreativeImageGenerator-*"],
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogGroups", "logs:DescribeLogStreams"],
+            "Resource": [f"arn:aws:logs:{region}:{account_id}:*"],
+        },
+        {
+            "Sid": "XRayTracing",
+            "Effect": "Allow",
+            "Action": ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"],
+            "Resource": "*",
+        },
+        {
+            "Sid": "CloudWatchMetrics",
+            "Effect": "Allow",
+            "Resource": [f"arn:aws:cloudwatch:*:{account_id}:*:*"],
+            "Action": ["cloudwatch:PutMetricData"],
+        },
+        {
+            "Sid": "GetAgentAccessToken",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetWorkloadAccessToken",
+                "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
+            ],
+            "Resource": [
+                f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default",
+                f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default/workload-identity/*",
+            ],
+        },
+        {
+            "Sid": "BedrockModelInvocation",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:InvokeAgent", "bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream",
+                "bedrock:ApplyGuardrail", "bedrock:Retrieve", "bedrock:RetrieveAndGenerate",
+                "bedrock:ListFoundationModels", "bedrock:ListKnowledgeBases", "bedrock:ListDataSources",
+            ],
+            "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*", f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
+        },
+        {
+            "Sid": "AgentCoreGatewayInvoke",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:InvokeGateway", "bedrock-agentcore:GetGateway",
+                "bedrock-agentcore:ListGateways", "bedrock-agentcore:ListGatewayTargets",
+                "bedrock-agentcore:GetGatewayTarget",
+            ],
+            "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
+        },
+        {
+            "Sid": "AgentCoreMemory",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:List*", "bedrock-agentcore:Create*",
+                "bedrock-agentcore:Delete*", "bedrock-agentcore:Update*",
+                "bedrock-agentcore:Start*", "bedrock-agentcore:Stop*",
+            ],
+            "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*memory*",
+        },
+        {
+            "Sid": "DynamoDBAccess",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan",
+                "dynamodb:DescribeTable",
+            ],
+            "Resource": f"arn:aws:dynamodb:{region}:{account_id}:*/*",
+        },
+        {
+            "Sid": "SSMParameterAccess",
+            "Effect": "Allow",
+            "Action": ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath", "ssm:PutParameter", "ssm:DeleteParameter"],
+            "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*/*"],
+        },
+    ],
+}
+
+try:
+    # Create role
+    try:
+        response = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description="Custom IAM role for AgentCore runtime with full permissions",
+        )
+        role_arn = response["Role"]["Arn"]
+        print(f"Created new role: {role_arn}", file=sys.stderr)
+    except iam.exceptions.EntityAlreadyExistsException:
+        response = iam.get_role(RoleName=role_name)
+        role_arn = response["Role"]["Arn"]
+        print(f"Using existing role: {role_arn}", file=sys.stderr)
+
+    # Create or update policy
+    policy_name = f"{role_name}-Policy"
+    policy_arn_full = f"arn:aws:iam::{account_id}:policy/{policy_name}"
     
-    if [ -n "$AWS_PROFILE" ]; then
-        APPSYNC_CONFIG=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    try:
+        iam.create_policy(
+            PolicyName=policy_name,
+            PolicyDocument=json.dumps(permissions_policy),
+            Description="Permissions for AgentCore runtime",
+        )
+        print(f"Created policy: {policy_name}", file=sys.stderr)
+    except iam.exceptions.EntityAlreadyExistsException:
+        print(f"Policy exists, updating...", file=sys.stderr)
+        try:
+            versions = iam.list_policy_versions(PolicyArn=policy_arn_full).get("Versions", [])
+            non_default = [v for v in versions if not v.get("IsDefaultVersion", False)]
+            if len(versions) >= 5:
+                non_default.sort(key=lambda x: str(x.get("CreateDate", "")))
+                for old in non_default[:len(versions) - 4]:
+                    iam.delete_policy_version(PolicyArn=policy_arn_full, VersionId=old["VersionId"])
+            iam.create_policy_version(PolicyArn=policy_arn_full, PolicyDocument=json.dumps(permissions_policy), SetAsDefault=True)
+            print(f"Updated policy version", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Could not update policy: {e}", file=sys.stderr)
+
+    # Attach policy to role
+    try:
+        iam.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn_full)
+    except Exception:
+        pass  # Already attached
+
+    # Attach X-Ray policy
+    try:
+        iam.attach_role_policy(RoleName=role_name, PolicyArn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess")
+    except Exception:
+        pass
+
+    # Wait for IAM propagation
+    print("Waiting 15 seconds for IAM propagation...", file=sys.stderr)
+    time.sleep(15)
+
+    # Output the role ARN to stdout
+    print(role_arn)
+
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
+ROLE_EOF
+)
+        
+        if [ $? -eq 0 ] && [ -n "$CUSTOM_ROLE_ARN" ]; then
+            CUSTOM_ROLE_ARN=$(echo "$CUSTOM_ROLE_ARN" | tr -d '\n\r\t ')
+            print_status "✅ Custom role ready: $CUSTOM_ROLE_ARN"
+            print_status "Switching runtime from default SDK role to custom role with DynamoDB/SSM permissions"
+            EXISTING_ROLE_ARN="$CUSTOM_ROLE_ARN"
+        else
+            print_warning "⚠️  Could not create custom role, continuing with existing role"
+            print_warning "   DynamoDB access may fail at runtime"
+        fi
     else
-        APPSYNC_CONFIG=$(aws ssm get-parameter --name "$SSM_PARAM_NAME" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
-    fi
-    
-    if [ -n "$APPSYNC_CONFIG" ] && [ "$APPSYNC_CONFIG" != "None" ]; then
-        APPSYNC_ENDPOINT=$(echo "$APPSYNC_CONFIG" | jq -r '.httpEndpoint' 2>/dev/null || echo "")
-    fi
-    
-    if [ -n "$APPSYNC_ENDPOINT" ] && [ "$APPSYNC_ENDPOINT" != "None" ] && [ "$APPSYNC_ENDPOINT" != "null" ]; then
-        print_status "Found AppSync endpoint: $APPSYNC_ENDPOINT"
-    else
-        print_warning "AppSync endpoint not found - real-time updates will be disabled"
-        APPSYNC_ENDPOINT=""
+        # Existing custom role - update its IAM policy to ensure latest permissions
+        print_status "Updating IAM policy on existing custom role to ensure latest permissions..."
+        EXISTING_ROLE_NAME=$(echo "$EXISTING_ROLE_ARN" | awk -F'/' '{print $NF}')
+        
+        if [ -n "$EXISTING_ROLE_NAME" ] && [ "$EXISTING_ROLE_NAME" != "None" ]; then
+            python3 << POLICY_UPDATE_EOF
+import json
+import boto3
+import sys
+
+role_name = "${EXISTING_ROLE_NAME}"
+stack_prefix = "${STACK_PREFIX}"
+region = "${AWS_REGION}"
+agentcore_region = "${AGENTCORE_REGION}"
+profile = "${AWS_PROFILE}" if "${AWS_PROFILE}" else None
+
+try:
+    session = boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
+    iam = session.client('iam')
+    sts = session.client('sts')
+    account_id = sts.get_caller_identity()['Account']
+
+    policy_name = f"{role_name}-Policy"
+    policy_arn = f"arn:aws:iam::{account_id}:policy/{policy_name}"
+
+    permissions_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {"Sid": "PassRoleAccess", "Effect": "Allow", "Action": ["iam:PassRole"], "Resource": f"arn:aws:iam::{account_id}:role/*"},
+            {"Sid": "SpecificNamespaceAccess", "Effect": "Allow",
+             "Action": ["bedrock-agentcore:RetrieveMemoryRecords", "bedrock-agentcore:ListMemoryRecords", "bedrock-agentcore:CreateEvent", "s3:GetObject", "s3:ListBucket", "s3:PutObject"],
+             "Resource": [f"arn:aws:bedrock-agentcore:{agentcore_region}:{account_id}:memory/*", f"arn:aws:s3:::{stack_prefix}-data-*", f"arn:aws:s3:::{stack_prefix}-data-*/*", f"arn:aws:s3:::{stack_prefix}-generated-content-*", f"arn:aws:s3:::{stack_prefix}-generated-content-*/*"]},
+            {"Sid": "AllowAgentCoreMemoryKMS", "Effect": "Allow",
+             "Action": ["kms:DescribeKey", "kms:CreateGrant", "kms:Decrypt", "kms:GenerateDataKey"],
+             "Resource": "arn:aws:kms:*:*:key/*",
+             "Condition": {"StringEquals": {"kms:ViaService": f"bedrock-agentcore.{agentcore_region}.amazonaws.com"}}},
+            {"Sid": "ECRAccess", "Effect": "Allow",
+             "Action": ["ecr:GetAuthorizationToken", "ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:DescribeRepositories", "ecr:DescribeImages", "ecr:ListImages"],
+             "Resource": "*"},
+            {"Sid": "GenerateImagesLambda", "Effect": "Allow", "Action": ["lambda:InvokeFunction"],
+             "Resource": [f"arn:aws:lambda:{region}:{account_id}:function:{stack_prefix}-CreativeImageGenerator-*"]},
+            {"Sid": "CloudWatchLogs", "Effect": "Allow",
+             "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogGroups", "logs:DescribeLogStreams"],
+             "Resource": [f"arn:aws:logs:{region}:{account_id}:*"]},
+            {"Sid": "XRayTracing", "Effect": "Allow",
+             "Action": ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"],
+             "Resource": "*"},
+            {"Sid": "CloudWatchMetrics", "Effect": "Allow", "Resource": [f"arn:aws:cloudwatch:*:{account_id}:*:*"], "Action": ["cloudwatch:PutMetricData"]},
+            {"Sid": "GetAgentAccessToken", "Effect": "Allow",
+             "Action": ["bedrock-agentcore:GetWorkloadAccessToken", "bedrock-agentcore:GetWorkloadAccessTokenForJWT", "bedrock-agentcore:GetWorkloadAccessTokenForUserId"],
+             "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default", f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default/workload-identity/*"]},
+            {"Sid": "BedrockModelInvocation", "Effect": "Allow",
+             "Action": ["bedrock:InvokeAgent", "bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream", "bedrock:ApplyGuardrail", "bedrock:Retrieve", "bedrock:RetrieveAndGenerate", "bedrock:ListFoundationModels", "bedrock:ListKnowledgeBases", "bedrock:ListDataSources"],
+             "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*", f"arn:aws:bedrock:*:{account_id}:inference-profile/*"]},
+            {"Sid": "AgentCoreGatewayInvoke", "Effect": "Allow",
+             "Action": ["bedrock-agentcore:InvokeGateway", "bedrock-agentcore:GetGateway", "bedrock-agentcore:ListGateways", "bedrock-agentcore:ListGatewayTargets", "bedrock-agentcore:GetGatewayTarget"],
+             "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*"},
+            {"Sid": "AgentCoreMemory", "Effect": "Allow",
+             "Action": ["bedrock-agentcore:List*", "bedrock-agentcore:Create*", "bedrock-agentcore:Delete*", "bedrock-agentcore:Update*", "bedrock-agentcore:Start*", "bedrock-agentcore:Stop*"],
+             "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*memory*"},
+            {"Sid": "DynamoDBAccess", "Effect": "Allow",
+             "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:DescribeTable"],
+             "Resource": f"arn:aws:dynamodb:{region}:{account_id}:table/*"},
+            {"Sid": "SSMParameterAccess", "Effect": "Allow",
+             "Action": ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath", "ssm:PutParameter", "ssm:DeleteParameter"],
+             "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/{stack_prefix}/*"]},
+        ],
+    }
+
+    policy_doc = json.dumps(permissions_policy)
+
+    try:
+        iam.create_policy(PolicyName=policy_name, PolicyDocument=policy_doc, Description="Permissions for AgentCore runtime")
+        print(f"Created new policy: {policy_name}")
+    except iam.exceptions.EntityAlreadyExistsException:
+        try:
+            versions = iam.list_policy_versions(PolicyArn=policy_arn).get('Versions', [])
+            non_default = [v for v in versions if not v.get('IsDefaultVersion', False)]
+            if len(versions) >= 5:
+                non_default.sort(key=lambda x: str(x.get('CreateDate', '')))
+                for old in non_default[:len(versions) - 4]:
+                    iam.delete_policy_version(PolicyArn=policy_arn, VersionId=old['VersionId'])
+            iam.create_policy_version(PolicyArn=policy_arn, PolicyDocument=policy_doc, SetAsDefault=True)
+            print(f"Updated policy with latest permissions: {policy_name}")
+        except Exception as e:
+            print(f"Warning: Could not update policy version: {e}", file=sys.stderr)
+
+    try:
+        iam.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+    except Exception:
+        pass
+
+    print("IAM policy update complete")
+
+except Exception as e:
+    print(f"Warning: Failed to update IAM policy: {e}", file=sys.stderr)
+    print("Continuing with deployment - existing permissions will be used")
+POLICY_UPDATE_EOF
+            
+            if [ $? -eq 0 ]; then
+                print_status "✅ IAM policy updated with latest permissions (including DynamoDB access)"
+            else
+                print_warning "⚠️  IAM policy update had issues - check output above"
+            fi
+        else
+            print_warning "Could not extract role name from ARN, skipping IAM policy update"
+        fi
     fi
     
     # Update the existing runtime with environment variables
     print_status "Executing update command with environment variables..."
     
-    # Get AppSync realtime domain from config
-    APPSYNC_REALTIME_DOMAIN=""
-    if [ -n "$APPSYNC_CONFIG" ] && [ "$APPSYNC_CONFIG" != "None" ]; then
-        APPSYNC_REALTIME_DOMAIN=$(echo "$APPSYNC_CONFIG" | jq -r '.realtimeEndpoint' 2>/dev/null || echo "")
-        if [ -n "$APPSYNC_REALTIME_DOMAIN" ] && [ "$APPSYNC_REALTIME_DOMAIN" != "null" ]; then
-            # Extract just the domain from wss://domain/path
-            APPSYNC_REALTIME_DOMAIN=$(echo "$APPSYNC_REALTIME_DOMAIN" | sed 's|wss://||' | sed 's|/.*||')
-        fi
-    fi
-    
     # Build environment variables JSON
     ENV_VARS="{\"STACK_PREFIX\":\"${STACK_PREFIX}\",\"UNIQUE_ID\":\"${UNIQUE_ID}\",\"KNOWLEDGEBASES\":\"${KNOWLEDGEBASES}\",\"RUNTIMES\":\"${RUNTIMES}\""
-    
-    if [ -n "$APPSYNC_ENDPOINT" ]; then
-        ENV_VARS="${ENV_VARS},\"APPSYNC_ENDPOINT\":\"${APPSYNC_ENDPOINT}\""
-    fi
-    
-    if [ -n "$APPSYNC_REALTIME_DOMAIN" ] && [ "$APPSYNC_REALTIME_DOMAIN" != "null" ]; then
-        ENV_VARS="${ENV_VARS},\"APPSYNC_REALTIME_DOMAIN\":\"${APPSYNC_REALTIME_DOMAIN}\""
-    fi
-    
-    # Get channel namespace from AppSync config
-    APPSYNC_CHANNEL_NAMESPACE=""
-    if [ -n "$APPSYNC_CONFIG" ] && [ "$APPSYNC_CONFIG" != "None" ]; then
-        APPSYNC_CHANNEL_NAMESPACE=$(echo "$APPSYNC_CONFIG" | jq -r '.channelNamespace' 2>/dev/null || echo "")
-    fi
-    if [ -z "$APPSYNC_CHANNEL_NAMESPACE" ] || [ "$APPSYNC_CHANNEL_NAMESPACE" = "null" ]; then
-        APPSYNC_CHANNEL_NAMESPACE="${STACK_PREFIX}events${UNIQUE_ID}"
-    fi
-    
-    # Add channel namespace
-    ENV_VARS="${ENV_VARS},\"APPSYNC_CHANNEL_NAMESPACE\":\"${APPSYNC_CHANNEL_NAMESPACE}\""
     
     # Add AdCP MCP Gateway URL if available
     if [ -n "$ADCP_GATEWAY_URL_VALUE" ] && [ "$ADCP_GATEWAY_URL_VALUE" != "None" ]; then
@@ -1082,8 +1341,8 @@ else
         fi
         print_status "✅ X-Ray trace segment destination configured"
         
-        # Register runtime in A2A registry with bearer token (if A2A agent)
-        if [ -n "$A2A_BEARER_TOKEN" ]; then
+        # Register runtime in A2A registry (if A2A agent)
+        if [ -n "$A2A_POOL_ID" ]; then
             print_status "Registering A2A runtime in centralized registry..."
             
             # Get runtime ARN from tracking file
@@ -1105,7 +1364,6 @@ with open('$TRACKING_FILE', 'r') as f:
                         --unique-id "$UNIQUE_ID" \
                         --runtime-arn "$RUNTIME_ARN" \
                         --agent-name "$AGENT_NAME" \
-                        --bearer-token "$A2A_BEARER_TOKEN" \
                         --pool-id "$A2A_POOL_ID" \
                         --client-id "$A2A_CLIENT_ID" \
                         --discovery-url "$A2A_DISCOVERY_URL"
@@ -1190,16 +1448,6 @@ else
 fi
 print_status "   ✅ STACK_PREFIX: $STACK_PREFIX"
 print_status "   ✅ UNIQUE_ID: $UNIQUE_ID"
-if [ -n "$APPSYNC_ENDPOINT" ]; then
-    print_status "   ✅ APPSYNC_ENDPOINT: Configured"
-else
-    print_status "   ⚠️  APPSYNC_ENDPOINT: Not found"
-fi
-if [ -n "$APPSYNC_REALTIME_DOMAIN" ]; then
-    print_status "   ✅ APPSYNC_REALTIME_DOMAIN: Configured (using IAM auth)"
-else
-    print_status "   ⚠️  APPSYNC_REALTIME_DOMAIN: Not found"
-fi
 print_status ""
 
 # Store configuration in SSM Parameter Store for UI access

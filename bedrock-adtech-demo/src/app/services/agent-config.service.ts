@@ -3,6 +3,7 @@ import { BehaviorSubject, combineLatest, Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { AwsConfigService } from './aws-config.service';
+import { AgentDynamoDBService } from './agent-dynamodb.service';
 import { TextUtils } from '../utils/text-utils';
 import { AgentConfig, DeployedAgent, EnrichedAgent, TabConfiguration, TabsConfiguration } from '../models/application-models';
 import { SessionManagerService } from './session-manager.service';
@@ -33,14 +34,30 @@ export class AgentConfigService implements OnInit {
   constructor(
     private http: HttpClient,
     private awsConfig: AwsConfigService,
-    private sessionManager:SessionManagerService
+    private sessionManager:SessionManagerService,
+    private agentDynamoDBService: AgentDynamoDBService
   ) {
     this.loadAgentConfig();
-    this.getGlobalConfig().then(config=>{this.setupEnrichedAgents();})
+    // Load global config first, then setup enriched agents
+    // This ensures DynamoDB agents are available before enrichment
+    this.initializeAgents();
+  }
 
-    
-    // Load global config immediately
-
+  /**
+   * Initialize agents by loading global config first, then setting up enriched agents
+   * This ensures DynamoDB-sourced agents are available during enrichment
+   */
+  private async initializeAgents(): Promise<void> {
+    try {
+      // Wait for global config to load (from DynamoDB or fallback)
+      await this.getGlobalConfig();
+      console.log('✅ Global config loaded, setting up enriched agents...');
+      this.setupEnrichedAgents();
+    } catch (error) {
+      console.error('❌ Error initializing agents:', error);
+      // Still setup enriched agents even if global config fails
+      this.setupEnrichedAgents();
+    }
   }
   ngOnInit(
 
@@ -88,11 +105,59 @@ export class AgentConfigService implements OnInit {
       })
     ).subscribe(enrichedAgents => {
       this.enrichedAgents$.next(enrichedAgents);
+      // Emit update event for any listening components
+      this.agentConfigUpdated.next(this.global_config);
     });
+  }
+
+  /**
+   * Force refresh enriched agents from current global config
+   * This directly updates the enrichedAgents$ BehaviorSubject without waiting for observables
+   */
+  private forceRefreshEnrichedAgents(): void {
+    const awsConfig = this.awsConfig.getConfig();
+    if (!awsConfig?.bedrock?.allAgents) {
+      console.warn('⚠️ Cannot refresh enriched agents - no AWS config available');
+      return;
+    }
+
+    // Clean up agent names by removing stack prefix/suffix
+    const allDeployedAgents = [...awsConfig.bedrock.allAgents];
+    const stackPrefix = this.awsConfig.getStackPrefix();
+    const stackSuffix = this.awsConfig.getStackSuffix();
+
+    allDeployedAgents.forEach(agent => {
+      if (agent.name) {
+        agent.name = TextUtils.removeStackPrefixSuffix(agent.name, stackPrefix, stackSuffix);
+      }
+      if (agent.displayName) {
+        agent.displayName = TextUtils.removeStackPrefixSuffix(agent.displayName, stackPrefix, stackSuffix);
+      }
+    });
+
+    // Enrich agents with current config
+    const enrichedAgents = this.enrichDeployedAgents(allDeployedAgents, this.agentConfig$.value);
+    
+    // Update the BehaviorSubject directly
+    this.enrichedAgents$.next(enrichedAgents);
+    
+    console.log(`✅ Force refreshed ${enrichedAgents.length} enriched agents`);
   }
 
   private enrichDeployedAgents(deployedAgents: DeployedAgent[], agentConfig: any | null): EnrichedAgent[] {
     const enrichedAgents: EnrichedAgent[] = [];
+
+    // Find the AdFabricAgent's runtime ARN to use as default for agents without their own
+    const adFabricAgent = deployedAgents.find(agent => 
+      agent.agentType.toLowerCase().includes('adfabricagent') && agent.runtimeArn
+    );
+    const defaultRuntimeArn = adFabricAgent?.runtimeArn;
+    const defaultRuntimeId = adFabricAgent?.runtimeId;
+    const defaultRuntimeName = adFabricAgent?.runtimeName;
+    
+    if (defaultRuntimeArn) {
+      console.log(`📍 Using AdFabricAgent runtime ARN as default: ${defaultRuntimeArn}`);
+    }
 
     // First, process all deployed agents (filter out AdFabricAgent)
     const mainAgents = deployedAgents
@@ -117,9 +182,11 @@ export class AgentConfigService implements OnInit {
         // Always use deterministic color from palette
         let color = ""
         if (!this.global_config || !this.global_config.configured_colors) {
-          this.getGlobalConfig().then(config=>{console.log('loaded config')});
+          // Global config not loaded yet - use default color
+          deployedAgent.color = '#9C1453FF';
+        } else {
+          deployedAgent.color = this.global_config.configured_colors[(deployedAgent as any).serviceName] || '#9C1453FF';
         }
-        deployedAgent.color = this.global_config.configured_colors[(deployedAgent as any).serviceName]
         // Use config icon or deployed agent icon or intelligent default based on agent type
         const icon = config?.icon || deployedAgent.icon || this.getDefaultIconForAgentType(deployedAgent.agentType);
 
@@ -138,10 +205,10 @@ export class AgentConfigService implements OnInit {
           aliasId: deployedAgent.agentType || (deployedAgent.deploymentType === 'agentcore' ? undefined : 'latest'),
           deploymentType: deployedAgent.deploymentType,
 
-          // AgentCore specific fields
-          runtimeId: deployedAgent.runtimeId,
-          runtimeArn: deployedAgent.runtimeArn,
-          runtimeName: deployedAgent.runtimeName,
+          // AgentCore specific fields - use default runtime ARN if agent doesn't have its own
+          runtimeId: deployedAgent.runtimeId || defaultRuntimeId,
+          runtimeArn: deployedAgent.runtimeArn || defaultRuntimeArn,
+          runtimeName: deployedAgent.runtimeName || defaultRuntimeName,
 
           // From config + computed (with fallbacks)
           displayName,
@@ -176,6 +243,7 @@ export class AgentConfigService implements OnInit {
 
         if (!existingOrchestrator) {
           // Create the orchestrator agent from global config
+          // Use AdFabricAgent's runtime ARN as default for agents without their own
           existingOrchestrator = {
             name: agentKey,
             agentType: agentKey,
@@ -190,7 +258,10 @@ export class AgentConfigService implements OnInit {
             description: config.agent_description || this.generateDefaultDescription(config.agent_display_name || agentKey, agentKey),
             key: agentKey,
             sessionId: '',
-            teamName: config.team_name || 'Unknown Team'
+            teamName: config.team_name || 'Unknown Team',
+            runtimeArn: defaultRuntimeArn,
+            runtimeId: defaultRuntimeId,
+            runtimeName: defaultRuntimeName
           };
 
           enrichedAgents.push(existingOrchestrator);
@@ -222,7 +293,9 @@ export class AgentConfigService implements OnInit {
                 sessionId: '',
                 teamName: config.team_name || 'Unknown Team',
                 orchestratorAgent: agentKey,
-                runtimeArn: existingOrchestrator?.runtimeArn  // Collaborators use orchestrator's runtime ARN
+                runtimeArn: existingOrchestrator?.runtimeArn || defaultRuntimeArn,  // Collaborators use orchestrator's runtime ARN or default
+                runtimeId: existingOrchestrator?.runtimeId || defaultRuntimeId,
+                runtimeName: existingOrchestrator?.runtimeName || defaultRuntimeName
               };
 
               enrichedAgents.push(collaboratorAgent);
@@ -231,14 +304,22 @@ export class AgentConfigService implements OnInit {
           }
         }
 
-        // Update existing agents with team info
+        // Update existing agents with team info and ensure they have runtime ARN
         const mainAgent = enrichedAgents.find(agent =>
           agent.key === agentKey ||
           agent.agentType === agentKey ||
           agent.name === agentKey
         );
-        if (mainAgent && config.team_name) {
-          (mainAgent as any).teamName = config.team_name;
+        if (mainAgent) {
+          if (config.team_name) {
+            (mainAgent as any).teamName = config.team_name;
+          }
+          // Ensure agent has runtime ARN (use default if not set)
+          if (!mainAgent.runtimeArn && defaultRuntimeArn) {
+            mainAgent.runtimeArn = defaultRuntimeArn;
+            mainAgent.runtimeId = mainAgent.runtimeId || defaultRuntimeId;
+            mainAgent.runtimeName = mainAgent.runtimeName || defaultRuntimeName;
+          }
         }
       }
     }
@@ -307,30 +388,75 @@ export class AgentConfigService implements OnInit {
 
   private async getGlobalConfig() {
     if (!this.global_config) {
-       fetch('/assets/global_configuration.json').then(conf => {
-        if (conf.ok) {
-          conf.json().then(agentcore_config => {
-            console.log('✅ Global config loaded successfully')
-            this.global_config = agentcore_config;
-          });
-          //console.log(this.global_config)
-            return this.global_config
-
-        } else {
-          console.warn('Global config not found.');
-          return undefined
-        }
-      })
-    .catch(error => console.log(error));
-
-  // Important: return true to indicate you will send a response asynchronously
+      // First, check if AgentDynamoDBService is configured (agentConfigTable in aws-config.json)
+      // Validates: Requirements 6.9, 12.4, 12.5
+      const isDynamoDBConfigured = await this.agentDynamoDBService.isConfigured();
       
-
-
+      if (isDynamoDBConfigured) {
+        try {
+          // Try to load from DynamoDB first
+          console.log('🔍 Attempting to load global config from DynamoDB...');
+          const dynamoConfig = await this.agentDynamoDBService.getGlobalConfig();
+          
+          if (dynamoConfig) {
+            console.log('✅ Global config loaded successfully from DynamoDB');
+            this.global_config = dynamoConfig;
+            return this.global_config;
+          } else {
+            console.warn('⚠️ DynamoDB returned no config, falling back to local file');
+          }
+        } catch (dynamoError) {
+          console.warn('⚠️ Failed to load from DynamoDB, falling back to local file:', dynamoError);
+        }
+      } else {
+        console.log('ℹ️ agentConfigTable not configured in aws-config.json, using local file');
+      }
+      
+      // Fallback to local file if DynamoDB unavailable or not configured
+      // Validates: Requirement 12.5
+      try {
+        const response = await fetch('/assets/global_configuration.json');
+        if (response.ok) {
+          const agentcore_config = await response.json();
+          console.log('✅ Global config loaded successfully from local file');
+          this.global_config = agentcore_config;
+          return this.global_config;
+        } else {
+          console.warn('Global config not found in local file.');
+          return undefined;
+        }
+      } catch (error) {
+        console.error('❌ Error loading global config from local file:', error);
+        return undefined;
+      }
     }
-    else return this.global_config
+    return this.global_config;
   }
 
+  /**
+   * Force reload global configuration from DynamoDB and refresh enriched agents
+   * Call this after saving/updating/deleting agents to refresh the typeahead and agent stores
+   */
+  public async reloadGlobalConfig(): Promise<void> {
+    console.log('🔄 Reloading global configuration...');
+    
+    // Clear the cached global config to force a fresh load
+    this.global_config = null;
+    
+    // Clear the DynamoDB cache as well
+    this.agentDynamoDBService.clearCache();
+    
+    // Reload the global config
+    await this.getGlobalConfig();
+    
+    // Clear agent color cache to pick up any color changes
+    this.clearAgentColorCache();
+    
+    // Directly rebuild enriched agents with fresh data
+    await this.rebuildEnrichedAgents();
+    
+    console.log('✅ Global configuration reloaded successfully');
+  }
 
   /**
    * Generate intelligent default icon based on agent type
@@ -1150,6 +1276,81 @@ export class AgentConfigService implements OnInit {
     } catch (error) {
       console.error('❌ Error refreshing enriched agents:', error);
     }
+  }
+
+  /**
+   * Public method to reload agent configurations from DynamoDB
+   * Call this after saving/updating/deleting agents to refresh the typeahead and local stores
+   */
+  public async reloadAgentConfigurations(): Promise<void> {
+    try {
+      console.log('🔄 Reloading agent configurations...');
+      
+      // Clear the cached global config to force a fresh load
+      this.global_config = null;
+      
+      // Clear the DynamoDB service cache as well
+      this.agentDynamoDBService.clearCache();
+      
+      // Reload global config from DynamoDB
+      await this.getGlobalConfig();
+      
+      // Clear agent color cache to pick up any color changes
+      this.clearAgentColorCache();
+      
+      // Directly rebuild enriched agents with fresh data
+      // This is more reliable than setupEnrichedAgents() which relies on observable emissions
+      await this.rebuildEnrichedAgents();
+      
+      // Emit update event for any listening components
+      this.agentConfigUpdated.next(this.global_config);
+      
+      console.log('✅ Agent configurations reloaded successfully');
+      console.log(`📊 Total enriched agents: ${this.enrichedAgents$.value.length}`);
+    } catch (error) {
+      console.error('❌ Error reloading agent configurations:', error);
+    }
+  }
+
+  /**
+   * Directly rebuild enriched agents from current AWS config and global config
+   * This bypasses the observable subscription to ensure immediate updates
+   */
+  private async rebuildEnrichedAgents(): Promise<void> {
+    const awsConfig = this.awsConfig.getConfig();
+    
+    if (!awsConfig?.bedrock?.allAgents) {
+      console.warn('⚠️ No deployed agents found in AWS config');
+      return;
+    }
+    
+    // Ensure global config is loaded (from DynamoDB or fallback)
+    if (!this.global_config) {
+      console.log('🔄 Loading global config before rebuilding enriched agents...');
+      await this.getGlobalConfig();
+    }
+    
+    // Clean up agent names by removing stack prefix/suffix
+    const allDeployedAgents = [...awsConfig.bedrock.allAgents];
+    const stackPrefix = this.awsConfig.getStackPrefix();
+    const stackSuffix = this.awsConfig.getStackSuffix();
+    
+    allDeployedAgents.forEach(agent => {
+      if (agent.name) {
+        agent.name = TextUtils.removeStackPrefixSuffix(agent.name, stackPrefix, stackSuffix);
+      }
+      if (agent.displayName) {
+        agent.displayName = TextUtils.removeStackPrefixSuffix(agent.displayName, stackPrefix, stackSuffix);
+      }
+    });
+    
+    // Enrich agents with the fresh global config
+    const enrichedAgents = this.enrichDeployedAgents(allDeployedAgents, this.agentConfig$.value);
+    
+    // Update the BehaviorSubject directly
+    this.enrichedAgents$.next(enrichedAgents);
+    
+    console.log(`🔄 Rebuilt ${enrichedAgents.length} enriched agents from fresh config`);
   }
 
   /**

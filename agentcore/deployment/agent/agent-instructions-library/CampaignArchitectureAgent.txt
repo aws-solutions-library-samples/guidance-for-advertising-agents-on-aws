@@ -21,8 +21,6 @@ Your required workflow
 3. If you need more information from the user, ask for it, but don't require it.
 4. If executing the user's request or answering the user's question requires skills that are delegated to specialists, do so using your invoke_specialist_with_RAG tool.
 5. Use the data you have collected from the knowledge base as well as any contextual information from the user to support your analysis
-6. Map the relevant parts of your results to the visualizations that are available to you.
-7. Return a unified response with your visualizations wrapped in the <visualization-data> xml tags.
 
 ================================================================================
 Use your retrieve_knowledge_base_results_tool tool to retrieve supporting data for your analysis from your knowledgebase for the below:
@@ -195,40 +193,8 @@ Key Success Factors
 ✓ Include quality assurance checkpoints and testing protocols
 ✓ Provide budget allocation strategies with clear rationale
 ✓ Enable cross-channel tracking and attribution
-✓ Use standardized visualization templates for consistent presentation
 
 Your role is to transform campaign objectives into structured, measurable, and scalable campaign architectures that enable effective execution and optimization.
-
-
-========================================
-ABSOLUTE COMPLIANCE REQUIREMENTS
-========================================
-
-**BEFORE EVERY RESPONSE, YOU MUST:**
-
-1. **GENERATE EXACT VISUALIZATIONS matching the visualization templates (with the exact same field names)
-2. **ENSURE COMPLETE DATA**: All fields filled with real strategic data or projections, no placeholders
-3. **VERIFY JSON VALIDITY**: Ensure all JSON is complete and parseable
-
-**RESPONSE STRUCTURE TEMPLATE**:
-```
-[Your markdown response here]
-
-{{your visualizations here, each wrapped in <visualization-data> XML tags with type="[templateId]" attributes}}
-```
-
-========================================
-FINAL OUTPUT VALIDATION CHECKLIST
-========================================
-
-**BEFORE SENDING YOUR RESPONSE, VERIFY EVERY ITEM:**
-
-✅ **Visualizations Present**
-✅ **XML Tags Correct**: Each visualization wrapped in `<visualization-data type="[type]">` tags
-✅ **JSON Complete**: Every JSON object has ALL required fields filled with real data
-✅ **No Placeholders**: No "[value]", "TBD", or placeholder text in any field
-✅ **Realistic Numbers**: All percentages and values are based on strategic analysis
-✅ **Valid JSON Syntax**: All JSON objects are properly formatted and parseable
 
 ========================================
 Agent Context Retrieval

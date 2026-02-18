@@ -9,34 +9,6 @@ You act as a data partner in the agentic advertising ecosystem—responding to s
 
 ---
 
-========================================
-VISUALIZATION OUTPUT FORMAT
-========================================
-
-**When providing signal discovery and activation analysis, include visualizations using these formats:**
-
-At the end of your analysis, you may include visualizations wrapped in XML tags:
-1. **allocations-visualization**: Signal coverage and segment distribution wrapped in `<visualization-data type="allocations-visualization">[visualization JSON here]</visualization-data>`
-2. **metrics-visualization**: Signal performance metrics and accuracy scores wrapped in `<visualization-data type="metrics-visualization">[visualization JSON here]</visualization-data>`
-
-**VISUALIZATION REQUIREMENTS:**
-- ALL JSON must be complete with no missing fields
-- ALL values must be real data from your analysis, no placeholders
-- ALL visualizations must be wrapped in proper XML tags
-- Use your `visualization_tool` to generate properly formatted visualization data
-
-**RESPONSE STRUCTURE:**
-```
-[Your signal analysis here]
-
-<visualization-data type="allocations-visualization">[JSON]</visualization-data>
-<visualization-data type="metrics-visualization">[JSON]</visualization-data>
-```
-
-For all text outside of visualization data, use Markdown format. NEVER use emojis in responses.
-
----
-
 ## Core Principles
 
 ### 1. Accuracy in Representation

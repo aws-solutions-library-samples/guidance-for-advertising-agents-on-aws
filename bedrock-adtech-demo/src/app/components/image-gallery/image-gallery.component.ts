@@ -1,10 +1,7 @@
 import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { Subject, takeUntil, timer } from 'rxjs';
+import { Subject } from 'rxjs';
 import { AwsConfigService } from '../../services/aws-config.service';
 import { ImageStatusService, ImageStatusResponse } from '../../services/image-status.service';
-import { Amplify } from 'aws-amplify';
-import { events } from '@aws-amplify/api';
-import { channel } from 'diagnostics_channel';
 
 interface ImageItem {
   id: string;
@@ -58,8 +55,6 @@ export class ImageGalleryComponent implements OnInit, OnDestroy {
   private awsConfig: any;
   private eventsClient: any;
   private subscriptions: any[] = [];
-  private appSyncEventSocket?: WebSocket;
-  private appSyncEventsEndpoint?: string;
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -110,29 +105,6 @@ export class ImageGalleryComponent implements OnInit, OnDestroy {
   private async configureAmplify() {
     try {
       this.awsConfig = await this.awsConfigService.getAwsConfig();
-
-      if (this.awsConfig && this.awsConfig.appsyncEvents) {
-        // Configure Amplify with AppSync Events API
-        Amplify.configure({
-          API: {
-            Events: {
-              endpoint: this.awsConfig.appsyncEvents.eventsEndpoint,
-              region: this.awsConfig.region,
-              defaultAuthMode: 'userPool'
-            }
-          },
-          Auth: {
-            Cognito: {
-              userPoolId: this.awsConfig.userPoolId,
-              userPoolClientId: this.awsConfig.userPoolClientId,
-              identityPoolId: this.awsConfig.identityPoolId
-            }
-          }
-        });
-
-      } else {
-        
-      }
     } catch (error) {
       
     }
@@ -354,56 +326,8 @@ export class ImageGalleryComponent implements OnInit, OnDestroy {
   }
 
   private async callImageGenerationAPI(prompt: string, imageId: string): Promise<{ success: boolean, imageId?: string, error?: string }> {
-    try {
-      if (!this.awsConfig || !this.awsConfig.appsyncEvents) {
-        await this.configureAmplify();
-      }
-
-      let awsConfigApiConfig = this.awsConfig.appsyncEvents;
-      try {
-        // Prepare the payload for the image generation event
-        const payload = {
-          imageId: imageId,
-          prompt: prompt,
-          colorScheme: this.getColorPalette(),
-          width: 1024,
-          height: 1024,
-          timestamp: new Date().toISOString()
-        };
-
-        let url = `https://${awsConfigApiConfig.eventsEndpoint}/event`;
-        /*await fetch(url, {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': await this.getAuthorizationHeader(url, JSON.stringify(payload))
-          },
-          body: JSON.stringify({
-            channel:"images",
-            events: [
-              JSON.stringify(payload)
-            ]
-          })
-        });*/
-
-        // Publish the event using Amplify Events API
-        //await events.post(channel, payload);
-
-        //og('✅ Image generation request published successfully via Amplify');
-        return { success: true, imageId: imageId };
-
-      } catch (amplifyError: any) {
-       
-        return { success: false, error: `Amplify Events Error: ${amplifyError.message || amplifyError}` };
-      }
-
-    } catch (error) {
-    
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'API call failed'
-      };
-    }
+    // Image generation API - currently uses simulation fallback
+    return this.simulateImageGeneration(imageId);
   }
 
   // Fallback simulation method for development/testing
@@ -427,42 +351,7 @@ export class ImageGalleryComponent implements OnInit, OnDestroy {
   }
 
   private subscribeToImageEvents(imageId: string) {
-    if (!this.awsConfig?.appsyncEvents?.realtimeEndpoint) {
-    
-      this.simulateImageProgress(imageId);
-      return;
-    }
-
-    try {
-      // Subscribe to real-time events for this specific image
-      const wsUrl = `${this.awsConfig.appsyncEvents.realtimeEndpoint}/event/images/${imageId}`;
-      this.appSyncEventSocket = new WebSocket(wsUrl);
-
-      this.appSyncEventSocket.onopen = () => {
-      };
-
-      this.appSyncEventSocket.onmessage = (event) => {
-        try {
-          const eventData = JSON.parse(event.data);
-          this.handleImageStatusUpdate(imageId, eventData);
-        } catch (error) {
-     
-        }
-      };
-
-      this.appSyncEventSocket.onerror = (error) => {
-     
-        // Fall back to simulation on error
-        this.simulateImageProgress(imageId);
-      };
-
-      this.appSyncEventSocket.onclose = () => {
-      };
-
-    } catch (error) {
-  
-      this.simulateImageProgress(imageId);
-    }
+    this.simulateImageProgress(imageId);
   }
 
   private handleImageStatusUpdate(imageId: string, eventData: any) {

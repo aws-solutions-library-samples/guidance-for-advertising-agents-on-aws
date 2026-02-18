@@ -3,16 +3,23 @@
 # Agentic Advertising Ecosystem (ID SO9631) - Complete Deployment Script (AgentCore-focused)
 # This script deploys the complete agent ecosystem using AgentCore agents exclusively
 #
+# DEPLOYMENT METHOD:
+# - Default: AgentCore Starter Toolkit (CodeBuild-based, no Docker required)
+# - Optional: Docker-based deployment via build_and_deploy.sh (set DEPLOY_METHOD=docker)
+#
 # NON-INTERACTIVE MODE:
 # - Deploys AgentCore agents by default
 # - Set INTERACTIVE_MODE=false to skip prompts
 #
 # USAGE EXAMPLES:
-# Interactive deployment with agent selection:
+# Interactive deployment (toolkit, no Docker):
 #   ./scripts/deploy-ecosystem.sh
 #
 # Non-interactive deployment (all agents):
 #   INTERACTIVE_MODE=false ./scripts/deploy-ecosystem.sh
+#
+# Force Docker-based deployment:
+#   DEPLOY_METHOD=docker ./scripts/deploy-ecosystem.sh
 #
 # Deploy with specific stack prefix:
 #   ./scripts/deploy-ecosystem.sh --stack-prefix mystack
@@ -292,11 +299,6 @@ store_a2a_configuration() {
     fi
     
     # Verify required A2A configuration variables are set
-    if [[ -z "$BEARER_TOKEN" || "$BEARER_TOKEN" == "null" ]]; then
-        print_error "❌ BEARER_TOKEN not set - cannot store A2A configuration"
-        return 1
-    fi
-    
     if [[ -z "$POOL_ID" || "$POOL_ID" == "null" ]]; then
         print_error "❌ POOL_ID not set - cannot store A2A configuration"
         return 1
@@ -323,7 +325,6 @@ from datetime import datetime
 
 tracking_file = "$tracking_file"
 agent_name = "$agentcore_agent_name"
-bearer_token = "$BEARER_TOKEN"
 pool_id = "$POOL_ID"
 client_id = "$CLIENT_ID"
 discovery_url = "$DISCOVERY_URL"
@@ -341,13 +342,15 @@ try:
     
     for agent in deployed_agents:
         if isinstance(agent, dict) and agent.get('name') == agent_name:
-            # Update agent with A2A configuration
+            # Update agent with A2A configuration (no bearer token — authenticate on demand)
             agent['protocol'] = 'A2A'
-            agent['bearer_token'] = bearer_token
             agent['pool_id'] = pool_id
             agent['client_id'] = client_id
             agent['discovery_url'] = discovery_url
             agent['a2a_deployment_timestamp'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # Remove stale bearer_token if present from previous deployments
+            agent.pop('bearer_token', None)
             
             # Update runtime_arn and runtime_url if provided
             if runtime_arn:
@@ -361,7 +364,6 @@ try:
             print(f"  - pool_id: {pool_id}", file=sys.stderr)
             print(f"  - client_id: {client_id}", file=sys.stderr)
             print(f"  - discovery_url: {discovery_url}", file=sys.stderr)
-            print(f"  - bearer_token: {bearer_token[:20]}... (truncated)", file=sys.stderr)
             if runtime_arn:
                 print(f"  - runtime_arn: {runtime_arn}", file=sys.stderr)
             if runtime_url:
@@ -392,11 +394,13 @@ try:
                 if isinstance(ssm_agent, dict) and ssm_agent.get('name') == agent_name:
                     # Update SSM agent data
                     ssm_agent['protocol'] = 'A2A'
-                    ssm_agent['bearer_token'] = bearer_token
                     ssm_agent['pool_id'] = pool_id
                     ssm_agent['client_id'] = client_id
                     ssm_agent['discovery_url'] = discovery_url
                     ssm_agent['a2a_deployment_timestamp'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    
+                    # Remove stale bearer_token if present from previous deployments
+                    ssm_agent.pop('bearer_token', None)
                     
                     if runtime_arn:
                         ssm_agent['runtime_arn'] = runtime_arn
@@ -459,7 +463,6 @@ EOF
         print_status "   Configuration persisted to: $tracking_file"
         print_status "   Fields added:"
         print_status "     - protocol: A2A"
-        print_status "     - bearer_token: ${BEARER_TOKEN:0:20}... (truncated)"
         print_status "     - pool_id: $POOL_ID"
         print_status "     - client_id: $CLIENT_ID"
         print_status "     - discovery_url: $DISCOVERY_URL"
@@ -541,23 +544,23 @@ prepare_a2a_handler() {
     fi
 }
 
-# Function to generate bearer token for A2A authentication
-# Calls setup_bearer_token.sh and parses JSON output
+# Function to set up Cognito auth configuration for A2A authentication
+# Calls setup_bearer_token.sh to resolve Cognito resources and parses JSON output
 # Returns 0 on success, 1 on failure
-# Outputs: Sets global variables BEARER_TOKEN, POOL_ID, CLIENT_ID, DISCOVERY_URL
-generate_bearer_token() {
+# Outputs: Sets global variables POOL_ID, CLIENT_ID, DISCOVERY_URL
+setup_a2a_auth() {
     local agent_name="$1"
     
-    print_status "Generating bearer token for A2A agent: $agent_name"
+    print_status "Setting up A2A auth configuration for agent: $agent_name"
     
-    # Define path to bearer token setup script
-    local bearer_token_script="${PROJECT_ROOT}/agentcore/deployment/setup_bearer_token.sh"
+    # Define path to auth setup script
+    local auth_setup_script="${PROJECT_ROOT}/agentcore/deployment/setup_bearer_token.sh"
     
     # Verify script exists
-    if [ ! -f "$bearer_token_script" ]; then
-        print_error "❌ Bearer token setup script not found at: $bearer_token_script"
+    if [ ! -f "$auth_setup_script" ]; then
+        print_error "❌ Auth setup script not found at: $auth_setup_script"
         print_error "   Expected location: agentcore/deployment/setup_bearer_token.sh"
-        print_error "   Please ensure the bearer token setup script exists before deploying A2A agents."
+        print_error "   Please ensure the auth setup script exists before deploying A2A agents."
         return 1
     fi
     
@@ -566,61 +569,52 @@ generate_bearer_token() {
     local demo_password="demoUser123!"
     
     # Build command with appropriate parameters
-    local bearer_cmd="$bearer_token_script"
-    bearer_cmd="$bearer_cmd --region $AWS_REGION"
-    bearer_cmd="$bearer_cmd --stack-prefix $STACK_PREFIX"
-    bearer_cmd="$bearer_cmd --unique-id $UNIQUE_ID"
+    local auth_cmd="$auth_setup_script"
+    auth_cmd="$auth_cmd --region $AWS_REGION"
+    auth_cmd="$auth_cmd --stack-prefix $STACK_PREFIX"
+    auth_cmd="$auth_cmd --unique-id $UNIQUE_ID"
     
     # Add AWS profile if specified
     if [ -n "$AWS_PROFILE" ]; then
-        bearer_cmd="$bearer_cmd --profile $AWS_PROFILE"
+        auth_cmd="$auth_cmd --profile $AWS_PROFILE"
     fi
     
-    print_status "Executing bearer token setup script..."
+    print_status "Executing auth setup script..."
     print_status "  Stack: ${STACK_PREFIX}-infrastructure-core"
     print_status "  Region: $AWS_REGION"
-    print_status "  Username: $demo_username"
     
-    # Execute the bearer token setup script and capture output
-    # Note: Only capture stdout (JSON), let stderr (debug messages) pass through
-    local bearer_output
-    local bearer_exit_code
-    bearer_output=$(eval "$bearer_cmd")
-    bearer_exit_code=$?
+    # Execute the auth setup script and capture output
+    local auth_output
+    local auth_exit_code
+    auth_output=$(eval "$auth_cmd")
+    auth_exit_code=$?
     
     # Check if command succeeded
-    if [ $bearer_exit_code -ne 0 ]; then
-        print_error "❌ Failed to generate bearer token for agent: $agent_name"
-        print_error "Bearer token setup script exited with code: $bearer_exit_code"
+    if [ $auth_exit_code -ne 0 ]; then
+        print_error "❌ Failed to set up A2A auth for agent: $agent_name"
+        print_error "Auth setup script exited with code: $auth_exit_code"
         print_error "Script output:"
-        echo "$bearer_output" >&2
+        echo "$auth_output" >&2
         return 1
     fi
     
-    # Extract JSON from output (should be the complete JSON object)
-    # The bearer token script outputs only JSON to stdout, all other messages go to stderr
-    local json_output="$bearer_output"
+    # Extract JSON from output
+    local json_output="$auth_output"
     
     # Verify JSON is valid
     if ! echo "$json_output" | jq empty 2>/dev/null; then
-        print_error "❌ Failed to parse bearer token JSON output"
+        print_error "❌ Failed to parse auth config JSON output"
         print_error "Expected valid JSON, got:"
         echo "$json_output" >&2
         return 1
     fi
     
     # Parse JSON output and set global variables
-    export BEARER_TOKEN=$(echo "$json_output" | jq -r '.bearer_token')
     export POOL_ID=$(echo "$json_output" | jq -r '.pool_id')
     export CLIENT_ID=$(echo "$json_output" | jq -r '.client_id')
     export DISCOVERY_URL=$(echo "$json_output" | jq -r '.discovery_url')
     
     # Verify all required values were extracted
-    if [[ -z "$BEARER_TOKEN" || "$BEARER_TOKEN" == "null" ]]; then
-        print_error "❌ Failed to extract bearer_token from JSON output"
-        return 1
-    fi
-    
     if [[ -z "$POOL_ID" || "$POOL_ID" == "null" ]]; then
         print_error "❌ Failed to extract pool_id from JSON output"
         return 1
@@ -636,11 +630,10 @@ generate_bearer_token() {
         return 1
     fi
     
-    print_success "✅ Bearer token generated successfully for agent: $agent_name"
+    print_success "✅ A2A auth configuration resolved successfully for agent: $agent_name"
     print_status "   Pool ID: $POOL_ID"
     print_status "   Client ID: $CLIENT_ID"
     print_status "   Discovery URL: $DISCOVERY_URL"
-    print_status "   Bearer token: ${BEARER_TOKEN:0:20}... (truncated)"
     
     return 0
 }
@@ -829,13 +822,13 @@ deploy_a2a_agent() {
     fi
     print_status "✅ [1/6] A2A configuration detected"
     
-    # Step 2: Generate bearer token
-    if ! generate_bearer_token "$agent_name"; then
-        print_error "❌ [2/6] Failed to generate bearer token"
-        print_error "   A2A deployment cannot proceed without authentication token"
+    # Step 2: Set up A2A auth configuration
+    if ! setup_a2a_auth "$agent_name"; then
+        print_error "❌ [2/6] Failed to set up A2A auth configuration"
+        print_error "   A2A deployment cannot proceed without Cognito credentials"
         return 1
     fi
-    print_status "✅ [2/6] Bearer token generated successfully"
+    print_status "✅ [2/6] A2A auth configuration resolved"
     
     # Step 3: Copy A2A handler template
     if ! deploy_a2a_handler "$agent_dir"; then
@@ -853,7 +846,6 @@ deploy_a2a_agent() {
     
     # Step 5: Deploy runtime (handled by build_and_deploy.sh)
     # Export A2A configuration for runtime deployment
-    export A2A_BEARER_TOKEN="$BEARER_TOKEN"
     export A2A_POOL_ID="$POOL_ID"
     export A2A_CLIENT_ID="$CLIENT_ID"
     export A2A_DISCOVERY_URL="$DISCOVERY_URL"
@@ -873,7 +865,6 @@ deploy_a2a_agent() {
     print_status "     - Pool ID: $POOL_ID"
     print_status "     - Client ID: $CLIENT_ID"
     print_status "     - Discovery URL: $DISCOVERY_URL"
-    print_status "     - Bearer Token: ${BEARER_TOKEN:0:20}... (truncated)"
     
     return 0
 }
@@ -883,7 +874,6 @@ deploy_a2a_agent() {
 # Returns runtime URL on success, empty string on failure
 get_a2a_runtime_url() {
     local agentcore_agent_name="$1"
-    local bearer_token="${2:-}"
     
     print_status "Resolving runtime URL for A2A agent: $agentcore_agent_name"
     
@@ -946,77 +936,23 @@ get_a2a_runtime_url() {
         return 0
     fi
     
-    # Method 2: Fallback to fetch_agent_card.py utility
-    print_status "Attempting Method 2: Fallback to fetch_agent_card.py..."
+    # Method 2: Fallback — construct URL directly from ARN components
+    print_status "Attempting Method 2: Direct ARN-based URL construction..."
     
-    # Verify bearer token is available
-    if [[ -z "$bearer_token" || "$bearer_token" == "null" ]]; then
-        print_warning "⚠️  Bearer token not provided for fallback method"
-        print_warning "   Attempting to retrieve from tracking file..."
-        
-        bearer_token=$(jq -r ".deployed_agents[] | select(.name == \"$agentcore_agent_name\") | .bearer_token" "$tracking_file" 2>/dev/null)
-        
-        if [[ -z "$bearer_token" || "$bearer_token" == "null" ]]; then
-            print_error "❌ Bearer token not found in tracking file"
-            print_error "   Cannot use fallback method without bearer token"
-            return 1
-        fi
-    fi
+    # Extract runtime ID from ARN (format: arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/RUNTIME_ID)
+    local runtime_id
+    runtime_id=$(echo "$runtime_arn" | sed 's|.*runtime/||')
     
-    # Path to fetch_agent_card.py utility
-    local fetch_agent_card_script="${PROJECT_ROOT}/agentcore/shared/fetch_agent_card.py"
-    
-    if [ ! -f "$fetch_agent_card_script" ]; then
-        print_error "❌ fetch_agent_card.py utility not found at: $fetch_agent_card_script"
-        print_error "   Expected location: agentcore/shared/fetch_agent_card.py"
-        print_error "   Both resolution methods failed"
-        return 1
-    fi
-    
-    # Setup Python environment
-    setup_python_environment
-    
-    # Generate a session ID for the request
-    local session_id
-    session_id=$($PYTHON_CMD -c "import uuid; print(str(uuid.uuid4()))")
-    
-    print_status "Calling fetch_agent_card.py with:"
-    print_status "  Runtime ARN: $runtime_arn"
-    print_status "  Session ID: $session_id"
-    print_status "  Bearer token: ${bearer_token:0:20}... (truncated)"
-    
-    # Call fetch_agent_card.py and capture output
-    local agent_card_output
-    local fetch_exit_code
-    agent_card_output=$($PYTHON_CMD "$fetch_agent_card_script" "$runtime_arn" "$bearer_token" "$session_id" 2>&1)
-    fetch_exit_code=$?
-    
-    if [ $fetch_exit_code -ne 0 ]; then
-        print_error "❌ Method 2 failed: fetch_agent_card.py exited with code: $fetch_exit_code"
-        print_error "Output:"
-        echo "$agent_card_output" >&2
-        print_error ""
-        print_error "Both resolution methods failed for agent: $agentcore_agent_name"
-        return 1
-    fi
-    
-    # Parse agent card JSON to extract runtime URL
-    local runtime_url_from_card
-    runtime_url_from_card=$(echo "$agent_card_output" | jq -r '.runtime_url // .endpoint // empty' 2>/dev/null)
-    
-    if [[ -n "$runtime_url_from_card" && "$runtime_url_from_card" != "null" ]]; then
-        print_success "✅ Method 2 succeeded: Retrieved runtime URL from agent card"
-        print_status "   Runtime URL: $runtime_url_from_card"
-        echo "$runtime_url_from_card"
+    if [[ -n "$runtime_id" ]]; then
+        local runtime_url="https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${runtime_id}/invocations"
+        print_success "✅ Method 2 succeeded: Constructed runtime URL from ARN components"
+        print_status "   Runtime URL: $runtime_url"
+        echo "$runtime_url"
         return 0
-    else
-        print_error "❌ Method 2 failed: Could not extract runtime URL from agent card"
-        print_error "Agent card output:"
-        echo "$agent_card_output" >&2
-        print_error ""
-        print_error "Both resolution methods failed for agent: $agentcore_agent_name"
-        return 1
     fi
+    
+    print_error "❌ Both resolution methods failed for agent: $agentcore_agent_name"
+    return 1
 }
 
 # Function to check and handle stacks in problematic states before deployment
@@ -1310,203 +1246,6 @@ prompt_for_demo_email() {
     print_status "Demo user email: $DEMO_USER_EMAIL"
 }
 
-# Function to create AppSync Events API using AWS CLI
-create_appsync_events_api() {
-    local api_name="${STACK_PREFIX}-realtime-api-${UNIQUE_ID}"
-    local channel_namespace="${STACK_PREFIX}-sessions-${UNIQUE_ID}"
-    local ssm_param_name="/${STACK_PREFIX}/appsync/${UNIQUE_ID}"
-    local appsync_file="${PROJECT_ROOT}/.appsync-${STACK_PREFIX}-${UNIQUE_ID}.json"
-    
-    print_status "Checking for existing AppSync Events API: $api_name"
-    
-    # Check if API already exists by name using AWS CLI
-    local existing_api_id
-    existing_api_id=$(aws_cmd appsync list-apis --region "$AWS_REGION" --query "apis[?name=='$api_name'].apiId" --output text 2>/dev/null || echo "")
-    
-    if [ -n "$existing_api_id" ] && [ "$existing_api_id" != "None" ]; then
-        print_success "✅ AppSync Events API already exists"
-        local api_id="$existing_api_id"
-        local api_arn=$(aws_cmd appsync get-api --api-id "$api_id" --region "$AWS_REGION" --query 'api.apiArn' --output text)
-        local http_endpoint="https://${api_id}.appsync-api.${AWS_REGION}.amazonaws.com/event"
-        local realtime_endpoint="wss://${api_id}.appsync-realtime-api.${AWS_REGION}.amazonaws.com/event/realtime"
-        
-        print_status "   API ID: $api_id"
-        print_status "   HTTP Endpoint: $http_endpoint"
-        print_status "   Realtime Endpoint: $realtime_endpoint"
-        
-        # Store in SSM and local file
-        local ssm_value=$(cat << EOJSON
-{
-  "apiId": "$api_id",
-  "apiArn": "$api_arn",
-  "httpEndpoint": "$http_endpoint",
-  "realtimeEndpoint": "$realtime_endpoint",
-  "channelNamespace": "$channel_namespace",
-  "region": "$AWS_REGION",
-  "createdAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOJSON
-)
-        aws_cmd ssm put-parameter --name "$ssm_param_name" --value "$ssm_value" --type "String" --overwrite --region "$AWS_REGION" > /dev/null 2>&1
-        echo "$ssm_value" > "$appsync_file"
-        return 0
-    fi
-    
-    print_status "Creating new AppSync Events API: $api_name"
-    
-    local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
-    local user_pool_id=$(get_stack_output "$infrastructure_core_stack" "UserPoolId")
-    
-    if [ -z "$user_pool_id" ] || [ "$user_pool_id" = "None" ]; then
-        print_error "Could not retrieve User Pool ID from infrastructure stack"
-        return 1
-    fi
-    
-    print_status "API Name: $api_name"
-    print_status "Channel Namespace: $channel_namespace"
-    print_status "User Pool ID: $user_pool_id"
-    
-    # Setup Python environment for API creation
-    setup_python_environment
-    
-    # Use Python with boto3 to create the Events API
-    local api_result
-    api_result=$(AWS_PROFILE="$AWS_PROFILE" AWS_REGION="$AWS_REGION" APPSYNC_API_NAME="$api_name" APPSYNC_CHANNEL_NS="$channel_namespace" APPSYNC_USER_POOL="$user_pool_id" $PYTHON_CMD << 'EOF'
-import boto3
-import json
-import sys
-import os
-
-try:
-    profile = os.environ.get('AWS_PROFILE', '')
-    region = os.environ.get('AWS_REGION', 'us-east-1')
-    api_name = os.environ.get('APPSYNC_API_NAME', '')
-    channel_namespace = os.environ.get('APPSYNC_CHANNEL_NS', '')
-    user_pool_id = os.environ.get('APPSYNC_USER_POOL', '')
-    
-    if profile:
-        session = boto3.Session(profile_name=profile)
-    else:
-        session = boto3.Session()
-    
-    appsync = session.client('appsync', region_name=region)
-    
-    print(f"Creating API with name: {api_name}", file=sys.stderr)
-    
-    # Create Events API
-    response = appsync.create_api(
-        name=api_name,
-        eventConfig={
-            'authProviders': [
-                {'authType': 'AWS_IAM'},
-                {
-                    'authType': 'AMAZON_COGNITO_USER_POOLS',
-                    'cognitoConfig': {
-                        'userPoolId': user_pool_id,
-                        'awsRegion': region
-                    }
-                }
-            ],
-            'connectionAuthModes': [
-                {'authType': 'AWS_IAM'},
-                {'authType': 'AMAZON_COGNITO_USER_POOLS'}
-            ],
-            'defaultPublishAuthModes': [{'authType': 'AWS_IAM'}],
-            'defaultSubscribeAuthModes': [
-                {'authType': 'AWS_IAM'},
-                {'authType': 'AMAZON_COGNITO_USER_POOLS'}
-            ]
-        }
-    )
-    
-    api_id = response['api']['apiId']
-    api_arn = response['api']['apiArn']
-    
-    print(f"API_ID={api_id}", file=sys.stderr)
-    print(f"API_ARN={api_arn}", file=sys.stderr)
-    
-    # Create channel namespace
-    appsync.create_channel_namespace(
-        apiId=api_id,
-        name=channel_namespace
-    )
-    
-    print(f"CHANNEL_CREATED=true", file=sys.stderr)
-    
-    # Output JSON result
-    result = {
-        'apiId': api_id,
-        'apiArn': api_arn,
-        'channelNamespace': channel_namespace,
-        'httpEndpoint': f"https://{api_id}.appsync-api.{region}.amazonaws.com/event",
-        'realtimeEndpoint': f"wss://{api_id}.appsync-realtime-api.{region}.amazonaws.com/event/realtime"
-    }
-    
-    print(json.dumps(result))
-    sys.exit(0)
-    
-except Exception as e:
-    import traceback
-    print(f"ERROR: {str(e)}", file=sys.stderr)
-    print(f"TRACEBACK: {traceback.format_exc()}", file=sys.stderr)
-    sys.exit(1)
-EOF
-)
-    
-    local exit_code=$?
-    
-    if [ $exit_code -ne 0 ]; then
-        print_error "Failed to create AppSync Events API"
-        print_error "Error: $api_result"
-        return 1
-    fi
-    
-    # Parse the JSON result
-    local api_id=$(echo "$api_result" | jq -r '.apiId')
-    local api_arn=$(echo "$api_result" | jq -r '.apiArn')
-    local http_endpoint=$(echo "$api_result" | jq -r '.httpEndpoint')
-    local realtime_endpoint=$(echo "$api_result" | jq -r '.realtimeEndpoint')
-    
-    print_success "✅ AppSync Events API created successfully"
-    print_status "   API ID: $api_id"
-    print_status "   HTTP Endpoint: $http_endpoint"
-    print_status "   Realtime Endpoint: $realtime_endpoint"
-    print_status "   Channel Namespace: $channel_namespace"
-    
-    # Store API details in SSM Parameter Store for retrieval by other components
-    print_status "Storing AppSync API details in SSM Parameter Store..."
-    
-    local ssm_value=$(cat << EOJSON
-{
-  "apiId": "$api_id",
-  "apiArn": "$api_arn",
-  "httpEndpoint": "$http_endpoint",
-  "realtimeEndpoint": "$realtime_endpoint",
-  "channelNamespace": "$channel_namespace",
-  "region": "$AWS_REGION",
-  "createdAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOJSON
-)
-    
-    if aws_cmd ssm put-parameter \
-        --name "$ssm_param_name" \
-        --value "$ssm_value" \
-        --type "String" \
-        --overwrite \
-        --region "$AWS_REGION" > /dev/null 2>&1; then
-        print_success "✅ AppSync API details stored in SSM: $ssm_param_name"
-    else
-        print_warning "⚠️  Failed to store AppSync API details in SSM"
-        print_warning "API is created but details may not be accessible to other components"
-    fi
-    
-    # Save to local file for immediate use
-    echo "$ssm_value" > "$appsync_file"
-    print_status "💾 AppSync API details saved locally: $appsync_file"
-    
-    return 0
-}
 
 # Function to deploy infrastructure
 deploy_infrastructure() {
@@ -1616,10 +1355,6 @@ deploy_infrastructure() {
     fi
     
     print_success "✅ Services infrastructure deployed successfully"
-    
-    # Create AppSync Events API using AWS CLI
-    print_status "Creating AppSync Events API..."
-    create_appsync_events_api
     
     # Get and display demo user credentials
     print_status "Retrieving demo user credentials..."
@@ -1804,6 +1539,56 @@ upload_agent_configurations() {
     else
         print_warning "⚠️  Some agent configuration folders failed to upload"
         print_warning "AgentCore agents may fall back to local filesystem configs"
+    fi
+    
+    return 0
+}
+
+# Function to upload agent configurations to DynamoDB for faster agent creation
+# This is called after S3 upload and provides faster access for frequently used configs
+upload_agent_configurations_to_dynamodb() {
+    print_step "Step 8: Uploading agent configurations to DynamoDB (for faster access)..."
+    
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+    
+    if [ -z "$config_table" ] || [ "$config_table" = "None" ]; then
+        print_warning "⚠️  DynamoDB AgentConfigTable not found - skipping DynamoDB upload"
+        print_warning "   AgentCore agents will load configs from S3 instead"
+        return 0
+    fi
+    
+    print_status "Target DynamoDB table: $config_table"
+    print_status "Uploading agent configurations to DynamoDB for faster agent creation..."
+    
+    # Setup Python environment
+    setup_python_environment
+    
+    # Build the upload command using the new script
+    local upload_script="${SCRIPT_DIR}/upload_agent_configs_to_dynamodb.py"
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    
+    if [ ! -f "$upload_script" ]; then
+        print_warning "⚠️  DynamoDB upload script not found: $upload_script"
+        print_warning "   AgentCore agents will load configs from S3 instead"
+        return 0
+    fi
+    
+    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION --agent-config-dir $agent_config_dir --mode overwrite"
+    
+    # Add AWS profile if specified
+    if [ -n "$AWS_PROFILE" ]; then
+        upload_cmd="$upload_cmd --profile $AWS_PROFILE"
+    fi
+    
+    print_status "Running: $upload_cmd"
+    
+    if eval "$upload_cmd"; then
+        print_success "✅ Agent configurations uploaded to DynamoDB successfully"
+        print_status "AgentCore agents will load configs from DynamoDB (fastest) with S3 fallback"
+    else
+        print_warning "⚠️  Failed to upload configurations to DynamoDB"
+        print_warning "   AgentCore agents will load configs from S3 instead"
     fi
     
     return 0
@@ -2564,6 +2349,479 @@ except:
     return 1
 }
 
+deploy_agent_via_toolkit() {
+    # Deploy an AgentCore agent using the AgentCore Starter Toolkit CLI (no Docker required)
+    # Uses CodeBuild-based deployment: agentcore configure + agentcore launch
+    local agent_name="$1"
+    local agentcore_agent_name="$2"
+    local agent_dir="$3"
+    
+    print_status "🔧 Deploying via AgentCore Starter Toolkit (no Docker required)"
+    print_status "   Agent: $agent_name → $agentcore_agent_name"
+    
+    # Check if agentcore CLI is installed
+    if ! command -v agentcore &> /dev/null; then
+        print_status "Installing AgentCore Starter Toolkit CLI..."
+        pip install bedrock-agentcore-starter-toolkit --quiet 2>/dev/null || {
+            print_error "Failed to install bedrock-agentcore-starter-toolkit"
+            print_error "Install manually: pip install bedrock-agentcore-starter-toolkit"
+            return 1
+        }
+        
+        # Verify installation
+        if ! command -v agentcore &> /dev/null; then
+            print_error "agentcore CLI not found after installation"
+            print_error "Ensure pip bin directory is in your PATH"
+            return 1
+        fi
+    fi
+    
+    print_status "✅ AgentCore CLI available: $(agentcore --version 2>/dev/null || echo 'installed')"
+    
+    # Determine AgentCore region
+    local toolkit_region="$AWS_REGION"
+    if [[ "$AWS_REGION" == eu-* ]]; then
+        toolkit_region="eu-central-1"
+        print_status "EU region detected, using AgentCore region: $toolkit_region"
+    fi
+    
+    # Convert agent name to valid AgentCore runtime name
+    # AgentCore --name requires: start with letter, letters/numbers/underscores only, 1-48 chars
+    # The toolkit internally derives ECR-compatible names from this
+    local runtime_name=$(echo "${agentcore_agent_name}" | tr '[:upper:]' '[:lower:]' | sed 's/-/_/g')
+    
+    # Gather environment variables (same logic as build_and_deploy.sh)
+    local memory_id="${STACK_PREFIX}memory${UNIQUE_ID}"
+    
+    # Gather knowledge base IDs
+    print_status "Gathering knowledge base IDs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
+    local knowledgebases=""
+    local kb_list=""
+    if [ -n "$AWS_PROFILE" ]; then
+        kb_list=$(aws bedrock-agent list-knowledge-bases --profile "$AWS_PROFILE" --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
+    else
+        kb_list=$(aws bedrock-agent list-knowledge-bases --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
+    fi
+    
+    if [ "$kb_list" != "[]" ] && [ -n "$kb_list" ]; then
+        knowledgebases=$(echo "$kb_list" | $PYTHON_CMD -c "
+import json, sys
+try:
+    kbs = json.load(sys.stdin)
+    prefix = '${STACK_PREFIX}-'
+    suffix = '-${UNIQUE_ID}'
+    pairs = []
+    for kb in kbs:
+        name, kid = kb.get('name',''), kb.get('id','')
+        if name and kid and name.startswith(prefix) and name.endswith(suffix):
+            pairs.append(f'{name[len(prefix):-len(suffix)]}:{kid}')
+    print(','.join(pairs))
+except: print('')
+")
+    fi
+    
+    if [ -n "$knowledgebases" ]; then
+        print_status "Found knowledge bases: $knowledgebases"
+    fi
+    
+    # Gather runtime ARNs from SSM
+    print_status "Gathering runtime ARNs from SSM..."
+    local runtimes=""
+    local ssm_param="/${STACK_PREFIX}/agentcore_values/${UNIQUE_ID}"
+    local ssm_value=""
+    if [ -n "$AWS_PROFILE" ]; then
+        ssm_value=$(aws ssm get-parameter --name "$ssm_param" --with-decryption --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    else
+        ssm_value=$(aws ssm get-parameter --name "$ssm_param" --with-decryption --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    fi
+    
+    if [ -n "$ssm_value" ] && [ "$ssm_value" != "None" ]; then
+        runtimes=$(echo "$ssm_value" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    arns = [a.get('runtime_arn','') for a in data.get('agents',[]) if a.get('runtime_arn')]
+    print(','.join(arns))
+except: print('')
+" 2>/dev/null)
+    fi
+    
+    # Get AdCP Gateway URL
+    local adcp_gateway_url="${ADCP_GATEWAY_URL:-}"
+    if [ -z "$adcp_gateway_url" ]; then
+        local gw_param="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
+        if [ -n "$AWS_PROFILE" ]; then
+            adcp_gateway_url=$(aws ssm get-parameter --name "$gw_param" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+        else
+            adcp_gateway_url=$(aws ssm get-parameter --name "$gw_param" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+        fi
+    fi
+    
+    if [ -n "$adcp_gateway_url" ] && [ "$adcp_gateway_url" != "None" ]; then
+        print_status "✅ AdCP Gateway URL: $adcp_gateway_url"
+    else
+        print_warning "AdCP Gateway URL not found - agents will use fallback local tools"
+        adcp_gateway_url=""
+    fi
+    
+    # Get or create execution role
+    print_status "Checking for existing execution role..."
+    local role_arn=""
+    
+    # Try to find existing role from a previously deployed runtime in SSM
+    if [ -n "$ssm_value" ] && [ "$ssm_value" != "None" ]; then
+        local existing_runtime_arn=$(echo "$ssm_value" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for a in data.get('agents',[]):
+        arn = a.get('runtime_arn','')
+        if arn:
+            print(arn)
+            break
+except: pass
+" 2>/dev/null)
+        
+        if [ -n "$existing_runtime_arn" ]; then
+            local existing_runtime_id=$(echo "$existing_runtime_arn" | awk -F'/' '{print $NF}')
+            if [ -n "$existing_runtime_id" ]; then
+                if [ -n "$AWS_PROFILE" ]; then
+                    role_arn=$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$existing_runtime_id" --profile "$AWS_PROFILE" --region "$toolkit_region" --query "roleArn" --output text 2>/dev/null || echo "")
+                else
+                    role_arn=$(aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id "$existing_runtime_id" --region "$toolkit_region" --query "roleArn" --output text 2>/dev/null || echo "")
+                fi
+                role_arn=$(echo "$role_arn" | tr -d '\n\r\t ')
+                # ENFORCE: Only accept roles that follow the AgentCoreRole- naming pattern
+                if [[ "$role_arn" == arn:aws:iam::* ]] && [[ "$role_arn" == *"/AgentCoreRole-"* ]]; then
+                    print_status "Using existing execution role from runtime: $role_arn"
+                else
+                    if [ -n "$role_arn" ] && [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+                        print_warning "Runtime has non-standard role: $role_arn — will overwrite with AgentCoreRole pattern"
+                    fi
+                    role_arn=""
+                fi
+            fi
+        fi
+    fi
+    
+    # If no role found from existing runtime, look up the role created by manual deployment
+    # Manual deployment creates roles named: AgentCoreRole-{stack_prefix}-{agent_name}-{unique_id}
+    if [ -z "$role_arn" ]; then
+        print_status "No role from existing runtime, looking for manually-created execution role..."
+        local manual_role_name="AgentCoreRole-${agentcore_agent_name}"
+        local manual_role_arn=""
+        if [ -n "$AWS_PROFILE" ]; then
+            manual_role_arn=$(aws iam get-role --role-name "$manual_role_name" --profile "$AWS_PROFILE" --query "Role.Arn" --output text 2>/dev/null || echo "")
+        else
+            manual_role_arn=$(aws iam get-role --role-name "$manual_role_name" --query "Role.Arn" --output text 2>/dev/null || echo "")
+        fi
+        manual_role_arn=$(echo "$manual_role_arn" | tr -d '\n\r\t ')
+        if [ -n "$manual_role_arn" ] && [[ "$manual_role_arn" == arn:aws:iam::* ]]; then
+            role_arn="$manual_role_arn"
+            print_status "Found existing execution role: $role_arn"
+        else
+            # Try any AgentCoreRole for this stack (any agent's role has the same permissions)
+            print_status "Looking for any AgentCoreRole for stack ${STACK_PREFIX}-*-${UNIQUE_ID}..."
+            local any_role_arn=""
+            if [ -n "$AWS_PROFILE" ]; then
+                any_role_arn=$(aws iam list-roles --profile "$AWS_PROFILE" --query "Roles[?starts_with(RoleName, 'AgentCoreRole-${STACK_PREFIX}-') && ends_with(RoleName, '-${UNIQUE_ID}')].Arn | [0]" --output text 2>/dev/null || echo "")
+            else
+                any_role_arn=$(aws iam list-roles --query "Roles[?starts_with(RoleName, 'AgentCoreRole-${STACK_PREFIX}-') && ends_with(RoleName, '-${UNIQUE_ID}')].Arn | [0]" --output text 2>/dev/null || echo "")
+            fi
+            any_role_arn=$(echo "$any_role_arn" | tr -d '\n\r\t ')
+            if [ -n "$any_role_arn" ] && [[ "$any_role_arn" == arn:aws:iam::* ]]; then
+                role_arn="$any_role_arn"
+                print_status "Found stack execution role: $role_arn"
+            else
+                # Create the role using deploy_agentcore_manual.py's create_agent_runtime_role
+                print_status "No existing execution role found. Creating one with DynamoDB/SSM/Bedrock permissions..."
+                local role_creation_output=""
+                role_creation_output=$($PYTHON_CMD -c "
+import sys, os, logging
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+sys.path.insert(0, '${PROJECT_ROOT}/agentcore/deployment')
+os.environ['AWS_REGION'] = '${AWS_REGION}'
+from deploy_agentcore_manual import ManualAgentCoreDeployer
+deployer = ManualAgentCoreDeployer(
+    region='${AWS_REGION}',
+    agentcore_region='${toolkit_region}',
+    profile='${AWS_PROFILE}' if '${AWS_PROFILE}' else None
+)
+role_name = 'AgentCoreRole-${agentcore_agent_name}'
+arn = deployer.create_agent_runtime_role('${STACK_PREFIX}', role_name)
+print(arn)
+" 2>&1)
+                local role_creation_exit=$?
+                # Extract the ARN (last line of output, everything else is logging)
+                role_arn=$(echo "$role_creation_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
+                if [ -z "$role_arn" ] || [ "$role_arn" = "None" ]; then
+                    # Show the full output for debugging
+                    print_error "Failed to create execution role (exit code: $role_creation_exit):"
+                    echo "$role_creation_output" | head -20
+                    print_error "The agent REQUIRES an execution role with DynamoDB/SSM/Bedrock permissions."
+                    print_error "Either create the role manually or deploy at least one agent via manual mode first."
+                    return 1
+                else
+                    print_status "✅ Created execution role: $role_arn"
+                fi
+            fi
+        fi
+    fi
+    
+    # NOTE: The AgentCore Starter Toolkit's `agentcore configure` always overwrites the Dockerfile.
+    # All custom environment variables are passed via `agentcore launch --env` flags instead.
+    
+    # Run agentcore configure from the agent directory
+    print_status "Configuring agent via AgentCore CLI..."
+    
+    # Execution role is REQUIRED and MUST follow the AgentCoreRole- naming pattern
+    # If the role doesn't match, create/ensure the correct one regardless
+    local expected_role_name="AgentCoreRole-${agentcore_agent_name}"
+    if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+        if [ -n "$role_arn" ]; then
+            print_warning "Rejecting non-standard role: $role_arn"
+        fi
+        print_status "Creating/ensuring correct execution role: $expected_role_name"
+        role_arn=""
+        
+        # Force-create the role using deploy_agentcore_manual.py
+        local force_role_output=""
+        force_role_output=$($PYTHON_CMD -c "
+import sys, os, logging
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+sys.path.insert(0, '${PROJECT_ROOT}/agentcore/deployment')
+os.environ['AWS_REGION'] = '${AWS_REGION}'
+from deploy_agentcore_manual import ManualAgentCoreDeployer
+deployer = ManualAgentCoreDeployer(
+    region='${AWS_REGION}',
+    agentcore_region='${toolkit_region}',
+    profile='${AWS_PROFILE}' if '${AWS_PROFILE}' else None
+)
+role_name = '${expected_role_name}'
+arn = deployer.create_agent_runtime_role('${STACK_PREFIX}', role_name)
+print(arn)
+" 2>&1)
+        role_arn=$(echo "$force_role_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
+        
+        if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+            print_error "Failed to create execution role. Output:"
+            echo "$force_role_output" | tail -20
+            print_error "Cannot deploy without a valid AgentCoreRole- execution role."
+            return 1
+        fi
+        print_status "✅ Using execution role: $role_arn"
+    fi
+    
+    local configure_cmd="agentcore configure"
+    configure_cmd="$configure_cmd --entrypoint handler.py"
+    configure_cmd="$configure_cmd --name $runtime_name"
+    configure_cmd="$configure_cmd --non-interactive"
+    configure_cmd="$configure_cmd --region $toolkit_region"
+    configure_cmd="$configure_cmd --execution-role $role_arn"
+    
+    if [ -f "${agent_dir}/requirements.txt" ]; then
+        configure_cmd="$configure_cmd --requirements-file ${agent_dir}/requirements.txt"
+    fi
+    
+    print_status "Running: $configure_cmd"
+    (cd "$agent_dir" && eval $configure_cmd)
+    
+    if [ $? -ne 0 ]; then
+        print_error "AgentCore configure failed"
+        return 1
+    fi
+    
+    print_status "✅ Agent configured successfully"
+    
+    # Run agentcore launch with environment variables
+    print_status "Deploying agent via AgentCore CLI (CodeBuild)..."
+    local deploy_cmd="agentcore launch"
+    deploy_cmd="$deploy_cmd --agent $runtime_name"
+    deploy_cmd="$deploy_cmd --auto-update-on-conflict"
+    
+    # Pass environment variables
+    deploy_cmd="$deploy_cmd --env STACK_PREFIX=$STACK_PREFIX"
+    deploy_cmd="$deploy_cmd --env UNIQUE_ID=$UNIQUE_ID"
+    deploy_cmd="$deploy_cmd --env AWS_REGION=$AWS_REGION"
+    deploy_cmd="$deploy_cmd --env AWS_DEFAULT_REGION=$AWS_REGION"
+    deploy_cmd="$deploy_cmd --env AGENT_CONFIG_TABLE=${STACK_PREFIX}-AgentConfig-${UNIQUE_ID}"
+    deploy_cmd="$deploy_cmd --env MEMORY_ID=$memory_id"
+    deploy_cmd="$deploy_cmd --env ACTOR_ID=AdFabricAgent"
+    deploy_cmd="$deploy_cmd --env DOCKER_CONTAINER=1"
+    deploy_cmd="$deploy_cmd --env PYTHONDONTWRITEBYTECODE=1"
+    deploy_cmd="$deploy_cmd --env PYTHONPATH=/app/agentcore/shared"
+    
+    if [ -n "$knowledgebases" ]; then
+        deploy_cmd="$deploy_cmd --env KNOWLEDGEBASES=$knowledgebases"
+    fi
+    
+    if [ -n "$runtimes" ]; then
+        deploy_cmd="$deploy_cmd --env RUNTIMES=$runtimes"
+    fi
+    
+    if [ -n "$adcp_gateway_url" ] && [ "$adcp_gateway_url" != "None" ]; then
+        deploy_cmd="$deploy_cmd --env ADCP_GATEWAY_URL=$adcp_gateway_url"
+        deploy_cmd="$deploy_cmd --env ADCP_USE_MCP=true"
+    fi
+    
+    # Visualizations table and AppSync config (from CloudFormation infrastructure-services stack)
+    local infra_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local viz_table_name=""
+    local appsync_endpoint=""
+    local appsync_realtime_domain=""
+    local appsync_channel_namespace=""
+    if [ -n "$AWS_PROFILE" ]; then
+        viz_table_name=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "Stacks[0].Outputs[?OutputKey=='VisualizationsTableName'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_endpoint=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "Stacks[0].Outputs[?OutputKey=='AppSyncEndpoint'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_realtime_domain=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "Stacks[0].Outputs[?OutputKey=='AppSyncRealtimeDomain'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_channel_namespace=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "Stacks[0].Outputs[?OutputKey=='AppSyncChannelNamespace'].OutputValue" --output text 2>/dev/null || echo "")
+    else
+        viz_table_name=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='VisualizationsTableName'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_endpoint=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='AppSyncEndpoint'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_realtime_domain=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='AppSyncRealtimeDomain'].OutputValue" --output text 2>/dev/null || echo "")
+        appsync_channel_namespace=$(aws cloudformation describe-stacks --stack-name "$infra_services_stack" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='AppSyncChannelNamespace'].OutputValue" --output text 2>/dev/null || echo "")
+    fi
+    viz_table_name=$(echo "$viz_table_name" | tr -d '\n\r\t ')
+    appsync_endpoint=$(echo "$appsync_endpoint" | tr -d '\n\r\t ')
+    appsync_realtime_domain=$(echo "$appsync_realtime_domain" | tr -d '\n\r\t ')
+    appsync_channel_namespace=$(echo "$appsync_channel_namespace" | tr -d '\n\r\t ')
+    
+    if [ -n "$viz_table_name" ] && [ "$viz_table_name" != "None" ]; then
+        deploy_cmd="$deploy_cmd --env VISUALIZATIONS_TABLE_NAME=$viz_table_name"
+        print_status "Found visualizations table: $viz_table_name"
+    fi
+    if [ -n "$appsync_endpoint" ] && [ "$appsync_endpoint" != "None" ]; then
+        deploy_cmd="$deploy_cmd --env APPSYNC_ENDPOINT=$appsync_endpoint"
+        print_status "Found AppSync endpoint: $appsync_endpoint"
+    fi
+    if [ -n "$appsync_realtime_domain" ] && [ "$appsync_realtime_domain" != "None" ]; then
+        deploy_cmd="$deploy_cmd --env APPSYNC_REALTIME_DOMAIN=$appsync_realtime_domain"
+    fi
+    if [ -n "$appsync_channel_namespace" ] && [ "$appsync_channel_namespace" != "None" ]; then
+        deploy_cmd="$deploy_cmd --env APPSYNC_CHANNEL_NAMESPACE=$appsync_channel_namespace"
+    fi
+    
+    print_status "Running: agentcore launch --agent $runtime_name --auto-update-on-conflict [+env vars]"
+    (cd "$agent_dir" && eval $deploy_cmd)
+    
+    if [ $? -ne 0 ]; then
+        print_error "AgentCore launch failed"
+        return 1
+    fi
+    
+    print_status "✅ Agent deployed via toolkit successfully"
+    
+    # Retrieve the runtime ARN from agentcore status and update tracking file
+    print_status "Retrieving runtime information..."
+    local status_output=""
+    status_output=$(cd "$agent_dir" && agentcore status --agent "$runtime_name" --verbose 2>/dev/null || echo "")
+    
+    # Get runtime ARN from AWS API
+    local deployed_runtime_id=""
+    if [ -n "$AWS_PROFILE" ]; then
+        deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --profile "$AWS_PROFILE" --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for r in data.get('agentRuntimes',[]):
+        if r.get('agentRuntimeName') == '${runtime_name}':
+            print(r.get('agentRuntimeId',''))
+            break
+except: pass
+" 2>/dev/null)
+    else
+        deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for r in data.get('agentRuntimes',[]):
+        if r.get('agentRuntimeName') == '${runtime_name}':
+            print(r.get('agentRuntimeId',''))
+            break
+except: pass
+" 2>/dev/null)
+    fi
+    
+    deployed_runtime_id=$(echo "$deployed_runtime_id" | tr -d '\n\r\t ')
+    
+    if [ -n "$deployed_runtime_id" ] && [ "$deployed_runtime_id" != "None" ]; then
+        print_status "✅ Runtime ID: $deployed_runtime_id"
+        
+        # Get account ID for ARN construction
+        local account_id=""
+        if [ -n "$AWS_PROFILE" ]; then
+            account_id=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
+        else
+            account_id=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null || echo "")
+        fi
+        
+        local runtime_arn="arn:aws:bedrock-agentcore:${toolkit_region}:${account_id}:runtime/${deployed_runtime_id}"
+        
+        # Update tracking file
+        local tracking_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
+        $PYTHON_CMD << TOOLKIT_TRACKING_EOF
+import json, os
+from datetime import datetime
+
+tracking_file = "${tracking_file}"
+agent_name = "${agentcore_agent_name}"
+runtime_id = "${deployed_runtime_id}"
+runtime_arn = "${runtime_arn}"
+stack_prefix = "${STACK_PREFIX}"
+unique_id = "${UNIQUE_ID}"
+
+if os.path.exists(tracking_file):
+    with open(tracking_file, 'r') as f:
+        config = json.load(f)
+else:
+    config = {
+        "deployed_agents": [],
+        "deployment_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "stack_prefix": stack_prefix,
+        "unique_id": unique_id,
+    }
+
+if "deployed_agents" not in config:
+    config["deployed_agents"] = []
+
+agent_info = {
+    "name": agent_name,
+    "runtime_id": runtime_id,
+    "runtime_arn": runtime_arn,
+    "container_uri": "toolkit-codebuild-deploy",
+    "deployment_time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "memory_config": {"memory_id": f"{stack_prefix}memory{unique_id}"},
+    "external_tools": [],
+    "runtime_name": agent_name.lower().replace("-", "_"),
+    "deploy_method": "toolkit"
+}
+
+existing_idx = None
+for i, a in enumerate(config["deployed_agents"]):
+    if isinstance(a, dict) and a.get("name") == agent_name:
+        existing_idx = i
+        break
+
+if existing_idx is not None:
+    config["deployed_agents"][existing_idx] = agent_info
+else:
+    config["deployed_agents"].append(agent_info)
+
+with open(tracking_file, 'w') as f:
+    json.dump(config, f, indent=2)
+
+print(f"Tracking file updated: {tracking_file}")
+TOOLKIT_TRACKING_EOF
+        
+        print_status "✅ Tracking file updated with runtime information"
+    else
+        print_warning "Could not retrieve runtime ID - tracking file may be incomplete"
+        print_warning "You can check status with: agentcore status --agent $runtime_name"
+    fi
+    
+    return 0
+}
+
 detect_and_deploy_agentcore_agents() {
     print_step "Step 8: Deploying AgentCore agents (after MCP Gateway)..."
     
@@ -2577,10 +2835,28 @@ detect_and_deploy_agentcore_agents() {
         return 0
     fi
     
-    # Check if Docker is available
-    if ! command -v docker &> /dev/null; then
-        print_warning "Docker not found, skipping AgentCore deployment"
-        return 0
+    # Determine deployment method: Docker or Toolkit
+    # Default is toolkit (no Docker required). Set DEPLOY_METHOD=docker to force Docker deployment.
+    local use_toolkit=true
+    
+    if [ "${DEPLOY_METHOD:-}" = "docker" ]; then
+        print_status "🐳 DEPLOY_METHOD=docker — using Docker-based deployment (build_and_deploy.sh)"
+        use_toolkit=false
+        
+        # Verify Docker is available when explicitly requested
+        if ! command -v docker &> /dev/null; then
+            print_error "DEPLOY_METHOD=docker but Docker is not installed"
+            print_error "Install Docker or remove DEPLOY_METHOD to use the default toolkit deployment"
+            return 1
+        fi
+        if ! docker info &> /dev/null 2>&1; then
+            print_error "DEPLOY_METHOD=docker but Docker daemon is not running or inaccessible"
+            print_error "Start Docker or remove DEPLOY_METHOD to use the default toolkit deployment"
+            return 1
+        fi
+    else
+        print_status "🔧 Using AgentCore Starter Toolkit deployment (default, no Docker required)"
+        print_status "   Set DEPLOY_METHOD=docker to use Docker-based deployment instead"
     fi
     
     # Find AgentCore agents
@@ -2598,6 +2874,9 @@ detect_and_deploy_agentcore_agents() {
     fi
     
     print_status "Found ${#agentcore_agents[@]} AgentCore agents: ${agentcore_agents[*]}"
+    
+    # Create shared memory BEFORE deploying agents so it exists when agents start
+    create_agentcore_memory
     
     # Deploy each AgentCore agent
     local deployed_agents=()
@@ -2636,45 +2915,45 @@ detect_and_deploy_agentcore_agents() {
         #     print_status "📦 Standard AgentCore agent: $agent_name"
         # fi
         
-        # Use the build and deploy script for runtime deployment
-        local deploy_script="${PROJECT_ROOT}/agentcore/deployment/build_and_deploy.sh"
-        if [ -f "$deploy_script" ]; then
-            export AWS_REGION="$AWS_REGION"
-            export AWS_PROFILE="$AWS_PROFILE"
-            export STACK_PREFIX="$STACK_PREFIX"
-            export UNIQUE_ID="$UNIQUE_ID"
-            export AGENTCORE_AGENT_NAME="$agentcore_agent_name"
-            
-            # A2A environment variables are already exported by deploy_a2a_agent if needed
-            
-            print_status "Deploying runtime for: $agent_name"
-            if "$deploy_script" "$agent_name"; then
+        # Deploy using Docker (build_and_deploy.sh) or Toolkit (agentcore CLI)
+        if [ "$use_toolkit" = true ]; then
+            # Toolkit deployment path (no Docker required)
+            print_status "🔧 Deploying via AgentCore Starter Toolkit: $agent_name"
+            if deploy_agent_via_toolkit "$agent_name" "$agentcore_agent_name" "$agent_dir"; then
                 deployed_agents+=("$agentcore_agent_name")
-                
-                # if [ "$is_a2a" = true ]; then
-                #     a2a_agents_deployed+=("$agent_name")
-                #     print_success "✅ A2A agent '$agent_name' deployed successfully as '$agentcore_agent_name'"
-                    
-                #     # Store A2A configuration in tracking file
-                #     if store_a2a_configuration "$agentcore_agent_name" "$agent_name"; then
-                #         print_status "✅ A2A configuration persisted for: $agentcore_agent_name"
-                #     else
-                #         print_warning "⚠️  Failed to persist A2A configuration for: $agentcore_agent_name"
-                #         print_warning "   Agent is deployed but A2A metadata may be incomplete"
-                #     fi
-                # else
                 standard_agents_deployed+=("$agent_name")
-                print_success "✅ Standard agent '$agent_name' deployed successfully as '$agentcore_agent_name'"
-                # fi
+                print_success "✅ Agent '$agent_name' deployed via toolkit as '$agentcore_agent_name'"
             else
-                print_warning "⚠️ Failed to deploy AgentCore agent: $agent_name"
-                print_warning "   Runtime deployment failed - check build_and_deploy.sh logs"
+                print_warning "⚠️ Failed to deploy AgentCore agent via toolkit: $agent_name"
+                print_warning "   Check agentcore CLI logs above for details"
             fi
-            
-            # Unset A2A environment variables after each deployment
-            unset A2A_BEARER_TOKEN A2A_POOL_ID A2A_CLIENT_ID A2A_DISCOVERY_URL A2A_PROTOCOL
         else
-            print_warning "⚠️ AgentCore deployment script not found: $deploy_script"
+            # Docker deployment path (original build_and_deploy.sh)
+            local deploy_script="${PROJECT_ROOT}/agentcore/deployment/build_and_deploy.sh"
+            if [ -f "$deploy_script" ]; then
+                export AWS_REGION="$AWS_REGION"
+                export AWS_PROFILE="$AWS_PROFILE"
+                export STACK_PREFIX="$STACK_PREFIX"
+                export UNIQUE_ID="$UNIQUE_ID"
+                export AGENTCORE_AGENT_NAME="$agentcore_agent_name"
+                
+                # A2A environment variables are already exported by deploy_a2a_agent if needed
+                
+                print_status "Deploying runtime for: $agent_name"
+                if "$deploy_script" "$agent_name"; then
+                    deployed_agents+=("$agentcore_agent_name")
+                    standard_agents_deployed+=("$agent_name")
+                    print_success "✅ Standard agent '$agent_name' deployed successfully as '$agentcore_agent_name'"
+                else
+                    print_warning "⚠️ Failed to deploy AgentCore agent: $agent_name"
+                    print_warning "   Runtime deployment failed - check build_and_deploy.sh logs"
+                fi
+                
+                # Unset A2A environment variables after each deployment
+                unset A2A_POOL_ID A2A_CLIENT_ID A2A_DISCOVERY_URL A2A_PROTOCOL
+            else
+                print_warning "⚠️ AgentCore deployment script not found: $deploy_script"
+            fi
         fi
     done
     
@@ -2782,8 +3061,7 @@ EOF
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
     
-    # Now create the shared memory for all AgentCore agents
-    create_agentcore_memory
+    # Memory was already created before agent deployment (above)
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
@@ -3108,6 +3386,9 @@ generate_ui_config() {
     # Return to original directory
     cd - > /dev/null
     
+    # Copy tab configurations to S3 creatives bucket
+    copy_tab_configurations_to_s3
+    
     # Invalidate CloudFront cache if distribution ID is available
     if [ -n "$cloudfront_id" ] && [ "$cloudfront_id" != "None" ]; then
         print_status "Invalidating CloudFront cache..."
@@ -3122,8 +3403,6 @@ generate_ui_config() {
     print_status "🌐 UI URL: $ui_url"
     print_status "📝 Note: It may take a few minutes for the CloudFront invalidation to complete"
     
-    # Copy tab configurations to S3 creatives bucket
-    copy_tab_configurations_to_s3
     
     return 0
 }
@@ -4168,7 +4447,7 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-13)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-11)"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4180,6 +4459,7 @@ show_usage() {
     echo "  $0 --unique-id abc123                # Use specific unique ID"
     echo "  $0 --region us-east-1                # Deploy in specific region"
     echo "  $0 --resume-at 5                     # Resume from step 5"
+    echo "  $0 --resume-at 8                     # Resume from step 8 (DynamoDB upload)"
     echo "  $0 --resume-at 6 --skip-confirmations # Resume from step 6 without update confirmations"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
@@ -4259,10 +4539,12 @@ confirm_deployment_steps() {
         "Phase 3: Deploy Lambda functions and migrate visualization data"
         "Phase 4: Deploy knowledge bases with organized data sources"
         "Phase 5: Sync data sources (start ingestion jobs)"
-        "Phase 6: Deploy AdCP MCP Gateway for agent collaboration (must be before agents)"
-        "Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)"
-        "Phase 8: Upload agent configuration folders to S3"
-        "Phase 9: Generate UI configuration"
+        "Phase 6: Deploy AdCP MCP Gateway for agent collaboration"
+        "Phase 7: Upload agent configurations to S3"
+        "Phase 8: Upload agent configurations to DynamoDB"
+        "Phase 9: Deploy AgentCore agents"
+        "Phase 10: Generate UI configuration"
+        "Phase 11: Warmup agent runtimes"
     )
     
     print_status "The following steps will be executed:"
@@ -4302,6 +4584,235 @@ confirm_deployment_steps() {
     echo ""
     print_success "🚀 Starting deployment..."
     echo ""
+}
+
+# Function to warm up agent runtimes by sending test prompts
+# This helps initialize the agent containers and reduces cold start latency
+warmup_agent_runtimes() {
+    print_step "Step 10: Warming up agent runtimes..."
+    
+    local global_config_file="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
+    local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    
+    # Check if global configuration exists
+    if [ ! -f "$global_config_file" ]; then
+        print_warning "⚠️  Global configuration file not found: $global_config_file"
+        print_warning "   Skipping agent warmup"
+        return 0
+    fi
+    
+    # Check if AgentCore agents were deployed
+    if [ ! -f "$agentcore_info_file" ]; then
+        print_warning "⚠️  AgentCore deployment info not found: $agentcore_info_file"
+        print_warning "   Skipping agent warmup"
+        return 0
+    fi
+    
+    # Setup Python environment
+    setup_python_environment
+    
+    # Install bedrock-agentcore if not already installed
+    if ! $PYTHON_CMD -c "import bedrock_agentcore" 2>/dev/null; then
+        print_status "Installing bedrock-agentcore package for warmup..."
+        $PYTHON_CMD -m pip install bedrock-agentcore --quiet
+    fi
+    
+    print_status "Reading agent configurations and sending warmup prompts..."
+    print_status "This helps reduce cold start latency for first real requests."
+    
+    # Use Python to extract agents and send warmup prompts
+    local warmup_result
+    warmup_result=$($PYTHON_CMD << 'WARMUP_SCRIPT'
+import json
+import sys
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Get environment variables
+stack_prefix = os.environ.get('STACK_PREFIX', '')
+unique_id = os.environ.get('UNIQUE_ID', '')
+aws_region = os.environ.get('AWS_REGION', 'us-east-1')
+aws_profile = os.environ.get('AWS_PROFILE', '')
+project_root = os.environ.get('PROJECT_ROOT', '.')
+
+global_config_file = f"{project_root}/agentcore/deployment/agent/global_configuration.json"
+agentcore_info_file = f"{project_root}/.agentcore-agents-{stack_prefix}-{unique_id}.json"
+
+def send_warmup_prompt(agent_name, runtime_arn, session_id):
+    """Send a simple warmup prompt to an agent"""
+    try:
+        import boto3
+        from botocore.config import Config
+        
+        # Create boto3 session
+        if aws_profile:
+            session = boto3.Session(profile_name=aws_profile)
+        else:
+            session = boto3.Session()
+        
+        # Create AgentCore runtime client
+        config = Config(
+            connect_timeout=30,
+            read_timeout=120,
+            retries={'max_attempts': 2}
+        )
+        
+        client = session.client(
+            'bedrock-agent-runtime',
+            region_name=aws_region,
+            config=config
+        )
+        
+        # Simple warmup prompt
+        warmup_prompt = f"Hello, please respond with a brief acknowledgment that you are ready."
+        
+        print(f"  🔄 Warming up {agent_name}...", file=sys.stderr)
+        
+        # Invoke the agent with a simple prompt
+        response = client.invoke_agent(
+            agentId=runtime_arn.split('/')[-1] if '/' in runtime_arn else runtime_arn,
+            agentAliasId='TSTALIASID',  # Default test alias
+            sessionId=session_id,
+            inputText=warmup_prompt,
+            enableTrace=False
+        )
+        
+        # Consume the response stream
+        for event in response.get('completion', []):
+            pass
+        
+        print(f"  ✅ {agent_name} warmed up successfully", file=sys.stderr)
+        return True, agent_name
+        
+    except Exception as e:
+        # Try alternative method using bedrock-agentcore SDK
+        try:
+            from bedrock_agentcore.runtime import RuntimeClient
+            
+            print(f"  🔄 Trying AgentCore SDK for {agent_name}...", file=sys.stderr)
+            
+            runtime_client = RuntimeClient(
+                runtime_name=runtime_arn,
+                region=aws_region
+            )
+            
+            # Send warmup message
+            response = runtime_client.invoke(
+                session_id=session_id,
+                prompt="Hello, please acknowledge you are ready.",
+                stream=False
+            )
+            
+            print(f"  ✅ {agent_name} warmed up via SDK", file=sys.stderr)
+            return True, agent_name
+            
+        except Exception as sdk_error:
+            print(f"  ⚠️  {agent_name} warmup skipped: {str(e)[:50]}", file=sys.stderr)
+            return False, agent_name
+
+def main():
+    try:
+        # Load global configuration to get agent list
+        with open(global_config_file, 'r') as f:
+            global_config = json.load(f)
+        
+        agent_configs = global_config.get('agent_configs', {})
+        agent_names = list(agent_configs.keys())
+        
+        print(f"Found {len(agent_names)} agents in global configuration", file=sys.stderr)
+        
+        # Load deployed agents info
+        with open(agentcore_info_file, 'r') as f:
+            agentcore_info = json.load(f)
+        
+        if agentcore_info.get('skipped', False):
+            print("AgentCore deployment was skipped, no agents to warm up", file=sys.stderr)
+            return
+        
+        deployed_agents = agentcore_info.get('deployed_agents', [])
+        
+        # Build a map of deployed agent names to their runtime ARNs
+        deployed_map = {}
+        for agent in deployed_agents:
+            if isinstance(agent, dict):
+                name = agent.get('name', '')
+                runtime_arn = agent.get('runtime_arn', '')
+                if name and runtime_arn:
+                    deployed_map[name] = runtime_arn
+            elif isinstance(agent, str):
+                # Old format - just agent name
+                deployed_map[agent] = agent
+        
+        print(f"Found {len(deployed_map)} deployed agents to warm up", file=sys.stderr)
+        
+        if not deployed_map:
+            print("No deployed agents found with runtime ARNs", file=sys.stderr)
+            return
+        
+        # Generate unique session IDs for warmup
+        import uuid
+        
+        # Warm up agents (limit concurrency to avoid rate limits)
+        warmup_results = []
+        successful = 0
+        failed = 0
+        
+        # Process agents sequentially with delays to avoid rate limits
+        for agent_name, runtime_arn in deployed_map.items():
+            session_id = f"warmup-{uuid.uuid4().hex[:8]}"
+            success, name = send_warmup_prompt(agent_name, runtime_arn, session_id)
+            
+            if success:
+                successful += 1
+            else:
+                failed += 1
+            
+            # Small delay between warmup calls
+            time.sleep(2)
+        
+        print(f"\n📊 Warmup Summary:", file=sys.stderr)
+        print(f"   Successful: {successful}", file=sys.stderr)
+        print(f"   Skipped/Failed: {failed}", file=sys.stderr)
+        
+        # Output success indicator
+        if successful > 0:
+            print("SUCCESS")
+        else:
+            print("PARTIAL")
+            
+    except Exception as e:
+        print(f"Error during warmup: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        print("FAILED")
+
+if __name__ == "__main__":
+    main()
+WARMUP_SCRIPT
+)
+    
+    local exit_code=$?
+    
+    # Export environment variables for the Python script
+    export STACK_PREFIX
+    export UNIQUE_ID
+    export AWS_REGION
+    export AWS_PROFILE
+    export PROJECT_ROOT
+    
+    if [ "$warmup_result" = "SUCCESS" ]; then
+        print_success "✅ Agent runtimes warmed up successfully"
+        print_status "   Agents are now ready for faster response times"
+    elif [ "$warmup_result" = "PARTIAL" ]; then
+        print_warning "⚠️  Some agents could not be warmed up"
+        print_status "   This is normal if agents use different invocation methods"
+    else
+        print_warning "⚠️  Agent warmup encountered issues"
+        print_status "   Agents will still work but may have initial cold start latency"
+    fi
+    
+    return 0
 }
 
 # Main deployment function
@@ -4359,6 +4870,7 @@ main() {
     # Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)
     # Phase 8: Upload agent configuration folders to S3
     # Phase 9: Generate UI configuration
+    # Phase 10: Warm up agent runtimes with test prompts
     
     # Pre-deployment validation
     if [ "$RESUME_AT_STEP" -le 1 ]; then
@@ -4407,13 +4919,23 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 8 ]; then
+        # Upload to DynamoDB for faster access (S3 remains as fallback)
+        upload_agent_configurations_to_dynamodb
+    fi
+    
+    if [ "$RESUME_AT_STEP" -le 9 ]; then
         # Deploy AgentCore agents AFTER configs are uploaded and gateway is available
         detect_and_deploy_agentcore_agents
     fi
     
-    if [ "$RESUME_AT_STEP" -le 9 ]; then
+    if [ "$RESUME_AT_STEP" -le 10 ]; then
         generate_ui_config
     fi
+    
+    if [ "$RESUME_AT_STEP" -le 11 ]; then
+        warmup_agent_runtimes
+    fi
+    
     # Final summary
     echo ""
     print_success "🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!"
@@ -4428,6 +4950,7 @@ main() {
     print_status "  ✅ Knowledge Bases: Deployed with Data Sources"
     print_status "  ✅ Data Source Ingestion: Triggered"
     print_status "  ✅ Visualization Data: Migrated to DynamoDB for AgentCore agents"
+    print_status "  ✅ Agent Runtimes: Warmed up for faster response times"
     
     # Check if AdCP Gateway was deployed
     local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"

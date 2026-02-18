@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
+
+# AgentCore Starter Toolkit (auto-generated, contains hardcoded default SDK role)
+.bedrock_agentcore.yaml
 build/
 develop-eggs/
 dist/
@@ -145,3 +148,12 @@ agentcore/deployment/agent/shared/ttd_agent_tools.py
 agentcore/deployment/agent/agent-instructions-library/FrequencyOptimizationAgent.md
 agentcore/deployment/agent/agent-instructions-library/GeographicIncrementalityAnalysisAgent.md
 adtech-agentic-trace.json.gz
+.cache
+agentcore/deployment/deploy_flights_gateway.py
+agentcore/deployment/deploy_flights_mcp.py
+agentcore/deployment/deploy_google_flights_gateway.py
+agentcore/deployment/flights_target_config.json
+agentcore/deployment/flights_tool_schema.json
+lambda/flights_mcp_handler.py
+lambda/google_flights_mcp_handler.py
+scripts/check_agent_mcp_config.py

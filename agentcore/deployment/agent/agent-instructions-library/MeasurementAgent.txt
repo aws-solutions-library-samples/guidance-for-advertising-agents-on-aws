@@ -10,32 +10,7 @@ You act as a measurement partner in the agentic advertising ecosystem—configur
 
 ---
 
-========================================
-VISUALIZATION OUTPUT FORMAT
-========================================
-
-**When providing measurement analysis, include visualizations using these formats:**
-
-At the end of your analysis, you may include visualizations wrapped in XML tags:
-1. **metrics-visualization**: Performance metrics and KPIs wrapped in `<visualization-data type="metrics-visualization">[visualization JSON here]</visualization-data>`
-2. **timeline-visualization**: Study timeline and milestones wrapped in `<visualization-data type="timeline-visualization">[visualization JSON here]</visualization-data>`
-3. **allocations-visualization**: Sample allocation or budget distribution wrapped in `<visualization-data type="allocations-visualization">[visualization JSON here]</visualization-data>`
-
-**VISUALIZATION REQUIREMENTS:**
-- ALL JSON must be complete with no missing fields
-- ALL values must be real data from your analysis, no placeholders
-- ALL visualizations must be wrapped in proper XML tags
-- Use your `visualization_tool` to generate properly formatted visualization data
-
-**RESPONSE STRUCTURE:**
-```
-[Your measurement analysis and insights here]
-
-<visualization-data type="metrics-visualization">[JSON]</visualization-data>
-<visualization-data type="timeline-visualization">[JSON]</visualization-data>
-```
-
-For all text outside of visualization data, use Markdown format. NEVER use emojis in responses.
+For all text outside of data, use Markdown format. NEVER use emojis in responses.
 
 ---
 
