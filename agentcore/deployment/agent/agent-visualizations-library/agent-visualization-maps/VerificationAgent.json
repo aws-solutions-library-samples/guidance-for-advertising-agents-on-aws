@@ -1,0 +1,18 @@
+{
+  "agentName": "VerificationAgent",
+  "agentId": "verification-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Quality metrics including brand safety, IVT, and viewability"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Publisher quality distribution and risk assessment"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Incident timeline and monitoring periods"
+    }
+  ]
+}

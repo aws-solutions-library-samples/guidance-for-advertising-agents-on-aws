@@ -1,0 +1,17 @@
+format_id,format_name,channel,format_type,width,height,duration_seconds,max_file_size_kb,file_types_accepted,aspect_ratio,audio_required,clickable,skip_allowed,skip_after_seconds,iab_category,vast_version,description
+video_standard_30s,Standard Video 30s,ctv,"video,preroll,midroll",1920,1080,30,75000,"mp4,mov,webm",16:9,true,false,true,5,video,4.2,Standard 30-second video spot for CTV and OLV
+video_standard_15s,Standard Video 15s,ctv,"video,preroll,midroll",1920,1080,15,40000,"mp4,mov,webm",16:9,true,false,true,5,video,4.2,Standard 15-second video spot for CTV and OLV
+video_standard_60s,Standard Video 60s,ctv,"video,preroll,midroll",1920,1080,60,150000,"mp4,mov,webm",16:9,true,false,true,5,video,4.2,Long-form 60-second video spot for premium placements
+video_standard_6s,Bumper Video 6s,online_video,"video,preroll,bumper",1920,1080,6,15000,"mp4,mov,webm",16:9,true,false,false,0,video,4.2,Non-skippable 6-second bumper ad
+video_vertical_15s,Vertical Video 15s,online_video,"video,vertical,social",1080,1920,15,40000,"mp4,mov,webm",9:16,true,true,true,3,video,4.2,Vertical video format for mobile and social
+video_vertical_30s,Vertical Video 30s,online_video,"video,vertical,social",1080,1920,30,75000,"mp4,mov,webm",9:16,true,true,true,5,video,4.2,Vertical video format for mobile and social
+video_mid_roll,Mid-Roll Video,online_video,"video,midroll",1920,1080,30,75000,"mp4,mov,webm",16:9,true,false,true,5,video,4.2,Mid-roll placement in long-form content
+video_outstream,Outstream Video,online_video,"video,outstream,display",1920,1080,30,75000,"mp4,mov,webm",16:9,true,true,true,3,video,4.2,Outstream video in editorial content
+audio_standard_30s,Standard Audio 30s,audio,"audio,preroll,midroll",0,0,30,5000,"mp3,wav,ogg",na,true,false,false,0,audio,na,Standard 30-second audio spot for streaming audio
+audio_standard_15s,Standard Audio 15s,audio,"audio,preroll",0,0,15,2500,"mp3,wav,ogg",na,true,false,false,0,audio,na,Standard 15-second audio spot for streaming audio
+audio_standard_60s,Standard Audio 60s,audio,"audio,midroll,host_read",0,0,60,10000,"mp3,wav,ogg",na,true,false,false,0,audio,na,Long-form 60-second audio spot for podcast
+display_300x250,Medium Rectangle,display,"display,banner",300,250,0,150,"jpg,png,gif,html5",6:5,false,true,false,0,display,na,Standard medium rectangle banner
+display_728x90,Leaderboard,display,"display,banner",728,90,0,150,"jpg,png,gif,html5",728:90,false,true,false,0,display,na,Standard leaderboard banner
+display_320x50,Mobile Banner,display,"display,banner,mobile",320,50,0,100,"jpg,png,gif,html5",32:5,false,true,false,0,display,na,Standard mobile banner
+display_300x600,Half Page,display,"display,banner",300,600,0,200,"jpg,png,gif,html5",1:2,false,true,false,0,display,na,Half page unit for high impact
+native_in_feed,Native In-Feed,native,"native,in_feed",1200,627,0,300,"jpg,png",1.91:1,false,true,false,0,native,na,Native in-feed unit with headline body and image

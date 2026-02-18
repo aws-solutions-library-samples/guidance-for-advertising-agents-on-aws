@@ -1,0 +1,59 @@
+{
+  "retention_by_ad_frequency": {
+    "genre_specific": {
+      "thriller": {
+        "2_per_hour": {"completion_rate": 0.91, "satisfaction": 8.4, "binge_likelihood": 0.82},
+        "3_per_hour": {"completion_rate": 0.85, "satisfaction": 7.8, "binge_likelihood": 0.75},
+        "4_per_hour": {"completion_rate": 0.72, "satisfaction": 6.5, "binge_likelihood": 0.58},
+        "5_per_hour": {"completion_rate": 0.54, "satisfaction": 4.8, "binge_likelihood": 0.35},
+        "6_per_hour": {"completion_rate": 0.38, "satisfaction": 3.2, "binge_likelihood": 0.18}
+      },
+      "comedy": {
+        "2_per_hour": {"completion_rate": 0.88, "satisfaction": 8.6, "binge_likelihood": 0.79},
+        "3_per_hour": {"completion_rate": 0.84, "satisfaction": 8.1, "binge_likelihood": 0.74},
+        "4_per_hour": {"completion_rate": 0.78, "satisfaction": 7.2, "binge_likelihood": 0.65},
+        "5_per_hour": {"completion_rate": 0.65, "satisfaction": 5.9, "binge_likelihood": 0.48},
+        "6_per_hour": {"completion_rate": 0.48, "satisfaction": 4.1, "binge_likelihood": 0.28}
+      },
+      "documentary": {
+        "2_per_hour": {"completion_rate": 0.94, "satisfaction": 8.9, "binge_likelihood": 0.68},
+        "3_per_hour": {"completion_rate": 0.91, "satisfaction": 8.5, "binge_likelihood": 0.64},
+        "4_per_hour": {"completion_rate": 0.86, "satisfaction": 7.8, "binge_likelihood": 0.58},
+        "5_per_hour": {"completion_rate": 0.78, "satisfaction": 6.9, "binge_likelihood": 0.48},
+        "6_per_hour": {"completion_rate": 0.65, "satisfaction": 5.5, "binge_likelihood": 0.35}
+      },
+      "drama": {
+        "2_per_hour": {"completion_rate": 0.90, "satisfaction": 8.3, "binge_likelihood": 0.85},
+        "3_per_hour": {"completion_rate": 0.83, "satisfaction": 7.6, "binge_likelihood": 0.78},
+        "4_per_hour": {"completion_rate": 0.71, "satisfaction": 6.4, "binge_likelihood": 0.62},
+        "5_per_hour": {"completion_rate": 0.55, "satisfaction": 4.9, "binge_likelihood": 0.41},
+        "6_per_hour": {"completion_rate": 0.39, "satisfaction": 3.4, "binge_likelihood": 0.22}
+      },
+      "reality": {
+        "2_per_hour": {"completion_rate": 0.86, "satisfaction": 8.1, "binge_likelihood": 0.72},
+        "3_per_hour": {"completion_rate": 0.82, "satisfaction": 7.7, "binge_likelihood": 0.68},
+        "4_per_hour": {"completion_rate": 0.76, "satisfaction": 7.0, "binge_likelihood": 0.61},
+        "5_per_hour": {"completion_rate": 0.68, "satisfaction": 6.2, "binge_likelihood": 0.52},
+        "6_per_hour": {"completion_rate": 0.58, "satisfaction": 5.1, "binge_likelihood": 0.40}
+      }
+    }
+  },
+  "demographic_tolerance": {
+    "18-24": {
+      "max_ads_per_hour": 4.8,
+      "optimal_ads": 3.5,
+      "skip_rate": 0.78,
+      "interactive_preference": 0.85,
+      "device_preference": "mobile",
+      "peak_viewing": "11PM-2AM"
+    },
+    "25-34": {
+      "max_ads_per_hour": 4.2,
+      "optimal_ads": 3.0,
+      "skip_rate": 0.72,
+      "interactive_preference": 0.76,
+      "device_preference": "mixed",
+      "peak_viewing": "8PM-11PM"
+    },
+    "35-44": {
+      "max_ads_per_hour": 3.8,

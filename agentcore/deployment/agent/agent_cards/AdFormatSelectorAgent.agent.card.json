@@ -1,0 +1,17 @@
+{
+  "name": "FormatStrategyOptimizerAgent",
+  "description": "Analyzes campaign objectives and audience characteristics to recommend optimal ad formats and placements for maximum engagement and ROI.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/FormatStrategyOptimizerAgent",
+  "skills": [
+    "format_recommendation",
+    "placement_optimization",
+    "engagement_analysis"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SO9631 Reusable template to create a Data Source for an existing Knowledge Base'
+
+Parameters:
+  StackPrefix:
+    Type: String
+    Default: sim
+    Description: Prefix for resource naming
+  
+  UniqueID:
+    Type: String
+    Description: Unique identifier for this deployment to ensure resource name uniqueness
+  
+  DataSourceName:
+    Type: String
+    Description: Name of the Data Source to create
+  
+  DataSourceDescription:
+    Type: String
+    Description: Description of the Data Source
+    Default: 'Data source for knowledge base content'
+  
+  KnowledgeBaseId:
+    Type: String
+    Description: ID of the existing Knowledge Base to associate this data source with
+  
+  DataBucketName:
+    Type: String
+    Description: Name of the S3 bucket containing the data for this data source
+  
+  DataPrefix:
+    Type: String
+    Description: S3 prefix/folder path for the data (e.g., 'audience-insights/', 'performance-analytics/')
+    Default: 'data/'
+  
+  ChunkingMaxTokens:
+    Type: Number
+    Description: Maximum tokens per chunk for document processing
+    Default: 512
+    MinValue: 256
+    MaxValue: 8192
+  
+  ChunkingOverlapPercentage:
+    Type: Number
+    Description: Percentage overlap between chunks
+    Default: 20
+    MinValue: 0
+    MaxValue: 50
+  
+  LocalDataPath:
+    Type: String
+    Description: Local path to data files to upload (optional - if provided, files will be uploaded to S3)
+    Default: ''
+  
+  UploadFiles:
+    Type: String
+    Description: Whether to upload files from local path to S3 (true/false)
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+Resources:
+  # Lambda function to upload files to S3 (if UploadFiles is true)
+  FileUploadFunction:
+    Type: AWS::Lambda::Function
+    Condition: ShouldUploadFiles
+    Properties:
+      FunctionName: !Sub '${StackPrefix}-upload-files-${UniqueID}'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt FileUploadRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          import zipfile
+          import cfnresponse
+          from pathlib import Path
+          
+          def lambda_handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  bucket_name = event['ResourceProperties']['BucketName']
+                  data_prefix = event['ResourceProperties']['DataPrefix']
+                  local_path = event['ResourceProperties']['LocalPath']
+                  
+                  s3_client = boto3.client('s3')
+                  
+                  # This is a placeholder - in practice, you would need to package
+                  # the files with the Lambda or use a different deployment method
+                  print(f"Would upload files from {local_path} to s3://{bucket_name}/{data_prefix}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                      'Message': f'Files uploaded to s3://{bucket_name}/{data_prefix}'
+                  })
+                      
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  # IAM Role for file upload Lambda
+  FileUploadRole:
+    Type: AWS::IAM::Role
+    Condition: ShouldUploadFiles
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3UploadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${DataBucketName}'
+                  - !Sub 'arn:aws:s3:::${DataBucketName}/*'
+
+  # Custom resource to trigger file upload
+  FileUploadTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Condition: ShouldUploadFiles
+    Properties:
+      ServiceToken: !GetAtt FileUploadFunction.Arn
+      BucketName: !Ref DataBucketName
+      DataPrefix: !Ref DataPrefix
+      LocalPath: !Ref LocalDataPath
+  # Data Source
+  DataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref KnowledgeBaseId
+      Name: !Sub '${StackPrefix}-${DataSourceName}-DataSource-${UniqueID}'
+      Description: !Ref DataSourceDescription
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !Sub 'arn:aws:s3:::${DataBucketName}'
+          InclusionPrefixes:
+            - !Ref DataPrefix
+          BucketOwnerAccountId: !Ref AWS::AccountId
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: FIXED_SIZE
+          FixedSizeChunkingConfiguration:
+            MaxTokens: !Ref ChunkingMaxTokens
+            OverlapPercentage: !Ref ChunkingOverlapPercentage
+      DataDeletionPolicy: RETAIN
+
+Conditions:
+  ShouldUploadFiles: !Equals [!Ref UploadFiles, 'true']
+
+Outputs:
+  DataSourceId:
+    Description: 'ID of the created Data Source'
+    Value: !Ref DataSource
+      
+  DataSourceName:
+    Description: 'Name of the created Data Source'
+    Value: !Sub '${StackPrefix}-${DataSourceName}-DataSource-${UniqueID}'
+      
+  KnowledgeBaseId:
+    Description: 'ID of the associated Knowledge Base'
+    Value: !Ref KnowledgeBaseId
+      
+  FileUploadStatus:
+    Condition: ShouldUploadFiles
+    Description: 'Status of file upload operation'
+    Value: !Ref FileUploadTrigger

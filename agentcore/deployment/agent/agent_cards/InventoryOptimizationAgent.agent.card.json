@@ -1,0 +1,17 @@
+{
+  "name": "InventoryOptimizationAgent",
+  "description": "Manages and optimizes ad inventory allocation to maximize yield while maintaining quality standards.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/inventoryoptimizationagent",
+  "skills": [
+    "inventory_management",
+    "yield_optimization",
+    "quality_control"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

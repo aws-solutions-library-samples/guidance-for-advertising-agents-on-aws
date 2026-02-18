@@ -1,0 +1,46 @@
+{
+  "agentName": "AdLoadOptimizationAgent",
+  "agentId": "ad-load-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Ad load distribution across content types",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Ad Load Distribution Strategy",
+    "subtitle": "Optimal ad load allocation across content types and viewer segments",
+    "totalBudget": "Total ad load capacity (e.g., '100% ad load capacity')",
+    "currency": "Unit symbol (e.g., '%')",
+    "allocations": [
+      {
+        "primaryLabel": "Content type or viewer segment (e.g., 'Premium Content', 'Standard Content', 'High-Engagement Users')",
+        "secondaryLabel": "Load category (e.g., 'Low-Tolerance Viewers', 'Ad-Tolerant Audience', 'Premium Experience')",
+        "description": "Ad load allocation rationale (e.g., 'Optimized ad load for premium content viewers')",
+        "allocationPercentage": "Load percentage (e.g., 30)",
+        "budgetAmount": "Load allocation (e.g., '30% of total ad load')",
+        "performanceLevel": "Load performance: 'high', 'medium', 'low'",
+        "statusIndicator": "Load status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Load optimization confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Viewer experience risk: 'low', 'medium', 'high'",
+        "insights": [
+          "Ad load insights and viewer behavior patterns"
+        ],
+        "risks": [
+          "Viewer retention risks and experience degradation"
+        ],
+        "recommendations": [
+          "Ad load optimization suggestions"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last ad load analysis",
+          "dataSource": "Load data source (e.g., 'Viewer Retention Data', 'Revenue Impact Analysis')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of ad load allocations",
+      "optimizedAllocations": "Number of optimized load strategies",
+      "riskAllocations": "Number of high-risk load allocations",
+      "recommendedAdjustment": "Overall ad load recommendation"
+    }
+  }
+}

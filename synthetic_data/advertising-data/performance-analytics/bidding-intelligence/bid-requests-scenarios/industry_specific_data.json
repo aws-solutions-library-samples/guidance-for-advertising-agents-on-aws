@@ -1,0 +1,558 @@
+{
+  "retail_ecommerce_campaigns": [
+    {
+      "campaign_id": "retail-001",
+      "advertiser": "KitchenPro Appliances",
+      "product_category": "kitchen_appliances",
+      "target_segments": ["cooking_enthusiast", "home_improvement", "luxury_shopper"],
+      "campaign_objectives": {
+        "primary": "roas",
+        "target_roas": 4.5,
+        "secondary": "brand_awareness"
+      },
+      "dynamic_product_ads": {
+        "catalog_size": 2500,
+        "top_products": [
+          {
+            "product_id": "kp-mixer-001",
+            "name": "Professional Stand Mixer",
+            "price": 449.99,
+            "margin": 0.35,
+            "historical_cvr": 0.028
+          },
+          {
+            "product_id": "kp-coffee-001", 
+            "name": "Espresso Machine Deluxe",
+            "price": 899.99,
+            "margin": 0.42,
+            "historical_cvr": 0.018
+          }
+        ]
+      },
+      "seasonal_performance": {
+        "regular_period": {
+          "baseline_roas": 3.2,
+          "avg_order_value": 285.00
+        },
+        "holiday_cooking_season": {
+          "roas_multiplier": 1.8,
+          "aov_multiplier": 1.4,
+          "competition_increase": 2.1
+        },
+        "spring_home_improvement": {
+          "roas_multiplier": 1.3,
+          "aov_multiplier": 1.1,
+          "competition_increase": 1.4
+        }
+      }
+    }
+  ],
+
+  "financial_services_campaigns": [
+    {
+      "campaign_id": "finance-001",
+      "advertiser": "Premier Bank",
+      "product_category": "mortgage_refinance",
+      "target_segments": ["homeowner_35_plus", "high_income", "rate_sensitive"],
+      "lead_generation_focus": {
+        "target_cpl": 125.00,
+        "lead_qualification_rate": 0.35,
+        "conversion_to_customer": 0.08
+      },
+      "audience_targeting_approaches": [
+        {
+          "approach": "demographic_targeting",
+          "segments": ["homeowner", "income_75k_plus", "age_35_64"],
+          "expected_cpl": 145.00,
+          "volume_score": "high",
+          "quality_score": "medium"
+        },
+        {
+          "approach": "behavioral_targeting",
+          "segments": ["mortgage_research", "rate_shopping", "financial_content"],
+          "expected_cpl": 98.00,
+          "volume_score": "medium", 
+          "quality_score": "high"
+        },
+        {
+          "approach": "lookalike_modeling",
+          "segments": ["existing_customer_lookalike"],
+          "expected_cpl": 115.00,
+          "volume_score": "medium",
+          "quality_score": "high"
+        }
+      ],
+      "compliance_requirements": {
+        "required_disclaimers": true,
+        "prohibited_claims": ["guaranteed approval", "lowest rates"],
+        "geo_restrictions": ["state_licensing_compliance"],
+        "brand_safety_tier": "conservative"
+      }
+    }
+  ],
+
+  "travel_hospitality_campaigns": [
+    {
+      "campaign_id": "travel-001",
+      "advertiser": "Paradise Resort Collection",
+      "product_category": "luxury_resort",
+      "target_segments": ["high_income_travelers", "luxury_lifestyle", "vacation_planners"],
+      "booking_window_optimization": {
+        "awareness_phase": {
+          "timing": "6-12 months before travel",
+          "messaging": "Destination inspiration",
+          "budget_allocation": 0.25,
+          "expected_cpm": 8.50
+        },
+        "consideration_phase": {
+          "timing": "3-6 months before travel",
+          "messaging": "Property features and amenities",
+          "budget_allocation": 0.45,
+          "expected_cpm": 12.75
+        },
+        "booking_phase": {
+          "timing": "0-3 months before travel", 
+          "messaging": "Limited availability and offers",
+          "budget_allocation": 0.30,
+          "expected_cpm": 18.20
+        }
+      },
+      "seasonal_demand_patterns": {
+        "summer_peak": {
+          "demand_multiplier": 2.4,
+          "competition_multiplier": 2.8,
+          "aov_multiplier": 1.6
+        },
+        "winter_caribbean": {
+          "demand_multiplier": 1.8,
+          "competition_multiplier": 2.1,
+          "aov_multiplier": 1.4
+        },
+        "shoulder_season": {
+          "demand_multiplier": 0.7,
+          "competition_multiplier": 0.6,
+          "aov_multiplier": 0.9
+        }
+      }
+    }
+  ],
+
+  "automotive_campaigns": [
+    {
+      "campaign_id": "auto-001",
+      "advertiser": "Apex Motors",
+      "product_category": "luxury_suv",
+      "model": "Apex Explorer 2025",
+      "target_segments": ["current_suv_owners", "luxury_lifestyle", "category_switchers"],
+      "funnel_optimization": {
+        "awareness": {
+          "objective": "brand_consideration",
+          "kpis": ["brand_lift", "aided_awareness"],
+          "creative_focus": "lifestyle_and_capability"
+        },
+        "consideration": {
+          "objective": "dealer_website_visits",
+          "kpis": ["site_visits", "brochure_downloads", "dealer_locator_usage"],
+          "creative_focus": "features_and_specifications"
+        },
+        "intent": {
+          "objective": "test_drive_requests",
+          "kpis": ["lead_forms", "dealer_appointments"],
+          "creative_focus": "offers_and_incentives"
+        }
+      },
+      "competitive_targeting": {
+        "conquest_segments": [
+          {
+            "competitor": "Luxury Brand A",
+            "conquest_modifier": 1.4,
+            "messaging": "Premium features at better value"
+          },
+          {
+            "competitor": "Luxury Brand B", 
+            "conquest_modifier": 1.2,
+            "messaging": "Superior technology and comfort"
+          }
+        ]
+      },
+      "geographic_strategy": {
+        "high_income_metros": {
+          "cities": ["San Francisco", "New York", "Seattle"],
+          "bid_modifier": 1.8,
+          "expected_performance": "high_value_low_volume"
+        },
+        "suburban_families": {
+          "regions": ["Suburban TX", "Suburban FL", "Suburban NC"],
+          "bid_modifier": 1.2,
+          "expected_performance": "medium_value_high_volume"
+        }
+      }
+    }
+  ],
+
+  "cross_device_attribution_data": [
+    {
+      "user_journey_id": "journey-001",
+      "segment": "luxury_lifestyle",
+      "touchpoints": [
+        {
+          "device": "mobile",
+          "timestamp": "2025-05-20T09:15:00Z",
+          "action": "ad_view",
+          "creative": "lifestyle_video",
+          "publisher": "premium_lifestyle_magazine"
+        },
+        {
+          "device": "desktop",
+          "timestamp": "2025-05-20T19:45:00Z", 
+          "action": "site_visit",
+          "pages_viewed": 5,
+          "time_on_site": 420
+        },
+        {
+          "device": "tablet",
+          "timestamp": "2025-05-21T20:30:00Z",
+          "action": "conversion",
+          "conversion_value": 850.00,
+          "attribution_weight": {
+            "mobile": 0.4,
+            "desktop": 0.35,
+            "tablet": 0.25
+          }
+        }
+      ]
+    }
+  ],
+
+  "real_time_bidding_factors": [
+    {
+      "factor": "audience_segment_match",
+      "weight": 0.35,
+      "calculation": "vector_similarity * segment_value_multiplier"
+    },
+    {
+      "factor": "content_relevance",
+      "weight": 0.25, 
+      "calculation": "category_match_score * contextual_relevance"
+    },
+    {
+      "factor": "publisher_quality",
+      "weight": 0.20,
+      "calculation": "brand_safety_score * viewability_rate * fraud_score"
+    },
+    {
+      "factor": "historical_performance",
+      "weight": 0.15,
+      "calculation": "site_performance * segment_performance * time_decay"
+    },
+    {
+      "factor": "competitive_pressure",
+      "weight": 0.05,
+      "calculation": "market_competition * inventory_scarcity"
+    }
+  ],
+
+  "latency_optimization_metrics": [
+    {
+      "component": "bid_request_processing",
+      "target_latency_ms": 15,
+      "average_latency_ms": 12,
+      "p95_latency_ms": 18,
+      "optimization_techniques": ["request_parsing_cache", "connection_pooling"]
+    },
+    {
+      "component": "audience_segment_lookup", 
+      "target_latency_ms": 20,
+      "average_latency_ms": 16,
+      "p95_latency_ms": 24,
+      "optimization_techniques": ["redis_caching", "precomputed_segments"]
+    },
+    {
+      "component": "contextual_analysis",
+      "target_latency_ms": 25,
+      "average_latency_ms": 21,
+      "p95_latency_ms": 30,
+      "optimization_techniques": ["content_preprocessing", "ml_model_distillation"]
+    },
+    {
+      "component": "bid_calculation",
+      "target_latency_ms": 10,
+      "average_latency_ms": 8,
+      "p95_latency_ms": 13,
+      "optimization_techniques": ["lookup_tables", "vectorized_operations"]
+    },
+    {
+      "component": "brand_safety_check",
+      "target_latency_ms": 8,
+      "average_latency_ms": 6,
+      "p95_latency_ms": 10,
+      "optimization_techniques": ["cached_domain_scores", "ml_inference_optimization"]
+    }
+  ],
+
+  "model_distillation_comparison": [
+    {
+      "model_type": "full_foundation_model",
+      "accuracy_score": 0.94,
+      "latency_ms": 45,
+      "throughput_rps": 100,
+      "use_case": "offline_analysis"
+    },
+    {
+      "model_type": "distilled_model_large",
+      "accuracy_score": 0.91,
+      "latency_ms": 18,
+      "throughput_rps": 450,
+      "use_case": "near_real_time_bidding"
+    },
+    {
+      "model_type": "distilled_model_small",
+      "accuracy_score": 0.87,
+      "latency_ms": 8,
+      "throughput_rps": 1200,
+      "use_case": "high_volume_rtb"
+    },
+    {
+      "model_type": "edge_optimized",
+      "accuracy_score": 0.82,
+      "latency_ms": 3,
+      "throughput_rps": 3000,
+      "use_case": "ultra_low_latency"
+    }
+  ],
+
+  "mcp_integration_examples": [
+    {
+      "integration_type": "proprietary_bidding_algorithm",
+      "description": "Custom ML model for bid price optimization",
+      "mcp_protocol_usage": {
+        "input_schema": {
+          "audience_features": "vector[32]",
+          "content_features": "vector[16]", 
+          "historical_performance": "object",
+          "competitive_landscape": "object"
+        },
+        "output_schema": {
+          "recommended_bid": "float",
+          "confidence_score": "float",
+          "risk_assessment": "object"
+        }
+      },
+      "bedrock_integration": {
+        "model_endpoint": "custom-bidding-model-v2",
+        "inference_latency": "12ms",
+        "batch_size": 100
+      }
+    },
+    {
+      "integration_type": "brand_safety_engine",
+      "description": "Real-time content analysis for brand safety",
+      "mcp_protocol_usage": {
+        "input_schema": {
+          "url": "string",
+          "content_preview": "string",
+          "brand_rules": "object"
+        },
+        "output_schema": {
+          "safety_score": "float",
+          "risk_factors": "array",
+          "recommendation": "enum"
+        }
+      },
+      "bedrock_integration": {
+        "model_endpoint": "brand-safety-analyzer",
+        "inference_latency": "8ms",
+        "caching_strategy": "domain_level"
+      }
+    }
+  ],
+
+  "knowledge_base_optimization": [
+    {
+      "kb_type": "audience_segments",
+      "size_gb": 2.5,
+      "embedding_dimension": 512,
+      "retrieval_latency_ms": 4,
+      "optimization_techniques": [
+        "hierarchical_clustering",
+        "approximate_nearest_neighbor",
+        "semantic_caching"
+      ],
+      "query_patterns": [
+        "segment_similarity_search",
+        "behavioral_pattern_matching",
+        "lookalike_modeling"
+      ]
+    },
+    {
+      "kb_type": "content_categorization",
+      "size_gb": 8.7,
+      "embedding_dimension": 256,
+      "retrieval_latency_ms": 6,
+      "optimization_techniques": [
+        "content_preprocessing",
+        "category_hierarchy_indexing",
+        "batch_inference"
+      ],
+      "query_patterns": [
+        "url_content_analysis",
+        "category_prediction",
+        "brand_safety_scoring"
+      ]
+    },
+    {
+      "kb_type": "historical_performance",
+      "size_gb": 15.2,
+      "embedding_dimension": 128,
+      "retrieval_latency_ms": 8,
+      "optimization_techniques": [
+        "time_series_indexing",
+        "performance_aggregation",
+        "trend_analysis_cache"
+      ],
+      "query_patterns": [
+        "campaign_performance_lookup",
+        "seasonal_trend_analysis",
+        "competitive_benchmarking"
+      ]
+    }
+  ],
+
+  "advanced_simulation_scenarios": [
+    {
+      "scenario_id": "market_disruption_test",
+      "description": "Simulate performance during major competitor campaign launch",
+      "parameters": {
+        "competitor_budget_increase": 3.5,
+        "bid_pressure_multiplier": 2.1,
+        "inventory_scarcity": 0.65,
+        "duration_days": 14
+      },
+      "expected_impacts": {
+        "cpc_increase": 0.85,
+        "win_rate_decrease": 0.25,
+        "required_bid_adjustment": 1.4
+      },
+      "mitigation_strategies": [
+        "shift_to_long_tail_inventory",
+        "increase_creative_differentiation",
+        "focus_on_owned_audience_segments"
+      ]
+    },
+    {
+      "scenario_id": "economic_downturn_simulation",
+      "description": "Model campaign performance during recession",
+      "parameters": {
+        "consumer_spending_reduction": 0.25,
+        "luxury_segment_impact": 0.45,
+        "value_seeking_behavior": 1.8
+      },
+      "expected_impacts": {
+        "conversion_rate_change": -0.20,
+        "average_order_value_change": -0.15,
+        "segment_preference_shifts": {
+          "luxury_lifestyle": -0.35,
+          "value_shoppers": 0.65,
+          "necessity_focused": 0.25
+        }
+      }
+    }
+  ],
+
+  "privacy_compliance_data": [
+    {
+      "regulation": "CCPA",
+      "impact_on_targeting": {
+        "audience_size_reduction": 0.12,
+        "targeting_precision_loss": 0.08,
+        "required_consent_rate": 0.73
+      },
+      "mitigation_strategies": [
+        "first_party_data_emphasis",
+        "contextual_targeting_expansion",
+        "cohort_based_targeting"
+      ]
+    },
+    {
+      "regulation": "GDPR",
+      "impact_on_targeting": {
+        "audience_size_reduction": 0.18,
+        "targeting_precision_loss": 0.15,
+        "required_consent_rate": 0.65
+      },
+      "geographic_scope": ["EU", "UK"],
+      "compliance_costs": {
+        "additional_infrastructure": 0.05,
+        "consent_management_overhead": 0.03
+      }
+    }
+  ],
+
+  "emerging_inventory_types": [
+    {
+      "inventory_type": "connected_tv",
+      "growth_rate": 2.4,
+      "audience_overlap": {
+        "traditional_display": 0.45,
+        "mobile_video": 0.62
+      },
+      "performance_characteristics": {
+        "average_cpm": 25.50,
+        "completion_rate": 0.78,
+        "brand_recall_lift": 0.35
+      },
+      "targeting_capabilities": [
+        "household_income",
+        "viewing_behavior",
+        "device_graph_matching"
+      ]
+    },
+    {
+      "inventory_type": "audio_streaming",
+      "growth_rate": 1.8,
+      "audience_characteristics": {
+        "active_listening_time": 180,
+        "skip_rate": 0.05,
+        "brand_affinity_score": 0.72
+      },
+      "contextual_targeting": [
+        "music_genre",
+        "podcast_category",
+        "listening_mood"
+      ]
+    }
+  ],
+
+  "fraud_detection_patterns": [
+    {
+      "fraud_type": "bot_traffic",
+      "detection_signals": [
+        "abnormal_click_patterns",
+        "suspicious_user_agents",
+        "impossible_geographic_velocities"
+      ],
+      "prevalence_by_inventory": {
+        "premium_publishers": 0.02,
+        "programmatic_exchanges": 0.08,
+        "long_tail_sites": 0.15
+      },
+      "financial_impact": {
+        "wasted_spend_percentage": 0.12,
+        "performance_metric_inflation": 0.25
+      }
+    },
+    {
+      "fraud_type": "domain_spoofing",
+      "detection_signals": [
+        "ads_txt_violations",
+        "domain_mismatch",
+        "suspicious_referrer_patterns"
+      ],
+      "prevention_measures": [
+        "ads_txt_verification",
+        "domain_allowlisting",
+        "seller_verification"
+      ]
+    }
+  ]
+}

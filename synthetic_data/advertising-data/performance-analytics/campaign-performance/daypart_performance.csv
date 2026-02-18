@@ -1,0 +1,6 @@
+"time_period","audience_segment","device_type","content_category","impressions","clicks","conversions","ctr","cvr","cpc","cpa"
+"morning","sports_enthusiast","mobile","IAB17","200000","2800","84","0.014","0.030","1.79","59.52"
+"afternoon","tech_enthusiast","desktop","IAB19","350000","8750","350","0.025","0.040","2.29","57.14"
+"evening","luxury_lifestyle","tablet","IAB18","150000","4500","180","0.030","0.040","4.44","111.11"
+"night","gaming_enthusiast","desktop","IAB9","400000","12000","600","0.030","0.050","1.67","33.33"
+"weekend","travel_enthusiast","mobile","IAB20","180000","3600","144","0.020","0.040","5.56","138.89"

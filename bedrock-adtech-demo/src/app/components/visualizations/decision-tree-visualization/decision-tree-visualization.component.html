@@ -1,0 +1,177 @@
+<div class="decision-tree-section" *ngIf="decisionTreeData">
+  <div class="component-header">
+    <h3 class="component-title">{{ decisionTreeData.title }}</h3>
+    <p class="component-description" *ngIf="decisionTreeData.description">
+      {{ decisionTreeData.description }}
+    </p>
+  </div>
+
+  <div class="tree-visualization-container">
+    <div class="tree-container" #treeContainer [style.height.px]="400">
+      <!-- Connections -->
+      <div 
+        *ngFor="let connection of connections; trackBy: trackByConnectionIndex"
+        class="connection"
+        [class]="getConnectionClass(connection)"
+        [style.left.px]="connection.fromPos.x"
+        [style.top.px]="connection.fromPos.y"
+        [style.width.px]="connection.length"
+        [style.transform]="'rotate(' + connection.angle + 'deg)'"
+        [title]="connection.probability ? 'Probability: ' + formatProbability(connection.probability) : ''">
+        
+        <!-- Probability label -->
+        <div class="connection-label" *ngIf="connection.probability">
+          {{ formatProbability(connection.probability) }}
+        </div>
+      </div>
+
+      <!-- Nodes -->
+      <div 
+        *ngFor="let node of decisionTreeData.nodes; trackBy: trackByNodeId"
+        class="decision-node"
+        [class]="getNodeTypeClass(node.type)"
+        [class.selected]="selectedNode === node.id"
+        [style.left.px]="node.x"
+        [style.top.px]="node.y"
+        (click)="selectNode(node.id)"
+        [title]="node.description || node.text">
+        
+        <div class="node-content">
+          <div class="node-text">{{ node.text }}</div>
+          
+          <!-- Node indicators -->
+          <div class="node-indicators" *ngIf="node.probability || node.riskLevel">
+            <div class="node-probability" *ngIf="node.probability">
+              {{ formatProbability(node.probability) }}
+            </div>
+            <div class="node-risk" *ngIf="node.riskLevel" 
+                 [style.color]="getRiskColor(node.riskLevel)">
+              Risk: {{ node.riskLevel }}/10
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start node -->
+      <div 
+        class="decision-node node-start"
+        [class.selected]="selectedNode === decisionTreeData.startNode"
+        [style.left.px]="50"
+        [style.top.px]="150"
+        (click)="selectNode(decisionTreeData.startNode)"
+        [title]="'Starting point: ' + decisionTreeData.startNode">
+        
+        <div class="node-content">
+          <div class="node-text">{{ decisionTreeData.startNode }}</div>
+          <div class="node-subtitle">Start</div>
+        </div>
+      </div>
+
+      <!-- Flow particles will be added dynamically -->
+    </div>
+  </div>
+
+  <!-- Node details panel -->
+  <div class="node-details-panel" *ngIf="selectedNode">
+    <div class="details-header">
+      <h4>Node Details</h4>
+      <button class="close-btn" (click)="selectedNode = null">×</button>
+    </div>
+
+    <div class="details-content" *ngIf="getSelectedNodeInfo() as nodeInfo">
+      <div class="node-info">
+        <h5>{{ nodeInfo.node.text }}</h5>
+        <p *ngIf="nodeInfo.node.description">{{ nodeInfo.node.description }}</p>
+        
+        <div class="node-metrics">
+          <div class="metric-item" *ngIf="nodeInfo.node.probability">
+            <span class="metric-label">Probability:</span>
+            <span class="metric-value">{{ formatProbability(nodeInfo.node.probability) }}</span>
+          </div>
+          
+          <div class="metric-item" *ngIf="nodeInfo.node.riskLevel">
+            <span class="metric-label">Risk Level:</span>
+            <span class="metric-value risk-value" [style.color]="getRiskColor(nodeInfo.node.riskLevel)">
+              {{ nodeInfo.node.riskLevel }}/10
+            </span>
+          </div>
+          
+          <div class="metric-item" *ngIf="nodeInfo.node.impact">
+            <span class="metric-label">Impact:</span>
+            <span class="metric-value">{{ nodeInfo.node.impact }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="connections-info" *ngIf="nodeInfo.incomingConnections.length > 0 || nodeInfo.outgoingConnections.length > 0">
+        <div class="incoming-connections" *ngIf="nodeInfo.incomingConnections.length > 0">
+          <h6>Incoming Paths:</h6>
+          <div class="connection-list">
+            <div *ngFor="let conn of nodeInfo.incomingConnections; trackBy: trackByConnectionIndex" class="connection-item">
+              <span class="connection-from">{{ conn.from }}</span>
+              <span class="connection-probability" *ngIf="conn.probability">
+                ({{ formatProbability(conn.probability) }})
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="outgoing-connections" *ngIf="nodeInfo.outgoingConnections.length > 0">
+          <h6>Outgoing Paths:</h6>
+          <div class="connection-list">
+            <div *ngFor="let conn of nodeInfo.outgoingConnections; trackBy: trackByConnectionIndex" class="connection-item">
+              <span class="connection-to">{{ conn.to }}</span>
+              <span class="connection-probability" *ngIf="conn.probability">
+                ({{ formatProbability(conn.probability) }})
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parameters panel -->
+  <div class="parameters-panel" *ngIf="decisionTreeData.parameters">
+    <h4>Decision Parameters</h4>
+    <div class="parameters-grid">
+      <div class="parameter-item" *ngIf="decisionTreeData.parameters.riskFactor">
+        <span class="parameter-label">Risk Factor:</span>
+        <span class="parameter-value">{{ decisionTreeData.parameters.riskFactor }}/10</span>
+      </div>
+      
+      <div class="parameter-item" *ngIf="decisionTreeData.parameters.budgetLevel">
+        <span class="parameter-label">Budget Level:</span>
+        <span class="parameter-value">{{ decisionTreeData.parameters.budgetLevel }}/10</span>
+      </div>
+      
+      <div class="parameter-item" *ngIf="decisionTreeData.parameters.timeframe">
+        <span class="parameter-label">Timeframe:</span>
+        <span class="parameter-value">{{ decisionTreeData.parameters.timeframe }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <h4>Legend</h4>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-color node-start-color"></div>
+        <span>Starting Point</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color node-good-color"></div>
+        <span>Positive Outcome</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color node-bad-color"></div>
+        <span>Negative Outcome</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color node-neutral-color"></div>
+        <span>Neutral/Mixed</span>
+      </div>
+    </div>
+  </div>
+</div> 

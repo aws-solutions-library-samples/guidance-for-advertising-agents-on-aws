@@ -1,0 +1,160 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# AgentCore Starter Toolkit (auto-generated, contains hardcoded default SDK role)
+.bedrock_agentcore.yaml
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.ipynb
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv-deployment
+bandit-env
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Angular
+.angular/
+bedrock-adtech-demo/.angular
+
+# IDE and Editors
+.vscode/
+.q/
+.idea/
+*.swp
+*.swo
+*~
+.kiro/
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary Files
+*.tmp
+*.temp
+temp-*
+tmp-*
+*/tmp/*
+
+# AWS Configuration
+aws-config.json
+*/**/aws-config.json
+bedrock-adtech-demo/src/assets/aws-config.json
+.aws/
+aws-exports.js
+
+# local deployment tracking files
+.bucket-suffix*
+.unique*
+.unique-id*
+.kb*
+.agent*
+.runtime*
+.memory*
+.appsync*
+.adcp-gateway*
+
+# CloudFormation and CDK
+*.zip
+.cdk.staging/
+cdk.out/
+
+# Test Files
+test_*
+test-*
+
+# Security and Scanning
+scans/
+semgrep.txt
+bandit.yaml
+audit.json
+npm-audit.json
+scripts/scan.csv
+
+# Output
+bedrock-adtech-demo/src/dist
+
+# Miscellaneous
+_ignore*
+_nogit_*
+_NOGIT*
+_notused_
+bedrock-adtech-demo/src/assets/global_configuration.json
+agentcore/deployment/agent/test_handler_invocation.py
+licenses.txt
+agentcore/deployment/agent/my_test_results.txt
+!synthetic_data/mcp_mocks/test_adcp_server.py
+system reference
+scripts/set_credentials_isengard_script.sh
+ProbeScan*
+agentcore/deployment/agent/agent-instructions-library/AudienceAgent.txt
+agentcore/deployment/agent/agent-instructions-library/eba
+bedrock-adtech-demo/src/app/components/visualizations/animated_decision_tree.html
+agentcore/deployment/agent/agent-instructions-library/AdstockDecayAnalysisAgent.md
+agentcore/deployment/agent/agent-instructions-library/TTDOptimizationAgent.txt
+agentcore/deployment/agent/agent-visualizations-library/eba
+*/eba
+agentcore/deployment/agent/agent-visualizations-library/TTDOptimizationAgent-timeline-visualization.json
+agentcore/deployment/agent/agent-visualizations-library/agent-visualization-maps/eba
+agentcore/deployment/eba
+agentcore/deployment/agent/shared/eba
+lambda/audience_tools_handler.py
+synthetic_data/configs/agent-instructions-library/eba
+synthetic_data/configs/agent-visualizations-library/eba
+synthetic_data/configs/agent-visualizations-library/agent-visualization-maps/eba
+agentcore/deployment/eba/audience_tool_schema.json
+agentcore/deployment/eba/perms.json
+agentcore/deployment/agent/shared/ttd_agent_tools.py
+agentcore/deployment/agent/agent-instructions-library/FrequencyOptimizationAgent.md
+agentcore/deployment/agent/agent-instructions-library/GeographicIncrementalityAnalysisAgent.md
+adtech-agentic-trace.json.gz
+.cache
+agentcore/deployment/deploy_flights_gateway.py
+agentcore/deployment/deploy_flights_mcp.py
+agentcore/deployment/deploy_google_flights_gateway.py
+agentcore/deployment/flights_target_config.json
+agentcore/deployment/flights_tool_schema.json
+lambda/flights_mcp_handler.py
+lambda/google_flights_mcp_handler.py
+scripts/check_agent_mcp_config.py
+docs/publisher-demo-script.md

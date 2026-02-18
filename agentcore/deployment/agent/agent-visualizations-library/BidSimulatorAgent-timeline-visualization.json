@@ -1,0 +1,54 @@
+{
+  "agentName": "BidSimulatorAgent",
+  "agentId": "bid-simulator-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Campaign execution plans and optimization phases",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Bid Optimization Timeline",
+    "subtitle": "Simulated bidding strategy implementation and optimization phases",
+    "totalDuration": "Total optimization period (e.g., '10 weeks', '70 days')",
+    "startDate": "Simulation start date (ISO format: '2024-01-15')",
+    "endDate": "Simulation end date (ISO format: '2024-03-25')",
+    "overallObjective": "Primary bidding objective (e.g., 'Achieve 5.0x ROAS through optimized bidding strategies')",
+    "phases": [
+      {
+        "primaryLabel": "Bidding phase (e.g., 'Baseline Simulation', 'Aggressive Bidding Test', 'Conservative Optimization')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase bidding strategy and simulation parameters",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '2 weeks', '14 days')",
+        "status": "Simulation status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected bidding performance and ROAS projections",
+        "budget": "Phase budget allocation (e.g., '$500K', '25% of total budget')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Bidding milestone (e.g., 'Simulation Model Validated', 'Target ROAS Achieved')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Bidding milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'ROAS > 4.5x', 'Win rate > 65%')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Bidding dependencies (e.g., 'Historical bid data processed', 'Market conditions analyzed')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Bidding success metrics (e.g., '5.0x ROAS target', '70% win rate', 'CPC reduction of 15%')"
+    ],
+    "riskFactors": [
+      "Bidding risks (e.g., 'Market competition increase', 'Budget constraints', 'Algorithm changes')"
+    ]
+  }
+}

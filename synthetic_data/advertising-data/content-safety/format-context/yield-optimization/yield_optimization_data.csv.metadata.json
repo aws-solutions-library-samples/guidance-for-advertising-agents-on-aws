@@ -1,0 +1,58 @@
+{
+    "metadataAttributes": {
+        "data_source": "yield_optimization",
+        "category": "revenue_optimization",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "yield_management_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "optimization_strategy"
+                    },
+                    {
+                        "fieldName": "publisher_tier"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "inventory_size"
+                    },
+                    {
+                        "fieldName": "floor_price_usd"
+                    },
+                    {
+                        "fieldName": "average_bid_usd"
+                    },
+                    {
+                        "fieldName": "fill_rate"
+                    },
+                    {
+                        "fieldName": "revenue_improvement_percent"
+                    },
+                    {
+                        "fieldName": "latency_impact_ms"
+                    },
+                    {
+                        "fieldName": "user_experience_score"
+                    },
+                    {
+                        "fieldName": "implementation_complexity"
+                    },
+                    {
+                        "fieldName": "a_b_test_confidence"
+                    }
+                ]
+            }
+        }
+    }
+}

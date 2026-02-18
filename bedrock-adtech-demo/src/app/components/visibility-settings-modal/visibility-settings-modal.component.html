@@ -1,0 +1,118 @@
+<!-- Visibility Settings Modal -->
+<div class="visibility-modal-overlay" *ngIf="isVisible" (click)="closeModal()">
+  <div class="visibility-modal standard-modal-panel" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="visibility-modal-header">
+      <div class="modal-title">
+        <span class="material-icons">list</span>
+        <h3>Context for the Agent</h3>
+      </div>
+      <button class="close-btn" (click)="closeModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="visibility-modal-content">
+<!--
+      <div class="settings-section">
+        <div class="section-header">
+          <h4>
+            <span class="material-icons">chat</span>
+            Message Types
+          </h4>
+          <p class="section-description">Choose which types of messages to hide from the chat interface</p>
+        </div>
+
+        <div class="options-grid">
+          <div class="option-item" *ngFor="let messageType of availableMessageTypes">
+            <div class="option-checkbox">
+              <input 
+                type="checkbox" 
+                [id]="'msg-' + messageType.key"
+                [checked]="isMessageTypeHidden(messageType.key)"
+                (change)="toggleMessageType(messageType.key)">
+              <label [for]="'msg-' + messageType.key" class="checkbox-label">
+                <span class="checkmark"></span>
+                <div class="option-content">
+                  <span class="option-title">{{ messageType.label }}</span>
+                  <span class="option-description">{{ messageType.description }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>-->
+
+      <!-- Context Data Section -->
+      <div class="settings-section" *ngIf="availableContextSections.length > 0">
+        <div class="section-header">
+          <h4>
+            <span class="material-icons">data_object</span>
+            Context Data Sections
+          </h4>
+          <p class="section-description">Choose which context data sections to include in agent requests</p>
+        </div>
+
+        <div class="options-grid">
+          <div class="option-item" *ngFor="let contextSection of availableContextSections">
+            <div class="option-checkbox">
+              <input 
+                type="checkbox" 
+                [id]="'ctx-' + contextSection.key"
+                [checked]="isContextSectionIncluded(contextSection.key)"
+                (change)="toggleContextSection(contextSection.key)">
+              <label [for]="'ctx-' + contextSection.key" class="checkbox-label">
+                <span class="checkmark"></span>
+                <div class="option-content">
+                  <span class="option-title">{{ contextSection.label }}</span>
+                  <span class="option-description">{{ contextSection.description }}</span>
+                  <span class="option-preview">{{ contextSection.preview }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Context Data Message -->
+      <div class="no-context-message" *ngIf="availableContextSections.length === 0">
+        <div class="message-content">
+          <span class="material-icons">info</span>
+          <div class="message-text">
+            <p><strong>No Context Data Available</strong></p>
+            <p>Context data sections will appear here when available in the current tab configuration.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="visibility-footer">
+      <div class="footer-actions" style="display:flex; flex-direction: row; gap:8px;">
+        <!-- <button class="nova-button secondary" (click)="resetToDefaults()">
+            <span class="material-icons">restore</span>
+            Reset to Defaults
+          </button>
+          <button class="nova-button secondary" (click)="showAll()">
+            <span class="material-icons">visibility</span>
+            Show All
+          </button>
+          <button class="nova-button secondary" (click)="hideAll()">
+            <span class="material-icons">visibility_off</span>
+            Hide All
+          </button> -->
+      <button class="nova-button secondary" (click)="closeModal()">
+        Cancel
+      </button>
+      <button class="nova-button primary" (click)="applySettings()">
+        <span class="material-icons">check</span>
+        Apply Settings
+      </button>
+      </div>
+    </div>
+
+  </div>
+</div>

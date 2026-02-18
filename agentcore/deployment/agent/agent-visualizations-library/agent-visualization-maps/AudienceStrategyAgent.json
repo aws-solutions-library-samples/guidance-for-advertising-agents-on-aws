@@ -1,0 +1,26 @@
+{
+  "agentId": "audience-strategy-agent",
+  "agentName": "AudienceStrategyAgent",
+  "templates": [
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience segment analysis and prioritization (PRIMARY)"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Consumer journey mapping and touchpoint analysis"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Audience performance metrics and engagement rates"
+    },
+    {
+      "templateId": "donut-chart-visualization",
+      "usage": "Audience composition and segment distribution"
+    },
+    {
+      "templateId": "bar-chart-visualization",
+      "usage": "Segment performance comparisons and rankings"
+    }
+  ]
+}

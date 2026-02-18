@@ -1,0 +1,30 @@
+{
+  "agentName": "PublisherAgent",
+  "agentId": "publisher-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Inventory allocation and product mix",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Inventory Allocation Strategy",
+    "subtitle": "Product mix and inventory distribution",
+    "totalBudget": "Total inventory value",
+    "allocations": [
+      {
+        "primaryLabel": "Product or inventory category",
+        "secondaryLabel": "Channel type (CTV, OLV, Display)",
+        "allocationPercentage": "Inventory percentage for this category",
+        "budgetAmount": "Revenue amount",
+        "performanceLevel": "Expected performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Availability status: 'available', 'limited', 'sold-out'",
+        "confidenceLevel": "Delivery confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Risk assessment: 'low', 'medium', 'high'"
+      }
+    ],
+    "summary": {
+      "totalProducts": "Number of products",
+      "availableInventory": "Available inventory percentage",
+      "soldInventory": "Sold inventory percentage"
+    }
+  }
+}

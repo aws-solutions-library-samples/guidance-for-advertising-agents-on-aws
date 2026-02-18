@@ -1,0 +1,62 @@
+{
+    "metadataAttributes": {
+        "data_source": "format_performance",
+        "category": "format_context",
+        "business_domain": "content_safety",
+        "analysis_type": "format_optimization",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "format_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "format_type"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "content_context"
+                    },
+                    {
+                        "fieldName": "viewer_mindset"
+                    },
+                    {
+                        "fieldName": "ad_tolerance"
+                    },
+                    {
+                        "fieldName": "brand_alignment"
+                    },
+                    {
+                        "fieldName": "intrusion_score"
+                    },
+                    {
+                        "fieldName": "engagement_prediction"
+                    },
+                    {
+                        "fieldName": "viewer_sentiment_score"
+                    },
+                    {
+                        "fieldName": "engagement_likelihood_percentage"
+                    },
+                    {
+                        "fieldName": "brand_safety_rating"
+                    },
+                    {
+                        "fieldName": "estimated_cpm_eur_min"
+                    },
+                    {
+                        "fieldName": "estimated_cpm_eur_max"
+                    },
+                    {
+                        "fieldName": "reasoning"
+                    }
+                ]
+            }
+        }
+    }
+}

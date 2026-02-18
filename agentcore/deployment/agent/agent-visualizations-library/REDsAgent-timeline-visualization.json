@@ -1,0 +1,270 @@
+{
+  "agentName": "REDsAgent",
+  "agentId": "reds-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Multi-touch attribution and user journey timeline analysis from REDS feeds",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "REDS Attribution & User Journey Timeline",
+    "subtitle": "Multi-touch attribution paths and conversion journey analysis",
+    "startDate": "Campaign start date (ISO format)",
+    "endDate": "Campaign end date (ISO format)",
+    "totalDuration": "Campaign duration description",
+    "overallObjective": "Understand user journey patterns and optimize attribution strategy",
+    "phases": [
+      {
+        "primaryLabel": "Awareness Phase",
+        "secondaryLabel": "Initial Impression Touchpoints",
+        "description": "First exposure to campaign through impression events",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Average duration in awareness phase",
+        "status": "Phase status: 'active', 'completed'",
+        "priority": "Attribution priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Brand awareness and initial engagement",
+        "metrics": {
+          "impressions": "Total impressions in phase",
+          "reach": "Unique users reached",
+          "frequency": "Average frequency per user",
+          "viewabilityRate": "Viewability rate for awareness impressions",
+          "deviceMix": "Device distribution (mobile/desktop/tablet)"
+        },
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "First Impression",
+            "status": "Milestone status: 'achieved'",
+            "description": "Initial user exposure to campaign"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Viewable Impression",
+            "status": "Milestone status: 'achieved'",
+            "description": "Impression met viewability standards"
+          }
+        ],
+        "attributionValue": "Phase contribution to conversion (percentage)",
+        "insights": [
+          "Awareness phase effectiveness from impression feed analysis",
+          "Optimal frequency for awareness",
+          "Device preferences in awareness phase"
+        ],
+        "recommendations": [
+          "Awareness phase optimization strategies",
+          "Frequency capping recommendations",
+          "Creative optimization for awareness"
+        ]
+      },
+      {
+        "primaryLabel": "Consideration Phase",
+        "secondaryLabel": "Engagement & Click Events",
+        "description": "User engagement through click events and repeated exposures",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Average duration in consideration phase",
+        "status": "Phase status: 'active', 'completed'",
+        "priority": "Attribution priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Active consideration and engagement",
+        "metrics": {
+          "clicks": "Total clicks in phase",
+          "ctr": "Click-through rate",
+          "avgTimeToClick": "Average time from impression to click",
+          "repeatVisitors": "Users with multiple interactions",
+          "crossDeviceRate": "Cross-device interaction rate"
+        },
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "First Click",
+            "status": "Milestone status: 'achieved'",
+            "description": "User clicked on ad creative"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Repeat Engagement",
+            "status": "Milestone status: 'achieved'",
+            "description": "User engaged multiple times"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Cross-Device Interaction",
+            "status": "Milestone status: 'achieved'",
+            "description": "User engaged on different device"
+          }
+        ],
+        "attributionValue": "Phase contribution to conversion (percentage)",
+        "insights": [
+          "Consideration phase engagement patterns from click feed",
+          "Optimal time-to-click insights",
+          "Cross-device behavior in consideration"
+        ],
+        "recommendations": [
+          "Engagement optimization strategies",
+          "Retargeting recommendations",
+          "Cross-device targeting optimization"
+        ]
+      },
+      {
+        "primaryLabel": "Intent Phase",
+        "secondaryLabel": "High-Intent Signals & Video Engagement",
+        "description": "Strong intent signals through video completion and repeated clicks",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Average duration in intent phase",
+        "status": "Phase status: 'active', 'completed'",
+        "priority": "Attribution priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Clear purchase or conversion intent",
+        "metrics": {
+          "videoCompletions": "Video ads completed",
+          "completionRate": "Video completion rate",
+          "repeatClicks": "Multiple click events",
+          "timeOnSite": "Average time on landing page",
+          "bounceRate": "Bounce rate from ad clicks"
+        },
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Video Completion",
+            "status": "Milestone status: 'achieved'",
+            "description": "User watched video ad to completion"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Multiple Clicks",
+            "status": "Milestone status: 'achieved'",
+            "description": "User clicked multiple times showing intent"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Extended Engagement",
+            "status": "Milestone status: 'achieved'",
+            "description": "User spent significant time on landing page"
+          }
+        ],
+        "attributionValue": "Phase contribution to conversion (percentage)",
+        "insights": [
+          "Intent signals from video events and click patterns",
+          "Video engagement impact on conversion",
+          "High-intent user characteristics"
+        ],
+        "recommendations": [
+          "Intent phase targeting optimization",
+          "Video creative optimization for conversions",
+          "Landing page optimization"
+        ]
+      },
+      {
+        "primaryLabel": "Conversion Phase",
+        "secondaryLabel": "Conversion Events & Attribution",
+        "description": "Final conversion event and attribution analysis",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Average time-to-conversion",
+        "status": "Phase status: 'completed'",
+        "priority": "Attribution priority: 'high'",
+        "expectedOutcome": "Completed conversion with full attribution path",
+        "metrics": {
+          "conversions": "Total conversions",
+          "conversionRate": "Overall conversion rate",
+          "avgTimeToConversion": "Average time from first impression to conversion",
+          "avgTouchpoints": "Average touchpoints to conversion",
+          "conversionValue": "Total conversion value"
+        },
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Conversion Event",
+            "status": "Milestone status: 'achieved'",
+            "description": "User completed conversion action"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Attribution Recorded",
+            "status": "Milestone status: 'achieved'",
+            "description": "Full attribution path captured in conversion feed"
+          }
+        ],
+        "attributionValue": "100% (final conversion)",
+        "insights": [
+          "Conversion path insights from multi-feed analysis",
+          "Attribution model effectiveness",
+          "Time-to-conversion patterns"
+        ],
+        "recommendations": [
+          "Attribution model optimization",
+          "Budget allocation based on attribution",
+          "Journey optimization for faster conversions"
+        ]
+      },
+      {
+        "primaryLabel": "Post-Conversion Analysis",
+        "secondaryLabel": "Quality Validation & Fraud Detection",
+        "description": "Post-conversion quality assessment and fraud validation",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Quality validation period",
+        "status": "Phase status: 'ongoing'",
+        "priority": "Quality priority: 'high'",
+        "expectedOutcome": "Validated high-quality conversions",
+        "metrics": {
+          "validConversions": "Conversions passing quality checks",
+          "fraudRate": "Detected fraud rate",
+          "viewabilityCompliance": "Viewability standard compliance",
+          "brandSafetyScore": "Brand safety assessment",
+          "gdprCompliance": "Privacy compliance rate"
+        },
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Quality Validation",
+            "status": "Milestone status: 'achieved'",
+            "description": "Conversion validated for quality"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Fraud Check Passed",
+            "status": "Milestone status: 'achieved'",
+            "description": "No fraud indicators detected"
+          },
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Compliance Verified",
+            "status": "Milestone status: 'achieved'",
+            "description": "GDPR and privacy compliance confirmed"
+          }
+        ],
+        "attributionValue": "Quality assurance phase",
+        "insights": [
+          "Quality metrics from viewability and fraud feeds",
+          "Fraud pattern detection results",
+          "Privacy compliance assessment"
+        ],
+        "recommendations": [
+          "Quality improvement strategies",
+          "Fraud prevention measures",
+          "Compliance enhancement actions"
+        ]
+      }
+    ],
+    "attributionModel": {
+      "modelType": "Multi-touch attribution with time decay",
+      "touchpointWeighting": "First touch: 20%, Mid-journey: 30%, Last touch: 50%",
+      "crossDeviceAttribution": "Enabled with probabilistic matching",
+      "lookbackWindow": "30 days from conversion"
+    },
+    "journeyInsights": [
+      "Average journey length and touchpoint count",
+      "Most effective touchpoint combinations",
+      "Cross-device journey patterns",
+      "Time-to-conversion distribution (immediate, same-day, same-week, long-tail)",
+      "Quality metrics across journey phases"
+    ],
+    "optimizationPriorities": [
+      "High-value journey paths to scale",
+      "Journey friction points to address",
+      "Attribution model refinements",
+      "Quality improvement focus areas"
+    ]
+  }
+}

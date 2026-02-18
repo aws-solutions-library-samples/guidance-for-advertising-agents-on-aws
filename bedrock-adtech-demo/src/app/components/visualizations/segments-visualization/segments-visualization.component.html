@@ -1,0 +1,109 @@
+<!-- Segment Cards -->
+<div *ngIf="segmentCards && segmentCards.segments?.length > 0" class="segment-cards-section">
+  <h4 *ngIf="segmentCards.title" class="component-title">
+    {{segmentCards.title}}
+  </h4>
+
+  <!-- Simple Bid Adjustments View (for titles containing 'Bid Adjustments') -->
+  <div *ngIf="segmentCards.title?.includes('Bid Adjustments'); else detailedCardsView" class="bid-adjustments-list">
+    <div class="bid-adjustment-item" *ngFor="let segment of segmentCards.segments">
+      <h5 class="segment-name">{{getSegmentName(segment)}}</h5>
+      <div class="allocation-info" *ngIf="segment.allocation || segment.budgetAmount">
+        <span class="allocation-label">Allocation:</span>
+        <span class="allocation-value">
+          <ng-container
+            *ngIf="segment.allocation && (segment.allocation.recommendedBudget || segment.allocation.percentage); else simpleAllocation">
+            <span *ngIf="segment.allocation.recommendedBudget"
+              class="budget">{{formatBudget(segment.allocation.recommendedBudget)}}</span>
+            <span *ngIf="segment.allocation.percentage" class="percentage"> ({{segment.allocation.percentage}}%)</span>
+          </ng-container>
+          <ng-template #simpleAllocation>
+            {{segment.budgetAmount || segment.allocation}}
+          </ng-template>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Cards View (default) -->
+  <ng-template #detailedCardsView>
+    <div class="segment-cards-grid">
+      <div class="segment-card" *ngFor="let segment of segmentCards.segments">
+        <div class="segment-header">
+          <h5 class="segment-name">{{getSegmentName(segment)}}</h5>
+          <div class="segment-description" *ngIf="getSegmentDescription(segment)">
+            {{getSegmentDescription(segment)}}
+          </div>
+
+          <!-- Primary metrics badges -->
+          <div class="segment-metrics" *ngIf="getPrimaryMetrics(segment).length > 0">
+            <span *ngFor="let metric of getPrimaryMetrics(segment)" class="metric-badge"
+              [class]="'metric-' + metric.type">
+              {{metric.value}} {{metric.label}}
+            </span>
+          </div>
+        </div>
+
+        <!-- Legacy metrics array for Cross-Channel KPIs -->
+        <div *ngIf="segment.metrics?.length" class="segment-metrics-list">
+          <h6>Key Performance Indicators:</h6>
+          <div class="metrics-grid">
+            <div class="metric-card" *ngFor="let metric of segment.metrics">
+              <div class="metric-value">{{metric.target}}</div>
+              <div class="metric-label">{{metric.name}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed properties -->
+        <div class="segment-details" *ngIf="getDetailedProperties(segment).length > 0">
+          <div *ngFor="let property of getDetailedProperties(segment)" class="detail-row"
+            [class.primary]="property.isPrimary">
+            <span class="detail-label">{{property.label}}:</span>
+            <span class="detail-value" [class.allocation]="property.label.toLowerCase().includes('allocation')"
+              [class.bid-range]="property.label.toLowerCase().includes('bid')"
+              [class.risk-low]="property.value.toLowerCase() === 'low' && property.label.toLowerCase().includes('risk')"
+              [class.risk-medium]="property.value.toLowerCase() === 'medium' && property.label.toLowerCase().includes('risk')"
+              [class.risk-high]="property.value.toLowerCase() === 'high' && property.label.toLowerCase().includes('risk')"
+              [class.performance-high]="property.value.toLowerCase().includes('high')"
+              [class.performance-excellent]="property.value.toLowerCase().includes('excellent')"
+              [class.confidence-high]="property.value === 'high' || property.value === 'very high'"
+              [class.confidence-medium]="property.value === 'medium'" [class.confidence-low]="property.value === 'low'">
+              {{property.value}}
+            </span>
+          </div>
+        </div>
+
+        <!-- Key insights -->
+        <div *ngIf="getInsights(segment).length > 0" class="segment-insights">
+          <h6>Key Insights:</h6>
+          <ul>
+            <li *ngFor="let insight of getInsights(segment)">{{insight}}</li>
+          </ul>
+        </div>
+
+        <!-- Risk factors -->
+        <div *ngIf="getRisks(segment).length > 0" class="segment-risks">
+          <h6>Risk Factors:</h6>
+          <ul>
+            <li *ngFor="let risk of getRisks(segment)"
+              [class.no-risk]="risk.toLowerCase().includes('none') || risk.toLowerCase().includes('low')">
+              {{risk}}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Recommendations -->
+        <div *ngIf="getRecommendations(segment).length > 0" class="segment-recommendations">
+          <h6>{{getRecommendations(segment).length === 1 ? 'Recommendation' : 'Optimization Strategies'}}:</h6>
+          <ul *ngIf="getRecommendations(segment).length > 1; else singleRecommendation">
+            <li *ngFor="let recommendation of getRecommendations(segment)">{{recommendation}}</li>
+          </ul>
+          <ng-template #singleRecommendation>
+            <p>{{getRecommendations(segment)[0]}}</p>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</div>

@@ -1,0 +1,62 @@
+{
+  "customer_journey_maps": [
+    {
+      "journey_name": "E-commerce Purchase Journey",
+      "stages": [
+        {
+          "stage": "Awareness",
+          "touchpoints": ["Social Media", "Display Ads", "Search Ads"],
+          "duration": "1-3 days",
+          "key_metrics": ["Impressions", "Reach", "Brand Awareness Lift"]
+        },
+        {
+          "stage": "Consideration", 
+          "touchpoints": ["Product Pages", "Reviews", "Comparison Sites"],
+          "duration": "3-7 days",
+          "key_metrics": ["Page Views", "Time on Site", "Content Engagement"]
+        },
+        {
+          "stage": "Purchase",
+          "touchpoints": ["Product Page", "Cart", "Checkout"],
+          "duration": "1 day",
+          "key_metrics": ["Conversion Rate", "Cart Abandonment", "Purchase Value"]
+        },
+        {
+          "stage": "Retention",
+          "touchpoints": ["Email", "App Notifications", "Loyalty Program"],
+          "duration": "Ongoing",
+          "key_metrics": ["Repeat Purchase Rate", "Customer Lifetime Value", "Engagement Rate"]
+        }
+      ]
+    },
+    {
+      "journey_name": "B2B Software Purchase Journey",
+      "stages": [
+        {
+          "stage": "Problem Recognition",
+          "touchpoints": ["Industry Publications", "Webinars", "Thought Leadership"],
+          "duration": "1-2 weeks",
+          "key_metrics": ["Content Downloads", "Webinar Attendance", "Engagement Score"]
+        },
+        {
+          "stage": "Solution Research",
+          "touchpoints": ["Website", "Case Studies", "Product Demos"],
+          "duration": "2-4 weeks", 
+          "key_metrics": ["Demo Requests", "Content Consumption", "Sales Qualified Leads"]
+        },
+        {
+          "stage": "Vendor Evaluation",
+          "touchpoints": ["Sales Calls", "Proposals", "References"],
+          "duration": "4-8 weeks",
+          "key_metrics": ["Proposal Requests", "Reference Calls", "Decision Timeline"]
+        },
+        {
+          "stage": "Purchase Decision",
+          "touchpoints": ["Contract Negotiation", "Legal Review", "Final Approval"],
+          "duration": "2-4 weeks",
+          "key_metrics": ["Contract Signed", "Deal Size", "Sales Cycle Length"]
+        }
+      ]
+    }
+  ]
+}

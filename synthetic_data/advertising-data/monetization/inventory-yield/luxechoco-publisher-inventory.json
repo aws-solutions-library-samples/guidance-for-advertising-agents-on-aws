@@ -1,0 +1,266 @@
+{
+  "publisherInventoryData": {
+    "campaignId": "luxechoco-eu-2024",
+    "reportingPeriod": "2024-01-15 to 2024-03-15",
+    "inventoryCategories": {
+      "premiumVideo": {
+        "totalAvailableSlots": 65200,
+        "averageCPM": "€12.85",
+        "competitionLevel": "High",
+        "publishers": {
+          "rtl_digital": {
+            "country": "Germany",
+            "availableSlots": 8500,
+            "avgCPM": "€14.20",
+            "audienceQuality": "High",
+            "brandSafety": "Excellent",
+            "contentTypes": ["Entertainment", "News", "Lifestyle"],
+            "peakHours": "19:00-22:00",
+            "audienceDemo": "Adults 25-54, HHI €55k+"
+          },
+          "france_televisions": {
+            "country": "France",
+            "availableSlots": 12200,
+            "avgCPM": "€11.80",
+            "audienceQuality": "Very High",
+            "brandSafety": "Excellent",
+            "contentTypes": ["Cultural", "News", "Entertainment"],
+            "peakHours": "20:30-22:30",
+            "audienceDemo": "Adults 30-60, educated, affluent"
+          },
+          "itv_hub": {
+            "country": "UK",
+            "availableSlots": 9800,
+            "avgCPM": "€15.90",
+            "audienceQuality": "High",
+            "brandSafety": "Good",
+            "contentTypes": ["Drama", "Entertainment", "Lifestyle"],
+            "peakHours": "19:00-22:00",
+            "audienceDemo": "Adults 25-55, mainstream to affluent"
+          },
+          "npo_start": {
+            "country": "Netherlands",
+            "availableSlots": 4200,
+            "avgCPM": "€9.50",
+            "audienceQuality": "High",
+            "brandSafety": "Excellent",
+            "contentTypes": ["Cultural", "Documentary", "News"],
+            "peakHours": "20:00-23:00",
+            "audienceDemo": "Adults 30-65, highly educated"
+          }
+        }
+      },
+      "nativeContent": {
+        "totalAvailableSlots": 28900,
+        "averageCPM": "€19.75",
+        "competitionLevel": "Medium",
+        "publishers": {
+          "food_network_europe": {
+            "availableSlots": 2800,
+            "avgCPM": "€25.00",
+            "contentType": "Recipe integration opportunities",
+            "brandSafety": "Excellent",
+            "audienceAlignment": "Perfect for food brands",
+            "engagementRate": "8.7%",
+            "integrationTypes": ["Recipe features", "Chef partnerships", "Cooking shows"]
+          },
+          "conde_nast_digital": {
+            "availableSlots": 3200,
+            "avgCPM": "€22.50",
+            "contentType": "Lifestyle editorial placements",
+            "brandSafety": "Excellent",
+            "audienceAlignment": "Luxury lifestyle consumers",
+            "engagementRate": "7.2%",
+            "integrationTypes": ["Sponsored articles", "Native editorial", "Brand stories"]
+          },
+          "marmiton": {
+            "country": "France",
+            "availableSlots": 1800,
+            "avgCPM": "€28.00",
+            "contentType": "Recipe and cooking content",
+            "brandSafety": "Excellent",
+            "audienceAlignment": "Food enthusiasts",
+            "engagementRate": "9.1%",
+            "integrationTypes": ["Recipe integration", "Ingredient spotlights"]
+          },
+          "essen_trinken": {
+            "country": "Germany",
+            "availableSlots": 1500,
+            "avgCPM": "€24.80",
+            "contentType": "Premium food content",
+            "brandSafety": "Excellent",
+            "audienceAlignment": "Gourmet food lovers",
+            "engagementRate": "8.4%",
+            "integrationTypes": ["Editorial features", "Recipe partnerships"]
+          }
+        }
+      },
+      "displayPremium": {
+        "totalAvailableSlots": 168200,
+        "averageCPM": "€4.85",
+        "competitionLevel": "Medium",
+        "publishers": {
+          "the_guardian": {
+            "country": "UK",
+            "availableSlots": 18500,
+            "avgCPM": "€6.20",
+            "audienceQuality": "Very High",
+            "brandSafety": "Excellent",
+            "contentTypes": ["News", "Culture", "Lifestyle"],
+            "audienceDemo": "Educated, affluent, socially conscious"
+          },
+          "le_monde": {
+            "country": "France",
+            "availableSlots": 22100,
+            "avgCPM": "€5.80",
+            "audienceQuality": "Very High",
+            "brandSafety": "Excellent",
+            "contentTypes": ["News", "Culture", "Opinion"],
+            "audienceDemo": "Highly educated, professional class"
+          },
+          "spiegel_online": {
+            "country": "Germany",
+            "availableSlots": 25800,
+            "avgCPM": "€4.90",
+            "audienceQuality": "High",
+            "brandSafety": "Good",
+            "contentTypes": ["News", "Politics", "Culture"],
+            "audienceDemo": "Educated, middle to upper class"
+          },
+          "nu_nl": {
+            "country": "Netherlands",
+            "availableSlots": 12400,
+            "avgCPM": "€3.80",
+            "audienceQuality": "Medium-High",
+            "brandSafety": "Good",
+            "contentTypes": ["News", "Entertainment", "Sports"],
+            "audienceDemo": "Broad demographic, skews educated"
+          }
+        }
+      },
+      "socialInteractive": {
+        "totalAvailableSlots": 89600,
+        "averageCPM": "€8.20",
+        "competitionLevel": "Medium-High",
+        "platforms": {
+          "instagram": {
+            "availableSlots": 35000,
+            "avgCPM": "€9.50",
+            "formatTypes": ["Stories", "Feed posts", "Reels", "Shopping"],
+            "audienceQuality": "High",
+            "engagementRate": "4.2%",
+            "bestPerforming": "Interactive polls, flavor quizzes"
+          },
+          "tiktok": {
+            "availableSlots": 28000,
+            "avgCPM": "€7.80",
+            "formatTypes": ["In-feed ads", "Branded effects", "Challenges"],
+            "audienceQuality": "Medium-High",
+            "engagementRate": "8.7%",
+            "bestPerforming": "Behind-the-scenes content, recipe videos"
+          },
+          "facebook": {
+            "availableSlots": 26600,
+            "avgCPM": "€7.20",
+            "formatTypes": ["Feed ads", "Stories", "Video ads"],
+            "audienceQuality": "Medium",
+            "engagementRate": "2.8%",
+            "bestPerforming": "Gift-giving content, seasonal campaigns"
+          }
+        }
+      }
+    },
+    "seasonalAvailability": {
+      "valentine_period": {
+        "dates": "January 15 - February 14",
+        "inventoryScarcity": "High",
+        "cpmIncrease": "40-60%",
+        "recommendedBooking": "6 weeks in advance",
+        "highDemandFormats": ["Native content", "Social interactive"],
+        "availabilityReduction": "35% overall"
+      },
+      "easter_period": {
+        "dates": "March 1 - April 15",
+        "inventoryScarcity": "Medium",
+        "cpmIncrease": "25-35%",
+        "recommendedBooking": "4 weeks in advance",
+        "highDemandFormats": ["Premium video", "Display premium"],
+        "availabilityReduction": "20% overall"
+      },
+      "christmas_period": {
+        "dates": "November 1 - December 31",
+        "inventoryScarcity": "Very High",
+        "cpmIncrease": "80-120%",
+        "recommendedBooking": "12 weeks in advance",
+        "highDemandFormats": ["All formats"],
+        "availabilityReduction": "60% overall"
+      }
+    },
+    "competitiveIntelligence": {
+      "chocolateCategory": {
+        "topSpenders": [
+          {
+            "brand": "GoldenTreats",
+            "monthlySpend": "€1.2M",
+            "preferredFormats": ["Premium video (50%)", "Display (30%)", "Social (20%)"],
+            "strongMarkets": ["Germany", "Italy", "France"],
+            "inventoryBlocking": "High during seasonal peaks"
+          },
+          {
+            "brand": "GlobalSnacks",
+            "monthlySpend": "€980K",
+            "preferredFormats": ["Social (45%)", "Display (35%)", "Video (20%)"],
+            "strongMarkets": ["UK", "Germany", "Netherlands"],
+            "strategy": "Mass market reach, price-focused"
+          },
+          {
+            "brand": "RedPlanet",
+            "monthlySpend": "€750K",
+            "preferredFormats": ["Video (40%)", "Social (35%)", "Display (25%)"],
+            "strongMarkets": ["UK", "Germany"],
+            "strategy": "Entertainment partnerships, sports sponsorships"
+          }
+        ],
+        "marketDynamics": {
+          "peakCompetition": "Q4 (Christmas season)",
+          "opportunityPeriods": ["January-March", "May-September"],
+          "whiteSpaceOpportunities": [
+            "Premium editorial content",
+            "Cooking show integrations",
+            "Sustainability-focused content"
+          ]
+        }
+      }
+    },
+    "inventoryRecommendations": {
+      "optimalMix": {
+        "premiumVideo": {
+          "percentage": 40,
+          "rationale": "High impact, brand storytelling, premium positioning",
+          "bestPublishers": ["France Télévisions", "RTL Digital", "ITV Hub"]
+        },
+        "nativeContent": {
+          "percentage": 30,
+          "rationale": "Natural integration, high engagement, brand alignment",
+          "bestPublishers": ["Food Network Europe", "Conde Nast Digital", "Marmiton"]
+        },
+        "displayPremium": {
+          "percentage": 20,
+          "rationale": "Broad reach, cost efficiency, awareness building",
+          "bestPublishers": ["The Guardian", "Le Monde", "Spiegel Online"]
+        },
+        "socialInteractive": {
+          "percentage": 10,
+          "rationale": "Engagement, younger demographics, viral potential",
+          "bestPlatforms": ["Instagram", "TikTok"]
+        }
+      },
+      "bookingStrategy": {
+        "immediate": "Book premium video and native content slots",
+        "4weeks": "Secure seasonal inventory for Valentine's and Easter",
+        "12weeks": "Reserve Christmas period inventory",
+        "ongoing": "Monitor competitive activity and adjust"
+      }
+    }
+  }
+}

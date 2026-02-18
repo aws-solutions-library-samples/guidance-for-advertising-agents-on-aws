@@ -1,0 +1,47 @@
+{
+  "agentName": "FormatStrategyOptimizerAgent",
+  "agentId": "FormatStrategyOptimizerAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Format performance metrics, revenue analysis",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Revenue Format Performance Analysis",
+    "subtitle": "Ad format effectiveness and revenue optimization metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "AdFormatSelectorAgent",
+      "supportingAgent1": "AdLoadOptimizationAgent",
+      "supportingAgent2": "InventoryOptimizationAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Format category (e.g., 'Video Formats', 'Display Formats', 'Native Formats')",
+        "secondaryLabel": "Category description (e.g., 'Revenue performance by ad format type')",
+        "items": [
+          {
+            "primaryLabel": "Specific format metric (e.g., 'Video CPM', 'Display CTR', 'Native Engagement')",
+            "actualValue": "Current format performance (e.g., '$25.50', '2.8%', '4.5%')",
+            "targetValue": "Format target (e.g., '$28.00', '3.2%', '5.0%')",
+            "forecastedValue": "Projected format performance (e.g., '$27.20', '3.0%', '4.8%')",
+            "actualLabel": "Current format performance description",
+            "targetLabel": "Target format optimization goal",
+            "forecastedLabel": "Forecasted format improvement",
+            "unit": "Measurement unit (e.g., '$', '%', 'score')",
+            "trend": "Format trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Format optimization confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary format metric",
+            "insights": [
+              "Format performance insights and user preferences"
+            ],
+            "risks": [
+              "Format performance risks and market changes"
+            ],
+            "recommendations": [
+              "Format optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

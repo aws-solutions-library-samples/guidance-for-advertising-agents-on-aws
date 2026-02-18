@@ -1,0 +1,81 @@
+{
+    "metadataAttributes": {
+        "file_name": "media_mix_modeling_results.csv",
+        "description": "Media Mix Modeling (MMM) results showing channel effectiveness, saturation curves, and optimization parameters across different industry categories",
+        "data_source": "Synthetic MMM analysis based on industry benchmarks",
+        "last_updated": "2024-12-07",
+        "record_count": "28",
+        "data_type": "media_mix_modeling",
+        "industry_categories": "CPG, Automotive, Retail, Financial",
+        "channels_covered": "TV, Digital Video, Social Media, Search, Display, Radio, OOH",
+        "analysis_period": "2024-Q1",
+        "confidence_level": "95%",
+        "usage_context": "Channel effectiveness ranking, budget allocation optimization, ROI prioritization, synergy identification",
+        "related_datasets": "channel_performance_benchmarks.csv, budget_allocation_scenarios.csv",
+        "key_metrics": "coefficient, saturation_point_spend, roi, adstock_rate, interaction_effects",
+        "statistical_validity": "confidence_intervals_included",
+        "optimization_focus": "budget_allocation, channel_mix, performance_forecasting"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "channel"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "coefficient"
+                    },
+                    {
+                        "fieldName": "saturation_point_spend"
+                    },
+                    {
+                        "fieldName": "roi"
+                    },
+                    {
+                        "fieldName": "adstock_rate"
+                    },
+                    {
+                        "fieldName": "base_contribution"
+                    },
+                    {
+                        "fieldName": "incremental_contribution"
+                    },
+                    {
+                        "fieldName": "confidence_interval_lower"
+                    },
+                    {
+                        "fieldName": "confidence_interval_upper"
+                    },
+                    {
+                        "fieldName": "seasonality_factor"
+                    },
+                    {
+                        "fieldName": "interaction_effect_tv"
+                    },
+                    {
+                        "fieldName": "interaction_effect_digital"
+                    },
+                    {
+                        "fieldName": "optimal_spend_range_min"
+                    },
+                    {
+                        "fieldName": "optimal_spend_range_max"
+                    },
+                    {
+                        "fieldName": "diminishing_returns_threshold"
+                    },
+                    {
+                        "fieldName": "category"
+                    },
+                    {
+                        "fieldName": "time_period"
+                    }
+                ]
+            }
+        }
+    }
+}

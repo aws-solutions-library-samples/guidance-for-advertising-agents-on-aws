@@ -1,0 +1,113 @@
+{
+    "metadataAttributes": {
+        "file_name": "audience_segmentation_profiles.csv",
+        "description": "Comprehensive audience segmentation profiles with demographic, psychographic, behavioral, and media consumption characteristics for strategic targeting",
+        "data_source": "Synthetic audience research based on consumer behavior studies and market segmentation best practices",
+        "last_updated": "2024-12-07",
+        "record_count": "15",
+        "data_type": "audience_segmentation_profiles",
+        "segment_types": "Digital Native Professionals, Suburban Family Planners, Gen Z Trendsetters, Affluent Empty Nesters, Budget-Conscious Millennials, Traditional Seniors, Tech Enthusiast Early Adopters, Health-Conscious Actives, Small Business Owners, Creative Professionals, Rural Traditionalists, Urban Young Professionals, Luxury Lifestyle Aspirants, Practical Parents, Retirement Planners",
+        "total_addressable_market": "95.4 million people",
+        "age_ranges": "18-25, 25-35, 30-45, 35-55, 50-65, 65+",
+        "income_brackets": "<$50K, $35-60K, $45-75K, $50-75K, $60-100K, $75K+, $80-150K, $100K+",
+        "geographic_coverage": "Urban, Suburban, Rural, Mixed Location",
+        "device_preferences": "Mobile, Desktop, TV, Tablet, Wearable, Radio, Print, Phone",
+        "social_platforms": "LinkedIn, Facebook, Instagram, TikTok, Twitter, Snapchat",
+        "lifestyle_categories": "Professional, Family, Social, Luxury, Conscious, Traditional, Tech, Wellness, Business, Creative, Rural, Urban, Conservative",
+        "behavioral_metrics": "brand_loyalty_score, digital_adoption_score, influence_susceptibility, media_trust_score, ad_tolerance_score, conversion_likelihood",
+        "purchase_timelines": "3-45 days decision timeline range",
+        "privacy_concerns": "Low, Medium, High, Very High",
+        "usage_context": "targeting strategy, creative development, investment allocation, format selection, campaign timing",
+        "related_datasets": "consumer_journey_mapping.csv, targeting_strategy_recommendations.csv",
+        "optimization_focus": "audience_targeting, segment_prioritization, personalization_strategy, privacy_compliance"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "segment_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "segment_name"
+                    },
+                    {
+                        "fieldName": "size_millions"
+                    },
+                    {
+                        "fieldName": "demographic_profile"
+                    },
+                    {
+                        "fieldName": "psychographic_profile"
+                    },
+                    {
+                        "fieldName": "media_consumption_hours_daily"
+                    },
+                    {
+                        "fieldName": "primary_device"
+                    },
+                    {
+                        "fieldName": "secondary_device"
+                    },
+                    {
+                        "fieldName": "social_platform_preference"
+                    },
+                    {
+                        "fieldName": "content_preference"
+                    },
+                    {
+                        "fieldName": "shopping_behavior"
+                    },
+                    {
+                        "fieldName": "brand_loyalty_score"
+                    },
+                    {
+                        "fieldName": "price_sensitivity"
+                    },
+                    {
+                        "fieldName": "digital_adoption_score"
+                    },
+                    {
+                        "fieldName": "influence_susceptibility"
+                    },
+                    {
+                        "fieldName": "seasonal_behavior"
+                    },
+                    {
+                        "fieldName": "geographic_concentration"
+                    },
+                    {
+                        "fieldName": "income_bracket"
+                    },
+                    {
+                        "fieldName": "education_level"
+                    },
+                    {
+                        "fieldName": "lifestyle_category"
+                    },
+                    {
+                        "fieldName": "purchase_decision_timeline_days"
+                    },
+                    {
+                        "fieldName": "media_trust_score"
+                    },
+                    {
+                        "fieldName": "ad_tolerance_score"
+                    },
+                    {
+                        "fieldName": "privacy_concern_level"
+                    },
+                    {
+                        "fieldName": "engagement_preference"
+                    },
+                    {
+                        "fieldName": "conversion_likelihood"
+                    }
+                ]
+            }
+        }
+    }
+}

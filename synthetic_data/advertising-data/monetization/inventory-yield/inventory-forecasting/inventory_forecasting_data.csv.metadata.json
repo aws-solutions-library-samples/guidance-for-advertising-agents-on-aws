@@ -1,0 +1,61 @@
+{
+    "metadataAttributes": {
+        "data_source": "inventory_forecasting",
+        "category": "forecasting_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "inventory_prediction_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "forecast_date"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "publisher_tier"
+                    },
+                    {
+                        "fieldName": "predicted_impressions"
+                    },
+                    {
+                        "fieldName": "confidence_interval_lower"
+                    },
+                    {
+                        "fieldName": "confidence_interval_upper"
+                    },
+                    {
+                        "fieldName": "historical_accuracy"
+                    },
+                    {
+                        "fieldName": "demand_pressure_score"
+                    },
+                    {
+                        "fieldName": "supply_constraints"
+                    },
+                    {
+                        "fieldName": "seasonal_multiplier"
+                    },
+                    {
+                        "fieldName": "event_impact"
+                    },
+                    {
+                        "fieldName": "pricing_pressure"
+                    },
+                    {
+                        "fieldName": "forecast_horizon_days"
+                    }
+                ]
+            }
+        }
+    }
+}

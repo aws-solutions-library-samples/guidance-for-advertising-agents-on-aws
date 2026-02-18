@@ -1,0 +1,60 @@
+{
+  "agentName": "InventoryOptimizationAgent",
+  "agentId": "inventory-optimization-agent",
+  "templateId": "segments-visualization",
+  "usage": "Inventory segmentation and targeting",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Inventory Optimization Segments",
+    "subtitle": "Inventory segmentation and yield optimization analysis",
+    "segments": [
+      {
+        "primaryLabel": "Primary segments label",
+        "secondaryLabel": "Secondary segments label",
+        "description": "Description for segments",
+        "actualValue": "0",
+        "targetValue": "0",
+        "forecastedValue": "0",
+        "actualLabel": "Current value",
+        "targetLabel": "Target value",
+        "forecastedLabel": "Forecasted value",
+        "primaryMetric": {
+          "label": "Primary metric",
+          "value": "0"
+        },
+        "secondaryMetric": {
+          "label": "Secondary metric",
+          "value": "0"
+        },
+        "budgetAmount": "$0",
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Key insights for segments"
+        ],
+        "risks": [
+          "Risk factors for segments"
+        ],
+        "recommendations": [
+          "Recommendations for segments"
+        ],
+        "metadata": {
+          "lastOptimized": "ISO date of last yield optimization",
+          "dataConfidence": "Data confidence level: 'high', 'medium', 'low'"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of inventory segments",
+      "highestYield": "Highest yielding inventory segment",
+      "fastestGrowing": "Fastest growing inventory segment",
+      "mostOptimized": "Most optimized inventory segment",
+      "recommendedFocus": "Recommended optimization focus area",
+      "activeSegments": "0",
+      "topPerformer": "Top performing item",
+      "growthOpportunity": "Value for growthOpportunity"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "metadataAttributes": {
+    "file_name": "streaming_content_performance.csv",
+    "description": "Comprehensive performance analytics for MagicStream Entertainment content library with advertising and monetization insights",
+    "data_source": "MagicStream platform analytics, viewer behavior tracking, and advertising performance data",
+    "last_updated": "2025-01-10",
+    "record_count": "15",
+    "data_type": "streaming_content_performance",
+    "content_categories": "Original Series, Live Sports, Documentary, Kids Series, Reality Competition, Performance Special",
+    "viewership_range": "1.8M-28M total views with 1.5M-18.5M unique viewers",
+    "completion_rates": "82%-97% with live sports achieving highest rates",
+    "cpm_multipliers": "1.1x-2.1x with live sports commanding premium pricing",
+    "demographic_coverage": "All ages with family co-viewing rates 23%-91%",
+    "device_breakdown": "Smart TV dominant (40%-78%), Mobile secondary (18%-45%), Tablet tertiary (4%-20%)",
+    "brand_safety_scores": "95%-99.2% with family content achieving highest scores",
+    "geographic_performance": "North America, Europe, Australia primary markets with international appeal variations",
+    "social_sentiment": "8.4-9.2 scores with high engagement across platforms",
+    "advertising_demand": "8.1-9.8 scores with live sports and family content leading",
+    "business_applications": "content acquisition decisions, advertising inventory pricing, audience targeting, brand safety assessment",
+    "related_datasets": "streaming_family_segments.csv, streaming_content_social_sentiment.csv, streaming_brand_safety_requirements.json"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "content_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "content_title"
+          },
+          {
+            "fieldName": "content_type"
+          },
+          {
+            "fieldName": "total_views"
+          },
+          {
+            "fieldName": "completion_rate"
+          },
+          {
+            "fieldName": "advertiser_demand_score"
+          },
+          {
+            "fieldName": "cpm_premium_multiplier"
+          },
+          {
+            "fieldName": "brand_safety_incidents"
+          },
+          {
+            "fieldName": "family_co_viewing_rate"
+          },
+          {
+            "fieldName": "international_appeal_score"
+          },
+          {
+            "fieldName": "educational_value_score"
+          }
+        ]
+      }
+    }
+  }
+}

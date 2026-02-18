@@ -1,0 +1,124 @@
+<!-- Session Prompt Modal -->
+<div class="session-modal-overlay" *ngIf="isVisible" (click)="closeModal()">
+  <div class="session-modal standard-modal-panel" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="session-modal-header">
+      <div class="modal-title">
+        <span class="material-icons">history</span>
+        <h3>Continue Previous Session?</h3>
+      </div>
+      <button class="close-btn" (click)="closeModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="session-modal-content">
+      
+      <!-- Session Info Card -->
+      <div class="session-info-card" *ngIf="currentSession">
+        <div class="session-header-row">
+          <div class="session-icon">
+            <span class="material-icons">chat_bubble</span>
+          </div>
+          <div class="session-meta">
+            <span class="session-title">{{ currentSession.title || 'Previous Session' }}</span>
+            <span class="session-time">{{ formatRelativeTime(currentSession.lastUsed) }}</span>
+          </div>
+        </div>
+
+        <div class="session-details">
+          <div class="detail-row">
+            <span class="material-icons">schedule</span>
+            <div class="detail-content">
+              <span class="detail-label">Started</span>
+              <span class="detail-value">{{ formatDateTime(currentSession.createdAt) }}</span>
+            </div>
+          </div>
+          
+          <div class="detail-row">
+            <span class="material-icons">update</span>
+            <div class="detail-content">
+              <span class="detail-label">Last Activity</span>
+              <span class="detail-value">{{ formatDateTime(currentSession.lastUsed) }}</span>
+            </div>
+          </div>
+
+          <div class="detail-row" *ngIf="currentSession.messageCount">
+            <span class="material-icons">forum</span>
+            <div class="detail-content">
+              <span class="detail-label">Messages</span>
+              <span class="detail-value">{{ currentSession.messageCount }} message{{ currentSession.messageCount !== 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+
+          <div class="detail-row">
+            <span class="material-icons">timer</span>
+            <div class="detail-content">
+              <span class="detail-label">Duration</span>
+              <span class="detail-value">{{ getSessionDuration() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session Summary Section -->
+      <div class="session-summary-section">
+        <div class="summary-header">
+          <span class="material-icons">auto_awesome</span>
+          <h4>Session Summary</h4>
+        </div>
+
+        <!-- Loading State -->
+        <div class="summary-loading" *ngIf="isLoadingSummary">
+          <div class="loading-spinner"></div>
+          <span>Retrieving session summary...</span>
+        </div>
+
+        <!-- Summary Content -->
+        <div class="summary-content" *ngIf="!isLoadingSummary && sessionSummary && !sessionSummary.error">
+          <p class="summary-text">{{ sessionSummary.summary }}</p>
+          
+          <div class="topics-section" *ngIf="sessionSummary.topics && sessionSummary.topics.length > 0">
+            <span class="topics-label">Topics discussed:</span>
+            <div class="topics-list">
+              <span class="topic-tag" *ngFor="let topic of sessionSummary.topics">{{ topic }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Summary Available -->
+        <div class="summary-empty" *ngIf="!isLoadingSummary && (!sessionSummary || !sessionSummary.summary)">
+          <span class="material-icons">info_outline</span>
+          <p>No conversation summary available for this session.</p>
+        </div>
+
+        <!-- Error State -->
+        <div class="summary-error" *ngIf="!isLoadingSummary && sessionSummary?.error">
+          <span class="material-icons">warning</span>
+          <p>{{ sessionSummary?.error }}</p>
+        </div>
+      </div>
+
+      <!-- Decision Prompt -->
+      <div class="decision-prompt">
+        <p>Would you like to continue where you left off, or start a fresh conversation?</p>
+      </div>
+
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="session-modal-footer">
+      <button class="nova-button secondary" (click)="onStartNewSession()">
+        <span class="material-icons">add</span>
+        Start New Session
+      </button>
+      <button class="nova-button primary" (click)="onContinueSession()" [disabled]="!currentSession">
+        <span class="material-icons">play_arrow</span>
+        Continue Session
+      </button>
+    </div>
+
+  </div>
+</div>

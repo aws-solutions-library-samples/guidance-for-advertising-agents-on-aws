@@ -1,0 +1,17 @@
+{
+  "name": "ChannelMixOptimizationAgent",
+  "description": "Analyzes and optimizes media channel allocation to maximize reach, frequency, and campaign effectiveness.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/channelmixoptimizationagent",
+  "skills": [
+    "channel_analysis",
+    "media_mix_modeling",
+    "reach_optimization"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

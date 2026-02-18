@@ -1,0 +1,22 @@
+{
+  "agentName": "YieldOptimizationAgent",
+  "agentId": "YieldOptimizationAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Yield performance metrics, revenue optimization impact"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Seasonal yield patterns, optimization schedules"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Revenue distribution, format yield performance"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience-specific yield analysis"
+    }
+  ]
+}

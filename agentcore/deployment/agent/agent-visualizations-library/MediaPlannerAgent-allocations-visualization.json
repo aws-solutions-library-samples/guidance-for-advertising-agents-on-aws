@@ -1,0 +1,31 @@
+{
+  "agentName": "MediaPlannerAgent",
+  "agentId": "media-planner-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified publisher inventory allocation and revenue optimization",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Media Planning Allocation Strategy",
+    "subtitle": "Strategic inventory distribution and revenue optimization",
+    "totalBudget": "Total media planning budget",
+    "allocations": [
+      {
+        "primaryLabel": "Inventory category (e.g., 'Premium Video', 'Display Units', 'Native Content')",
+        "secondaryLabel": "Allocation type (e.g., 'Direct Sales', 'Programmatic')",
+        "allocationPercentage": "Budget percentage for this category",
+        "budgetAmount": "Budget amount allocated (optional)",
+        "performanceLevel": "Expected performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Allocation status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Planning confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Risk assessment: 'low', 'medium', 'high'",
+        "efficiency": "Cost efficiency rating",
+        "safety": "Brand safety score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of allocation categories",
+      "riskAllocations": "Number of high-risk allocations"
+    }
+  }
+}

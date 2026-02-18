@@ -1,0 +1,18 @@
+[
+    {
+        "name": "Advertising",
+        "embedding_model": "amazon.titan-embed-text-v2:0",
+        "generation_model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "description": "Knowledge base for campaign frameworks, audience targeting, brand safety, scheduling strategies, ad load optimization, inventory forecasting, and revenue metrics for media planning and execution",
+        "index_name": "kb-advertising-data-index",
+        "data_sources": [
+            {
+                "name": "AdvertisingData",
+                "description": "Campaign frameworks, audience targeting, brand safety, scheduling strategies, ad load optimization, inventory forecasting, and revenue metrics for media planning and execution",
+                "data_prefix": "advertising-data/",
+                "chunking_max_tokens": 512,
+                "chunking_overlap_percentage": 20
+            }
+        ]
+    }
+]

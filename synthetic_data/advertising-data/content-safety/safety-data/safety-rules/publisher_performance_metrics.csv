@@ -1,0 +1,6 @@
+"publisher_id","publisher_name","domain","content_category","month","impressions","clicks","conversions","revenue","ctr","cvr","cpm","viewability_rate","brand_safety_violations","fraud_rate"
+"pub-12345","Sports Illustrated","sportsillustrated.com","IAB17","2025-04","2500000","45000","1200","156250","0.018","0.027","6.25","0.82","15","0.02"
+"pub-67890","Wired","wired.com","IAB19","2025-04","1800000","36000","1080","180000","0.020","0.030","10.00","0.85","8","0.01"
+"pub-24680","Healthline","healthline.com","IAB7","2025-04","3200000","51200","1792","128000","0.016","0.035","4.00","0.78","22","0.03"
+"pub-13579","New York Times","nytimes.com","IAB11","2025-04","4500000","67500","2025","337500","0.015","0.030","7.50","0.88","12","0.01"
+"pub-97531","ESPN","espn.com","IAB17","2025-04","3800000","76000","2280","285000","0.020","0.030","7.50","0.80","18","0.02"

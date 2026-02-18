@@ -1,0 +1,22 @@
+{
+  "templateId": "metrics-visualization",
+  "agentName": "VerificationAgent",
+  "description": "Quality metrics including IVT and viewability",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "metrics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "metric_name": { "type": "string" },
+            "value": { "type": "number" },
+            "benchmark": { "type": "number" },
+            "status": { "type": "string", "enum": ["good", "warning", "critical"] }
+          }
+        }
+      }
+    }
+  }
+}

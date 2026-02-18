@@ -1,0 +1,233 @@
+{
+  "agentName": "REDsAgent",
+  "agentId": "reds-agent",
+  "templateId": "segments-visualization",
+  "usage": "Audience performance and quality segmentation from REDS feed analysis",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "REDS Audience & Quality Segmentation Analysis",
+    "subtitle": "Performance segmentation by device, geography, and quality metrics",
+    "overallObjective": "Identify high-performing segments and quality optimization opportunities",
+    "segmentationStrategy": "Multi-dimensional segmentation based on device type, geography, browser, viewability, and fraud indicators",
+    "segments": [
+      {
+        "primaryLabel": "Mobile High-Value Users",
+        "secondaryLabel": "Device Type: Mobile | Geography: US",
+        "description": "High-converting mobile users with strong engagement metrics",
+        "size": "Segment size (impressions count)",
+        "percentage": "Percentage of total traffic",
+        "performance": {
+          "ctr": "Click-through rate for this segment",
+          "conversionRate": "Conversion rate for this segment",
+          "avgTimeToConversion": "Average time from impression to conversion (hours)",
+          "viewabilityScore": "Average viewability score",
+          "fraudScore": "Fraud score percentage"
+        },
+        "characteristics": [
+          "Device type: Mobile (iOS/Android)",
+          "Geographic concentration",
+          "Browser preferences",
+          "Time-to-conversion patterns",
+          "Cross-device behavior"
+        ],
+        "value": "Segment value score (high/medium/low)",
+        "trend": "Performance trend: 'growing', 'stable', 'declining'",
+        "insights": [
+          "Key behavioral insights from event stream analysis",
+          "Conversion path characteristics",
+          "Quality metrics assessment"
+        ],
+        "recommendations": [
+          "Targeting optimization recommendations",
+          "Budget allocation suggestions",
+          "Creative optimization for this segment"
+        ],
+        "priority": "Optimization priority: 'high', 'medium', 'low'"
+      },
+      {
+        "primaryLabel": "Desktop Premium Viewers",
+        "secondaryLabel": "Device Type: Desktop | High Viewability",
+        "description": "Desktop users with premium viewability scores and low fraud indicators",
+        "size": "Segment size (impressions count)",
+        "percentage": "Percentage of total traffic",
+        "performance": {
+          "ctr": "Click-through rate for this segment",
+          "conversionRate": "Conversion rate for this segment",
+          "avgTimeToConversion": "Average time from impression to conversion (hours)",
+          "viewabilityScore": "Average viewability score (70%+)",
+          "fraudScore": "Fraud score percentage (<5%)"
+        },
+        "characteristics": [
+          "Device type: Desktop",
+          "High viewability placements",
+          "Low fraud indicators",
+          "Browser distribution",
+          "Geographic patterns"
+        ],
+        "value": "Segment value score (high/medium/low)",
+        "trend": "Performance trend: 'growing', 'stable', 'declining'",
+        "insights": [
+          "Quality metrics excellence",
+          "Premium placement performance",
+          "Brand safety compliance"
+        ],
+        "recommendations": [
+          "Scale premium placements",
+          "Maintain quality standards",
+          "Optimize for viewability"
+        ],
+        "priority": "Optimization priority: 'high', 'medium', 'low'"
+      },
+      {
+        "primaryLabel": "Video Completers",
+        "secondaryLabel": "Video Events: High Completion Rate",
+        "description": "Users with high video completion rates and strong engagement",
+        "size": "Segment size (video starts count)",
+        "percentage": "Percentage of video traffic",
+        "performance": {
+          "completionRate": "Video completion rate",
+          "skipRate": "Video skip rate",
+          "avgViewTime": "Average view time (seconds)",
+          "postViewCTR": "Click-through rate after video view",
+          "conversionRate": "Post-video conversion rate"
+        },
+        "characteristics": [
+          "Video completion behavior",
+          "Quartile progression patterns",
+          "Device preferences for video",
+          "Time of day patterns",
+          "Content category preferences"
+        ],
+        "value": "Segment value score (high/medium/low)",
+        "trend": "Engagement trend: 'growing', 'stable', 'declining'",
+        "insights": [
+          "Video engagement patterns from event feed",
+          "Optimal video length insights",
+          "Skip behavior analysis"
+        ],
+        "recommendations": [
+          "Video creative optimization",
+          "Placement strategy for video",
+          "Targeting refinement for video campaigns"
+        ],
+        "priority": "Optimization priority: 'high', 'medium', 'low'"
+      },
+      {
+        "primaryLabel": "Multi-Touch Converters",
+        "secondaryLabel": "Attribution: Multiple Touchpoints",
+        "description": "Users requiring multiple touchpoints before conversion",
+        "size": "Segment size (unique users)",
+        "percentage": "Percentage of converting users",
+        "performance": {
+          "avgTouchpoints": "Average touchpoints to conversion",
+          "conversionRate": "Conversion rate",
+          "avgTimeToConversion": "Average time to conversion (hours)",
+          "assistRate": "Assist vs last-click attribution ratio",
+          "crossDeviceRate": "Cross-device conversion rate"
+        },
+        "characteristics": [
+          "Multi-touch attribution patterns",
+          "Average journey length",
+          "Cross-device behavior",
+          "Time-to-conversion distribution",
+          "Channel mix in conversion path"
+        ],
+        "value": "Segment value score (high/medium/low)",
+        "trend": "Journey trend: 'shortening', 'stable', 'lengthening'",
+        "insights": [
+          "Attribution path insights",
+          "Assist touchpoint value",
+          "Cross-device journey patterns"
+        ],
+        "recommendations": [
+          "Multi-touch attribution strategy",
+          "Budget allocation across touchpoints",
+          "Cross-device targeting optimization"
+        ],
+        "priority": "Optimization priority: 'high', 'medium', 'low'"
+      },
+      {
+        "primaryLabel": "Geographic High Performers",
+        "secondaryLabel": "Geography: Top Performing Regions",
+        "description": "Geographic segments with exceptional performance metrics",
+        "size": "Segment size (impressions by region)",
+        "percentage": "Percentage of total traffic",
+        "performance": {
+          "ctr": "Regional click-through rate",
+          "conversionRate": "Regional conversion rate",
+          "cpa": "Cost per acquisition",
+          "consentRate": "GDPR consent rate (if applicable)",
+          "viewabilityScore": "Regional viewability score"
+        },
+        "characteristics": [
+          "Geographic concentration",
+          "Regional performance patterns",
+          "Privacy compliance rates",
+          "Device preferences by region",
+          "Time zone optimization"
+        ],
+        "value": "Segment value score (high/medium/low)",
+        "trend": "Regional trend: 'growing', 'stable', 'declining'",
+        "insights": [
+          "Geographic performance insights",
+          "Regional privacy compliance patterns",
+          "Cultural and behavioral factors"
+        ],
+        "recommendations": [
+          "Geographic targeting optimization",
+          "Regional budget allocation",
+          "Localization strategies"
+        ],
+        "priority": "Optimization priority: 'high', 'medium', 'low'"
+      },
+      {
+        "primaryLabel": "Quality Risk Segment",
+        "secondaryLabel": "Low Viewability | High Fraud Indicators",
+        "description": "Segment requiring quality improvement and fraud mitigation",
+        "size": "Segment size (impressions count)",
+        "percentage": "Percentage of total traffic",
+        "performance": {
+          "viewabilityScore": "Below-threshold viewability score",
+          "fraudScore": "Elevated fraud score",
+          "brandSafetyScore": "Brand safety assessment",
+          "ctr": "Click-through rate",
+          "conversionRate": "Conversion rate"
+        },
+        "characteristics": [
+          "Low viewability placements",
+          "Fraud indicators present",
+          "Suspicious click patterns",
+          "Bot traffic indicators",
+          "Brand safety concerns"
+        ],
+        "value": "Segment value score (low)",
+        "trend": "Quality trend: 'improving', 'stable', 'deteriorating'",
+        "insights": [
+          "Quality issue identification",
+          "Fraud pattern analysis",
+          "Placement quality assessment"
+        ],
+        "recommendations": [
+          "Exclude low-quality placements",
+          "Implement fraud prevention measures",
+          "Enhance viewability standards",
+          "Review brand safety compliance"
+        ],
+        "priority": "Remediation priority: 'high'"
+      }
+    ],
+    "segmentationInsights": [
+      "Overall segmentation strategy effectiveness",
+      "Cross-segment performance patterns",
+      "Quality distribution across segments",
+      "Attribution insights across segments"
+    ],
+    "optimizationPriorities": [
+      "High-priority segments for scaling",
+      "Quality improvement focus areas",
+      "Fraud mitigation priorities",
+      "Attribution optimization opportunities"
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+    "metadataAttributes": {
+        "data_source": "autonomous_management",
+        "category": "campaign_performance",
+        "business_domain": "performance_analytics",
+        "analysis_type": "automated_optimization",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "performance_optimization"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "autonomousOptimization"
+                },
+                {
+                    "fieldName": "performanceMetrics"
+                },
+                {
+                    "fieldName": "managementStrategies"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "bidAdjustments"
+                },
+                {
+                    "fieldName": "budgetAllocation"
+                },
+                {
+                    "fieldName": "audienceOptimization"
+                },
+                {
+                    "fieldName": "creativeRotation"
+                },
+                {
+                    "fieldName": "performanceTracking"
+                }
+            ]
+        }
+    }
+}

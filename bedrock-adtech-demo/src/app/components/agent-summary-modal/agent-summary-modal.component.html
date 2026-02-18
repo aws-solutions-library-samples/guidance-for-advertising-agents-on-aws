@@ -1,0 +1,207 @@
+<!-- Agent Summary Modal -->
+<div class="summary-modal-overlay" *ngIf="summaryModalState.isVisible" (click)="onCloseModal()">
+  <div class="summary-modal" (click)="$event.stopPropagation()">
+    <div class="summary-modal-header">
+      <div class="modal-title">
+        <span class="material-icons">summarize</span>
+        <h3>Agent Summary</h3>
+        <div class="agent-info" *ngIf="summaryModalState.summary">
+          <span class="agent-name" [style.color]="getAgentColorForAgent(summaryModalState.summary.agentName)">
+            {{summaryModalState.summary.agentDisplayName}}
+          </span>
+          <span class="agent-team-badge" *ngIf="getAgentTeam(summaryModalState.summary.agentName)">
+            {{getAgentTeam(summaryModalState.summary.agentName)}}
+          </span>
+        </div>
+      </div>
+      <button class="close-btn" (click)="onCloseModal()">
+        <span class="material-icons">close</span>
+        Close
+      </button>
+    </div>
+
+    <div class="summary-modal-content">
+      <!-- Loading State -->
+      <div *ngIf="summaryModalState.isLoading" class="summary-loading">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+        </div>
+        <p>Generating summary with Claude Haiku...</p>
+      </div>
+
+      <!-- Error State with Enhanced Error Handling -->
+      <div *ngIf="summaryModalState.error && !summaryModalState.isLoading" class="summary-error">
+        <div class="error-icon">
+          <span class="material-icons" 
+                [class.error-retryable]="isRetryableError(summaryModalState.error)"
+                [class.error-permanent]="!isRetryableError(summaryModalState.error)">
+            {{getErrorIcon(summaryModalState.error)}}
+          </span>
+        </div>
+        
+        <h4>{{getErrorTitle(summaryModalState.error)}}</h4>
+        
+        <div class="error-message">
+          <p>{{summaryModalState.error}}</p>
+          
+          <!-- Show retry count if retries have been attempted -->
+          <div *ngIf="summaryRetryCount > 0" class="retry-info">
+            <span class="material-icons">info</span>
+            <span>Attempted {{summaryRetryCount}} of {{maxSummaryRetries}} retries</span>
+          </div>
+        </div>
+
+        <!-- Error-specific action buttons -->
+        <div class="error-actions">
+          <!-- Retry button for retryable errors -->
+          <button *ngIf="isRetryableError(summaryModalState.error) && summaryRetryCount < maxSummaryRetries" 
+                  class="retry-btn primary" 
+                  (click)="onRetryGeneration()">
+            <span class="material-icons">refresh</span>
+            Try Again
+          </button>
+
+          <!-- Manual retry button for non-retryable errors or max retries reached -->
+          <button *ngIf="!isRetryableError(summaryModalState.error) || summaryRetryCount >= maxSummaryRetries" 
+                  class="retry-btn secondary" 
+                  (click)="onRetryGeneration()">
+            <span class="material-icons">replay</span>
+            Retry Manually
+          </button>
+
+          <!-- Help button for specific error types -->
+          <button *ngIf="shouldShowHelpButton(summaryModalState.error)" 
+                  class="help-btn" 
+                  (click)="onShowErrorHelp(summaryModalState.error)">
+            <span class="material-icons">help_outline</span>
+            Get Help
+          </button>
+        </div>
+
+        <!-- Error-specific help text -->
+        <div *ngIf="getErrorHelpText(summaryModalState.error)" class="error-help">
+          <div class="help-content">
+            <span class="material-icons">lightbulb_outline</span>
+            <p>{{getErrorHelpText(summaryModalState.error)}}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Content -->
+      <div *ngIf="summaryModalState.summary && !summaryModalState.isLoading && !summaryModalState.error" 
+           class="summary-content">
+        
+        <!-- Summary Header Info -->
+        <div class="summary-header-info">
+          <div class="summary-stats">
+            <div class="stat-item">
+              <span class="stat-value">{{summaryModalState.summary.messageCount}}</span>
+              <span class="stat-label">Messages</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{formatRelativeTime(summaryModalState.summary.generatedAt)}}</span>
+              <span class="stat-label">Generated</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Formatted Summary Display -->
+        <div class="formatted-summary-container" 
+             *ngIf="summaryModalState.summary && (summaryModalState.summary.keyInsights&&summaryModalState.summary.keyInsights.length > 0 || 
+             (summaryModalState.summary&&summaryModalState.summary.recommendations&&summaryModalState.summary.recommendations.length > 0 )|| 
+                    (summaryModalState.summary.dataPoints&&summaryModalState.summary.dataPoints.length > 0))">
+          
+          <!-- Key Insights Section with Enhanced Formatting -->
+          <div class="summary-section" 
+               [class.new-item]="hasSummaryNewItems('insights')"
+               *ngIf="summaryModalState.summary && summaryModalState.summary.keyInsights && summaryModalState.summary.keyInsights.length > 0">
+            <div class="section-header">
+              <span class="material-icons">lightbulb</span>
+              <h4>Key Insights</h4>
+            </div>
+            <ul class="insights-list enhanced-list">
+              <li *ngFor="let insight of summaryModalState.summary.keyInsights" 
+                  class="insight-item enhanced-item"
+                  [class.new-item]="isSummaryItemNew('insight', insight)"
+                  [innerHTML]="formatTextWithMarkdown(insight)">
+              </li>
+            </ul>
+          </div>
+
+          <!-- Recommendations Section with Enhanced Formatting -->
+          <div class="summary-section" 
+               [class.new-item]="hasSummaryNewItems('recommendations')"
+               *ngIf="summaryModalState.summary && summaryModalState.summary.recommendations && summaryModalState.summary.recommendations.length > 0">
+            <div class="section-header">
+              <span class="material-icons">recommend</span>
+              <h4>Recommendations</h4>
+            </div>
+            <ul class="recommendations-list enhanced-list">
+              <li *ngFor="let recommendation of summaryModalState.summary.recommendations" 
+                  class="recommendation-item enhanced-item"
+                  [class.new-item]="isSummaryItemNew('recommendation', recommendation)"
+                  [innerHTML]="formatTextWithMarkdown(recommendation)">
+              </li>
+            </ul>
+          </div>
+
+          <!-- Data Points Section with Enhanced Formatting -->
+          <div class="summary-section" 
+               [class.new-item]="hasSummaryNewItems('datapoints')"
+               *ngIf="summaryModalState.summary && summaryModalState.summary.dataPoints&&summaryModalState.summary.dataPoints.length > 0">
+            <div class="section-header">
+              <span class="material-icons">analytics</span>
+              <h4>Key Data Points</h4>
+            </div>
+            <ul class="data-points-list enhanced-list">
+              <li *ngFor="let dataPoint of summaryModalState.summary.dataPoints" 
+                  class="data-point-item enhanced-item"
+                  [class.new-item]="isSummaryItemNew('datapoint', dataPoint)"
+                  [innerHTML]="formatTextWithMarkdown(dataPoint)">
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Fallback Raw Summary Display -->
+        <div class="summary-section fallback-summary" 
+             *ngIf="(!summaryModalState.summary.keyInsights?.length && 
+                     !summaryModalState.summary.recommendations?.length && 
+                     !summaryModalState.summary.dataPoints?.length) && 
+                    summaryModalState.summary.rawSummary">
+          <div class="section-header">
+            <span class="material-icons">description</span>
+            <h4>Summary</h4>
+          </div>
+          <div class="raw-summary-content">
+            <div class="fallback-content" [innerHTML]="formatFallbackContent(summaryModalState.summary.rawSummary)"></div>
+          </div>
+        </div>
+
+        <!-- No Content Available -->
+        <div class="summary-section no-content" 
+             *ngIf="!summaryModalState.summary.keyInsights?.length && 
+                    !summaryModalState.summary.recommendations?.length && 
+                    !summaryModalState.summary.dataPoints?.length && 
+                    !summaryModalState.summary.rawSummary">
+          <div class="section-header">
+            <span class="material-icons">info</span>
+            <h4>No Summary Available</h4>
+          </div>
+          <p class="no-content-message">
+            Unable to generate a structured summary for this agent. 
+            This may be due to insufficient message content or parsing issues.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="summary-modal-actions" *ngIf="summaryModalState.summary && !summaryModalState.isLoading">
+      <button class="regenerate-btn" (click)="onRetryGeneration()">
+        <span class="material-icons">refresh</span>
+        Regenerate Summary
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,57 @@
+{
+  "agentName": "AudienceStrategyAnalyzer",
+  "agentId": "audience-strategy-analyzer",
+  "templateId": "segments-visualization",
+  "usage": "Audience segment analysis and prioritization (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Segment Investment Strategy",
+    "subtitle": "Strategic audience prioritization and targeting approach",
+    "segments": [
+      {
+        "primaryLabel": "Segment name (e.g., 'Health-Conscious Millennials', 'Fitness Enthusiasts', 'Premium App Users')",
+        "secondaryLabel": "Segment category (e.g., 'Core Audience', 'Growth Segment', 'Retention Focus')",
+        "description": "Detailed segment profile including demographics, psychographics, and digital behaviors",
+        "actualValue": "Current performance metric (e.g., '4.2x ROAS', '15% conversion rate')",
+        "targetValue": "Performance target (e.g., '5.0x ROAS', '20% conversion rate')",
+        "forecastedValue": "Projected performance (e.g., '4.8x ROAS', '18% conversion rate')",
+        "actualLabel": "Current performance description",
+        "targetLabel": "Target performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Conversion Rate', 'Lifetime Value')",
+          "value": "KPI value (e.g., '15%', '$450')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Engagement Rate', 'App Install Rate')",
+          "value": "KPI value (e.g., '8.5%', '3.2%')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$750,000')",
+        "statusIndicator": "Segment status: 'optimized', 'active', 'underperforming'",
+        "confidenceLevel": "Targeting confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Expected performance: 'high', 'medium', 'low'",
+        "insights": [
+          "Key audience insights and behaviors (e.g., 'High mobile usage during morning workouts')"
+        ],
+        "risks": [
+          "Risk factors for this segment (e.g., 'Seasonal fitness motivation fluctuations')"
+        ],
+        "recommendations": [
+          "Targeting and optimization strategies (e.g., 'Focus on Instagram and TikTok for visual content')"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '2.4M users', '15% of target market')",
+          "growth": "Growth rate (e.g., '+12% YoY', 'Stable')",
+          "engagement": "Engagement level (e.g., 'High', 'Medium', 'Low')"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of segments analyzed",
+      "activeSegments": "Number of recommended active segments",
+      "topPerformer": "Best performing segment name",
+      "growthOpportunity": "Primary growth opportunity segment"
+    }
+  }
+}

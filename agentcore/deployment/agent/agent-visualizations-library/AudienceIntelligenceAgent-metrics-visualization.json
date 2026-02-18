@@ -1,0 +1,25 @@
+{
+  "agentName": "AudienceIntelligenceAgent",
+  "agentId": "AudienceIntelligenceAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Audience intelligence metrics and behavioral insights",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Audience Intelligence Metrics",
+    "subtitle": "Key audience behavioral patterns and intelligence indicators",
+    "metrics": [
+      {
+        "primaryLabel": "Primary metrics label",
+        "secondaryLabel": "Secondary metrics label",
+        "items": "Value for items"
+      }
+    ],
+    "summary": {
+      "totalMetrics": "Number of intelligence metrics tracked",
+      "improvingMetrics": "Count of metrics showing improvement",
+      "topPerformingMetric": "Best performing audience intelligence metric",
+      "focusArea": "Primary intelligence area needing attention"
+    }
+  }
+}

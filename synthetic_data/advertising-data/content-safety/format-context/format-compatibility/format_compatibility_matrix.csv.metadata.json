@@ -1,0 +1,55 @@
+{
+    "metadataAttributes": {
+        "data_source": "format_compatibility",
+        "category": "technical_specifications",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "format_compatibility_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "primary_format"
+                    },
+                    {
+                        "fieldName": "secondary_format"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "compatibility_score"
+                    },
+                    {
+                        "fieldName": "revenue_lift_percent"
+                    },
+                    {
+                        "fieldName": "user_experience_impact"
+                    },
+                    {
+                        "fieldName": "frequency_cap_interaction"
+                    },
+                    {
+                        "fieldName": "optimal_sequence"
+                    },
+                    {
+                        "fieldName": "performance_synergy_score"
+                    },
+                    {
+                        "fieldName": "brand_recall_improvement"
+                    },
+                    {
+                        "fieldName": "attention_overlap_risk"
+                    }
+                ]
+            }
+        }
+    }
+}

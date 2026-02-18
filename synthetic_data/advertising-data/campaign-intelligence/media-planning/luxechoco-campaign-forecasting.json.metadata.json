@@ -1,0 +1,48 @@
+{
+    "metadataAttributes": {
+        "data_source": "campaign_forecasting",
+        "category": "media_planning",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "performance_forecasting",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "predictive_analytics"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "campaignForecasting"
+                },
+                {
+                    "fieldName": "performancePredictions"
+                },
+                {
+                    "fieldName": "budgetAllocation"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "reach"
+                },
+                {
+                    "fieldName": "frequency"
+                },
+                {
+                    "fieldName": "impressions"
+                },
+                {
+                    "fieldName": "clickThroughRate"
+                },
+                {
+                    "fieldName": "conversionRate"
+                },
+                {
+                    "fieldName": "costPerAcquisition"
+                }
+            ]
+        }
+    }
+}

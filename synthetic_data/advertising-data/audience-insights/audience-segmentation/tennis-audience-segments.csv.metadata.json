@@ -1,0 +1,68 @@
+{
+    "metadataAttributes": {
+        "data_source": "audience_segmentation",
+        "category": "audience_insights",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "demographic_segmentation",
+        "sport": "tennis",
+        "industry": "luxury_sports",
+        "geographic_scope": "european_markets",
+        "content_type": "audience_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "segment_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "segment_name"
+                    },
+                    {
+                        "fieldName": "segment_type"
+                    },
+                    {
+                        "fieldName": "size_millions"
+                    },
+                    {
+                        "fieldName": "age_range"
+                    },
+                    {
+                        "fieldName": "income_range"
+                    },
+                    {
+                        "fieldName": "lifestyle"
+                    },
+                    {
+                        "fieldName": "frequency"
+                    },
+                    {
+                        "fieldName": "price_willingness"
+                    },
+                    {
+                        "fieldName": "primary_platforms"
+                    },
+                    {
+                        "fieldName": "germany_users_millions"
+                    },
+                    {
+                        "fieldName": "uk_users_millions"
+                    },
+                    {
+                        "fieldName": "france_users_millions"
+                    },
+                    {
+                        "fieldName": "netherlands_users_millions"
+                    },
+                    {
+                        "fieldName": "belgium_users_millions"
+                    }
+                ]
+            }
+        }
+    }
+}

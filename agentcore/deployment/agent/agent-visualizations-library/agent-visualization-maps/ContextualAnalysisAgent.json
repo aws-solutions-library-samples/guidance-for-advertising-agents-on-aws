@@ -1,0 +1,22 @@
+{
+  "agentName": "ContextualAnalysisAgent",
+  "agentId": "contextual-analysis-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Safety scores, content analysis metrics, risk assessments"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Publisher safety assessments and domain analysis"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Content category analysis and audience alignment"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Content moderation schedules and safety review timelines"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "agentName": "CurrentEventsAgent",
+  "agentId": "current-events-agent",
+  "templateId": "segments-visualization",
+  "usage": "Audience segment response analysis during events",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Segment Event Response",
+    "subtitle": "How different audience segments respond to current events and their behavioral changes",
+    "segments": [
+      {
+        "primaryLabel": "Audience segment name (e.g., 'News-Seeking Segment', 'Entertainment-Focused Segment', 'Social Media Natives', 'Local Community Segment')",
+        "secondaryLabel": "Segment category (e.g., 'High-engagement news consumers', 'Entertainment-first viewers', 'Mobile-first social users')",
+        "description": "Detailed segment behavior during events (e.g., 'Audiences actively seeking breaking news and real-time updates', 'Users who prefer entertainment content during stressful events')",
+        "actualValue": "Current event response level (e.g., '65.4', '23.7', '145.2')",
+        "targetValue": "Normal/baseline response level (e.g., '45.0', '42.1', '85.0')",
+        "forecastedValue": "Projected post-event response (e.g., '52.8', '38.5', '105.3')",
+        "actualLabel": "Current event behavior description (e.g., 'High engagement with breaking news', 'Avoiding news content entirely')",
+        "targetLabel": "Normal behavior baseline (e.g., 'Typical news consumption', 'Standard entertainment viewing')",
+        "forecastedLabel": "Expected behavior recovery (e.g., 'Gradual return to normal patterns', 'Sustained elevated news interest')",
+        "primaryMetric": {
+          "label": "Primary response KPI (e.g., 'Engagement Rate', 'Content Consumption Hours', 'Social Sharing Rate')",
+          "value": "Primary KPI value during event (e.g., '65.4%', '4.2 hours', '180 shares/day')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary response KPI (e.g., 'Session Duration', 'Content Completion Rate', 'Comment Engagement')",
+          "value": "Secondary KPI value (e.g., '12.5 minutes', '78%', '45 comments/post')"
+        },
+        "budgetAmount": "Recommended budget allocation for segment (e.g., '$125K', '35% of event budget')",
+        "statusIndicator": "Segment opportunity status: 'optimized', 'opportunity', 'declining', 'volatile'",
+        "confidenceLevel": "Data confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Segment performance: 'high', 'medium', 'low'",
+        "insights": [
+          "Segment behavior insights (e.g., 'Strong correlation with breaking news cycles', 'Seeks comfort content during crises', 'Highly reactive to social media trends')"
+        ],
+        "risks": [
+          "Segment risks (e.g., 'May experience event fatigue', 'Vulnerable to misinformation', 'Could disengage if overwhelmed')"
+        ],
+        "recommendations": [
+          "Segment strategy recommendations (e.g., 'Develop news-adjacent entertainment content', 'Focus on calming, reassuring messaging', 'Provide fact-checked information')"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '2.3M users', '35% of total audience')",
+          "growth": "Growth rate during event (e.g., '+25% vs baseline', 'Stable', '-10% engagement')",
+          "engagement": "Engagement level (e.g., 'Very High', 'Moderate', 'Declining')"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of analyzed segments",
+      "activeSegments": "Number of highly engaged segments during event",
+      "topPerformer": "Best performing segment name",
+      "growthOpportunity": "Segment with highest growth potential during event"
+    }
+  }
+}

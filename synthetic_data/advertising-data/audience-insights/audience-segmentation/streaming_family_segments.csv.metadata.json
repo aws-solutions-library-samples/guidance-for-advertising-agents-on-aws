@@ -1,0 +1,65 @@
+{
+  "metadataAttributes": {
+    "file_name": "streaming_family_segments.csv",
+    "description": "Detailed family audience segmentation for MagicStream Entertainment platform focusing on household viewing behaviors and advertising opportunities",
+    "data_source": "MagicStream subscriber data, viewing analytics, and demographic surveys",
+    "last_updated": "2025-01-10",
+    "record_count": "15",
+    "data_type": "streaming_family_segments",
+    "family_types": "Premium Family Streamers, Multi-Generational Households, Tech-Savvy Young Families, Budget-Conscious Families, Single Parent Households, Affluent Empty Nesters, Blended Family Dynamics, International Families, Homeschooling Families, Weekend Warriors, Cultural Heritage Families, Eco-Conscious Families, Sports-Focused Families, Creative Arts Families, Military Families",
+    "household_sizes": "2.1-5.8 members with varying age compositions",
+    "subscription_tiers": "Premium, Standard, Basic with different ad tolerance levels",
+    "viewing_hours": "45.8-134.7 monthly hours with peak time variations",
+    "content_preferences": "Educational, Family Series, Live Sports, Cultural Content, Adventure, Arts & Culture",
+    "device_usage": "Smart TV, Mobile, Tablet, Desktop with family-specific patterns",
+    "brand_safety_focus": "G, PG, PG-13 ratings with family-appropriate content emphasis",
+    "geographic_distribution": "Urban, Suburban, Rural with cultural and community considerations",
+    "advertising_receptivity": "6.5-9.2 scores with premium content willingness variations",
+    "business_applications": "family-targeted advertising, content acquisition strategy, subscription optimization, brand safety policy development",
+    "related_datasets": "streaming_content_social_sentiment.csv, social_trend_analysis.csv, streaming_brand_safety_requirements.json"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "segment_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "segment_name"
+          },
+          {
+            "fieldName": "household_size"
+          },
+          {
+            "fieldName": "subscription_tier"
+          },
+          {
+            "fieldName": "monthly_viewing_hours"
+          },
+          {
+            "fieldName": "content_preferences"
+          },
+          {
+            "fieldName": "device_preferences"
+          },
+          {
+            "fieldName": "ad_tolerance"
+          },
+          {
+            "fieldName": "brand_safety_requirements"
+          },
+          {
+            "fieldName": "geographic_distribution"
+          },
+          {
+            "fieldName": "advertising_receptivity_score"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "agentName": "social-sentiment-analyzer",
+  "agentId": "social-sentiment-analyzer",
+  "templateId": "metrics-visualization",
+  "usage": "Social sentiment metrics, brand perception scores, and engagement analysis",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Social Sentiment Analysis",
+    "subtitle": "Brand perception and social media sentiment analysis across platforms",
+    "collaborativeInsights": {
+      "primaryAgent": "social-sentiment-analyzer",
+      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent2": "TimingStrategyAgent"
+    },
+    "metrics": [
+      {
+        "templateId": "metrics-visualization",
+        "primaryLabel": "Brand Sentiment Score",
+        "secondaryLabel": "Overall brand perception and sentiment distribution across social platforms",
+        "items": [
+          {
+            "primaryLabel": "Overall Sentiment Score",
+            "actualValue": "Current brand sentiment score (e.g., '7.2', '8.5', '6.1')",
+            "targetValue": "Target sentiment benchmark (e.g., '7.5', '8.0', '7.0')",
+            "forecastedValue": "Predicted sentiment with campaign (e.g., '7.8', '8.7', '6.8')",
+            "actualLabel": "Current brand sentiment across all platforms",
+            "targetLabel": "Target sentiment benchmark for brand category",
+            "forecastedLabel": "Projected sentiment with campaign optimization",
+            "unit": "score",
+            "trend": "Sentiment direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Sentiment analysis confidence: 'high', 'medium', 'low'",
+            "isPrimary": true,
+            "insights": [
+              "Sentiment insights (e.g., 'Positive sentiment increased 15% following product launch', 'Brand advocacy strongest among 25-34 age group')"
+            ],
+            "risks": [
+              "Sentiment risks (e.g., 'Negative sentiment spike detected around customer service issues', 'Competitor campaign driving negative comparisons')"
+            ],
+            "recommendations": [
+              "Sentiment optimization recommendations (e.g., 'Amplify positive customer testimonials during peak engagement hours', 'Address customer service concerns proactively')"
+            ]
+          },
+          {
+            "primaryLabel": "Share of Voice",
+            "actualValue": "Current brand mention share (e.g., '23%', '18%', '31%')",
+            "targetValue": "Target share of voice (e.g., '25%', '20%', '30%')",
+            "forecastedValue": "Predicted share with campaign (e.g., '27%', '22%', '34%')",
+            "actualLabel": "Current brand mention volume vs competitors",
+            "targetLabel": "Target competitive share of voice",
+            "forecastedLabel": "Projected share with increased campaign activity",
+            "unit": "%",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "Share of voice insights"
+            ],
+            "risks": [
+              "Competitive share risks"
+            ],
+            "recommendations": [
+              "Share of voice optimization strategies"
+            ]
+          },
+          {
+            "primaryLabel": "Engagement Quality Score",
+            "actualValue": "Current meaningful engagement rate (e.g., '4.2', '3.8', '5.1')",
+            "targetValue": "Target engagement quality (e.g., '4.5', '4.0', '5.0')",
+            "forecastedValue": "Predicted engagement quality (e.g., '4.7', '4.3', '5.4')",
+            "actualLabel": "Current quality of brand interactions and conversations",
+            "targetLabel": "Target meaningful engagement benchmark",
+            "forecastedLabel": "Projected engagement quality with optimized content",
+            "unit": "score",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "Engagement quality insights"
+            ],
+            "risks": [
+              "Engagement quality risks"
+            ],
+            "recommendations": [
+              "Engagement optimization recommendations"
+            ]
+          }
+        ]
+      },
+      {
+        "primaryLabel": "Platform-Specific Sentiment",
+        "secondaryLabel": "Sentiment analysis breakdown across different social media platforms",
+        "items": [
+          {
+            "primaryLabel": "Twitter Sentiment",
+            "actualValue": "Current Twitter sentiment score (e.g., '6.8', '7.2', '5.9')",
+            "targetValue": "Target Twitter sentiment (e.g., '7.0', '7.5', '6.5')",
+            "forecastedValue": "Predicted Twitter sentiment (e.g., '7.1', '7.6', '6.3')",
+            "actualLabel": "Current brand sentiment on Twitter/X platform",
+            "targetLabel": "Target Twitter sentiment benchmark",
+            "forecastedLabel": "Projected Twitter sentiment with campaign",
+            "unit": "score",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": true,
+            "insights": [
+              "Twitter-specific sentiment insights"
+            ],
+            "risks": [
+              "Twitter sentiment risks"
+            ],
+            "recommendations": [
+              "Twitter optimization recommendations"
+            ]
+          },
+          {
+            "primaryLabel": "Instagram Sentiment",
+            "actualValue": "Current Instagram sentiment score (e.g., '8.1', '7.9', '8.3')",
+            "targetValue": "Target Instagram sentiment (e.g., '8.0', '8.0', '8.0')",
+            "forecastedValue": "Predicted Instagram sentiment (e.g., '8.4', '8.2', '8.6')",
+            "actualLabel": "Current brand sentiment on Instagram platform",
+            "targetLabel": "Target Instagram sentiment benchmark",
+            "forecastedLabel": "Projected Instagram sentiment with visual content optimization",
+            "unit": "score",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "Instagram-specific sentiment insights"
+            ],
+            "risks": [
+              "Instagram sentiment risks"
+            ],
+            "recommendations": [
+              "Instagram optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "agentName": "VerificationAgent",
+  "agentId": "verification-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Incident timeline and monitoring periods",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Verification Timeline",
+    "subtitle": "Incident tracking and monitoring periods",
+    "startDate": "Monitoring start date (ISO format)",
+    "endDate": "Monitoring end date (ISO format)",
+    "totalDuration": "Total monitoring duration description",
+    "overallObjective": "Primary verification objective",
+    "phases": [
+      {
+        "primaryLabel": "Monitoring period (e.g., 'Pre-Campaign', 'Week 1', 'Week 2', 'Post-Campaign')",
+        "secondaryLabel": "Period type (e.g., 'Setup', 'Active Monitoring', 'Analysis')",
+        "description": "Monitoring objectives and activities",
+        "startDate": "Period start date (ISO format)",
+        "endDate": "Period end date (ISO format)",
+        "duration": "Period duration description",
+        "status": "Period status: 'upcoming', 'active', 'completed'",
+        "priority": "Period priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected verification outcomes",
+        "budget": "Verification budget allocation",
+        "resources": ["Required verification resources"],
+        "milestones": [
+          {
+            "date": "Event date (ISO format)",
+            "label": "Event name (e.g., 'Brand Safety Incident', 'IVT Spike')",
+            "status": "Event status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": ["Prerequisites and dependencies"],
+        "risks": ["Risk factors for this period"]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key event date (ISO format)",
+        "label": "Event name",
+        "description": "Event details",
+        "status": "Event status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": ["Verification success criteria"],
+    "criticalPath": ["Critical monitoring periods"]
+  }
+}

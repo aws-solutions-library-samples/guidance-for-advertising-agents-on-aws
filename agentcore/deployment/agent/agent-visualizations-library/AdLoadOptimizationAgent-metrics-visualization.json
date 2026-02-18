@@ -1,0 +1,47 @@
+{
+  "agentName": "AdLoadOptimizationAgent",
+  "agentId": "ad-load-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Viewer retention metrics, revenue KPIs, ad tolerance",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Ad Load Optimization Metrics",
+    "subtitle": "Viewer retention, revenue balance, and ad tolerance analysis",
+    "collaborativeInsights": {
+      "primaryAgent": "AdLoadOptimizationAgent",
+      "supportingAgent1": "FormatStrategyOptimizerAgent",
+      "supportingAgent2": "AudienceStrategyAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Ad load category (e.g., 'Viewer Retention', 'Revenue Optimization')",
+        "secondaryLabel": "Category description (e.g., 'Balance between ad revenue and user experience')",
+        "items": [
+          {
+            "primaryLabel": "Specific ad load metric (e.g., 'Retention Rate', 'Revenue per User', 'Ad Tolerance Score')",
+            "actualValue": "Current performance (e.g., '85%', '$4.50', '7.2/10')",
+            "targetValue": "Optimization target (e.g., '90%', '$5.00', '8.0/10')",
+            "forecastedValue": "Projected improvement (e.g., '88%', '$4.75', '7.6/10')",
+            "actualLabel": "Current ad load performance description",
+            "targetLabel": "Target ad load optimization goal",
+            "forecastedLabel": "Forecasted ad load improvement",
+            "unit": "Measurement unit (e.g., '%', '$', '/10')",
+            "trend": "Optimization trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary ad load metric",
+            "insights": [
+              "Ad load optimization insights and viewer behavior patterns"
+            ],
+            "risks": [
+              "Risks to viewer experience and revenue"
+            ],
+            "recommendations": [
+              "Ad load optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

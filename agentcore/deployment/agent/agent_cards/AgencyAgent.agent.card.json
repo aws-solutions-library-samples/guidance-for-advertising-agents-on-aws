@@ -1,0 +1,20 @@
+{
+  "agent_name": "AgencyAgent",
+  "agent_description": "Orchestrator agent managing advertising campaigns, coordinating between advertisers, publishers, signal providers, identity services, verification vendors, and measurement partners. Acts as the central hub in the agentic advertising ecosystem.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/agencyagent",
+  "skills": [
+    "campaign_orchestration",
+    "media_planning",
+    "publisher_coordination",
+    "budget_management",
+    "performance_optimization"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "orchestrator"
+  }
+}

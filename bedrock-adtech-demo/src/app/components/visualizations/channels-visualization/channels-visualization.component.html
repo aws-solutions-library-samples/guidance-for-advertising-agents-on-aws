@@ -1,0 +1,82 @@
+<!-- Channel Cards -->
+<div *ngIf="channelCards && channelCards.channels?.length > 0" class="channel-cards-section">
+  <h4 *ngIf="channelCards.title || channelCards.subtitle" class="component-title">
+    {{channelCards.title||channelCards.primaryLabel}}
+  </h4>
+  <p *ngIf="channelCards.subtitle||channelCards.primaryLabel">{{ channelCards.subtitle  || channelCards.primaryLabel}}</p>
+
+  <div class="channel-cards-grid">
+    <div class="channel-card" *ngFor="let channel of channelCards.channels">
+      <div class="channel-header">
+        <h5 class="channel-name">{{getChannelName(channel)}}</h5>
+        <div class="channel-description" *ngIf="getChannelDescription(channel)">
+          {{getChannelDescription(channel)}}
+        </div>
+        
+        <!-- Primary scores -->
+        <div class="channel-scores" *ngIf="getPrimaryScores(channel).length > 0">
+          <span *ngFor="let score of getPrimaryScores(channel)" 
+                class="score"
+                [class]="'score-' + score.type">
+            {{score.value}} {{score.label}}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Detailed properties -->
+      <div class="channel-details" *ngIf="getDetailedProperties(channel).length > 0">
+        <div *ngFor="let property of getDetailedProperties(channel)" 
+             class="detail-row"
+             [class.highlight]="property.isHighlight">
+          <span class="detail-label">{{property.label}}:</span>
+          <span class="detail-value" 
+                [class.excellent]="property.value === 'excellent'"
+                [class.high]="property.value === 'high'">
+            {{property.value}}
+          </span>
+        </div>
+      </div>
+
+      <!-- Key insights -->
+      <div *ngIf="getInsights(channel).length > 0" class="channel-insights">
+        <h6>Key Insights:</h6>
+        <ul>
+          <li *ngFor="let insight of getInsights(channel)">{{insight}}</li>
+        </ul>
+      </div>
+
+      <!-- Key elements for creative templates -->
+      <div *ngIf="getKeyElements(channel).length > 0" class="channel-elements">
+        <h6>Key Elements:</h6>
+        <div class="elements-tags">
+          <span class="element-tag" *ngFor="let element of getKeyElements(channel)">{{element}}</span>
+        </div>
+      </div>
+
+      <!-- Risk factors -->
+      <div *ngIf="getRisks(channel).length > 0" class="channel-risks">
+        <h6>Risk Factors:</h6>
+        <ul>
+          <li *ngFor="let risk of getRisks(channel)" 
+              [class.no-risk]="risk.toLowerCase().includes('none')">
+            {{risk}}
+          </li>
+        </ul>
+      </div>
+
+      <!-- Optimization opportunities -->
+      <div *ngIf="getOpportunities(channel).length > 0" class="channel-opportunities">
+        <h6>Optimization Opportunities:</h6>
+        <ul>
+          <li *ngFor="let opportunity of getOpportunities(channel)">{{opportunity}}</li>
+        </ul>
+      </div>
+
+      <!-- Recommendation -->
+      <div *ngIf="getRecommendation(channel)" class="channel-recommendation">
+        <h6>Recommendation:</h6>
+        <p>{{getRecommendation(channel)}}</p>
+      </div>
+    </div>
+  </div>
+</div> 

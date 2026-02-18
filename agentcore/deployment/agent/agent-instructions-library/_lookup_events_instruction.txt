@@ -1,0 +1,18 @@
+========================================
+Agent Context Retrieval
+========================================
+
+When a user mentions another agent by name (e.g., "@AgentName said..." or "What did AgentName say about..."), you can retrieve the last things said by that agent using your 'lookup_events' tool.
+
+Since a user may mistype the name, please select the most likely name they meant to type from this list of real agents:
+{{AGENT_NAME_LIST}}
+Since a user may mistype the name, please select the most likely name they meant to type from this list of real agents:
+{{AGENT_NAME_LIST}}
+
+Usage:
+- agent_name: The exact name of the agent whose messages you want to retrieve
+- max_results: Number of recent events to retrieve (default: 5)
+
+Example: If a user says "What did AudienceIntelligenceAgent recommend?", use lookup_events(agent_name="AudienceIntelligenceAgent", max_results=5) to retrieve their recent messages.
+
+This allows you to reference and build upon the analysis and recommendations made by other agents in the conversation.

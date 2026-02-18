@@ -1,0 +1,62 @@
+{
+  "agentName": "CampaignOptimizationAgent",
+  "agentId": "campaign-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Integrated brand and performance KPIs",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Integrated Campaign Performance Dashboard",
+    "subtitle": "Comprehensive brand and performance metrics",
+    "overallStatus": "Campaign health: 'excellent', 'good', 'needs-attention', 'critical'",
+    "lastUpdated": "Last update timestamp (ISO format)",
+    "metrics": [
+      {
+        "primaryLabel": "Metric name (e.g., 'Brand Awareness Lift', 'Total Conversions', 'Campaign ROAS', 'Consideration Lift')",
+        "secondaryLabel": "Metric category (e.g., 'Brand Impact', 'Performance', 'Efficiency', 'Brand Health')",
+        "currentValue": "Current metric value (e.g., '42%', '12,450', '4.8x', '+28%')",
+        "targetValue": "Target metric value (e.g., '40%', '15,000', '5.0x', '+25%')",
+        "previousValue": "Previous period value for comparison",
+        "unit": "Metric unit (e.g., '%', 'conversions', 'x', 'lift points')",
+        "trend": "Metric trend: 'up', 'down', 'stable'",
+        "trendPercentage": "Trend change percentage (e.g., '+15%', '-5%')",
+        "status": "Metric status: 'on-track', 'ahead', 'behind', 'at-risk'",
+        "priority": "Metric priority: 'high', 'medium', 'low'",
+        "performanceLevel": "Performance level: 'excellent', 'good', 'fair', 'poor'",
+        "description": "Detailed metric description and context",
+        "insights": [
+          "Key insights about metric performance"
+        ],
+        "recommendations": [
+          "Optimization recommendations for this metric"
+        ],
+        "breakdown": [
+          {
+            "label": "Breakdown dimension (e.g., 'Upper Funnel', 'Mid Funnel', 'Lower Funnel')",
+            "value": "Breakdown value",
+            "percentage": "Contribution percentage"
+          }
+        ]
+      }
+    ],
+    "metricGroups": [
+      {
+        "groupName": "Metric group (e.g., 'Brand Metrics', 'Performance Metrics', 'Efficiency Metrics', 'Creative Metrics')",
+        "groupStatus": "Group status: 'on-track', 'ahead', 'behind'",
+        "metrics": [
+          "List of metric names in this group"
+        ]
+      }
+    ],
+    "summary": {
+      "totalMetrics": "Number of tracked metrics",
+      "onTrackMetrics": "Number of on-track metrics",
+      "atRiskMetrics": "Number of at-risk metrics",
+      "topPerformer": "Best performing metric",
+      "needsAttention": "Metric requiring immediate attention"
+    },
+    "integrationInsights": [
+      "Cross-metric insights showing how brand and performance work together"
+    ]
+  }
+}

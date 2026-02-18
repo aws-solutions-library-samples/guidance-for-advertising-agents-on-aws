@@ -1,0 +1,18 @@
+{
+  "agentName": "MeasurementAgent",
+  "agentId": "measurement-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Study results and performance metrics"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Study timeline and reporting milestones"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Sample allocation and budget distribution"
+    }
+  ]
+}

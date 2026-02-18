@@ -1,0 +1,57 @@
+{
+  "agentName": "AudienceIntelligenceAgent",
+  "agentId": "AudienceIntelligenceAgent",
+  "templateId": "segments-visualization",
+  "usage": "Audience intelligence segment analysis and prioritization (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Intelligence Segment Strategy",
+    "subtitle": "Strategic intelligence prioritization and analysis approach",
+    "segments": [
+      {
+        "primaryLabel": "Intelligence segment name (e.g., 'Behavioral Insights', 'Predictive Analytics', 'Sentiment Intelligence')",
+        "secondaryLabel": "Intelligence category (e.g., 'Core Intelligence', 'Advanced Analytics', 'Real-time Monitoring')",
+        "description": "Detailed intelligence segment profile and capabilities",
+        "actualValue": "Current intelligence metric (e.g., '95% accuracy', '2.5s response time')",
+        "targetValue": "Intelligence target (e.g., '98% accuracy', '1.5s response time')",
+        "forecastedValue": "Projected intelligence (e.g., '97% accuracy', '2.0s response time')",
+        "actualLabel": "Current intelligence performance description",
+        "targetLabel": "Target intelligence performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Accuracy Rate', 'Insight Quality')",
+          "value": "KPI value (e.g., '95%', '8.5/10')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Processing Speed', 'Data Coverage')",
+          "value": "KPI value (e.g., '2.5s', '85%')"
+        },
+        "budgetAmount": "Recommended intelligence budget allocation (e.g., '$750,000')",
+        "statusIndicator": "Intelligence status: 'optimized', 'active', 'underperforming'",
+        "confidenceLevel": "Intelligence confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Expected performance: 'high', 'medium', 'low'",
+        "insights": [
+          "Key intelligence insights and behavioral patterns"
+        ],
+        "risks": [
+          "Risk factors for this intelligence segment"
+        ],
+        "recommendations": [
+          "Intelligence gathering and optimization strategies"
+        ],
+        "metadata": {
+          "size": "Intelligence scope (e.g., '2.4M data points', '15% of total audience')",
+          "growth": "Intelligence growth rate (e.g., '+12% YoY', 'Stable')",
+          "engagement": "Intelligence depth level (e.g., 'Deep', 'Medium', 'Surface')"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of intelligence segments analyzed",
+      "activeSegments": "Number of recommended active intelligence areas",
+      "topPerformer": "Best performing intelligence segment name",
+      "growthOpportunity": "Primary intelligence growth opportunity segment"
+    }
+  }
+}

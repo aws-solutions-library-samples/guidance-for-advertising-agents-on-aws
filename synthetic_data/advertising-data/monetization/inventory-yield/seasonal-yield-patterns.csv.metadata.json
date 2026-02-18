@@ -1,0 +1,50 @@
+{
+    "metadataAttributes": {
+        "data_source": "seasonal_yield_patterns",
+        "category": "inventory_yield",
+        "business_domain": "viewer_monetization",
+        "analysis_type": "seasonal_optimization",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "seasonal_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "season"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "month"
+                    },
+                    {
+                        "fieldName": "inventory_category"
+                    },
+                    {
+                        "fieldName": "demand_level"
+                    },
+                    {
+                        "fieldName": "cpm_multiplier"
+                    },
+                    {
+                        "fieldName": "fill_rate_percentage"
+                    },
+                    {
+                        "fieldName": "yield_index"
+                    },
+                    {
+                        "fieldName": "optimization_strategy"
+                    },
+                    {
+                        "fieldName": "market_conditions"
+                    }
+                ]
+            }
+        }
+    }
+}

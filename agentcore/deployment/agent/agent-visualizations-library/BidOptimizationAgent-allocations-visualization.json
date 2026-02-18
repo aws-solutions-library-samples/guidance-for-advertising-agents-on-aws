@@ -1,0 +1,31 @@
+{
+  "agentName": "BidOptimizationAgent",
+  "agentId": "bid-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified bid-based budget allocation recommendations",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Bid-Optimized Budget Allocation",
+    "subtitle": "Budget distribution based on bidding efficiency and performance",
+    "totalBudget": "Total campaign budget (e.g., '$1,500,000')",
+    "allocations": [
+      {
+        "primaryLabel": "Bid strategy or channel (e.g., 'High-Performance Keywords', 'Premium Placements')",
+        "secondaryLabel": "Bid category (e.g., 'Automated Bidding', 'Manual Optimization')",
+        "allocationPercentage": "Budget percentage (e.g., 40)",
+        "budgetAmount": "Dollar allocation (e.g., '$600,000')",
+        "performanceLevel": "Bid performance tier: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Bid status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Bid optimization confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Bidding risk: 'low', 'medium', 'high'",
+        "efficiency": "Bid efficiency rating",
+        "safety": "Brand safety score for placement"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of bid-based allocations",
+      "riskAllocations": "Number of high-risk bid allocations"
+    }
+  }
+}

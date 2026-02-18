@@ -1,0 +1,90 @@
+{
+  "agentName": "WeatherImpactAgent",
+  "agentId": "WeatherImpactAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Weather forecast timeline and campaign optimization scheduling",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Weather-Driven Campaign Optimization Timeline",
+    "subtitle": "Strategic campaign adjustments based on weather forecasts and seasonal patterns",
+    "startDate": "Campaign start date (e.g., '2024-01-15T00:00:00Z')",
+    "endDate": "Campaign end date (e.g., '2024-03-15T23:59:59Z')",
+    "totalDuration": "Total campaign duration (e.g., '8 weeks', '60 days', '2 months')",
+    "overallObjective": "Weather-optimized campaign performance and audience engagement maximization",
+    "phases": [
+      {
+        "primaryLabel": "Weather Baseline Analysis",
+        "secondaryLabel": "Pre-campaign weather pattern analysis",
+        "description": "Analyze historical weather data and establish baseline audience behavior patterns for target locations",
+        "startDate": "Phase start date (e.g., '2024-01-15T00:00:00Z')",
+        "endDate": "Phase end date (e.g., '2024-01-22T23:59:59Z')",
+        "duration": "Phase duration (e.g., '1 week', '7 days')",
+        "status": "upcoming/active/completed",
+        "priority": "high",
+        "expectedOutcome": "Comprehensive weather-behavior correlation analysis and baseline metrics establishment",
+        "budget": "Phase budget allocation (e.g., '$5,000', '$3,500', '$7,200')",
+        "resources": [
+          "Historical weather data access",
+          "Audience behavior analytics platform",
+          "Statistical analysis tools",
+          "Weather API integration"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (e.g., '2024-01-18T12:00:00Z')",
+            "label": "Weather Data Collection Complete",
+            "status": "pending/achieved"
+          },
+          {
+            "date": "Milestone date (e.g., '2024-01-20T17:00:00Z')",
+            "label": "Baseline Behavior Patterns Identified",
+            "status": "pending/achieved"
+          }
+        ],
+        "dependencies": [
+          "Weather data provider API access",
+          "Audience analytics platform setup",
+          "Historical campaign performance data"
+        ],
+        "risks": [
+          "Weather data quality or availability issues",
+          "Insufficient historical behavior data",
+          "Seasonal anomalies affecting baseline accuracy"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Major milestone date (e.g., '2024-02-02T09:00:00Z')",
+        "label": "Weather-Optimized Campaign Launch",
+        "description": "Campaign goes live with full weather-responsive optimization capabilities",
+        "status": "upcoming"
+      },
+      {
+        "date": "Major milestone date (e.g., '2024-02-15T17:00:00Z')",
+        "label": "First Performance Optimization Cycle Complete",
+        "description": "Initial round of weather-performance analysis and optimization improvements deployed",
+        "status": "upcoming"
+      },
+      {
+        "date": "Major milestone date (e.g., '2024-03-01T15:00:00Z')",
+        "label": "Weather Optimization System Fully Mature",
+        "description": "Weather-campaign optimization system operating at full effectiveness with proven performance improvements",
+        "status": "upcoming"
+      }
+    ],
+    "successMetrics": [
+      "20-30% improvement in engagement rates during adverse weather conditions",
+      "15-25% increase in conversion rates through weather-appropriate messaging",
+      "Reduced campaign waste through weather-triggered budget reallocation",
+      "Improved audience satisfaction scores during weather-impacted periods",
+      "Successful automated response to 90%+ of significant weather events"
+    ],
+    "criticalPath": [
+      "Weather Baseline Analysis",
+      "Weather Forecast Integration",
+      "Weather-Adaptive Campaign Launch"
+    ]
+  }
+}

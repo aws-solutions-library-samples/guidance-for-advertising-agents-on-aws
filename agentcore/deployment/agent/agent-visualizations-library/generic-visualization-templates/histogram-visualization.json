@@ -1,0 +1,38 @@
+{
+  "templateId": "histogram-visualization",
+  "templateName": "Histogram Visualization",
+  "description": "Template for displaying data distribution with optional colored tail highlighting",
+  "usage": [
+    "Performance distribution analysis",
+    "Audience behavior patterns",
+    "Budget allocation distributions",
+    "Campaign performance ranges",
+    "Metric frequency analysis"
+  ],
+  "schema": {
+    "visualizationType": "histogram",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "xAxisLabel": "string - X-axis label",
+    "yAxisLabel": "string - Y-axis label",
+    "data": [
+      {
+        "value": "number - Data point value",
+        "frequency": "number - Frequency count",
+        "label": "string - Optional data point label"
+      }
+    ],
+    "coloredTail": {
+      "enabled": "boolean - Enable colored tail highlighting",
+      "threshold": "number - Threshold value for coloring",
+      "color": "string - Hex color for highlighted region"
+    },
+    "binCount": "number - Number of histogram bins",
+    "insights": ["array of string - Key insights"],
+    "summary": {
+      "mean": "number - Average value",
+      "median": "number - Median value",
+      "standardDeviation": "number - Standard deviation"
+    }
+  }
+}

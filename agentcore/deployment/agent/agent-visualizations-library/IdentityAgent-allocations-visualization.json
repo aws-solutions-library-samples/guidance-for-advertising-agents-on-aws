@@ -1,0 +1,30 @@
+{
+  "agentName": "IdentityAgent",
+  "agentId": "identity-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Channel reach distribution and coverage",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Channel Reach Distribution",
+    "subtitle": "Cross-device reach by channel",
+    "totalBudget": "Total deduplicated reach",
+    "allocations": [
+      {
+        "primaryLabel": "Channel name (e.g., 'CTV', 'Mobile', 'Desktop')",
+        "secondaryLabel": "Identity type (e.g., 'UID2', 'RampID')",
+        "allocationPercentage": "Reach percentage for this channel",
+        "budgetAmount": "Reach count (households or individuals)",
+        "performanceLevel": "Match rate level: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Coverage status: 'excellent', 'good', 'limited'",
+        "confidenceLevel": "Estimate confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Coverage risk: 'low', 'medium', 'high'"
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of channels",
+      "averageMatchRate": "Average match rate across channels",
+      "totalReach": "Total deduplicated reach"
+    }
+  }
+}

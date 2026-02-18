@@ -1,0 +1,170 @@
+{
+  "agentName": "TimingStrategyAgent",
+  "agentId": "TimingStrategyAgent",
+  "templateId": "segments-visualization",
+  "usage": "Segment viewing behavior patterns",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Viewing Behavior Patterns",
+    "subtitle": "Segment-specific timing optimization for maximum engagement",
+    "segments": [
+      {
+        "primaryLabel": "Family Prime Time Viewers",
+        "secondaryLabel": "Primary Target Segment",
+        "description": "Families viewing together during evening prime time hours",
+        "actualValue": "TBD",
+        "targetValue": "80%",
+        "forecastedValue": "82%",
+        "actualLabel": "Current co-viewing rate",
+        "targetLabel": "Target family co-viewing rate",
+        "forecastedLabel": "Projected co-viewing for premiere",
+        "primaryMetric": {
+          "label": "Optimal Viewing Window",
+          "value": "7:00-9:00 PM ET"
+        },
+        "secondaryMetric": {
+          "label": "Target Viewership",
+          "value": "10M families"
+        },
+        "statusIndicator": "optimized",
+        "confidenceLevel": "high",
+        "performanceLevel": "high",
+        "insights": [
+          "Sunday 7:00 PM ET premiere time optimized for family viewing",
+          "Strong co-viewing potential during family prime time",
+          "High completion rates expected due to family engagement"
+        ],
+        "recommendations": [
+          "Maintain Sunday evening premiere schedule",
+          "Deploy family-focused promotional content during countdown week",
+          "If co-viewing below 75%: Deploy mid-week family engagement content"
+        ],
+        "metadata": {
+          "size": "10M families",
+          "growth": "Stable",
+          "engagement": "High - Family prime time"
+        }
+      },
+      {
+        "primaryLabel": "Weekend Daytime Co-Viewers",
+        "secondaryLabel": "Secondary Viewing Opportunity",
+        "description": "Families and casual viewers consuming content during weekend daytime hours",
+        "actualValue": "TBD",
+        "targetValue": "2.5M",
+        "forecastedValue": "2.8M",
+        "actualLabel": "Current daytime viewership",
+        "targetLabel": "Target weekend daytime viewers",
+        "forecastedLabel": "Projected daytime viewing",
+        "primaryMetric": {
+          "label": "Secondary Peak Window",
+          "value": "Weekend Daytime"
+        },
+        "secondaryMetric": {
+          "label": "Viewing Mode",
+          "value": "Time-Shifted/On-Demand"
+        },
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Provides additional reach beyond prime time premiere",
+          "Supports 85% live/same-day viewing target",
+          "Opportunity for family co-viewing in relaxed setting"
+        ],
+        "recommendations": [
+          "Promote on-demand availability for weekend viewing",
+          "Highlight family-friendly content for daytime consumption"
+        ],
+        "metadata": {
+          "size": "2.5M viewers",
+          "growth": "Growing",
+          "engagement": "Medium - Casual viewing"
+        }
+      },
+      {
+        "primaryLabel": "Mobile-First Viewers",
+        "secondaryLabel": "Second Screen Engagement",
+        "description": "Viewers engaging with companion content and extended universe on mobile devices",
+        "actualValue": "TBD",
+        "targetValue": "35%",
+        "forecastedValue": "37%",
+        "actualLabel": "Current second screen activation",
+        "targetLabel": "Target second screen activation",
+        "forecastedLabel": "Projected activation of viewing households",
+        "primaryMetric": {
+          "label": "Peak Mobile Usage",
+          "value": "5:00-10:00 PM Daily"
+        },
+        "secondaryMetric": {
+          "label": "Pre-Launch Window",
+          "value": "3 Days Pre-Premiere"
+        },
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Companion content launches 3 days pre-premiere (Jan 16)",
+          "Second screen experience synchronized with premiere",
+          "Extended universe content drives post-premiere engagement",
+          "Peak usage window: 5:00-10:00 PM daily"
+        ],
+        "recommendations": [
+          "Launch companion content early to drive app adoption",
+          "Synchronize mobile experience with TV premiere",
+          "Promote extended universe content for sustained engagement"
+        ],
+        "metadata": {
+          "size": "4.4M households (35% of 12.5M)",
+          "growth": "Growing",
+          "engagement": "High - Companion experience"
+        }
+      },
+      {
+        "primaryLabel": "Social Media Engagers",
+        "secondaryLabel": "Multi-Platform Social Audience",
+        "description": "Viewers actively engaging with content across social media platforms",
+        "actualValue": "TBD",
+        "targetValue": "3.5M",
+        "forecastedValue": "3.8M",
+        "actualLabel": "Current social interactions",
+        "targetLabel": "Target interactions during premiere",
+        "forecastedLabel": "Projected social engagement",
+        "primaryMetric": {
+          "label": "Platform-Specific Timing",
+          "value": "Instagram (4-7PM), TikTok (7-9PM)"
+        },
+        "secondaryMetric": {
+          "label": "Campaign Duration",
+          "value": "Dec 26 - Jan 19"
+        },
+        "statusIndicator": "active",
+        "confidenceLevel": "high",
+        "performanceLevel": "high",
+        "insights": [
+          "Teaser campaign: Begin December 26 (post-holiday attention)",
+          "Character journeys: January 5-18 (daily content)",
+          "Live event: Synchronized with premiere (Jan 19)",
+          "Community engagement: Post-episode discussions (weekly)",
+          "Platform-specific timing optimized for each social channel"
+        ],
+        "recommendations": [
+          "Stagger content across platforms to maximize reach",
+          "Leverage live engagement during premiere event",
+          "Maintain weekly post-episode discussion cadence"
+        ],
+        "metadata": {
+          "size": "3.5M+ interactions",
+          "growth": "High",
+          "engagement": "Very High - Active participation"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": 4,
+      "activeSegments": 4,
+      "topPerformer": "Family Prime Time Viewers - 80% co-viewing target",
+      "growthOpportunity": "Mobile-First Viewers - 37% projected second screen activation"
+    }
+  }
+}

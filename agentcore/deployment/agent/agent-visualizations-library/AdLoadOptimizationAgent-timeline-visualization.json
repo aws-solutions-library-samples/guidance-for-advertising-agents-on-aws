@@ -1,0 +1,54 @@
+{
+  "agentName": "AdLoadOptimizationAgent",
+  "agentId": "ad-load-optimization-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Ad load adjustment schedules",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Ad Load Optimization Timeline",
+    "subtitle": "Scheduled ad load adjustments and viewer experience optimization",
+    "totalDuration": "Total optimization period (e.g., '12 weeks', '90 days')",
+    "startDate": "Optimization start date (ISO format: '2024-01-15')",
+    "endDate": "Optimization end date (ISO format: '2024-04-15')",
+    "overallObjective": "Primary ad load objective (e.g., 'Optimize ad load while maintaining 90% viewer retention')",
+    "phases": [
+      {
+        "primaryLabel": "Ad load phase name (e.g., 'Baseline Assessment', 'Load Reduction Phase', 'Revenue Recovery')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase objectives and ad load strategy",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '3 weeks', '21 days')",
+        "status": "Phase status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected ad load and retention outcomes",
+        "budget": "Revenue impact or investment (e.g., '-$50K revenue', '+$25K optimization cost')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Key milestone (e.g., 'Retention Target Achieved', 'Revenue Impact Assessed')",
+            "targetDate": "Milestone target date (ISO format)",
+            "description": "Milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'Retention rate > 88%', 'Revenue drop < 5%')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites (e.g., 'Viewer retention baseline established', 'A/B test framework ready')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Overall success criteria (e.g., 'Maintain 90% viewer retention', 'Revenue impact < 10%')"
+    ],
+    "riskFactors": [
+      "Risk factors (e.g., 'Viewer churn risk', 'Revenue loss potential', 'Advertiser satisfaction')"
+    ]
+  }
+}

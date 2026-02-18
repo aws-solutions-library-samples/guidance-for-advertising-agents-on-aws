@@ -1,0 +1,16 @@
+<!-- Creative Data Visualization -->
+<div *ngIf="creativeData" class="creative-visualization-section">
+  <h4 *ngIf="getCreativeTitle()" class="component-title">
+    {{getCreativeTitle()}}
+  </h4>
+  
+  <div *ngIf="getCreativeDescription()" class="creative-description">
+    {{getCreativeDescription()}}
+  </div>
+  
+  <!-- Use the existing image gallery component with processed data -->
+  <app-image-gallery 
+    [creativeData]="getProcessedCreativeData()"
+    [title]="getCreativeTitle()">
+  </app-image-gallery>
+</div> 

@@ -1,0 +1,47 @@
+{
+  "agentName": "ContextualAnalysisAgent",
+  "agentId": "contextual-analysis-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Safety scores, content analysis metrics, risk assessments",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Content Safety & Risk Assessment",
+    "subtitle": "Publisher safety scores and content analysis metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "ContextualAnalysisAgent",
+      "supportingAgent1": "ChannelMixOptimizationAgent",
+      "supportingAgent2": "MediaPlanningSupervisorAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Safety category (e.g., 'Brand Safety Scores', 'Content Risk Assessment')",
+        "secondaryLabel": "Category description (e.g., 'Publisher and content safety metrics')",
+        "items": [
+          {
+            "primaryLabel": "Specific safety metric (e.g., 'Overall Safety Score', 'Content Suitability', 'Brand Risk Level')",
+            "actualValue": "Current safety rating (e.g., '8.5/10', '92%', 'Low Risk')",
+            "targetValue": "Safety target (e.g., '9.0/10', '95%', 'Minimal Risk')",
+            "forecastedValue": "Projected safety level (e.g., '8.8/10', '94%', 'Low Risk')",
+            "actualLabel": "Current safety assessment description",
+            "targetLabel": "Target safety standard description",
+            "forecastedLabel": "Forecasted safety improvement description",
+            "unit": "Measurement unit (e.g., '/10', '%', 'Risk Level')",
+            "trend": "Safety trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Assessment confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary safety metric",
+            "insights": [
+              "Content safety insights and risk factors"
+            ],
+            "risks": [
+              "Identified safety and brand risks"
+            ],
+            "recommendations": [
+              "Safety improvement recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

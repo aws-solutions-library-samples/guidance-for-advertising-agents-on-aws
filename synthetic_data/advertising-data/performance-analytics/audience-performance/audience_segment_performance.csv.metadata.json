@@ -1,0 +1,43 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "audience_analytics", 
+        "business_domain": "audience_targeting",
+        "analysis_type": "segment_performance_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "audience_segment"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "segment_size"
+                    },
+                    {
+                        "fieldName": "avg_cpm"
+                    },
+                    {
+                        "fieldName": "avg_ctr"
+                    },
+                    {
+                        "fieldName": "avg_cvr"
+                    },
+                    {
+                        "fieldName": "avg_cpa"
+                    },
+                    {
+                        "fieldName": "avg_ltv"
+                    },
+                    {
+                        "fieldName": "segment_quality_score"
+                    }
+                ]
+            }
+        }
+    }
+} 

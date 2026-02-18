@@ -1,0 +1,17 @@
+{
+  "name": "AudienceStrategyAgent",
+  "description": "Develops comprehensive audience targeting strategies based on demographic, psychographic, and behavioral data analysis.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/audiencestrategyagent",
+  "skills": [
+    "demographic_analysis",
+    "psychographic_profiling",
+    "targeting_development"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "agentName": "SocialSentimentAgent",
+  "agentId": "SocialSentimentAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Social sentiment metrics, brand perception scores, and engagement analysis"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience sentiment segments and behavioral cohorts analysis"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Social sentiment trends over time and campaign impact analysis"
+    }
+  ]
+}

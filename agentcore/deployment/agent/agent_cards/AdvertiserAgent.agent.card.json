@@ -1,0 +1,20 @@
+{
+  "agent_name": "AdvertiserAgent",
+  "agent_description": "Principal agent representing advertiser interests, initiating campaigns, approving strategies, and ensuring brand standards. Works with agencies to execute advertising campaigns while maintaining brand safety and performance goals.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/advertiseragent",
+  "skills": [
+    "campaign_initiation",
+    "brand_management",
+    "strategy_approval",
+    "performance_monitoring",
+    "budget_authorization"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "principal"
+  }
+}

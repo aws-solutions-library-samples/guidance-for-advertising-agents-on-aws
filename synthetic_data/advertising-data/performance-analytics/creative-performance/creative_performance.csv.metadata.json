@@ -1,0 +1,76 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "creative_analytics",
+        "business_domain": "creative_optimization",
+        "analysis_type": "creative_asset_performance"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "campaign_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "creative_id"
+                    },
+                    {
+                        "fieldName": "creative_type"
+                    },
+                    {
+                        "fieldName": "product_category"
+                    },
+                    {
+                        "fieldName": "headline"
+                    },
+                    {
+                        "fieldName": "cta_text"
+                    },
+                    {
+                        "fieldName": "color_scheme"
+                    },
+                    {
+                        "fieldName": "image_style"
+                    },
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "audience_segment"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "time_of_day"
+                    },
+                    {
+                        "fieldName": "day_of_week"
+                    }
+                ]
+            }
+        }
+    }
+}

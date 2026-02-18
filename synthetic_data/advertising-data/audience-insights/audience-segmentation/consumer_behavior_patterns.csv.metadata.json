@@ -1,0 +1,87 @@
+{
+    "metadataAttributes": {
+        "file_name": "consumer_journey_mapping.csv",
+        "description": "Comprehensive consumer journey mapping data showing touchpoint preferences, engagement patterns, and conversion behaviors across different audience segments and journey stages",
+        "data_source": "Synthetic consumer behavior analysis based on industry research and behavioral patterns",
+        "last_updated": "2024-12-07",
+        "record_count": "24",
+        "data_type": "consumer_journey_mapping",
+        "journey_stages": "Awareness, Consideration, Decision, Loyalty",
+        "audience_segments": "Affluent Millennials, Budget Conscious Families, Tech Early Adopters, Senior Traditionalists, Gen Z Digital Natives, Professional B2B",
+        "touchpoint_types": "Social Media, Digital Video, Search, Email, TV, Radio, Print, Apps, Websites",
+        "device_coverage": "Mobile, Desktop, TV, Print, Phone, Wearable",
+        "engagement_metrics": "time_spent, conversion_probability, influence_score, engagement_quality",
+        "behavioral_insights": "device_preference, content_preference, timing_patterns, seasonal_factors",
+        "usage_context": "touchpoint optimization, content strategy, timing decisions, funnel forecasting",
+        "related_datasets": "audience_segmentation_profiles.csv, touchpoint_effectiveness_analysis.csv",
+        "optimization_focus": "journey_sequencing, touchpoint_selection, content_depth, timing_optimization"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "audience_segment"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "journey_stage"
+                    },
+                    {
+                        "fieldName": "primary_touchpoint"
+                    },
+                    {
+                        "fieldName": "secondary_touchpoint"
+                    },
+                    {
+                        "fieldName": "time_spent_minutes"
+                    },
+                    {
+                        "fieldName": "conversion_probability"
+                    },
+                    {
+                        "fieldName": "influence_score"
+                    },
+                    {
+                        "fieldName": "device_preference"
+                    },
+                    {
+                        "fieldName": "content_type_preference"
+                    },
+                    {
+                        "fieldName": "time_of_day_peak"
+                    },
+                    {
+                        "fieldName": "day_of_week_peak"
+                    },
+                    {
+                        "fieldName": "seasonal_factor"
+                    },
+                    {
+                        "fieldName": "next_stage_probability"
+                    },
+                    {
+                        "fieldName": "drop_off_rate"
+                    },
+                    {
+                        "fieldName": "engagement_quality_score"
+                    },
+                    {
+                        "fieldName": "purchase_intent_score"
+                    },
+                    {
+                        "fieldName": "brand_affinity_score"
+                    },
+                    {
+                        "fieldName": "category"
+                    },
+                    {
+                        "fieldName": "demographic_profile"
+                    }
+                ]
+            }
+        }
+    }
+}

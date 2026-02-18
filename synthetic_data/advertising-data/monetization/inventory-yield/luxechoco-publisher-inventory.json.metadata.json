@@ -1,0 +1,45 @@
+{
+    "metadataAttributes": {
+        "data_source": "publisher_inventory",
+        "category": "inventory_yield",
+        "business_domain": "viewer_monetization",
+        "analysis_type": "yield_optimization",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "inventory_intelligence"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "inventoryAnalysis"
+                },
+                {
+                    "fieldName": "yieldOptimization"
+                },
+                {
+                    "fieldName": "demandForecasting"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "availableInventory"
+                },
+                {
+                    "fieldName": "pricingModels"
+                },
+                {
+                    "fieldName": "demandPatterns"
+                },
+                {
+                    "fieldName": "revenueOptimization"
+                },
+                {
+                    "fieldName": "supplyManagement"
+                }
+            ]
+        }
+    }
+}

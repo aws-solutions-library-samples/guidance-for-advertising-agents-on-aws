@@ -1,0 +1,31 @@
+{
+  "agentName": "PublisherAgent",
+  "agentId": "publisher-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Delivery metrics and campaign performance",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Campaign Delivery Dashboard",
+    "subtitle": "Delivery metrics and pacing status",
+    "metrics": [
+      {
+        "primaryLabel": "Delivery Metrics",
+        "secondaryLabel": "Campaign delivery and performance",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Impressions Delivered', 'Completion Rate', 'Viewability')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, impressions, etc.)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

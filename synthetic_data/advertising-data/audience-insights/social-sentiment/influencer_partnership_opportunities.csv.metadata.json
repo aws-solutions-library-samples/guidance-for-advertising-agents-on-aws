@@ -1,0 +1,67 @@
+{
+  "metadataAttributes": {
+    "file_name": "influencer_partnership_opportunities.csv",
+    "description": "Comprehensive influencer partnership opportunities analysis for MagicStream Entertainment content promotion and brand collaborations",
+    "data_source": "Social media monitoring, influencer analytics platforms, and partnership performance data",
+    "last_updated": "2025-01-10",
+    "record_count": "15",
+    "data_type": "influencer_partnership_opportunities",
+    "influencer_categories": "Family Adventure & Travel, Educational Content Creators, Technology & Family Tech, Creative Arts & Learning, Sports & Active Families, Wellness & Mindful Parenting, Cultural & Heritage Education, Outdoor & Nature Education, STEM Education, History & Cultural Learning",
+    "platform_coverage": "Instagram, TikTok, YouTube, Facebook with primary platform focus",
+    "follower_ranges": "950K-3.2M followers with high engagement rates 6.5%-16.7%",
+    "audience_demographics": "Parents 25-50, Kids 5-18, Educators, Health Enthusiasts, Tech Workers, Cultural Communities",
+    "brand_safety_scores": "9.0-9.9 with family-friendly content emphasis",
+    "educational_focus": "STEM, Arts, Cultural Heritage, Environmental, Health & Wellness, Creative Learning",
+    "geographic_reach": "North America primary (70%), International secondary (15-30%), Cultural Communities",
+    "collaboration_history": "1-4 successful partnerships with MagicStream content alignment",
+    "audience_overlap": "65%-94% overlap with MagicStream family segments",
+    "commercial_potential": "Medium to Very High with $5K-35K partnership rates",
+    "authenticity_scores": "8.5-9.8 with high community trust and engagement",
+    "business_applications": "influencer partnership strategy, content promotion campaigns, educational collaborations, family-focused marketing amplification",
+    "related_datasets": "streaming_content_social_sentiment.csv, social_trend_analysis.csv, streaming_family_segments.csv, streaming_brand_safety_requirements.json"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "influencer_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "influencer_name"
+          },
+          {
+            "fieldName": "platform_primary"
+          },
+          {
+            "fieldName": "follower_count"
+          },
+          {
+            "fieldName": "engagement_rate"
+          },
+          {
+            "fieldName": "audience_demographics"
+          },
+          {
+            "fieldName": "content_categories"
+          },
+          {
+            "fieldName": "brand_safety_score"
+          },
+          {
+            "fieldName": "family_friendly_rating"
+          },
+          {
+            "fieldName": "educational_content_score"
+          },
+          {
+            "fieldName": "audience_overlap_with_segments"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "agentName": "CreativeSelectionAgent",
+  "agentId": "CreativeSelectionAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Creative performance projections and A/B test results",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Creative Performance Projections",
+    "subtitle": "A/B test results and creative optimization metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "CreativeSelectionAgent",
+      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent2": "MediaPlanningSupervisorAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Creative performance category (e.g., 'Engagement Metrics', 'Conversion Performance')",
+        "secondaryLabel": "Category description (e.g., 'Creative effectiveness and audience response')",
+        "items": [
+          {
+            "primaryLabel": "Specific creative metric (e.g., 'Expected CTR', 'Engagement Rate', 'Conversion Lift')",
+            "actualValue": "Current performance (e.g., '2.8%', '4.5%', '+15%')",
+            "targetValue": "Performance target (e.g., '3.5%', '6.0%', '+25%')",
+            "forecastedValue": "Projected performance (e.g., '3.2%', '5.2%', '+20%')",
+            "actualLabel": "Current creative performance description",
+            "targetLabel": "Target creative performance goal",
+            "forecastedLabel": "Forecasted creative improvement",
+            "unit": "Measurement unit (e.g., '%', 'lift', 'score')",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Prediction confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary creative metric",
+            "insights": [
+              "Creative performance insights and audience preferences"
+            ],
+            "risks": [
+              "Creative performance risks and challenges"
+            ],
+            "recommendations": [
+              "Creative optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

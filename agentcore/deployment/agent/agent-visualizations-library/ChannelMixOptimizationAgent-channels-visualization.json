@@ -1,0 +1,57 @@
+{
+  "agentName": "ChannelMixOptimizationAgent",
+  "agentId": "channel-mix-optimization-agent",
+  "templateId": "channels-visualization",
+  "usage": "Channel performance analysis and optimization (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Channel Performance Strategy",
+    "subtitle": "Optimization recommendations across media channels",
+    "channels": [
+      {
+        "primaryLabel": "Channel name (e.g., 'Connected TV', 'Paid Social', 'Programmatic Display')",
+        "secondaryLabel": "Channel category (e.g., 'Video', 'Social', 'Display')",
+        "description": "Channel strategy and positioning (e.g., 'Premium video inventory for brand awareness')",
+        "primaryScore": {
+          "label": "Primary performance metric (e.g., 'Efficiency Score', 'ROAS')",
+          "value": "Metric value (e.g., '8.5/10', '4.2x')"
+        },
+        "secondaryScore": {
+          "label": "Secondary metric (e.g., 'Reach Potential', 'CPM')",
+          "value": "Metric value (e.g., '2.4M', '$12.50')"
+        },
+        "qualityScore": "Overall channel quality rating (e.g., 'Excellent', 'Good', 'Fair')",
+        "statusIndicator": "Channel status: 'verified', 'active', 'paused'",
+        "targetValue": "Performance target (e.g., '5.0x ROAS')",
+        "actualValue": "Current performance (e.g., '4.2x ROAS')",
+        "forecastedValue": "Projected performance (e.g., '4.8x ROAS')",
+        "targetLabel": "Target description",
+        "actualLabel": "Current performance description",
+        "forecastedLabel": "Forecast description",
+        "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+        "insights": [
+          "Channel-specific performance insights"
+        ],
+        "risks": [
+          "Risk factors for this channel"
+        ],
+        "opportunities": [
+          "Growth and optimization opportunities"
+        ],
+        "recommendation": "Strategic recommendation for this channel",
+        "metadata": {
+          "category": "Channel classification (e.g., 'Premium Video', 'Performance Display')",
+          "reach": "Audience reach potential (e.g., '2.4M unique users')",
+          "engagement": "Engagement level (e.g., 'High', 'Medium', 'Low')"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of channels analyzed",
+      "activeChannels": "Number of recommended active channels",
+      "topPerformer": "Best performing channel name",
+      "recommendedFocus": "Strategic focus recommendation"
+    }
+  }
+}

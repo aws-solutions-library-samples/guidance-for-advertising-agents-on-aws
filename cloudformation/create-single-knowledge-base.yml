@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "SO9631 Reusable template to create a single Knowledge Base for Amazon Bedrock"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Stack Configuration"
+        Parameters:
+          - StackPrefix
+          - UniqueID
+      - Label:
+          default: "Knowledge Base Configuration"
+        Parameters:
+          - KnowledgeBaseName
+          - KnowledgeBaseDescription
+          - OpenSearchCollectionArn
+          - VectorIndexName
+          - EmbeddingModelArn
+
+Parameters:
+  StackPrefix:
+    Type: String
+    Default: sim
+    Description: Prefix for resource naming
+
+  UniqueID:
+    Type: String
+    Description: Unique identifier for this deployment to ensure resource name uniqueness
+
+  KnowledgeBaseName:
+    Type: String
+    Description: Name of the Knowledge Base to create
+
+  KnowledgeBaseDescription:
+    Type: String
+    Description: Description of the Knowledge Base
+    Default: "Knowledge base for specialized domain expertise"
+
+  OpenSearchCollectionArn:
+    Type: String
+    Description: ARN of the OpenSearch Serverless collection
+
+  VectorIndexName:
+    Type: String
+    Description: Name of the vector index in OpenSearch (must already exist)
+    Default: "vector-index"
+
+  EmbeddingModelArn:
+    Type: String
+    Description: ARN of the embedding model to use
+    Default: "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
+
+Resources:
+  # IAM Role for Knowledge Base execution
+  KnowledgeBaseExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackPrefix}-KB-${KnowledgeBaseName}-Role-${UniqueID}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Ref "AWS::AccountId"
+              ArnLike:
+                "aws:SourceArn": !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+      Policies:
+        - PolicyName: OpenSearchAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                Resource: !Ref OpenSearchCollectionArn
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource: "arn:aws:s3:::*"
+        - PolicyName: BedrockFoundationModelAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:ListFoundationModels
+                  - bedrock:Rerank
+                  - bedrock:ListCustomModels
+                Resource:
+                  - arn:aws:bedrock:*:*:foundation-model/*
+                  - arn:aws:bedrock:*:*:inference-profile/*
+
+  # Knowledge Base
+  KnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Sub "${StackPrefix}-${KnowledgeBaseName}-${UniqueID}"
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn: !GetAtt KnowledgeBaseExecutionRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Ref EmbeddingModelArn
+      StorageConfiguration:
+        Type: OPENSEARCH_SERVERLESS
+        OpensearchServerlessConfiguration:
+          CollectionArn: !Ref OpenSearchCollectionArn
+          VectorIndexName: !Ref VectorIndexName
+          FieldMapping:
+            VectorField: "vector"
+            TextField: "text"
+            MetadataField: "metadata"
+
+Outputs:
+  KnowledgeBaseId:
+    Description: "ID of the created Knowledge Base"
+    Value: !Ref KnowledgeBase
+
+  KnowledgeBaseArn:
+    Description: "ARN of the created Knowledge Base"
+    Value: !GetAtt KnowledgeBase.KnowledgeBaseArn
+
+  KnowledgeBaseName:
+    Description: "Name of the created Knowledge Base"
+    Value: !Sub "${StackPrefix}-${KnowledgeBaseName}-${UniqueID}"
+
+  ExecutionRoleArn:
+    Description: "ARN of the Knowledge Base execution role"
+    Value: !GetAtt KnowledgeBaseExecutionRole.Arn

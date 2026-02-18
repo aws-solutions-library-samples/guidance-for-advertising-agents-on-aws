@@ -1,0 +1,43 @@
+{
+    "metadataAttributes": {
+        "data_source": "competitive_intelligence",
+        "category": "competitor_analysis",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "competitive_landscape_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "competitor_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "market_share"
+                    },
+                    {
+                        "fieldName": "avg_bid_price"
+                    },
+                    {
+                        "fieldName": "win_rate"
+                    },
+                    {
+                        "fieldName": "primary_segments"
+                    },
+                    {
+                        "fieldName": "content_categories"
+                    },
+                    {
+                        "fieldName": "estimated_spend"
+                    },
+                    {
+                        "fieldName": "performance_tier"
+                    }
+                ]
+            }
+        }
+    }
+}

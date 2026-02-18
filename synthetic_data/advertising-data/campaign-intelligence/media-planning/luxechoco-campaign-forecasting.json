@@ -1,0 +1,207 @@
+{
+  "campaignForecastingData": {
+    "campaignOverview": {
+      "brand": "LuxeChoco",
+      "campaign": "European Premium Chocolate Campaign 2024",
+      "totalBudget": 2500000,
+      "currency": "EUR",
+      "duration": 8,
+      "durationUnit": "weeks",
+      "objective": "Brand awareness and consideration",
+      "targetAudience": "Affluent adults 25-55, premium chocolate consumers"
+    },
+    "marketBreakdown": {
+      "germany": {
+        "allocation": 750000,
+        "percentage": 30,
+        "confidenceInterval": "±8%",
+        "rationale": "Largest market, highest chocolate consumption per capita",
+        "marketSize": "€8.2B chocolate market",
+        "luxeChocoShare": "6.2%",
+        "competitionLevel": "High",
+        "expectedReach": "13.5M unique users",
+        "expectedFrequency": 4.2
+      },
+      "uk": {
+        "allocation": 625000,
+        "percentage": 25,
+        "confidenceInterval": "±12%",
+        "rationale": "Premium market, high CPMs but strong ROI potential",
+        "marketSize": "€4.8B chocolate market",
+        "luxeChocoShare": "3.8%",
+        "competitionLevel": "Very High",
+        "expectedReach": "11.3M unique users",
+        "expectedFrequency": 3.8
+      },
+      "france": {
+        "allocation": 500000,
+        "percentage": 20,
+        "confidenceInterval": "±10%",
+        "rationale": "Sophisticated palate, luxury positioning opportunity",
+        "marketSize": "€3.9B chocolate market",
+        "luxeChocoShare": "4.1%",
+        "competitionLevel": "High",
+        "expectedReach": "9.0M unique users",
+        "expectedFrequency": 3.9
+      },
+      "netherlands": {
+        "allocation": 375000,
+        "percentage": 15,
+        "confidenceInterval": "±6%",
+        "rationale": "Efficient market, good test ground for innovations",
+        "marketSize": "€1.2B chocolate market",
+        "luxeChocoShare": "5.8%",
+        "competitionLevel": "Medium",
+        "expectedReach": "6.8M unique users",
+        "expectedFrequency": 4.1
+      },
+      "belgium": {
+        "allocation": 250000,
+        "percentage": 10,
+        "confidenceInterval": "±5%",
+        "rationale": "Chocolate heritage market, brand credibility building",
+        "marketSize": "€890M chocolate market",
+        "luxeChocoShare": "7.2%",
+        "competitionLevel": "Medium-High",
+        "expectedReach": "4.6M unique users",
+        "expectedFrequency": 3.6
+      }
+    },
+    "formatBreakdown": {
+      "premiumVideo": {
+        "allocation": 1000000,
+        "percentage": 40,
+        "avgCPM": "€12.50",
+        "expectedImpressions": 80000000,
+        "expectedReach": "28.5M unique users",
+        "rationale": "High impact, brand storytelling, premium positioning"
+      },
+      "nativeContent": {
+        "allocation": 750000,
+        "percentage": 30,
+        "avgCPM": "€18.75",
+        "expectedImpressions": 40000000,
+        "expectedReach": "22.1M unique users",
+        "rationale": "Natural integration, high engagement, brand alignment"
+      },
+      "displayPremium": {
+        "allocation": 500000,
+        "percentage": 20,
+        "avgCPM": "€4.50",
+        "expectedImpressions": 111111111,
+        "expectedReach": "35.2M unique users",
+        "rationale": "Broad reach, cost efficiency, awareness building"
+      },
+      "socialInteractive": {
+        "allocation": 250000,
+        "percentage": 10,
+        "avgCPM": "€8.00",
+        "expectedImpressions": 31250000,
+        "expectedReach": "18.7M unique users",
+        "rationale": "Engagement, younger demographics, viral potential"
+      }
+    },
+    "timelineBreakdown": {
+      "week1-2": {
+        "allocation": 500000,
+        "percentage": 20,
+        "phase": "Awareness building",
+        "focus": "Brand introduction and heritage storytelling",
+        "keyMetrics": ["Reach", "Brand awareness lift"],
+        "expectedReach": "25.2M unique users"
+      },
+      "week3-4": {
+        "allocation": 750000,
+        "percentage": 30,
+        "phase": "Consideration phase",
+        "focus": "Product benefits and quality messaging",
+        "keyMetrics": ["Engagement", "Consideration lift"],
+        "expectedReach": "32.8M unique users"
+      },
+      "week5-6": {
+        "allocation": 750000,
+        "percentage": 30,
+        "phase": "Peak engagement",
+        "focus": "Emotional connection and premium positioning",
+        "keyMetrics": ["Engagement quality", "Purchase intent"],
+        "expectedReach": "35.1M unique users"
+      },
+      "week7-8": {
+        "allocation": 500000,
+        "percentage": 20,
+        "phase": "Conversion focus",
+        "focus": "Call-to-action and retail activation",
+        "keyMetrics": ["Conversions", "Store visits"],
+        "expectedReach": "28.9M unique users"
+      }
+    },
+    "performancePredictions": {
+      "totalReach": "45.2M unique users",
+      "averageFrequency": 4.1,
+      "totalImpressions": "185.4M",
+      "brandLift": {
+        "awareness": {
+          "baseline": "32%",
+          "projected": "50%",
+          "lift": "+18%",
+          "confidenceLevel": "85%"
+        },
+        "consideration": {
+          "baseline": "24%",
+          "projected": "36%",
+          "lift": "+12%",
+          "confidenceLevel": "82%"
+        },
+        "purchaseIntent": {
+          "baseline": "15%",
+          "projected": "23%",
+          "lift": "+8%",
+          "confidenceLevel": "78%"
+        }
+      },
+      "engagementRates": {
+        "videoCompletion": {
+          "predicted": "78%",
+          "industryAvg": "65%",
+          "lift": "+13%"
+        },
+        "clickThrough": {
+          "predicted": "1.2%",
+          "industryAvg": "0.8%",
+          "lift": "+50%"
+        },
+        "socialInteraction": {
+          "predicted": "4.5%",
+          "industryAvg": "2.1%",
+          "lift": "+114%"
+        }
+      },
+      "conversionLikelihood": {
+        "onlinePurchase": "2.3%",
+        "storeVisit": "8.7%",
+        "brandSearch": "12.4%",
+        "socialEngagement": "6.8%"
+      }
+    },
+    "scenarioModeling": {
+      "optimistic": {
+        "conditions": "Low competitive pressure, high seasonal demand",
+        "budgetEfficiency": "+15%",
+        "reachIncrease": "+12%",
+        "engagementBoost": "+20%"
+      },
+      "realistic": {
+        "conditions": "Normal market conditions, expected competition",
+        "budgetEfficiency": "Baseline",
+        "reachIncrease": "Baseline",
+        "engagementBoost": "Baseline"
+      },
+      "conservative": {
+        "conditions": "High competitive pressure, economic uncertainty",
+        "budgetEfficiency": "-10%",
+        "reachIncrease": "-8%",
+        "engagementBoost": "-15%"
+      }
+    }
+  }
+}

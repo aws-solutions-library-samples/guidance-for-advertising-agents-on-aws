@@ -1,0 +1,150 @@
+{
+  "agentName": "TimingStrategyAgent",
+  "agentId": "TimingStrategyAgent",
+  "templateId": "channels-visualization",
+  "usage": "Channel-specific timing optimization",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Platform-Specific Timing Optimization",
+    "subtitle": "Channel-specific timing strategies for maximum engagement",
+    "channels": [
+      {
+        "primaryLabel": "Connected TV",
+        "secondaryLabel": "Primary Viewing Platform",
+        "description": "Main premiere platform with optimized family prime time scheduling",
+        "primaryScore": {
+          "label": "Optimal Viewing Window",
+          "value": "7:00-9:00 PM ET"
+        },
+        "secondaryScore": {
+          "label": "Secondary Peak",
+          "value": "Weekend Daytime"
+        },
+        "qualityScore": "Premium",
+        "statusIndicator": "active",
+        "targetValue": "12.5M",
+        "actualValue": "TBD",
+        "forecastedValue": "13.2M",
+        "targetLabel": "Target premiere viewership",
+        "actualLabel": "Current viewership",
+        "forecastedLabel": "Projected viewership (85% live/same-day)",
+        "confidenceLevel": "high",
+        "insights": [
+          "Premiere: Sunday, January 19, 7:00 PM ET",
+          "Optimal viewing window: 7:00-9:00 PM ET family prime time",
+          "Secondary viewing peak: Weekend daytime co-viewing",
+          "80% family co-viewing rate target"
+        ],
+        "risks": [
+          "Competing programming during prime time",
+          "Weather or major events impacting viewership"
+        ],
+        "opportunities": [
+          "Strong family co-viewing potential",
+          "Premium ad inventory during prime time",
+          "Weekend daytime provides additional reach"
+        ],
+        "recommendation": "Maintain Sunday 7:00 PM ET premiere time for optimal family engagement",
+        "metadata": {
+          "category": "Linear TV",
+          "reach": "12.5M target",
+          "engagement": "High - Family prime time"
+        }
+      },
+      {
+        "primaryLabel": "Mobile/Tablet",
+        "secondaryLabel": "Companion Content Platform",
+        "description": "Second screen experience and extended universe content delivery",
+        "primaryScore": {
+          "label": "Peak Usage Window",
+          "value": "5:00-10:00 PM Daily"
+        },
+        "secondaryScore": {
+          "label": "Pre-Launch Timing",
+          "value": "3 Days Pre-Premiere"
+        },
+        "qualityScore": "High Engagement",
+        "statusIndicator": "active",
+        "targetValue": "35%",
+        "actualValue": "TBD",
+        "forecastedValue": "37%",
+        "targetLabel": "Second screen activation target",
+        "actualLabel": "Current activation rate",
+        "forecastedLabel": "Projected activation of viewing households",
+        "confidenceLevel": "medium",
+        "insights": [
+          "Companion content launch: 3 days pre-premiere (Jan 16)",
+          "Second screen experience: Synchronized with premiere",
+          "Extended universe content: Post-premiere engagement",
+          "Peak usage window: 5:00-10:00 PM daily"
+        ],
+        "risks": [
+          "App adoption challenges",
+          "Synchronization technical issues"
+        ],
+        "opportunities": [
+          "Enhanced viewer engagement through companion content",
+          "Extended content consumption beyond TV viewing",
+          "Additional monetization through mobile inventory"
+        ],
+        "recommendation": "Launch companion content 3 days before premiere to drive app adoption and second screen usage",
+        "metadata": {
+          "category": "Mobile Apps",
+          "reach": "35% of TV viewers",
+          "engagement": "Medium-High - Companion experience"
+        }
+      },
+      {
+        "primaryLabel": "Social Media",
+        "secondaryLabel": "Multi-Platform Activation",
+        "description": "Platform-specific timing for teaser campaigns, character journeys, and live engagement",
+        "primaryScore": {
+          "label": "Target Interactions",
+          "value": "3.5M During Premiere"
+        },
+        "secondaryScore": {
+          "label": "Campaign Duration",
+          "value": "Dec 26 - Jan 19"
+        },
+        "qualityScore": "High Reach",
+        "statusIndicator": "active",
+        "targetValue": "3.5M",
+        "actualValue": "TBD",
+        "forecastedValue": "3.8M",
+        "targetLabel": "Social interactions target",
+        "actualLabel": "Current interactions",
+        "forecastedLabel": "Projected interactions during premiere window",
+        "confidenceLevel": "high",
+        "insights": [
+          "Teaser campaign: Begin December 26 (post-holiday attention)",
+          "Character journeys: January 5-18 (daily content)",
+          "Live event: Synchronized with premiere (Jan 19)",
+          "Community engagement: Post-episode discussions (weekly)",
+          "Platform-specific timing: Instagram (4-7PM), TikTok (7-9PM), Twitter (Live during premiere)"
+        ],
+        "risks": [
+          "Algorithm changes affecting reach",
+          "Content saturation during campaign period"
+        ],
+        "opportunities": [
+          "Strong pre-premiere buzz building",
+          "Real-time engagement during premiere",
+          "Sustained post-episode discussions"
+        ],
+        "recommendation": "Stagger platform-specific content timing to maximize reach across different audience segments",
+        "metadata": {
+          "category": "Social Platforms",
+          "reach": "3.5M+ interactions",
+          "engagement": "High - Multi-platform strategy"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": 3,
+      "activeChannels": 3,
+      "topPerformer": "Connected TV - Primary premiere platform",
+      "recommendedFocus": "Coordinate timing across all platforms for synchronized premiere experience"
+    }
+  }
+}

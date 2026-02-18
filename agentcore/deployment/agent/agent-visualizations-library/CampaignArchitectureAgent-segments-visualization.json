@@ -1,0 +1,60 @@
+{
+  "agentName": "CampaignArchitectureAgent",
+  "agentId": "campaign-architecture-agent",
+  "templateId": "segments-visualization",
+  "usage": "Audience architecture and segmentation",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Campaign Architecture Audience Segments",
+    "subtitle": "Audience architecture and strategic segmentation framework",
+    "segments": [
+      {
+        "primaryLabel": "Primary segments label",
+        "secondaryLabel": "Secondary segments label",
+        "description": "Description for segments",
+        "actualValue": "0",
+        "targetValue": "0",
+        "forecastedValue": "0",
+        "actualLabel": "Current value",
+        "targetLabel": "Target value",
+        "forecastedLabel": "Forecasted value",
+        "primaryMetric": {
+          "label": "Primary metric",
+          "value": "0"
+        },
+        "secondaryMetric": {
+          "label": "Secondary metric",
+          "value": "0"
+        },
+        "budgetAmount": "$0",
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Key insights for segments"
+        ],
+        "risks": [
+          "Risk factors for segments"
+        ],
+        "recommendations": [
+          "Recommendations for segments"
+        ],
+        "metadata": {
+          "lastAnalyzed": "ISO date of last segment analysis",
+          "dataConfidence": "Data confidence level: 'high', 'medium', 'low'"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of audience segments in architecture",
+      "primarySegment": "Primary target audience segment",
+      "highestValue": "Highest value audience segment",
+      "fastestGrowing": "Fastest growing audience segment",
+      "recommendedFocus": "Recommended architectural focus for audience targeting",
+      "activeSegments": "0",
+      "topPerformer": "Top performing item",
+      "growthOpportunity": "Value for growthOpportunity"
+    }
+  }
+}

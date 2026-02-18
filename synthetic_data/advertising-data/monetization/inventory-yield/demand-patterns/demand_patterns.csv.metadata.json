@@ -1,0 +1,58 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertiser_demand",
+        "category": "demand_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "demand_pattern_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "hour_utc"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "advertiser_vertical"
+                    },
+                    {
+                        "fieldName": "demand_score"
+                    },
+                    {
+                        "fieldName": "bid_density"
+                    },
+                    {
+                        "fieldName": "average_cpm"
+                    },
+                    {
+                        "fieldName": "competition_level"
+                    },
+                    {
+                        "fieldName": "budget_velocity"
+                    },
+                    {
+                        "fieldName": "seasonal_factor"
+                    },
+                    {
+                        "fieldName": "day_of_week"
+                    },
+                    {
+                        "fieldName": "geographic_region"
+                    }
+                ]
+            }
+        }
+    }
+}

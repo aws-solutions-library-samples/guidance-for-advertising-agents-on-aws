@@ -1,0 +1,27 @@
+// Creative Visualization Section
+.creative-visualization-section {
+    margin-bottom: 24px;
+
+    .component-title {
+        color: #1f2937;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+        display: none;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+    .creative-visualization-section {
+        margin-bottom: 16px;
+        
+        .component-title {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            display:none;
+        }
+    }
+} 

@@ -1,0 +1,244 @@
+{
+  "autonomousManagementData": {
+    "campaignId": "luxechoco-eu-2024-001",
+    "monitoringConfig": {
+      "frequency": "Every 2 hours",
+      "alertThresholds": {
+        "budgetPacing": "±15%",
+        "reachDeviation": "±10%",
+        "engagementDrop": "-20%",
+        "cpmIncrease": "+25%"
+      }
+    },
+    "week1Performance": {
+      "timestamp": "2024-01-22T18:00:00Z",
+      "marketPerformance": {
+        "switzerland": {
+          "status": "Over-saturated",
+          "plannedReach": "2.1M",
+          "actualReach": "2.52M",
+          "reachPercentage": "120%",
+          "issue": "Frequency capping exceeded (6.2 avg vs 4.0 target)",
+          "budgetSpent": "€92,000",
+          "budgetPlanned": "€75,000",
+          "action": "Redistribute €17,000 to underperforming markets",
+          "reasoning": "Diminishing returns on over-exposed audience"
+        },
+        "austria": {
+          "status": "Inventory unavailable",
+          "plannedReach": "1.8M",
+          "actualReach": "1.53M",
+          "reachPercentage": "85%",
+          "issue": "Competitor (GoldenTreats) blocking 60% of premium slots",
+          "impact": "15% reach shortfall",
+          "budgetSpent": "€58,000",
+          "budgetPlanned": "€65,000",
+          "action": "Secure alternative placements with 94% audience similarity",
+          "alternativeInventory": "Lifestyle content slots, cooking shows"
+        },
+        "germany": {
+          "status": "On track",
+          "plannedReach": "13.5M",
+          "actualReach": "13.23M",
+          "reachPercentage": "98%",
+          "performance": "Exceeding engagement benchmarks by 12%",
+          "budgetSpent": "€187,500",
+          "budgetPlanned": "€187,500",
+          "keyWin": "Native content in cooking shows performing exceptionally"
+        },
+        "netherlands": {
+          "status": "Underperforming",
+          "plannedReach": "6.8M",
+          "actualReach": "6.12M",
+          "reachPercentage": "90%",
+          "issue": "Lower than expected inventory availability",
+          "budgetSpent": "€93,750",
+          "budgetPlanned": "€93,750",
+          "opportunity": "Additional budget from Switzerland reallocation"
+        }
+      },
+      "automaticOptimizations": {
+        "budgetReallocation": {
+          "from_switzerland": "-€17,000",
+          "to_netherlands": "+€12,000",
+          "to_belgium": "+€5,000",
+          "rationale": "Optimize reach efficiency while maintaining quality",
+          "expectedImpact": "Increase overall reach by 3.2%"
+        },
+        "inventorySubstitution": {
+          "austria_alternative": {
+            "originalInventory": "Premium video slots (blocked)",
+            "newInventory": "Lifestyle streaming + cooking content",
+            "audienceMatch": "94% similarity",
+            "costImpact": "+8% CPM",
+            "reachRecovery": "92% of original target"
+          }
+        },
+        "formatOptimization": {
+          "cookingShows": {
+            "performance": "+28% above benchmark",
+            "action": "Increase allocation by €25,000",
+            "source": "Underperforming display inventory"
+          }
+        }
+      }
+    },
+    "week2Performance": {
+      "timestamp": "2024-01-29T18:00:00Z",
+      "formatPerformance": {
+        "displayAds": {
+          "engagement": "Declining (-15% from week 1)",
+          "issue": "Creative fatigue detected across all markets",
+          "ctr": "0.8% (down from 1.1%)",
+          "action": "Shift €125,000 to higher-performing formats",
+          "creativeFatigueSignals": [
+            "Declining CTR across all creatives",
+            "Increased skip rates on video",
+            "Lower dwell time on display"
+          ]
+        },
+        "videoContent": {
+          "engagement": "Strong (+8% from week 1)",
+          "ctr": "1.4% (up from 1.3%)",
+          "completionRate": "82% (target: 78%)",
+          "opportunity": "Scale up investment by 25%",
+          "action": "Increase video allocation by €75,000",
+          "bestPerformers": [
+            "Swiss craftsmanship videos",
+            "Behind-the-scenes content",
+            "Heritage storytelling"
+          ]
+        },
+        "nativeContent": {
+          "engagement": "Exceeding expectations (+22%)",
+          "insight": "Cooking show integrations performing exceptionally",
+          "ctr": "2.1% (industry avg: 1.2%)",
+          "brandLift": "+15% consideration increase",
+          "action": "Expand native content partnerships by €50,000",
+          "newOpportunities": [
+            "Recipe integration partnerships",
+            "Chef collaboration content",
+            "Seasonal cooking themes"
+          ]
+        }
+      },
+      "proactiveAdjustments": {
+        "budgetShift": {
+          "from_display": "-€125,000",
+          "to_video": "+€75,000",
+          "to_native": "+€50,000",
+          "reasoning": "Follow performance signals and audience engagement"
+        },
+        "newPartnerships": {
+          "cookingShowExpansion": {
+            "newPartners": 3,
+            "additionalRecipeIntegrations": 8,
+            "expectedReachIncrease": "2.1M users"
+          },
+          "lifestylePartnership": {
+            "newPublisher": "Conde Nast Digital Europe",
+            "contentType": "Premium lifestyle editorial",
+            "expectedEngagement": "High-quality audience"
+          }
+        }
+      }
+    },
+    "competitiveLandscape": {
+      "week1": {
+        "goldentreats_activity": {
+          "spendIncrease": "+40% in German market",
+          "impact": "CPM increase of 8-12% in affected regions",
+          "response": "Secured alternative inventory at competitive rates",
+          "inventoryBlocking": "60% of Austrian premium video slots"
+        }
+      },
+      "week2": {
+        "premiumsweets_launch": {
+          "newCampaign": "Valentine's premium campaign in UK",
+          "spendLevel": "€1.2M over 3 weeks",
+          "impact": "15% CPM increase in luxury lifestyle inventory",
+          "response": "Shifted to cooking content and social platforms"
+        },
+        "globalsnacks_response": {
+          "activity": "Increased social media spend by 60%",
+          "platforms": "Instagram, TikTok",
+          "impact": "Social CPMs up 12%",
+          "response": "Leveraged native content and premium editorial"
+        }
+      }
+    },
+    "automatedReporting": {
+      "week1Summary": {
+        "spendVsBudget": {
+          "planned": "€625,000",
+          "actual": "€618,000",
+          "variance": "-1.1%",
+          "status": "Under budget",
+          "explanation": "Swiss market over-saturation led to early reallocation"
+        },
+        "reachAchievement": {
+          "target": "22.6M unique users",
+          "actual": "23.4M unique users",
+          "variance": "+3.5%",
+          "status": "Over-delivery",
+          "quality": "Maintained premium audience composition (HHI €50k+)"
+        },
+        "engagementMetrics": {
+          "videoCompletion": {
+            "actual": "82%",
+            "target": "78%",
+            "variance": "+4%"
+          },
+          "clickThrough": {
+            "actual": "1.4%",
+            "target": "1.2%",
+            "variance": "+17%"
+          },
+          "brandInteraction": {
+            "actual": "5.1%",
+            "target": "4.5%",
+            "variance": "+13%"
+          }
+        }
+      },
+      "week2Summary": {
+        "formatOptimization": {
+          "displayPerformance": "Below target (-12%)",
+          "videoPerformance": "Above target (+15%)",
+          "nativePerformance": "Significantly above target (+28%)",
+          "actionTaken": "Automated budget reallocation completed"
+        },
+        "marketAdaptations": {
+          "austriaRecovery": "94% reach recovery through alternative inventory",
+          "switzerlandOptimization": "Reduced over-saturation, improved efficiency",
+          "germanyExpansion": "Increased native content investment"
+        },
+        "forecastedCompletion": {
+          "budgetUtilization": "99.2% projected",
+          "reachDelivery": "102.5% projected",
+          "engagementQuality": "Above benchmark across all metrics"
+        }
+      }
+    },
+    "businessOutcomes": {
+      "efficiencyGains": {
+        "manualHoursSaved": "32 hours per week",
+        "errorReduction": "95% fewer calculation errors",
+        "optimizationSpeed": "Real-time vs 24-48 hour manual cycles",
+        "decisionLatency": "2 hours vs 2 days for manual optimization"
+      },
+      "performanceImprovements": {
+        "reachEfficiency": "+12% vs manual management",
+        "engagementQuality": "+18% vs industry benchmarks",
+        "costEfficiency": "+8% vs planned budgets",
+        "brandSafetyCompliance": "100% maintained"
+      },
+      "strategicValue": {
+        "clientSatisfaction": "Exceeded expectations on all KPIs",
+        "agencyPositioning": "Demonstrated advanced AI capabilities",
+        "competitiveAdvantage": "Impossible complexity handled seamlessly",
+        "scalabilityProof": "Managed 5 markets, 4 formats, 12 publishers simultaneously"
+      }
+    }
+  }
+}

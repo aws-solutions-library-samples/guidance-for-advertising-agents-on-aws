@@ -1,0 +1,26 @@
+{
+  "agentName": "CreativeSelectionAgent",
+  "agentId": "CreativeSelectionAgent",
+  "templates": [
+    {
+      "templateId": "creative-visualization",
+      "usage": "Generated creative assets display (PRIMARY)"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Creative performance projections and A/B test results"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Creative variation budget distribution"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience-creative alignment analysis"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Creative rollout and testing schedules"
+    }
+  ]
+}

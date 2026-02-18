@@ -1,0 +1,25 @@
+{
+  "agentName": "AudienceStrategyAgent",
+  "agentId": "audience-strategy-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Audience performance metrics and engagement rates",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Audience Performance Metrics",
+    "subtitle": "Key audience engagement and targeting performance indicators",
+    "metrics": [
+      {
+        "primaryLabel": "Primary metrics label",
+        "secondaryLabel": "Secondary metrics label",
+        "items": "Value for items"
+      }
+    ],
+    "summary": {
+      "totalMetrics": "Number of metrics tracked",
+      "improvingMetrics": "Count of metrics showing improvement",
+      "topPerformingMetric": "Best performing audience metric",
+      "focusArea": "Primary area needing attention"
+    }
+  }
+}

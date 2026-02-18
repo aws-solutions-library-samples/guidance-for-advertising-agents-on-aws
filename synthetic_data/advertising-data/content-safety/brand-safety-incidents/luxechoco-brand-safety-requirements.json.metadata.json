@@ -1,0 +1,45 @@
+{
+    "metadataAttributes": {
+        "data_source": "brand_safety_requirements",
+        "category": "brand_safety_incidents",
+        "business_domain": "content_safety",
+        "analysis_type": "safety_compliance",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "safety_guidelines"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "safetyRequirements"
+                },
+                {
+                    "fieldName": "contentGuidelines"
+                },
+                {
+                    "fieldName": "complianceFramework"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "restrictions"
+                },
+                {
+                    "fieldName": "approvedContexts"
+                },
+                {
+                    "fieldName": "riskCategories"
+                },
+                {
+                    "fieldName": "monitoringProtocols"
+                },
+                {
+                    "fieldName": "escalationProcedures"
+                }
+            ]
+        }
+    }
+}

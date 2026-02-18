@@ -1,0 +1,60 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templateId": "segments-visualization",
+  "usage": "Competitive landscape segmentation and market positioning analysis",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Competitive Market Segmentation",
+    "subtitle": "Market positioning and competitive landscape analysis",
+    "segments": [
+      {
+        "primaryLabel": "Primary segments label",
+        "secondaryLabel": "Secondary segments label",
+        "description": "Description for segments",
+        "actualValue": "0",
+        "targetValue": "0",
+        "forecastedValue": "0",
+        "actualLabel": "Current value",
+        "targetLabel": "Target value",
+        "forecastedLabel": "Forecasted value",
+        "primaryMetric": {
+          "label": "Primary metric",
+          "value": "0"
+        },
+        "secondaryMetric": {
+          "label": "Secondary metric",
+          "value": "0"
+        },
+        "budgetAmount": "$0",
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Key insights for segments"
+        ],
+        "risks": [
+          "Risk factors for segments"
+        ],
+        "recommendations": [
+          "Recommendations for segments"
+        ],
+        "metadata": {
+          "lastAnalyzed": "ISO date of last segment analysis",
+          "dataConfidence": "Data confidence level: 'high', 'medium', 'low'"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of analyzed segments",
+      "dominantSegment": "Largest market segment",
+      "fastestGrowing": "Fastest growing segment",
+      "mostCompetitive": "Most competitive segment",
+      "recommendedFocus": "Recommended strategic focus area",
+      "activeSegments": "0",
+      "topPerformer": "Top performing item",
+      "growthOpportunity": "Value for growthOpportunity"
+    }
+  }
+}

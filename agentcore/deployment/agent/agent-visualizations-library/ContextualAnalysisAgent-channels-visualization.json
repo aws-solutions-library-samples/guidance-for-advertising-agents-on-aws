@@ -1,0 +1,57 @@
+{
+  "agentName": "ContextualAnalysisAgent",
+  "agentId": "contextual-analysis-agent",
+  "templateId": "channels-visualization",
+  "usage": "Publisher safety assessments and domain analysis",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Publisher Safety Assessment",
+    "subtitle": "Content safety analysis and publisher risk evaluation",
+    "channels": [
+      {
+        "primaryLabel": "Publisher/Domain name (e.g., 'Premium News Network', 'Sports Content Hub')",
+        "secondaryLabel": "Publisher category (e.g., 'News & Media', 'Sports & Entertainment')",
+        "description": "Publisher profile and content description",
+        "primaryScore": {
+          "label": "Primary safety metric (e.g., 'Safety Score', 'Brand Suitability')",
+          "value": "Safety rating (e.g., '9.2/10', 'Excellent')"
+        },
+        "secondaryScore": {
+          "label": "Secondary metric (e.g., 'Content Quality', 'Audience Alignment')",
+          "value": "Quality rating (e.g., '8.8/10', 'High')"
+        },
+        "qualityScore": "Overall publisher quality (e.g., 'Premium', 'Standard', 'Caution')",
+        "statusIndicator": "Safety status: 'verified', 'active', 'paused'",
+        "targetValue": "Safety target (e.g., '9.5/10 safety score')",
+        "actualValue": "Current safety level (e.g., '9.2/10 safety score')",
+        "forecastedValue": "Projected safety improvement (e.g., '9.4/10 safety score')",
+        "targetLabel": "Target safety standard description",
+        "actualLabel": "Current safety assessment description",
+        "forecastedLabel": "Forecasted safety level description",
+        "confidenceLevel": "Assessment confidence: 'high', 'medium', 'low'",
+        "insights": [
+          "Publisher-specific safety insights"
+        ],
+        "risks": [
+          "Identified content and brand risks"
+        ],
+        "opportunities": [
+          "Safety improvement opportunities"
+        ],
+        "recommendation": "Strategic safety recommendation for this publisher",
+        "metadata": {
+          "category": "Content category (e.g., 'News', 'Entertainment', 'Sports')",
+          "reach": "Publisher reach (e.g., '5M monthly visitors')",
+          "engagement": "Content engagement level (e.g., 'High', 'Medium', 'Low')"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of publishers analyzed",
+      "activeChannels": "Number of approved publishers",
+      "topPerformer": "Safest publisher name",
+      "recommendedFocus": "Safety strategy recommendation"
+    }
+  }
+}

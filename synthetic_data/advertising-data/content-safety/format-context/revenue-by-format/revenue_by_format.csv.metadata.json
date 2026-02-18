@@ -1,0 +1,67 @@
+{
+    "metadataAttributes": {
+        "data_source": "revenue_analytics",
+        "category": "format_performance",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "format_revenue_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "ad_format"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "publisher_type"
+                    },
+                    {
+                        "fieldName": "impressions_served"
+                    },
+                    {
+                        "fieldName": "revenue_usd"
+                    },
+                    {
+                        "fieldName": "cpm_usd"
+                    },
+                    {
+                        "fieldName": "fill_rate"
+                    },
+                    {
+                        "fieldName": "viewability_rate"
+                    },
+                    {
+                        "fieldName": "completion_rate"
+                    },
+                    {
+                        "fieldName": "click_through_rate"
+                    },
+                    {
+                        "fieldName": "conversion_rate"
+                    },
+                    {
+                        "fieldName": "advertiser_demand_tier"
+                    },
+                    {
+                        "fieldName": "floor_price_usd"
+                    },
+                    {
+                        "fieldName": "winning_bid_usd"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,134 @@
+<!-- Visualization Popover -->
+<div *ngIf="isVisible" class="popover-overlay" (click)="onClose()">
+  <div class="visualization-popover" (click)="onPopoverClick($event)">
+
+    <!-- Popover Header -->
+    <div class="popover-header">
+      <div class="agent-info">
+        <span class="agent-icon material-icons" [style.color]="color">psychology</span>
+        <h3 class="agent-name" [style.color]="color">{{displayName}}</h3>
+      </div>
+      <button class="close-btn nova-button" (click)="onClose()">
+        <span class="material-icons">close</span>
+        Close
+      </button>
+    </div>
+
+    <!-- Popover Content -->
+    <div class="popover-content">
+      <div *ngIf="!hasVisualizationData()" class="no-data-message">
+        <span class="material-icons">info</span>
+        <p>No visualization data available for this agent yet.</p>
+      </div>
+
+      <div *ngIf="hasVisualizationData()" class="visualization-container">
+        <div class="visualization-summary">
+          <span class="material-icons">bar_chart</span>
+          <span>{{getVisualizationCount()}} visualization{{getVisualizationCount() > 1 ? 's' : ''}} available</span>
+        </div>
+
+        <!-- Metrics Visualization -->
+        <div *ngIf="visualData.metricData" class="visualization-section" [class.new-item]="isNewItem('metrics')">
+          <div class="section-header">
+            <span class="section-icon material-icons">analytics</span>
+            <h4 class="section-title">Performance Metrics</h4>
+          </div>
+          <app-metrics-visualization [metricData]="visualData.data"></app-metrics-visualization>
+        </div>
+
+        <!-- Allocations Visualization -->
+        <div *ngIf="visualData.channelAllocations" class="visualization-section" [class.new-item]="isNewItem('allocations')">
+          <div class="section-header">
+            <span class="section-icon material-icons">pie_chart</span>
+            <h4 class="section-title">Budget Allocations</h4>
+          </div>
+          <app-allocations-visualization [channelAllocations]="visualData.data"></app-allocations-visualization>
+        </div>
+
+        <!-- Segments Visualization -->
+        <div *ngIf="visualData.segmentCards" class="visualization-section" [class.new-item]="isNewItem('segments')">
+          <div class="section-header">
+            <span class="section-icon material-icons">group</span>
+            <h4 class="section-title">Audience Segments</h4>
+          </div>
+          <app-segments-visualization [segmentCards]="visualData.data"></app-segments-visualization>
+        </div>
+
+        <!-- Channel Cards Visualization -->
+        <div *ngIf="visualData.channelCards" class="visualization-section" [class.new-item]="isNewItem('channels')">
+          <div class="section-header">
+            <span class="section-icon material-icons">campaign</span>
+            <h4 class="section-title">Channel Analysis</h4>
+          </div>
+          <app-channels-visualization [channelCards]="visualData.data"></app-channels-visualization>
+        </div>
+
+        <!-- Creative Data Visualization -->
+        <div *ngIf="visualData.creativeData" class="visualization-section" [class.new-item]="isNewItem('creative')">
+          <div class="section-header">
+            <span class="section-icon material-icons">palette</span>
+            <h4 class="section-title">Creative Assets</h4>
+          </div>
+          <app-creative-visualization [creativeData]="visualData.data"></app-creative-visualization>
+        </div>
+
+        <!-- Timeline Visualization -->
+        <div *ngIf="visualData.timelineData" class="visualization-section" [class.new-item]="isNewItem('timeline')">
+          <div class="section-header">
+            <span class="section-icon material-icons">timeline</span>
+            <h4 class="section-title">Campaign Timeline</h4>
+          </div>
+          <app-timeline-visualization [timelineData]="visualData.data"></app-timeline-visualization>
+        </div>
+
+        <!-- D3 Histogram Visualization -->
+        <div *ngIf="visualData.histogramData" class="visualization-section" [class.new-item]="isNewItem('histogram')">
+          <div class="section-header">
+            <span class="section-icon material-icons">bar_chart</span>
+            <h4 class="section-title">Distribution Analysis</h4>
+          </div>
+          <app-histogram-visualization [data]="visualData.data"></app-histogram-visualization>
+        </div>
+
+        <!-- D3 Double Histogram Visualization -->
+        <div *ngIf="visualData.doubleHistogramData" class="visualization-section" [class.new-item]="isNewItem('doubleHistogram')">
+          <div class="section-header">
+            <span class="section-icon material-icons">equalizer</span>
+            <h4 class="section-title">Comparative Analysis</h4>
+          </div>
+          <app-double-histogram-visualization [data]="visualData.data"></app-double-histogram-visualization>
+        </div>
+
+        <!-- D3 Bar Chart Visualization -->
+        <div *ngIf="visualData.barChartData" class="visualization-section" [class.new-item]="isNewItem('barChart')">
+          <div class="section-header">
+            <span class="section-icon material-icons">insert_chart</span>
+            <h4 class="section-title">Performance Comparison</h4>
+          </div>
+          <app-bar-chart-visualization [data]="visualData.data"></app-bar-chart-visualization>
+        </div>
+
+        <!-- D3 Donut Chart Visualization -->
+        <div *ngIf="visualData.donutChartData" class="visualization-section" [class.new-item]="isNewItem('donutChart')">
+          <div class="section-header">
+            <span class="section-icon material-icons">donut_large</span>
+            <h4 class="section-title">Category Breakdown</h4>
+          </div>
+          <app-donut-chart-visualization [data]="visualData.data"></app-donut-chart-visualization>
+        </div>
+
+        <!-- ADCP Protocol Visualizations -->
+        <!-- ADCP Inventory Visualization -->
+        <div *ngIf="visualData.adcpInventoryData" class="visualization-section" [class.new-item]="isNewItem('adcpInventory')">
+          <div class="section-header">
+            <span class="section-icon material-icons">inventory_2</span>
+            <h4 class="section-title">Available Inventory</h4>
+          </div>
+          <app-adcp_get_products-visualization [inventoryData]="visualData.adcpInventoryData"></app-adcp_get_products-visualization>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+</div>

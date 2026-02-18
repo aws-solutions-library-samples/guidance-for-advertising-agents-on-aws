@@ -1,0 +1,814 @@
+{
+  "bid_requests": [
+    {
+      "request_id": "bid-78a9b23c45",
+      "timestamp": "2025-05-20T14:23:45.123Z",
+      "site": {
+        "domain": "sportsillustrated.com",
+        "page": "https://www.sportsillustrated.com/nba/lakers-celtics-season-opener",
+        "categories": ["IAB17", "IAB17-18"],
+        "publisher": {
+          "id": "pub-12345",
+          "name": "Sports Illustrated"
+        },
+        "content": {
+          "title": "Lakers Dominate Celtics in Season Opener, James Scores Triple-Double",
+          "keywords": ["NBA", "Lakers", "Celtics", "LeBron James"]
+        }
+      },
+      "device": {
+        "type": "mobile",
+        "os": "iOS",
+        "model": "iPhone 14 Pro",
+        "geo": {
+          "country": "US",
+          "region": "CA",
+          "city": "Los Angeles",
+          "zip": "90001"
+        },
+        "ip": "192.168.1.1"
+      },
+      "user": {
+        "id": "user-3a4b5c6d7e",
+        "segments": ["sports_enthusiast", "premium_device", "male_25_44"],
+        "geo": {
+          "country": "US",
+          "region": "CA"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.50,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-12345",
+        "banner": {
+          "width": 300,
+          "height": 250,
+          "position": "middle",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.50
+      }
+    },
+    {
+      "request_id": "bid-45d67e89f0",
+      "timestamp": "2025-05-20T14:24:12.456Z",
+      "site": {
+        "domain": "wired.com",
+        "page": "https://www.wired.com/gear/new-smartphone-review-2025",
+        "categories": ["IAB19", "IAB19-2"],
+        "publisher": {
+          "id": "pub-67890",
+          "name": "Wired"
+        },
+        "content": {
+          "title": "Review: The New UltraPhone Pro Is the Best Smartphone of 2025",
+          "keywords": ["smartphone", "review", "technology", "UltraPhone"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "Windows",
+        "model": "PC",
+        "geo": {
+          "country": "US",
+          "region": "NY",
+          "city": "New York",
+          "zip": "10001"
+        },
+        "ip": "192.168.2.2"
+      },
+      "user": {
+        "id": "user-1g2h3i4j5k",
+        "segments": ["tech_enthusiast", "high_income", "male_25_44"],
+        "geo": {
+          "country": "US",
+          "region": "NY"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.00,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-67890",
+        "banner": {
+          "width": 728,
+          "height": 90,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.00
+      }
+    },
+    {
+      "request_id": "bid-12a34b56c78",
+      "timestamp": "2025-05-20T14:25:03.789Z",
+      "site": {
+        "domain": "healthline.com",
+        "page": "https://www.healthline.com/nutrition/mediterranean-diet-benefits",
+        "categories": ["IAB8", "IAB8-1"],
+        "publisher": {
+          "id": "pub-24680",
+          "name": "Healthline"
+        },
+        "content": {
+          "title": "10 Evidence-Based Benefits of the Mediterranean Diet",
+          "keywords": ["diet", "nutrition", "health", "Mediterranean"]
+        }
+      },
+      "device": {
+        "type": "tablet",
+        "os": "iOS",
+        "model": "iPad Air",
+        "geo": {
+          "country": "US",
+          "region": "FL",
+          "city": "Miami",
+          "zip": "33101"
+        },
+        "ip": "192.168.3.3"
+      },
+      "user": {
+        "id": "user-6l7m8n9o0p",
+        "segments": ["health_enthusiast", "female_35_54", "high_income"],
+        "geo": {
+          "country": "US",
+          "region": "FL"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.75,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-24680",
+        "banner": {
+          "width": 300,
+          "height": 600,
+          "position": "right",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.75
+      }
+    },
+    {
+      "request_id": "bid-90e12f34g56",
+      "timestamp": "2025-05-20T14:26:18.234Z",
+      "site": {
+        "domain": "nytimes.com",
+        "page": "https://www.nytimes.com/politics/2025/05/senate-infrastructure-bill",
+        "categories": ["IAB11", "IAB11-4"],
+        "publisher": {
+          "id": "pub-13579",
+          "name": "The New York Times"
+        },
+        "content": {
+          "title": "Senate Passes $1.2 Trillion Infrastructure Bill After Months of Negotiation",
+          "keywords": ["politics", "infrastructure", "senate", "legislation"]
+        }
+      },
+      "device": {
+        "type": "mobile",
+        "os": "Android",
+        "model": "Samsung Galaxy S25",
+        "geo": {
+          "country": "US",
+          "region": "DC",
+          "city": "Washington",
+          "zip": "20001"
+        },
+        "ip": "192.168.4.4"
+      },
+      "user": {
+        "id": "user-1q2r3s4t5u",
+        "segments": ["news_reader", "college_educated", "high_income"],
+        "geo": {
+          "country": "US",
+          "region": "DC"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.50,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-13579",
+        "banner": {
+          "width": 320,
+          "height": 50,
+          "position": "bottom",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.50
+      }
+    },
+    {
+      "request_id": "bid-78h90i12j34",
+      "timestamp": "2025-05-20T14:27:42.567Z",
+      "site": {
+        "domain": "espn.com",
+        "page": "https://www.espn.com/nfl/draft-2025-predictions",
+        "categories": ["IAB17", "IAB17-16"],
+        "publisher": {
+          "id": "pub-97531",
+          "name": "ESPN"
+        },
+        "content": {
+          "title": "NFL Draft 2025: Expert Predictions and Analysis",
+          "keywords": ["NFL", "draft", "football", "sports"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "macOS",
+        "model": "Mac",
+        "geo": {
+          "country": "US",
+          "region": "TX",
+          "city": "Dallas",
+          "zip": "75001"
+        },
+        "ip": "192.168.5.5"
+      },
+      "user": {
+        "id": "user-6v7w8x9y0z",
+        "segments": ["sports_enthusiast", "male_25_44", "middle_income"],
+        "geo": {
+          "country": "US",
+          "region": "TX"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.25,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-97531",
+        "banner": {
+          "width": 970,
+          "height": 250,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.25
+      }
+    },
+    {
+      "request_id": "bid-45k67l89m01",
+      "timestamp": "2025-05-20T14:28:15.789Z",
+      "site": {
+        "domain": "menshealth.com",
+        "page": "https://www.menshealth.com/fitness/new-workout-routines-2025",
+        "categories": ["IAB7", "IAB7-1"],
+        "publisher": {
+          "id": "pub-45678",
+          "name": "Men's Health"
+        },
+        "content": {
+          "title": "5 Revolutionary Workout Routines That Will Transform Your Fitness in 2025",
+          "keywords": ["fitness", "workout", "training", "health"]
+        }
+      },
+      "device": {
+        "type": "mobile",
+        "os": "iOS",
+        "model": "iPhone 15 Pro",
+        "geo": {
+          "country": "US",
+          "region": "CA",
+          "city": "San Francisco",
+          "zip": "94102"
+        },
+        "ip": "192.168.6.6"
+      },
+      "user": {
+        "id": "user-7a8b9c0d1e",
+        "segments": ["health_enthusiast", "sports_enthusiast", "male_25_44"],
+        "geo": {
+          "country": "US",
+          "region": "CA"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.80,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-45678",
+        "banner": {
+          "width": 320,
+          "height": 480,
+          "position": "middle",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.80
+      }
+    },
+    {
+      "request_id": "bid-23n45o67p89",
+      "timestamp": "2025-05-20T14:29:33.456Z",
+      "site": {
+        "domain": "travelandleisure.com",
+        "page": "https://www.travelandleisure.com/destinations/europe-summer-travel-2025",
+        "categories": ["IAB20", "IAB20-2"],
+        "publisher": {
+          "id": "pub-78901",
+          "name": "Travel + Leisure"
+        },
+        "content": {
+          "title": "Europe's Hidden Gems: 10 Underrated Destinations Perfect for Summer 2025",
+          "keywords": ["travel", "Europe", "vacation", "destinations"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "Windows",
+        "model": "PC",
+        "geo": {
+          "country": "US",
+          "region": "IL",
+          "city": "Chicago",
+          "zip": "60601"
+        },
+        "ip": "192.168.7.7"
+      },
+      "user": {
+        "id": "user-2f3g4h5i6j",
+        "segments": ["travel_enthusiast", "luxury_lifestyle", "high_income"],
+        "geo": {
+          "country": "US",
+          "region": "IL"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 4.20,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-78901",
+        "banner": {
+          "width": 728,
+          "height": 90,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 4.20
+      }
+    },
+    {
+      "request_id": "bid-89q12r34s56",
+      "timestamp": "2025-05-20T14:30:45.123Z",
+      "site": {
+        "domain": "foodnetwork.com",
+        "page": "https://www.foodnetwork.com/recipes/quick-dinner-ideas-2025",
+        "categories": ["IAB8", "IAB8-5"],
+        "publisher": {
+          "id": "pub-34567",
+          "name": "Food Network"
+        },
+        "content": {
+          "title": "30-Minute Dinner Ideas That Will Save Your Weeknight",
+          "keywords": ["recipes", "dinner", "quick meals", "cooking"]
+        }
+      },
+      "device": {
+        "type": "tablet",
+        "os": "iOS",
+        "model": "iPad Pro",
+        "geo": {
+          "country": "US",
+          "region": "FL",
+          "city": "Orlando",
+          "zip": "32801"
+        },
+        "ip": "192.168.8.8"
+      },
+      "user": {
+        "id": "user-8k9l0m1n2o",
+        "segments": ["food_enthusiast", "new_parent", "middle_income"],
+        "geo": {
+          "country": "US",
+          "region": "FL"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.15,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-34567",
+        "banner": {
+          "width": 300,
+          "height": 600,
+          "position": "right",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.15
+      }
+    },
+    {
+      "request_id": "bid-67t89u01v23",
+      "timestamp": "2025-05-20T14:31:18.890Z",
+      "site": {
+        "domain": "pcgamer.com",
+        "page": "https://www.pcgamer.com/reviews/new-rpg-game-2025-review",
+        "categories": ["IAB9", "IAB9-30"],
+        "publisher": {
+          "id": "pub-56789",
+          "name": "PC Gamer"
+        },
+        "content": {
+          "title": "Epic RPG 'Legends of Tomorrow' Review: A Gaming Masterpiece",
+          "keywords": ["gaming", "RPG", "review", "PC games"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "Windows",
+        "model": "Gaming PC",
+        "geo": {
+          "country": "US",
+          "region": "WA",
+          "city": "Seattle",
+          "zip": "98101"
+        },
+        "ip": "192.168.9.9"
+      },
+      "user": {
+        "id": "user-3p4q5r6s7t",
+        "segments": ["gaming_enthusiast", "tech_early_adopter", "male_18_34"],
+        "geo": {
+          "country": "US",
+          "region": "WA"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.50,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-56789",
+        "banner": {
+          "width": 300,
+          "height": 250,
+          "position": "middle",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.50
+      }
+    },
+    {
+      "request_id": "bid-45w67x89y01",
+      "timestamp": "2025-05-20T14:32:42.345Z",
+      "site": {
+        "domain": "marketwatch.com",
+        "page": "https://www.marketwatch.com/crypto/bitcoin-price-analysis-2025",
+        "categories": ["IAB13", "IAB13-3"],
+        "publisher": {
+          "id": "pub-67890",
+          "name": "MarketWatch"
+        },
+        "content": {
+          "title": "Bitcoin Surges Past $75,000: What Investors Need to Know",
+          "keywords": ["bitcoin", "cryptocurrency", "investment", "finance"]
+        }
+      },
+      "device": {
+        "type": "mobile",
+        "os": "Android",
+        "model": "Google Pixel 8",
+        "geo": {
+          "country": "US",
+          "region": "NY",
+          "city": "New York",
+          "zip": "10005"
+        },
+        "ip": "192.168.10.10"
+      },
+      "user": {
+        "id": "user-9u0v1w2x3y",
+        "segments": ["crypto_investor", "finance_enthusiast", "tech_early_adopter"],
+        "geo": {
+          "country": "US",
+          "region": "NY"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 5.80,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-67890",
+        "banner": {
+          "width": 320,
+          "height": 50,
+          "position": "bottom",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 5.80
+      }
+    },
+    {
+      "request_id": "bid-23z45a67b89",
+      "timestamp": "2025-05-20T14:33:55.678Z",
+      "site": {
+        "domain": "streammax.com",
+        "page": "https://www.streammax.com/browse/new-releases-2025",
+        "categories": ["IAB1", "IAB1-2"],
+        "publisher": {
+          "id": "pub-78901",
+          "name": "StreamMax"
+        },
+        "content": {
+          "title": "New Movies and Shows Coming to StreamMax in June 2025",
+          "keywords": ["streammax", "streaming", "movies", "TV shows"]
+        }
+      },
+      "device": {
+        "type": "tablet",
+        "os": "Android",
+        "model": "Samsung Galaxy Tab S9",
+        "geo": {
+          "country": "US",
+          "region": "CA",
+          "city": "Los Angeles",
+          "zip": "90210"
+        },
+        "ip": "192.168.11.11"
+      },
+      "user": {
+        "id": "user-4c5d6e7f8g",
+        "segments": ["entertainment_seeker", "young_professional", "middle_income"],
+        "geo": {
+          "country": "US",
+          "region": "CA"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 2.95,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-78901",
+        "banner": {
+          "width": 728,
+          "height": 90,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 2.95
+      }
+    },
+    {
+      "request_id": "bid-01h23i45j67",
+      "timestamp": "2025-05-20T14:34:28.234Z",
+      "site": {
+        "domain": "vogue.com",
+        "page": "https://www.vogue.com/fashion/summer-2025-beauty-trends",
+        "categories": ["IAB18", "IAB18-3"],
+        "publisher": {
+          "id": "pub-89012",
+          "name": "Vogue"
+        },
+        "content": {
+          "title": "Summer 2025 Beauty Trends: Bronzed Skin and Bold Lips",
+          "keywords": ["beauty", "makeup", "fashion", "trends"]
+        }
+      },
+      "device": {
+        "type": "mobile",
+        "os": "iOS",
+        "model": "iPhone 14",
+        "geo": {
+          "country": "US",
+          "region": "NY",
+          "city": "New York",
+          "zip": "10013"
+        },
+        "ip": "192.168.12.12"
+      },
+      "user": {
+        "id": "user-5h6i7j8k9l",
+        "segments": ["beauty_enthusiast", "fashion_enthusiast", "female_18_34"],
+        "geo": {
+          "country": "US",
+          "region": "NY"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.60,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-89012",
+        "banner": {
+          "width": 300,
+          "height": 250,
+          "position": "middle",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.60
+      }
+    },
+    {
+      "request_id": "bid-89k01l23m45",
+      "timestamp": "2025-05-20T14:35:12.567Z",
+      "site": {
+        "domain": "petco.com",
+        "page": "https://www.petco.com/shop/dog-nutrition-guide-2025",
+        "categories": ["IAB16", "IAB16-5"],
+        "publisher": {
+          "id": "pub-90123",
+          "name": "Petco"
+        },
+        "content": {
+          "title": "Complete Guide to Dog Nutrition: What Your Pet Needs in 2025",
+          "keywords": ["dogs", "pet food", "nutrition", "pet care"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "macOS",
+        "model": "iMac",
+        "geo": {
+          "country": "US",
+          "region": "TX",
+          "city": "Austin",
+          "zip": "78701"
+        },
+        "ip": "192.168.13.13"
+      },
+      "user": {
+        "id": "user-0m1n2o3p4q",
+        "segments": ["pet_owner", "health_enthusiast", "middle_income"],
+        "geo": {
+          "country": "US",
+          "region": "TX"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.25,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-90123",
+        "banner": {
+          "width": 970,
+          "height": 250,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.25
+      }
+    },
+    {
+      "request_id": "bid-67n89o01p23",
+      "timestamp": "2025-05-20T14:36:07.890Z",
+      "site": {
+        "domain": "treehugger.com",
+        "page": "https://www.treehugger.com/sustainable-living-tips-2025",
+        "categories": ["IAB14", "IAB14-1"],
+        "publisher": {
+          "id": "pub-01234",
+          "name": "Treehugger"
+        },
+        "content": {
+          "title": "10 Simple Ways to Live More Sustainably in 2025",
+          "keywords": ["sustainability", "environment", "green living", "eco-friendly"]
+        }
+      },
+      "device": {
+        "type": "tablet",
+        "os": "iOS",
+        "model": "iPad Air",
+        "geo": {
+          "country": "US",
+          "region": "OR",
+          "city": "Portland",
+          "zip": "97201"
+        },
+        "ip": "192.168.14.14"
+      },
+      "user": {
+        "id": "user-6r7s8t9u0v",
+        "segments": ["sustainability_conscious", "outdoor_enthusiast", "college_educated"],
+        "geo": {
+          "country": "US",
+          "region": "OR"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 3.75,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-01234",
+        "banner": {
+          "width": 300,
+          "height": 600,
+          "position": "right",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 3.75
+      }
+    },
+    {
+      "request_id": "bid-45q67r89s01",
+      "timestamp": "2025-05-20T14:37:33.123Z",
+      "site": {
+        "domain": "coursera.org",
+        "page": "https://www.coursera.org/courses/data-science-2025",
+        "categories": ["IAB5", "IAB5-1"],
+        "publisher": {
+          "id": "pub-12345",
+          "name": "Coursera"
+        },
+        "content": {
+          "title": "Master Data Science in 2025: Complete Certification Program",
+          "keywords": ["education", "data science", "online learning", "certification"]
+        }
+      },
+      "device": {
+        "type": "desktop",
+        "os": "Windows",
+        "model": "Surface Pro",
+        "geo": {
+          "country": "US",
+          "region": "MA",
+          "city": "Boston",
+          "zip": "02101"
+        },
+        "ip": "192.168.15.15"
+      },
+      "user": {
+        "id": "user-1w2x3y4z5a",
+        "segments": ["student", "tech_early_adopter", "career_focused"],
+        "geo": {
+          "country": "US",
+          "region": "MA"
+        }
+      },
+      "auction": {
+        "type": "first-price",
+        "bidfloor": 4.20,
+        "currency": "USD",
+        "tmax": 120
+      },
+      "impression": {
+        "id": "imp-12345",
+        "banner": {
+          "width": 728,
+          "height": 90,
+          "position": "top",
+          "mimes": ["image/jpeg", "image/png"]
+        },
+        "secure": 1,
+        "bidfloor": 4.20
+      }
+    }
+  ]
+}

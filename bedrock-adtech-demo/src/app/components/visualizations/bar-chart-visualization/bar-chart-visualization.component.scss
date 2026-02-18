@@ -1,0 +1,156 @@
+.bar-chart-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin: 16px 0;
+}
+
+.bar-chart-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.bar-chart-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.bar-chart-subtitle {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.bar-chart-chart {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.bar-chart-insights {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(104, 66, 255, 0.05);
+  border-radius: 8px;
+  border-left: 4px solid #6842ff;
+
+  h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6842ff;
+    margin: 0 0 12px 0;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    
+    li {
+      color: #374151;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+.bar-chart-summary {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.summary-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 16px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.stat-item {
+  text-align: center;
+  
+  .stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  
+  .stat-value {
+    display: block;
+    font-size: 1.1rem;
+    color: #1f2937;
+    font-weight: 600;
+  }
+}
+
+// D3 specific styles
+:host ::ng-deep {
+  .bar {
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .value-label {
+    font-weight: 500;
+  }
+  
+  .axis {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #d1d5db;
+    shape-rendering: crispEdges;
+  }
+  
+  .axis text {
+    fill: #6b7280;
+  }
+  
+  // Trend indicators
+  .trend-up {
+    color: #10b981;
+  }
+  
+  .trend-down {
+    color: #ef4444;
+  }
+  
+  .trend-stable {
+    color: #6b7280;
+  }
+}
+
+@media (max-width: 768px) {
+  .bar-chart-container {
+    padding: 16px;
+  }
+  
+  .bar-chart-chart svg {
+    width: 100%;
+    height: 300px;
+  }
+}

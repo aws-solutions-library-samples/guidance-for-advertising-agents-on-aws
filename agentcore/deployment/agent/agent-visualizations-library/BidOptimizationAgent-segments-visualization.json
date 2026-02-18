@@ -1,0 +1,57 @@
+{
+  "agentName": "BidOptimizationAgent",
+  "agentId": "bid-optimization-agent",
+  "templateId": "segments-visualization",
+  "usage": "Segment-level bid optimization",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Segment Bid Optimization",
+    "subtitle": "Segment-specific bidding strategies and performance",
+    "segments": [
+      {
+        "primaryLabel": "Audience segment (e.g., 'High-Value Customers', 'New Prospects', 'Retargeting Pool')",
+        "secondaryLabel": "Segment type (e.g., 'Conversion-Focused', 'Awareness-Driven', 'Retention')",
+        "description": "Segment bidding strategy and characteristics",
+        "actualValue": "Current bid performance (e.g., '4.5x ROAS', '$2.10 CPC')",
+        "targetValue": "Bid target (e.g., '5.5x ROAS', '$1.80 CPC')",
+        "forecastedValue": "Projected bid improvement (e.g., '5.1x ROAS', '$1.95 CPC')",
+        "actualLabel": "Current segment bid performance",
+        "targetLabel": "Target segment bid goal",
+        "forecastedLabel": "Forecasted segment bid improvement",
+        "primaryMetric": {
+          "label": "Primary bid KPI (e.g., 'Win Rate', 'CPC')",
+          "value": "KPI value (e.g., '68%', '$2.10')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary bid KPI (e.g., 'ROAS', 'Conversion Rate')",
+          "value": "KPI value (e.g., '4.5x', '12%')"
+        },
+        "budgetAmount": "Segment bid budget (e.g., '$450,000')",
+        "statusIndicator": "Bid status: 'optimized', 'active', 'underperforming'",
+        "confidenceLevel": "Bid confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Bid performance: 'high', 'medium', 'low'",
+        "insights": [
+          "Segment-specific bid optimization insights"
+        ],
+        "risks": [
+          "Bidding risks for this segment"
+        ],
+        "recommendations": [
+          "Segment bid optimization strategies"
+        ],
+        "metadata": {
+          "size": "Segment size for bidding",
+          "growth": "Bid performance growth trend",
+          "engagement": "Segment bid engagement level"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of segments with bid optimization",
+      "activeSegments": "Number of actively bid-optimized segments",
+      "topPerformer": "Best performing segment for bidding",
+      "growthOpportunity": "Primary bid optimization opportunity"
+    }
+  }
+}

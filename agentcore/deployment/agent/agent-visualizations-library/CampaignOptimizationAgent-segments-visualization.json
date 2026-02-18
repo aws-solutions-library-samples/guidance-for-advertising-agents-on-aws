@@ -1,0 +1,64 @@
+{
+  "agentName": "CampaignOptimizationAgent",
+  "agentId": "campaign-optimization-agent",
+  "templateId": "segments-visualization",
+  "usage": "Strategic audience prioritization and targeting",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Integrated Audience Strategy",
+    "subtitle": "Strategic audience prioritization with creative and media alignment",
+    "segments": [
+      {
+        "primaryLabel": "Segment name (e.g., 'Brand Advocates', 'High-Intent Prospects', 'Consideration Audience', 'Retention Focus')",
+        "secondaryLabel": "Segment role (e.g., 'Core Audience', 'Growth Segment', 'Efficiency Play', 'Brand Building')",
+        "description": "Detailed segment profile, behaviors, and strategic importance",
+        "actualValue": "Current performance metric (e.g., '5.2x ROAS', '18% conversion rate', '+35% brand lift')",
+        "targetValue": "Performance target (e.g., '6.0x ROAS', '22% conversion rate', '+40% brand lift')",
+        "forecastedValue": "Projected performance (e.g., '5.8x ROAS', '20% conversion rate', '+38% brand lift')",
+        "actualLabel": "Current performance description",
+        "targetLabel": "Target performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Blended ROAS', 'Brand Lift', 'Lifetime Value')",
+          "value": "KPI value (e.g., '5.2x', '+35%', '$680')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Engagement Rate', 'Consideration Lift', 'Frequency')",
+          "value": "KPI value (e.g., '12.5%', '+28%', '4.2x')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$1,250,000')",
+        "statusIndicator": "Segment status: 'optimized', 'active', 'testing', 'underperforming'",
+        "confidenceLevel": "Strategy confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Expected performance: 'high', 'medium', 'low'",
+        "insights": [
+          "Key audience insights, behaviors, and brand affinity"
+        ],
+        "risks": [
+          "Risk factors and mitigation strategies for this segment"
+        ],
+        "recommendations": [
+          "Integrated targeting, creative, and media strategies"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '3.2M users', '22% of target market')",
+          "growth": "Growth rate (e.g., '+18% YoY', 'Accelerating')",
+          "engagement": "Engagement level (e.g., 'Very High', 'High', 'Medium')",
+          "brandAffinity": "Brand affinity score (e.g., 'Strong', 'Moderate', 'Building')"
+        },
+        "creativeStrategy": "Creative approach for this segment (e.g., 'Emotional storytelling', 'Product benefits', 'Social proof')",
+        "channelMix": "Recommended channel mix (e.g., '40% CTV, 30% Social, 20% Display, 10% Search')",
+        "timingStrategy": "Optimal timing approach (e.g., 'Prime time focus', 'Weekend emphasis', 'Event-driven')"
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of segments in strategy",
+      "activeSegments": "Number of active segments",
+      "topPerformer": "Best performing segment name",
+      "growthOpportunity": "Primary growth opportunity segment",
+      "brandBuilder": "Key brand-building segment",
+      "efficiencyLeader": "Most efficient performance segment"
+    },
+    "integrationStrategy": "How audience strategy integrates with creative, media, and timing"
+  }
+}

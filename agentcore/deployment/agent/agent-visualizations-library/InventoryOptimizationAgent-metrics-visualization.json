@@ -1,0 +1,47 @@
+{
+  "agentName": "InventoryOptimizationAgent",
+  "agentId": "inventory-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Inventory availability forecasts, fill rates",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Inventory Availability Forecasts",
+    "subtitle": "Fill rate projections and inventory optimization metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "InventoryOptimizationAgent",
+      "supportingAgent1": "ChannelMixOptimizationAgent",
+      "supportingAgent2": "MediaPlanningSupervisorAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Inventory category (e.g., 'Fill Rate Forecasts', 'Availability Projections')",
+        "secondaryLabel": "Category description (e.g., 'Inventory supply and demand analysis')",
+        "items": [
+          {
+            "primaryLabel": "Specific inventory metric (e.g., 'Fill Rate', 'Available Impressions', 'CPM Forecast')",
+            "actualValue": "Current inventory level (e.g., '92%', '50M', '$15.50')",
+            "targetValue": "Inventory target (e.g., '95%', '60M', '$14.00')",
+            "forecastedValue": "Projected inventory (e.g., '94%', '55M', '$14.75')",
+            "actualLabel": "Current inventory performance description",
+            "targetLabel": "Target inventory goal description",
+            "forecastedLabel": "Forecasted inventory availability",
+            "unit": "Measurement unit (e.g., '%', 'M impressions', '$')",
+            "trend": "Inventory trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Forecast confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary inventory metric",
+            "insights": [
+              "Inventory forecasting insights and market trends"
+            ],
+            "risks": [
+              "Inventory availability risks and supply constraints"
+            ],
+            "recommendations": [
+              "Inventory optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

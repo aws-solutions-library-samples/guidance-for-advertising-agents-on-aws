@@ -1,0 +1,219 @@
+<div class="image-gallery-container" *ngIf="creativeData && hasImageData()">
+  <!-- Gallery Header -->
+  <div class="gallery-header">
+    <h4 class="gallery-title">
+      <span class="material-icons">photo_library</span>
+      <span class="image-count">{{ images.length }} image{{ images.length !== 1 ? 's' : '' }}</span>
+    </h4>
+    <div class="gallery-info">
+      
+      <span class="generation-status" *ngIf="generationInProgress">
+        <span class="material-icons spinning">autorenew</span>
+        Generating...
+      </span>
+    </div>
+  </div>
+
+  <!-- Color Palette (if available) -->
+  <div class="color-palette-section" *ngIf="getColorPalette().length > 0">
+    <h5 class="palette-title">
+      <span class="material-icons">palette</span>
+      Color Scheme
+    </h5>
+    <div class="color-palette">
+      <div 
+        class="color-swatch" 
+        *ngFor="let color of getColorPalette()" 
+        [style.background-color]="color"
+        [title]="color"
+        (click)="copyColorToClipboard(color)">
+        <span class="color-label">{{ color }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nova-style Carousel Gallery -->
+  <div class="nova-gallery-wrapper">
+    <!-- Navigation Arrow Left -->
+    <button class="nav-arrow nav-arrow-left" (click)="previousSlide()" [disabled]="currentSlide === 0">
+      <span class="material-icons">chevron_left</span>
+    </button>
+
+    <!-- Gallery Carousel -->
+    <div class="nova-gallery-container">
+      <div class="nova-gallery-track" [style.transform]="'translateX(-' + (currentSlide * slideWidth) + '%)'">
+        <div 
+          class="nova-image-card" 
+          *ngFor="let image of images; let i = index"
+          [class.completed]="image.status === 'completed'"
+          [class.error]="image.status === 'error'"
+          [class.generating]="image.status === 'generating'"
+          [class.pending]="image.status === 'pending'"
+          [class.hovered]="hoveredCardIndex === i"
+          (mouseenter)="hoveredCardIndex = i"
+          (mouseleave)="hoveredCardIndex = -1">
+          
+          <!-- Image Content Area -->
+          <div class="nova-image-content" (click)="openImageModal(image, i)">
+            <img 
+              *ngIf="image.status === 'completed' && (image.thumbnailUrl || image.url)" 
+              [src]="image.thumbnailUrl || image.url" 
+              [alt]="image.description"
+              class="nova-generated-image"
+              loading="lazy">
+            
+            <div 
+              *ngIf="image.status !== 'completed' || (!image.thumbnailUrl && !image.url)" 
+              class="nova-image-placeholder">
+              
+              <div class="nova-status-icon-container">
+                <span 
+                  class="material-icons nova-status-icon"
+                  [class.spinning]="image.status === 'generating'"
+                  [style.color]="getStatusColor(image.status)">
+                  {{ getStatusIcon(image.status) }}
+                </span>
+              </div>
+              
+              <div class="nova-progress-container" *ngIf="image.status === 'generating'">
+                <div class="nova-progress-bar">
+                  <div 
+                    class="nova-progress-fill" 
+                    [style.width.%]="image.progress || 0">
+                  </div>
+                </div>
+                <span class="nova-progress-text">{{ image.progress || 0 }}%</span>
+              </div>
+              
+              <div class="nova-error-message" *ngIf="image.status === 'error'">
+                <p>{{ image.error || 'Generation failed' }}</p>
+                <button class="nova-retry-btn" (click)="retryImage(i); $event.stopPropagation()">
+                  <span class="material-icons">refresh</span>
+                  Retry
+                </button>
+              </div>
+            </div>
+
+            <!-- Hover Overlay -->
+            <div class="nova-hover-overlay" *ngIf="hoveredCardIndex === i && image.status === 'completed'">
+              <div class="nova-overlay-buttons">
+                <button class="nova-view-btn secondaryButton" (click)="openImageModal(image, i); $event.stopPropagation()">
+                  <span class="material-icons">fullscreen</span>
+      
+                </button>
+                
+              </div>
+            </div>
+          </div>
+          
+          <!-- Nova-style Description -->
+          <div class="nova-image-description">
+            <p>"{{ image.description }}"</p>
+          </div>
+
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Arrow Right -->
+    <button class="nav-arrow nav-arrow-right" (click)="nextSlide()" [disabled]="currentSlide >= maxSlides - 1">
+      <span class="material-icons">chevron_right</span>
+    </button>
+  </div>
+
+  <!-- Navigation Dots -->
+  <div class="nova-navigation-dots" *ngIf="maxSlides > 1">
+    <button 
+      class="nav-dot"
+      *ngFor="let dot of dots; let i = index"
+      [class.active]="i === currentSlide"
+      (click)="goToSlide(i)">
+    </button>
+  </div>
+
+  <!-- Empty State (if no images to generate) -->
+  <div class="empty-state" *ngIf="!images.length">
+    <span class="material-icons">image</span>
+    <p>No imagery data available</p>
+  </div>
+
+  <!-- Gallery Footer -->
+  <div class="gallery-footer" *ngIf="images.length > 0">
+    <div class="generation-summary">
+      <span class="summary-item">
+        <span class="material-icons completed-icon">check_circle</span>
+        {{ getCompletedCount() }} completed
+      </span>
+      <span class="summary-item" *ngIf="getGeneratingCount() > 0">
+        <span class="material-icons generating-icon spinning">autorenew</span>
+        {{ getGeneratingCount() }} generating
+      </span>
+      <span class="summary-item" *ngIf="getErrorCount() > 0">
+        <span class="material-icons error-icon">error</span>
+        {{ getErrorCount() }} failed
+      </span>
+    </div>
+    
+    <div class="gallery-actions">
+      <button 
+        class="action-btn retry-all-btn" 
+        *ngIf="getErrorCount() > 0"
+        (click)="retryAllErrors()">
+        <span class="material-icons">refresh</span>
+        Retry Failed
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="image-modal-overlay" *ngIf="showImageModal" (click)="closeImageModal()">
+  <div class="image-modal-container" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h3 class="modal-title">Generated Image</h3>
+      <button class="modal-close-btn" (click)="closeImageModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="modal-content">
+      <div class="modal-image-container">
+        <img 
+          *ngIf="selectedImage?.status === 'completed' && (selectedImage?.fullImageUrl || selectedImage?.url)"
+          [src]="selectedImage?.fullImageUrl || selectedImage?.url"
+          [alt]="selectedImage?.description"
+          class="modal-image">
+        
+        <div class="modal-image-placeholder" *ngIf="selectedImage?.status !== 'completed'">
+          <span class="material-icons">image</span>
+          <p>Image not yet generated</p>
+        </div>
+      </div>
+
+      <!-- Image Description -->
+      <div class="modal-description">
+        <p>"{{ selectedImage?.description }}"</p>
+      </div>
+
+      <!-- Modal Actions -->
+      <!-- <div class="modal-actions">
+        <button 
+          class="modal-action-btn primaryButton"
+          [disabled]="selectedImage?.status !== 'completed'"
+          (click)="tryPrompt(selectedImage!)">
+          Try the prompt
+        </button>
+        <button 
+          class="modal-action-btn secondaryButton"
+          *ngIf="selectedImage?.status === 'completed'"
+          (click)="downloadImage(selectedImage!)">
+          <span class="material-icons">download</span>
+          Download
+        </button>
+      </div> -->
+    </div>
+  </div>
+</div> 

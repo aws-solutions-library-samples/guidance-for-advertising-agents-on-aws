@@ -1,0 +1,92 @@
+{
+  "agentName": "AudienceStrategyAnalyzer",
+  "agentId": "audience-strategy-analyzer",
+  "templateId": "metrics-visualization",
+  "usage": "Audience performance metrics and engagement rates",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Audience Performance Metrics",
+    "subtitle": "Key audience engagement and targeting performance indicators",
+    "collaborativeInsights": {
+      "primaryAgent": "audience-strategy-analyzer",
+      "supportingAgent1": "MediaPlannerAgent",
+      "supportingAgent2": "CampaignArchitectureAgent"
+    },
+    "metrics": [
+      {
+        "templateId": "metrics-visualization",
+        "primaryLabel": "Audience Engagement Performance",
+        "secondaryLabel": "Comprehensive audience engagement and conversion metrics across segments",
+        "items": [
+          {
+            "primaryLabel": "Segment Conversion Rate",
+            "actualValue": "Current segment conversion rate (e.g., '15.2%', '8.7%', '22.1%')",
+            "targetValue": "Target conversion rate (e.g., '18.0%', '12.0%', '25.0%')",
+            "forecastedValue": "Projected conversion rate (e.g., '16.8%', '10.5%', '23.5%')",
+            "actualLabel": "Current audience segment conversion performance",
+            "targetLabel": "Target conversion rate for optimal performance",
+            "forecastedLabel": "Projected conversion with optimization strategies",
+            "unit": "%",
+            "trend": "Performance direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Targeting confidence: 'high', 'medium', 'low'",
+            "isPrimary": true,
+            "insights": [
+              "Audience behavior insights (e.g., 'Health-conscious millennials show 40% higher engagement with video content', 'Premium segment responds better to personalized messaging')"
+            ],
+            "risks": [
+              "Audience targeting risks (e.g., 'Seasonal fitness motivation may impact engagement', 'Competition for premium audience attention')"
+            ],
+            "recommendations": [
+              "Targeting optimization recommendations (e.g., 'Focus video content on Instagram and TikTok for millennial segment', 'Implement lookalike modeling for premium users')"
+            ]
+          },
+          {
+            "primaryLabel": "Audience Reach Efficiency",
+            "actualValue": "Current reach efficiency (e.g., '85%', '72%', '91%')",
+            "targetValue": "Target reach efficiency (e.g., '90%', '80%', '95%')",
+            "forecastedValue": "Projected reach efficiency (e.g., '88%', '76%', '93%')",
+            "actualLabel": "Current audience reach and targeting accuracy",
+            "targetLabel": "Target reach efficiency for optimal coverage",
+            "forecastedLabel": "Projected reach with improved targeting",
+            "unit": "%",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "Reach efficiency insights (e.g., 'Cross-device targeting improves reach by 25%', 'Lookalike audiences expand reach while maintaining quality')"
+            ],
+            "risks": [
+              "Reach optimization risks (e.g., 'Over-targeting may limit scale', 'Privacy changes affect targeting precision')"
+            ],
+            "recommendations": [
+              "Reach optimization recommendations (e.g., 'Implement first-party data strategies', 'Expand lookalike modeling to similar demographics')"
+            ]
+          },
+          {
+            "primaryLabel": "Lifetime Value Prediction",
+            "actualValue": "Current predicted LTV (e.g., '$450', '$280', '$620')",
+            "targetValue": "Target LTV (e.g., '$500', '$350', '$700')",
+            "forecastedValue": "Projected LTV (e.g., '$475', '$315', '$665')",
+            "actualLabel": "Current audience lifetime value prediction",
+            "targetLabel": "Target lifetime value for segment optimization",
+            "forecastedLabel": "Projected LTV with retention strategies",
+            "unit": "$",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "LTV insights (e.g., 'Premium fitness users show 60% higher LTV', 'Early engagement predicts long-term value')"
+            ],
+            "risks": [
+              "LTV risks (e.g., 'Subscription churn may impact long-term value', 'Market saturation affects premium pricing')"
+            ],
+            "recommendations": [
+              "LTV optimization recommendations (e.g., 'Focus retention campaigns on high-value segments', 'Implement progressive profiling for personalization')"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

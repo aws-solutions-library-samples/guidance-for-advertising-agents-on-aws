@@ -1,0 +1,180 @@
+{
+  "formatOptimizationData": {
+    "brandContext": {
+      "brand": "LuxeChoco",
+      "category": "Premium Chocolate",
+      "brandSafetyLevel": "High",
+      "luxuryPositioning": true
+    },
+    "contentContextAnalysis": {
+      "cookingShows": {
+        "contextType": "Educational/Entertainment",
+        "viewerMindset": "Recipe seeking, ingredient focused",
+        "adTolerance": "Very High for relevant products",
+        "brandAlignment": "Excellent",
+        "intrusionScore": 2,
+        "engagementPrediction": 8.5,
+        "recommendedFormats": [
+          {
+            "format": "Native Product Placement",
+            "implementation": "LuxeChoco chocolate featured in dessert recipes",
+            "viewerSentimentScore": 8.7,
+            "engagementLikelihood": "92%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€22-28",
+            "reasoning": "High engagement, low intrusion, perfect content alignment"
+          },
+          {
+            "format": "Recipe Integration",
+            "implementation": "Sponsored recipe content featuring LuxeChoco products",
+            "viewerSentimentScore": 8.9,
+            "engagementLikelihood": "89%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€25-32",
+            "reasoning": "Adds value to content, natural product showcase"
+          }
+        ],
+        "publisherExamples": ["Food Network Europe", "Marmiton", "750g", "Essen & Trinken"]
+      },
+      "newsContent": {
+        "contextType": "Information gathering",
+        "viewerMindset": "Serious, focused on current events",
+        "adTolerance": "Low for interruptions",
+        "brandAlignment": "Neutral",
+        "intrusionScore": 5,
+        "engagementPrediction": 6.0,
+        "recommendedFormats": [
+          {
+            "format": "Premium Display Banners",
+            "implementation": "Elegant, minimal design respecting content context",
+            "viewerSentimentScore": 6.2,
+            "engagementLikelihood": "45%",
+            "brandSafetyRating": "Good",
+            "estimatedCPM": "€8-12",
+            "reasoning": "Respects serious content while maintaining brand presence"
+          }
+        ],
+        "publisherExamples": ["BBC News", "Le Monde", "Spiegel Online", "The Guardian"]
+      },
+      "lifestyleStreaming": {
+        "contextType": "Entertainment consumption",
+        "viewerMindset": "Relaxed, seeking inspiration",
+        "adTolerance": "Medium for quality content",
+        "brandAlignment": "Very Good",
+        "intrusionScore": 3,
+        "engagementPrediction": 7.5,
+        "recommendedFormats": [
+          {
+            "format": "Skippable Video Ads",
+            "implementation": "Swiss chocolate-making artistry showcase",
+            "viewerSentimentScore": 7.8,
+            "engagementLikelihood": "68%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€15-20",
+            "reasoning": "Aligns with content interest, showcases craftsmanship"
+          },
+          {
+            "format": "Sponsored Content Segments",
+            "implementation": "Behind-the-scenes Swiss chocolate making",
+            "viewerSentimentScore": 8.1,
+            "engagementLikelihood": "74%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€18-25",
+            "reasoning": "Educational value, premium brand storytelling"
+          }
+        ],
+        "publisherExamples": ["StreamMax", "Amazon Prime", "Conde Nast Digital"]
+      },
+      "socialPlatforms": {
+        "contextType": "Social interaction",
+        "viewerMindset": "Casual browsing, social engagement",
+        "adTolerance": "High for interactive content",
+        "brandAlignment": "Good",
+        "intrusionScore": 2,
+        "engagementPrediction": 9.0,
+        "recommendedFormats": [
+          {
+            "format": "Interactive Polls",
+            "implementation": "Flavor preference surveys, chocolate pairing quizzes",
+            "viewerSentimentScore": 9.1,
+            "engagementLikelihood": "85%",
+            "brandSafetyRating": "Good",
+            "estimatedCPM": "€6-10",
+            "reasoning": "Engagement-driven, not pushy, builds brand connection"
+          },
+          {
+            "format": "User-Generated Content Campaigns",
+            "implementation": "Chocolate moment sharing campaigns",
+            "viewerSentimentScore": 8.6,
+            "engagementLikelihood": "78%",
+            "brandSafetyRating": "Good",
+            "estimatedCPM": "€8-14",
+            "reasoning": "Authentic engagement, viral potential"
+          }
+        ],
+        "publisherExamples": ["Instagram", "TikTok", "Facebook", "YouTube"]
+      },
+      "premiumEditorial": {
+        "contextType": "In-depth reading",
+        "viewerMindset": "Quality content seeking",
+        "adTolerance": "High for valuable content",
+        "brandAlignment": "Excellent",
+        "intrusionScore": 1,
+        "engagementPrediction": 8.0,
+        "recommendedFormats": [
+          {
+            "format": "Sponsored Heritage Content",
+            "implementation": "Swiss chocolate tradition and craftsmanship articles",
+            "viewerSentimentScore": 8.4,
+            "engagementLikelihood": "76%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€25-35",
+            "reasoning": "Adds value to reading experience, builds brand authority"
+          },
+          {
+            "format": "Native Editorial",
+            "implementation": "Sustainability in chocolate production features",
+            "viewerSentimentScore": 8.2,
+            "engagementLikelihood": "71%",
+            "brandSafetyRating": "Excellent",
+            "estimatedCPM": "€28-38",
+            "reasoning": "Thought leadership, premium brand positioning"
+          }
+        ],
+        "publisherExamples": ["Vogue", "Harper's Bazaar", "Conde Nast Traveler", "Monocle"]
+      }
+    },
+    "overallStrategy": {
+      "balanceGoals": "Reach vs Brand Perception Protection",
+      "recommendedMix": {
+        "highEngagement": {
+          "percentage": 40,
+          "contexts": ["Cooking shows", "Social platforms"],
+          "rationale": "Maximum engagement with brand-aligned content"
+        },
+        "brandBuilding": {
+          "percentage": 35,
+          "contexts": ["Premium editorial", "Lifestyle streaming"],
+          "rationale": "Premium positioning and brand authority"
+        },
+        "broadReach": {
+          "percentage": 25,
+          "contexts": ["News content", "Display advertising"],
+          "rationale": "Awareness building with cost efficiency"
+        }
+      },
+      "riskMitigation": [
+        "Avoid intrusive formats that could damage luxury brand perception",
+        "Maintain premium publisher standards",
+        "Ensure content alignment with brand values",
+        "Monitor sentiment scores continuously"
+      ],
+      "kpiPriorities": [
+        "Brand sentiment maintenance",
+        "Engagement quality over quantity",
+        "Premium audience reach",
+        "Cost efficiency within brand standards"
+      ]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "agentName": "ChannelMixOptimizationAgent",
+  "agentId": "channel-mix-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Reach, frequency, and efficiency metrics",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Channel Mix Performance Metrics",
+    "subtitle": "Reach, frequency, and efficiency analysis across channels",
+    "collaborativeInsights": {
+      "primaryAgent": "ChannelMixOptimizationAgent",
+      "supportingAgent1": "MediaPlanningSupervisorAgent",
+      "supportingAgent2": "AudienceStrategyAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Channel performance category (e.g., 'Reach & Frequency', 'Efficiency Metrics', 'Cross-Channel Synergies')",
+        "secondaryLabel": "Category description (e.g., 'Channel reach optimization and frequency management')",
+        "items": [
+          {
+            "primaryLabel": "Specific channel metric (e.g., 'Total Reach', 'Effective Frequency', 'Channel Efficiency')",
+            "actualValue": "Current performance (e.g., '2.4M', '3.2x', '85%')",
+            "targetValue": "Channel target (e.g., '3.0M', '3.5x', '90%')",
+            "forecastedValue": "Projected performance (e.g., '2.8M', '3.4x', '88%')",
+            "actualLabel": "Current channel performance description",
+            "targetLabel": "Target channel optimization goal",
+            "forecastedLabel": "Forecasted channel improvement",
+            "unit": "Measurement unit (e.g., 'M people', 'x', '%')",
+            "trend": "Channel trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Channel optimization confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary channel metric",
+            "insights": [
+              "Channel mix insights and optimization opportunities"
+            ],
+            "risks": [
+              "Channel performance risks and market factors"
+            ],
+            "recommendations": [
+              "Channel optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

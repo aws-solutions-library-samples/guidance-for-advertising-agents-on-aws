@@ -1,0 +1,70 @@
+{
+  "campaign_scenarios": [
+    {
+      "scenario_id": "premium_headphones_campaign",
+      "advertiser": "AudioTech Pro",
+      "product_category": "consumer_electronics",
+      "target_segments": [
+        "tech_enthusiast",
+        "audio_enthusiast",
+        "commuter"
+      ],
+      "budget": 100000,
+      "duration_days": 30,
+      "objectives": {
+        "primary": "conversions",
+        "target_roas": 3.5,
+        "target_cpa": 45.00
+      },
+      "creative_variations": [
+        {
+          "creative_id": "audio-prod-001",
+          "type": "product_showcase",
+          "headline": "Professional Audio Redefined",
+          "cta": "Shop Now",
+          "performance_multiplier": 1.2
+        },
+        {
+          "creative_id": "audio-life-001",
+          "type": "lifestyle",
+          "headline": "Your Soundtrack to Success",
+          "cta": "Discover More",
+          "performance_multiplier": 1.0
+        }
+      ]
+    },
+    {
+      "scenario_id": "luxury_hotel_campaign",
+      "advertiser": "Grand Palace Hotels",
+      "product_category": "travel_hospitality",
+      "target_segments": [
+        "luxury_lifestyle",
+        "travel_enthusiast",
+        "high_income_professionals"
+      ],
+      "budget": 250000,
+      "duration_days": 45,
+      "objectives": {
+        "primary": "bookings",
+        "target_roas": 4.2,
+        "target_cpa": 125.00
+      },
+      "creative_variations": [
+        {
+          "creative_id": "hotel-exp-001",
+          "type": "experience_focused",
+          "headline": "Unforgettable Luxury Awaits",
+          "cta": "Book Your Stay",
+          "performance_multiplier": 1.3
+        },
+        {
+          "creative_id": "hotel-loc-001",
+          "type": "location_showcase",
+          "headline": "Discover Paradise",
+          "cta": "Explore Locations",
+          "performance_multiplier": 1.1
+        }
+      ]
+    }
+  ]
+}

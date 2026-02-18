@@ -1,0 +1,22 @@
+{
+  "agentName": "FormatStrategyOptimizerAgent",
+  "agentId": "FormatStrategyOptimizerAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Format performance metrics, revenue analysis"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Format mix recommendations"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Channel-format compatibility analysis"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Viewer preference by format type"
+    }
+  ]
+}

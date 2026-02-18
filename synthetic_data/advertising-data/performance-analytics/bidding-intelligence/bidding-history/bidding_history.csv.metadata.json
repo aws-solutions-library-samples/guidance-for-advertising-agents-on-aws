@@ -1,0 +1,67 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "rtb_analytics",
+        "business_domain": "real_time_bidding",
+        "analysis_type": "auction_transactions"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "campaign_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "bid_request_id"
+                    },
+                    {
+                        "fieldName": "timestamp"
+                    },
+                    {
+                        "fieldName": "advertiser_id"
+                    },
+                    {
+                        "fieldName": "audience_segment"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "geo_region"
+                    },
+                    {
+                        "fieldName": "bid_price"
+                    },
+                    {
+                        "fieldName": "win_flag"
+                    },
+                    {
+                        "fieldName": "clearing_price"
+                    },
+                    {
+                        "fieldName": "impression_served"
+                    },
+                    {
+                        "fieldName": "click_recorded"
+                    },
+                    {
+                        "fieldName": "conversion_recorded"
+                    },
+                    {
+                        "fieldName": "publisher_id"
+                    },
+                    {
+                        "fieldName": "brand_safety_score"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,54 @@
+{
+  "agentName": "CreativeSelectionAgent",
+  "agentId": "CreativeSelectionAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Creative rollout and testing schedules",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Creative Rollout Timeline",
+    "subtitle": "Creative asset development, testing, and deployment schedule",
+    "totalDuration": "Total creative timeline (e.g., '8 weeks', '56 days')",
+    "startDate": "Creative project start (ISO format: '2024-01-08')",
+    "endDate": "Creative project end (ISO format: '2024-03-04')",
+    "overallObjective": "Primary creative objective (e.g., 'Deploy optimized creative variations with 20% engagement lift')",
+    "phases": [
+      {
+        "primaryLabel": "Creative phase (e.g., 'Asset Generation', 'A/B Testing Phase', 'Performance Optimization')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase creative objectives and deliverables",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '2 weeks', '14 days')",
+        "status": "Phase status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Creative priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected creative outcomes and performance metrics",
+        "budget": "Creative budget allocation (e.g., '$150K', 'Production + Testing costs')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Creative milestone (e.g., 'Assets Generated', 'A/B Test Results Available')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Creative milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'CTR > 3.5%', 'Engagement rate > 5%')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Creative dependencies (e.g., 'Brand guidelines approved', 'Target audience defined')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Creative success metrics (e.g., '20% engagement lift', '3.5% CTR target', 'Brand recall increase')"
+    ],
+    "riskFactors": [
+      "Creative risks (e.g., 'Creative fatigue', 'Brand compliance issues', 'Production delays')"
+    ]
+  }
+}

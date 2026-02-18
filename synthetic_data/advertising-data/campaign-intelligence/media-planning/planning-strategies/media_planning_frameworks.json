@@ -1,0 +1,36 @@
+{
+  "media_planning_frameworks": [
+    {
+      "framework_name": "Integrated Media Planning Framework",
+      "description": "Comprehensive approach to cross-channel media planning",
+      "components": [
+        "Audience Analysis",
+        "Channel Selection",
+        "Budget Allocation",
+        "Performance Measurement"
+      ],
+      "best_practices": [
+        "Start with clear business objectives",
+        "Use data-driven audience insights",
+        "Optimize for cross-channel synergies",
+        "Implement continuous measurement"
+      ]
+    },
+    {
+      "framework_name": "Performance-First Planning",
+      "description": "ROI-focused media planning methodology",
+      "components": [
+        "Performance Forecasting",
+        "Attribution Modeling",
+        "Budget Optimization",
+        "Real-time Adjustments"
+      ],
+      "best_practices": [
+        "Set clear performance targets",
+        "Use historical performance data",
+        "Implement test-and-learn approach",
+        "Monitor and optimize continuously"
+      ]
+    }
+  ]
+}

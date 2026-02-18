@@ -1,0 +1,64 @@
+<!-- Channel Allocations Chart -->
+<div *ngIf="channelAllocations" class="allocations-section">
+  <h4 *ngIf="channelAllocations.title" class="component-title">
+    {{channelAllocations.title}}
+  </h4>
+  <p *ngIf="getSubtitle()" class="component-subtitle">
+    {{getSubtitle()}}
+  </p>
+  
+  <!-- Compact summary bar -->
+  <div *ngIf="getTotalBudget() || getSummary()" class="allocation-summary-bar">
+    <span *ngIf="getTotalBudget()" class="total-budget">{{getTotalBudget()}}</span>
+    <div *ngIf="getSummary()" class="summary-stats">
+      <span *ngIf="getSummary().totalAllocations">{{getSummary().totalAllocations}} allocations</span>
+      <span *ngIf="getSummary().riskAllocations" class="risk-indicator">{{getSummary().riskAllocations}} at risk</span>
+    </div>
+  </div>
+
+  <!-- Simplified grid -->
+  <div class="allocations-grid">
+    <div class="allocation-card" *ngFor="let allocation of getAllocations(); trackBy: trackByAllocationName">
+      <div class="allocation-header">
+        <div class="allocation-info">
+          <h5 class="allocation-name">{{getAllocationName(allocation)}}</h5>
+          <span *ngIf="allocation.secondaryLabel" class="allocation-type">{{allocation.secondaryLabel}}</span>
+        </div>
+        <div class="allocation-values">
+          <span class="allocation-percentage">{{getAllocationPercentage(allocation)}}%</span>
+          <span *ngIf="getAllocationBudget(allocation)" class="allocation-budget">{{getAllocationBudget(allocation)}}</span>
+        </div>
+      </div>
+      
+      <!-- Compact metrics row -->
+      <div class="allocation-metrics-row" *ngIf="getPerformanceStatus(allocation) || getTopMetrics(allocation).length > 0">
+        <span *ngIf="getPerformanceStatus(allocation)" 
+              class="performance-badge"
+              [class.performance-high]="getPerformanceStatus(allocation) === 'high' || getPerformanceStatus(allocation) === 'excellent'"
+              [class.performance-good]="getPerformanceStatus(allocation) === 'good'"
+              [class.performance-medium]="getPerformanceStatus(allocation) === 'medium'"
+              [class.performance-low]="getPerformanceStatus(allocation) === 'low' || getPerformanceStatus(allocation) === 'moderate' || getPerformanceStatus(allocation) === 'poor'">
+          {{getPerformanceStatus(allocation)}}
+        </span>
+        <div class="compact-metrics">
+          <span *ngFor="let metric of getTopMetrics(allocation); trackBy: trackByMetricLabel" class="metric-chip">
+            {{metric.label}}: {{metric.value}}
+          </span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="allocation-progress">
+        <div class="allocation-bar">
+          <div class="allocation-fill" 
+               [style.width.%]="getPercentageValue(getAllocationPercentage(allocation))"
+               [class.performance-high]="getPerformanceStatus(allocation) === 'high' || getPerformanceStatus(allocation) === 'excellent'"
+               [class.performance-good]="getPerformanceStatus(allocation) === 'good'"
+               [class.performance-medium]="getPerformanceStatus(allocation) === 'medium'"
+               [class.performance-low]="getPerformanceStatus(allocation) === 'low' || getPerformanceStatus(allocation) === 'moderate' || getPerformanceStatus(allocation) === 'poor'">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

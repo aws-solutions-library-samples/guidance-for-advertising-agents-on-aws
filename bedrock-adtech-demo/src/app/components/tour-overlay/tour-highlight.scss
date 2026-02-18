@@ -1,0 +1,157 @@
+// Tour highlight styles that can be applied to any element
+.tour-highlight-active {
+  position: relative;
+  z-index: 1001; // Above backdrop but below tooltip
+  
+  // Animated glow effect
+  animation: tour-highlight-pulse 2s ease-in-out infinite;
+  
+  // Box shadow glow
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.5), // Blue glow
+    0 0 20px rgba(59, 130, 246, 0.3),
+    0 0 40px rgba(59, 130, 246, 0.1);
+  
+  // Rounded corners to match most UI elements
+  border-radius: 8px;
+  
+  // Ensure the element is visible above backdrop
+  background-color: inherit;
+  
+  // Smooth transition when class is added/removed
+  transition: all 0.3s ease-in-out;
+}
+
+// Alternative highlight styles for different contexts
+.tour-highlight-subtle {
+  position: relative;
+  z-index: 1001;
+  
+  // Subtle border highlight
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 2px;
+  border-radius: 6px;
+  
+  transition: all 0.3s ease-in-out;
+}
+
+.tour-highlight-bright {
+  position: relative;
+  z-index: 1001;
+  
+  // Bright, attention-grabbing highlight
+  animation: tour-highlight-bright-pulse 1.5s ease-in-out infinite;
+  
+  box-shadow: 
+    0 0 0 4px rgba(34, 197, 94, 0.6), // Green glow
+    0 0 25px rgba(34, 197, 94, 0.4),
+    0 0 50px rgba(34, 197, 94, 0.2);
+  
+  border-radius: 8px;
+  transition: all 0.3s ease-in-out;
+}
+
+.tour-highlight-warning {
+  position: relative;
+  z-index: 1001;
+  
+  // Warning/attention highlight
+  animation: tour-highlight-warning-pulse 1.8s ease-in-out infinite;
+  
+  box-shadow: 
+    0 0 0 3px rgba(245, 158, 11, 0.6), // Amber glow
+    0 0 20px rgba(245, 158, 11, 0.4),
+    0 0 35px rgba(245, 158, 11, 0.2);
+  
+  border-radius: 8px;
+  transition: all 0.3s ease-in-out;
+}
+
+// Keyframe animations
+@keyframes tour-highlight-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 3px rgba(59, 130, 246, 0.5),
+      0 0 20px rgba(59, 130, 246, 0.3),
+      0 0 40px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 5px rgba(59, 130, 246, 0.7),
+      0 0 30px rgba(59, 130, 246, 0.5),
+      0 0 60px rgba(59, 130, 246, 0.2);
+  }
+}
+
+@keyframes tour-highlight-bright-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 4px rgba(34, 197, 94, 0.6),
+      0 0 25px rgba(34, 197, 94, 0.4),
+      0 0 50px rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 6px rgba(34, 197, 94, 0.8),
+      0 0 35px rgba(34, 197, 94, 0.6),
+      0 0 70px rgba(34, 197, 94, 0.3);
+  }
+}
+
+@keyframes tour-highlight-warning-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 3px rgba(245, 158, 11, 0.6),
+      0 0 20px rgba(245, 158, 11, 0.4),
+      0 0 35px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 5px rgba(245, 158, 11, 0.8),
+      0 0 30px rgba(245, 158, 11, 0.6),
+      0 0 50px rgba(245, 158, 11, 0.3);
+  }
+}
+
+// Special handling for different element types
+.tour-highlight-active.btn,
+.tour-highlight-active button {
+  // Buttons might need special handling to maintain their appearance
+  background-color: inherit !important;
+}
+
+.tour-highlight-active.card,
+.tour-highlight-active .card {
+  // Cards might need border-radius adjustment
+  border-radius: 12px;
+}
+
+// Ensure highlighted elements are scrolled into view smoothly
+.tour-highlight-active {
+  scroll-margin: 100px; // Provides space when scrolling to element
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .tour-highlight-active {
+    box-shadow: 
+      0 0 0 3px rgba(96, 165, 250, 0.6),
+      0 0 20px rgba(96, 165, 250, 0.4),
+      0 0 40px rgba(96, 165, 250, 0.2);
+  }
+  
+  @keyframes tour-highlight-pulse {
+    0%, 100% {
+      box-shadow: 
+        0 0 0 3px rgba(96, 165, 250, 0.6),
+        0 0 20px rgba(96, 165, 250, 0.4),
+        0 0 40px rgba(96, 165, 250, 0.2);
+    }
+    50% {
+      box-shadow: 
+        0 0 0 5px rgba(96, 165, 250, 0.8),
+        0 0 30px rgba(96, 165, 250, 0.6),
+        0 0 60px rgba(96, 165, 250, 0.3);
+    }
+  }
+}

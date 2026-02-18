@@ -1,0 +1,53 @@
+{
+  "templateId": "double-histogram-visualization",
+  "templateName": "Double Histogram Visualization",
+  "description": "Template for comparing two data distributions side by side",
+  "usage": [
+    "Before/after campaign comparisons",
+    "A/B test result distributions",
+    "Channel performance comparisons",
+    "Audience segment comparisons",
+    "Time period comparisons"
+  ],
+  "schema": {
+    "visualizationType": "double-histogram",
+    "templateId": "double-histogram-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "xAxisLabel": "string - X-axis label",
+    "yAxisLabel": "string - Y-axis label",
+    "dataset1": {
+      "label": "string - First dataset label",
+      "color": "string - Hex color for first dataset",
+      "data": [
+        {
+          "value": "number - Data point value",
+          "frequency": "number - Frequency count"
+        }
+      ]
+    },
+    "dataset2": {
+      "label": "string - Second dataset label",
+      "color": "string - Hex color for second dataset",
+      "data": [
+        {
+          "value": "number - Data point value",
+          "frequency": "number - Frequency count"
+        }
+      ]
+    },
+    "binCount": "number - Number of histogram bins",
+    "insights": ["array of string - Comparison insights"],
+    "summary": {
+      "dataset1Stats": {
+        "mean": "number - Dataset 1 average",
+        "median": "number - Dataset 1 median"
+      },
+      "dataset2Stats": {
+        "mean": "number - Dataset 2 average",
+        "median": "number - Dataset 2 median"
+      },
+      "comparison": "string - Key comparison insight"
+    }
+  }
+}

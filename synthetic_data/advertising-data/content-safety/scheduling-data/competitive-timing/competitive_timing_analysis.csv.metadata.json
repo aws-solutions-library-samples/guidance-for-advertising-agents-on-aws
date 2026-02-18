@@ -1,0 +1,55 @@
+{
+    "metadataAttributes": {
+        "data_source": "competitive_intelligence",
+        "category": "market_timing",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "competitive_timing_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "competitor_brand"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "industry_vertical"
+                    },
+                    {
+                        "fieldName": "campaign_start_date"
+                    },
+                    {
+                        "fieldName": "campaign_end_date"
+                    },
+                    {
+                        "fieldName": "estimated_budget_tier"
+                    },
+                    {
+                        "fieldName": "primary_objective"
+                    },
+                    {
+                        "fieldName": "target_audience_overlap"
+                    },
+                    {
+                        "fieldName": "share_of_voice"
+                    },
+                    {
+                        "fieldName": "cpc_impact_on_market"
+                    },
+                    {
+                        "fieldName": "optimal_counter_strategy"
+                    },
+                    {
+                        "fieldName": "timing_recommendation"
+                    },
+                    {
+                        "fieldName": "competitive_advantage_score"
+                    }
+                ]
+            }
+        }
+    }
+}

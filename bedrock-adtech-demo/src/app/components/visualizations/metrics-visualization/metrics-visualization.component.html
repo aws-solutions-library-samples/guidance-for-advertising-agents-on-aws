@@ -1,0 +1,111 @@
+<!-- Metric Data Cards -->
+<div *ngIf="metricData && (metricData.metrics?.length > 0 || getKeys(metricData).length > 1)" class="metrics-section">
+  <h4 *ngIf="metricData.title" class="component-title">
+    {{metricData.title}}
+  </h4>
+  <p *ngIf="metricData.subtitle" class="component-subtitle">
+    {{metricData.subtitle}}
+  </p>
+  <div class="metrics-grid">
+    <!-- Handle structured metrics array (new, generic, and legacy formats) -->
+    <ng-container *ngIf="getMetricsArray().length && isStructuredMetrics(); else simpleMetrics">
+      <div class="metric-card" *ngFor="let metricItem of getProcessedMetrics(); trackBy: trackByIndex">
+        <!-- Generic format header -->
+        <div class="metric-item-header" *ngIf="metricItem.primaryLabel || metricItem.name || metricItem.product_line || metricItem.segment">
+          <h5 class="metric-item-title">{{metricItem.primaryLabel || metricItem.name || metricItem.product_line || metricItem.segment}}</h5>
+          <span class="metric-item-category" *ngIf="metricItem.category || metricItem.secondaryLabel">{{metricItem.category || metricItem.secondaryLabel}}</span>
+        </div>
+        
+        <!-- GENERIC FORMAT: Use items array -->
+        <div class="metric-subgrid" *ngIf="metricItem.genericItems.length > 0; else checkStandardized">
+          <div class="metric-subcard" *ngFor="let item of metricItem.genericItems; trackBy: trackByIndex"
+               [class.highlight]="item.isHighlight || item.isPrimary">
+            <div class="metric-value" 
+                 [style.color]="item.color || item.statusColor"
+                 [class.trend-up]="item.trend === 'up' || item.trend === 'increase'"
+                 [class.trend-down]="item.trend === 'down' || item.trend === 'decrease'"
+                 [class.trend-stable]="item.trend === 'stable' || item.trend === 'unchanged'">
+              {{item.actualValue || item.currentValue || item.value}}<span class="metric-unit" *ngIf="item.unit">{{item.unit}}</span>
+            </div>
+            <div class="metric-label">{{item.primaryLabel || item.label}}</div>
+            <div class="metric-target" *ngIf="item.targetValue">Target: {{item.targetValue}}<span *ngIf="item.unit">{{item.unit}}</span></div>
+            <div class="metric-forecast" *ngIf="item.forecastedValue">Forecast: {{item.forecastedValue}}<span *ngIf="item.unit">{{item.unit}}</span></div>
+            <div class="metric-confidence" *ngIf="item.confidenceLevel" 
+                 [class]="'confidence-' + item.confidenceLevel">{{item.confidenceLevel}} confidence</div>
+            
+            <!-- Insights -->
+            <div class="metric-insights" *ngIf="item.insights?.length">
+              <h6 class="insights-title">Insights</h6>
+              <ul class="insights-list">
+                <li *ngFor="let insight of item.insights">{{insight}}</li>
+              </ul>
+            </div>
+            
+            <!-- Recommendations -->
+            <div class="metric-recommendations" *ngIf="item.recommendations?.length">
+              <h6 class="recommendations-title">Recommendations</h6>
+              <ul class="recommendations-list">
+                <li *ngFor="let recommendation of item.recommendations">{{recommendation}}</li>
+              </ul>
+            </div>
+            
+            <!-- Risks -->
+            <div class="metric-risks" *ngIf="item.risks?.length">
+              <h6 class="risks-title">Risks</h6>
+              <ul class="risks-list">
+                <li *ngFor="let risk of item.risks">{{risk}}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- NEW STANDARDIZED FORMAT: Use subMetrics array -->
+        <ng-template #checkStandardized>
+        <div class="metric-subgrid" *ngIf="metricItem.subMetrics?.length; else legacyStructured">
+          <div class="metric-subcard" *ngFor="let subMetric of metricItem.subMetrics; trackBy: trackByIndex"
+               [class.highlight]="subMetric.isHighlight">
+            <div class="metric-value" 
+                 [style.color]="subMetric.color"
+                 [class.trend-up]="subMetric.trend === 'up'"
+                 [class.trend-down]="subMetric.trend === 'down'"
+                 [class.trend-stable]="subMetric.trend === 'stable'">
+              {{subMetric.value}}<span class="metric-unit" *ngIf="subMetric.unit">{{subMetric.unit}}</span>
+            </div>
+            <div class="metric-label">{{subMetric.label}}</div>
+          </div>
+        </div>
+        
+        <!-- LEGACY STRUCTURED FORMAT: Use dynamic properties -->
+        <ng-template #legacyStructured>
+          <div class="metric-subgrid">
+            <ng-container *ngFor="let prop of metricItem.properties; trackBy: trackByKey">
+              <div class="metric-subcard" *ngIf="prop.value">
+                <div class="metric-value">{{formatMetricValue(prop.key, prop.value)}}</div>
+                <div class="metric-label">{{formatMetricLabel(prop.key)}}</div>
+              </div>
+            </ng-container>
+          </div>
+          </ng-template>
+        </ng-template>
+      </div>
+    </ng-container>
+    
+    <!-- Simple metrics format (label/value pairs) -->
+    <ng-template #simpleMetrics>
+      <div class="metric-card" *ngFor="let metric of getMetricsArray(); trackBy: trackByIndex">
+        <div class="metric-value" 
+             [class.trend-up]="metric.trend === 'up'"
+             [class.trend-down]="metric.trend === 'down'"
+             [class.trend-stable]="metric.trend === 'stable'"
+             [style.color]="metric.color">
+          {{metric.value}}<span class="metric-unit" *ngIf="metric.unit">{{metric.unit}}</span>
+        </div>
+        <div class="metric-label">{{metric.label}}</div>
+        <div class="metric-target" *ngIf="metric.target">Target: {{metric.target}}</div>
+        <div class="metric-benchmark" *ngIf="metric.benchmark">Benchmark: {{metric.benchmark}}</div>
+        <div class="metric-confidence" *ngIf="metric.confidence" 
+             [class]="'confidence-' + metric.confidence">{{metric.confidence}} confidence</div>
+      </div>
+    </ng-template>
+  </div>
+</div> 

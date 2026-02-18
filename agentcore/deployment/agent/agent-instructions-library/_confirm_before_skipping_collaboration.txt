@@ -1,0 +1,23 @@
+## Delegation Protocol
+
+1. **Identify Task Scope**: Before starting any work, analyze whether the task falls within your primary capabilities or if it would be better handled by a specialized collaborator agent.
+
+2. **Mandatory User Confirmation**: If you determine that a task should be delegated to another agent and you are having issues getting a response from that agent, you MUST ask the user for explicit permission before proceeding with the work yourself. Use this format:
+   
+   "[Task] should be performed by the specialist [agent name], who has access to [specific area/skill]. [Reason for circumventing collaborator]. However, I can attempt to perform this task myself. Would you like me to:
+   a) Attempt to delegate this to the specialized agent again
+   b) Attempt to handle it myself despite it being outside my primary expertise
+   
+   Please let me know your preference."
+
+3. **Respect User Choice**: 
+   - If the user chooses delegation, coordinate with the appropriate specialist agent
+   - If the user requests you handle it yourself, proceed with the task while acknowledging any limitations
+
+4. **No Unauthorized Work**: Never attempt work that should be delegated without first getting user approval. This prevents inefficient use of resources and ensures optimal task allocation.
+
+5. **Self-Execution Protocol**: When the user confirms they want you to proceed with the task yourself:
+   - Acknowledge their decision
+   - Clearly state any limitations you may have in this area
+   - Proceed with your best effort
+   - Offer to involve specialists if you encounter difficulties

@@ -1,0 +1,416 @@
+// Visualization Companion Panel - Glassmorphic Floating Design
+// No nested panel backgrounds - visualizations render directly on glass surface
+
+.companion-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 100px;
+  width: 380px;
+  max-height: calc(100vh - 200px);
+  z-index: 100;
+  
+  // Glassmorphic base
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  
+  // Subtle border and shadow
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 32px rgba(73, 23, 130, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  
+  // Subtle accent glow
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border-radius: 21px;
+    background: linear-gradient(
+      135deg,
+      rgba(104, 66, 255, 0.15) 0%,
+      rgba(195, 0, 224, 0.1) 50%,
+      rgba(255, 98, 0, 0.08) 100%
+    );
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
+
+  // Animation states
+  &.entering {
+    animation: floatIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  &.exiting {
+    animation: floatOut 0.4s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  }
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Panel Header
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.3);
+  flex-shrink: 0;
+  
+  .agent-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    
+    .agent-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+      animation: dotPulse 2s ease-in-out infinite;
+    }
+    
+    .agent-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+  }
+  
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    button {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      color: #6b7280;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      
+      .material-icons {
+        font-size: 18px;
+      }
+      
+      &:hover {
+        background: rgba(104, 66, 255, 0.1);
+        color: #6842ff;
+        transform: scale(1.05);
+      }
+      
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+    
+    .view-toggle-btn {
+      &:hover {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+      }
+    }
+  }
+}
+
+// Panel Content
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(104, 66, 255, 0.2);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(104, 66, 255, 0.35);
+    }
+  }
+  
+  &.detail-mode {
+    .viz-section {
+      .viz-content {
+        max-height: none;
+      }
+    }
+  }
+}
+
+// No Data State
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  text-align: center;
+  
+  .material-icons {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+}
+
+// Visualization Sections - NO nested backgrounds
+.viz-section {
+  margin-bottom: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  
+  // Subtle separator instead of background
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(229, 231, 235, 0.2);
+    padding-bottom: 8px;
+  }
+  
+  &.expanded {
+    .viz-content {
+      max-height: 500px;
+      opacity: 1;
+    }
+    
+    .viz-section-header {
+      .expand-indicator {
+        transform: rotate(180deg);
+      }
+    }
+  }
+  
+  &.large-viz {
+    .viz-content.summary {
+      max-height: 120px;
+    }
+  }
+}
+
+.viz-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(104, 66, 255, 0.05);
+    
+    .expand-indicator {
+      color: #6842ff;
+    }
+  }
+  
+  .section-icon {
+    font-size: 18px;
+    color: #6842ff;
+    opacity: 0.8;
+  }
+  
+  .section-label {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .expand-indicator {
+    font-size: 18px;
+    color: #9ca3af;
+    transition: all 0.3s ease;
+  }
+}
+
+.viz-content {
+  padding: 0 4px 8px;
+  max-height: 300px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &.summary {
+    max-height: 150px;
+    position: relative;
+    
+    // Fade-out gradient for summary mode
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.9) 100%
+      );
+      pointer-events: none;
+    }
+  }
+}
+
+// Override nested component styles - remove backgrounds
+:host ::ng-deep {
+  // Remove all nested backgrounds
+  app-metrics-visualization,
+  app-allocations-visualization,
+  app-segments-visualization,
+  app-channels-visualization,
+  app-creative-visualization,
+  app-timeline-visualization,
+  app-histogram-visualization,
+  app-double-histogram-visualization,
+  app-bar-chart-visualization,
+  app-donut-chart-visualization,
+  app-adcp_get_products-visualization {
+    display: block;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  
+  // Compact mode adjustments
+  .metrics-grid,
+  .allocations-grid,
+  .segments-grid,
+  .channels-grid {
+    gap: 8px !important;
+  }
+  
+  .metric-card,
+  .allocation-card,
+  .segment-card,
+  .channel-card {
+    padding: 10px !important;
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(229, 231, 235, 0.3) !important;
+    border-radius: 10px !important;
+    backdrop-filter: blur(8px) !important;
+    transition: all 0.2s ease !important;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.7) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    }
+  }
+
+  .products-grid{
+        grid-template-columns: repeat(1, minmax(0, 300px)) !important;
+
+  }
+  
+  // Timeline compact adjustments
+  .timeline-container {
+    padding: 8px !important;
+  }
+  
+  // Chart containers
+  .chart-container,
+  .histogram-container,
+  .donut-container {
+    background: transparent !important;
+  }
+}
+
+// Animations
+@keyframes floatIn {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes floatOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 4px currentColor;
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 12px currentColor, 0 0 20px currentColor;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1400px) {
+  .companion-panel {
+    width: 340px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .companion-panel {
+    width: 320px;
+    right: 12px;
+    bottom: 90px;
+  }
+}
+
+@media (max-width: 768px) {
+  .companion-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+    left: 12px;
+    bottom: 80px;
+    max-height: 50vh;
+  }
+}

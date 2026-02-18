@@ -1,0 +1,181 @@
+<div class="timeline-visualization" *ngIf="timelineData">
+  <!-- Timeline Header -->
+  <div class="timeline-header">
+    <h3 class="timeline-title">{{ timelineData.title }}</h3>
+    <p class="timeline-subtitle" *ngIf="timelineData.subtitle">{{ timelineData.subtitle }}</p>
+    
+    <div class="timeline-overview" *ngIf="timelineData.totalDuration || timelineData.startDate">
+      <div class="timeline-dates">
+        <span class="start-date">{{ formatDate(timelineData.startDate) }}</span>
+        <span class="duration-badge" *ngIf="timelineData.totalDuration">{{ timelineData.totalDuration }}</span>
+        <span class="end-date">{{ formatDate(timelineData.endDate) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Centered Timeline -->
+  <div class="timeline-container">
+    <!-- Central Timeline Line -->
+    <div class="timeline-spine"></div>
+    
+    <!-- Timeline Items -->
+    <div class="timeline-items">
+      <div 
+        class="timeline-item" 
+        *ngFor="let phase of timelineData.phases; let i = index; trackBy: trackByPhaseLabel"
+        [class.left]="i % 2 === 0"
+        [class.right]="i % 2 === 1"
+        [attr.data-phase-index]="i">
+        
+        <!-- Content Card -->
+        <div class="timeline-card"
+             [class.active]="phase.status === 'active'"
+             [class.completed]="phase.status === 'completed'"
+             [class.delayed]="phase.status === 'delayed'"
+             [title]="getHoverDetails(phase)">
+          
+          <!-- Card Header -->
+          <div class="card-header">
+            <div class="phase-titles">
+              <h4 class="phase-title">{{ phase.primaryLabel }}</h4>
+              <p class="phase-subtitle" *ngIf="phase.secondaryLabel">{{ phase.secondaryLabel }}</p>
+            </div>
+            <div class="header-indicators">
+              <span class="critical-path-badge" *ngIf="isInCriticalPath(phase)">Critical Path</span>
+              <span class="priority-indicator" 
+                    [class]="'priority-' + phase.priority"
+                    *ngIf="phase.priority">
+                <span class="priority-dot"></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Card Body -->
+          <div class="card-body">
+            <p class="phase-description" *ngIf="phase.description">
+              {{ phase.description }}
+            </p>
+
+            <!-- Date Range -->
+            <div class="date-range">
+              <i class="material-icons">event</i>
+              <span class="dates">
+                {{ formatDate(phase.startDate) }} - {{ formatDate(phase.endDate) }}
+              </span>
+              <span class="duration" *ngIf="phase.duration">({{ phase.duration }})</span>
+            </div>
+
+            <!-- Meta Info -->
+            <div class="meta-info">
+              <div class="meta-item" *ngIf="phase.budget">
+                <i class="material-icons">attach_money</i>
+                <span>{{ phase.budget }}</span>
+              </div>
+              <div class="meta-item" *ngIf="phase.owner">
+                <i class="material-icons">person</i>
+                <span>{{ phase.owner }}</span>
+              </div>
+              <div class="meta-item" *ngIf="phase.expectedOutcome">
+                <i class="material-icons">flag</i>
+                <span>{{ phase.expectedOutcome }}</span>
+              </div>
+            </div>
+
+            <!-- Resources -->
+            <div class="phase-resources" *ngIf="phase.resources && phase.resources.length > 0">
+              <h6 class="section-title">Resources</h6>
+              <ul class="resource-list">
+                <li *ngFor="let resource of phase.resources" class="resource-item">{{ resource }}</li>
+              </ul>
+            </div>
+
+            <!-- Dependencies -->
+            <div class="phase-dependencies" *ngIf="phase.dependencies && phase.dependencies.length > 0">
+              <h6 class="section-title">Dependencies</h6>
+              <div class="dependency-tags">
+                <span *ngFor="let dependency of phase.dependencies" class="dependency-tag">{{ dependency }}</span>
+              </div>
+            </div>
+
+            <!-- Risks -->
+            <div class="phase-risks" *ngIf="phase.risks && phase.risks.length > 0">
+              <h6 class="section-title">Risks</h6>
+              <ul class="risk-list">
+                <li *ngFor="let risk of phase.risks" class="risk-item">{{ risk }}</li>
+              </ul>
+            </div>
+
+            <!-- Progress Bar (if has tasks) -->
+            <div class="task-progress" *ngIf="hasTasks(phase)">
+              <div class="progress-header">
+                <span class="progress-label">Progress</span>
+                <span class="progress-value">{{ getTaskCompletionPercentage(phase) }}%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" 
+                     [style.width.%]="getTaskCompletionPercentage(phase)">
+                </div>
+              </div>
+              <div class="task-count">
+                {{ getCompletedTasksCount(phase) }} of {{ getTotalTasksCount(phase) }} tasks complete
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline Node -->
+        <div class="timeline-node"
+             [class]="phase.status">
+          <div class="node-inner">
+            <i class="material-icons">{{ getStatusIcon(phase.status) }}</i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Milestones -->
+  <div class="global-milestones" *ngIf="getGlobalMilestones().length > 0">
+    <h5 class="milestones-title">Key Milestones</h5>
+    <div class="milestone-cards">
+      <div *ngFor="let milestone of getGlobalMilestones(); trackBy: trackByMilestoneLabel" 
+           class="milestone-card"
+           [class]="milestone.status">
+        <div class="milestone-date">{{ formatDate(getMilestoneDate(milestone)) }}</div>
+        <div class="milestone-content">
+          <h6 class="milestone-label">{{ getMilestoneLabel(milestone) }}</h6>
+          <p class="milestone-description" *ngIf="milestone.description">{{ milestone.description }}</p>
+        </div>
+        <div class="milestone-status">
+          <i class="material-icons">{{ getStatusIcon(milestone.status) }}</i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Footer -->
+  <div class="timeline-footer">
+    <div class="footer-content">
+      <div class="success-metrics" *ngIf="timelineData.successMetrics && timelineData.successMetrics.length > 0">
+        <h5 class="metrics-title">Success Metrics</h5>
+        <ul class="metrics-list">
+          <li *ngFor="let metric of timelineData.successMetrics.slice(0, 3); trackBy: trackByIndex">
+            {{ metric }}
+          </li>
+        </ul>
+      </div>
+      <div class="overall-objective" *ngIf="timelineData.overallObjective">
+        <h5 class="objective-title">Overall Objective</h5>
+        <p class="objective-text">{{ timelineData.overallObjective }}</p>
+      </div>
+      <div class="critical-path" *ngIf="getCriticalPath().length > 0">
+        <h5 class="critical-path-title">Critical Path</h5>
+        <div class="critical-path-items">
+          <span *ngFor="let item of getCriticalPath(); let last = last" class="critical-path-item">
+            {{ item }}<span *ngIf="!last" class="path-arrow"> → </span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

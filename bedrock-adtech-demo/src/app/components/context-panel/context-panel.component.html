@@ -1,0 +1,616 @@
+<div class="context-trigger-container">
+  <div class="context-actions">
+
+    <!-- Expandable Visualization Buttons (initially hidden) -->
+    <!-- Context Trigger Button (shows when collapsed) -->
+    <button class="nova-button secondary context-trigger-btn" [title]="getContextButtonLabel()"
+      (click)="isContextExpanded=!isContextExpanded">
+      <span class="context-trigger-text">{{ getContextButtonLabel() }}</span>
+      <span class="material-icons" *ngIf="!isContextExpanded">chevron_left</span>
+      <span class="material-icons" *ngIf="isContextExpanded">chevron_right</span>
+    </button>
+    <div class="expandable-viz-buttons" [class.expanded]="isContextExpanded">
+      <button *ngFor="let viz of visualizationsToShow; let i = index" class="nova-button secondary viz-button"
+        [style.transform]="getVizButtonTransform(i)" [style.opacity]="getVizButtonOpacity(i)"
+        [style.transition-delay]="getVizButtonAnimationDelay(i)" (click)="onVisualizationButtonClick(viz, $event)"
+        [title]="viz.title">
+        <span class="material-icons">{{ getVisualizationIcon(viz.type) }}</span>
+        <span class="viz-btn-text">{{ viz.title }}</span>
+      </button>
+    </div>
+
+
+  </div>
+  <!-- Individual Visualization Preview -->
+  <div class="context-modal-overlay hover-overlay" [class.visible]="showPreview" [class.sticky]="isPreviewSticky"
+    *ngIf="previewVisualization" [class]="'span-' + (previewVisualization.gridSpan || 1)"
+    (click)="isPreviewSticky ? null : closeStickyPreview()">
+    <div class="context-modal hover-modal" [class.sticky]="isPreviewSticky" (mouseenter)="onPreviewModalMouseEnter()"
+      (mouseleave)="onPreviewModalMouseLeave()" (click)="$event.stopPropagation()">
+
+      <!-- Close button for sticky mode -->
+      <button class="close-preview-btn" *ngIf="isPreviewSticky" (click)="closeStickyPreview()">
+        <span class="material-icons">close</span>
+      </button>
+      <!-- Mini preview of the visualization -->
+
+      <!-- Metrics Visualization -->
+      <app-metrics-visualization
+        *ngIf="previewVisualization.type === 'metrics-visualization' && previewVisualization.metrics"
+        [metricData]="previewVisualization">
+      </app-metrics-visualization>
+
+      <!-- Allocations Visualization -->
+      <app-allocations-visualization
+        *ngIf="previewVisualization.type === 'allocations-visualization' && previewVisualization.allocations"
+        [channelAllocations]="previewVisualization.allocations">
+      </app-allocations-visualization>
+
+      <!-- Segments Visualization -->
+      <app-segments-visualization
+        *ngIf="previewVisualization.type === 'segments-visualization' && previewVisualization.segments"
+        [segmentCards]="previewVisualization">
+      </app-segments-visualization>
+
+      <!-- Channel Cards Visualization -->
+      <app-channels-visualization
+        *ngIf="previewVisualization.type === 'channels-visualization' && previewVisualization.channels"
+        [channelCards]="previewVisualization">
+      </app-channels-visualization>
+
+      <!-- Creative Data Visualization -->
+      <app-creative-visualization
+        *ngIf="previewVisualization.type === 'creative-visualization' && previewVisualization.creativeData"
+        [creativeData]="previewVisualization.creativeData">
+      </app-creative-visualization>
+
+      <!-- Timeline Visualization -->
+      <app-timeline-visualization
+        *ngIf="previewVisualization.type === 'timeline-visualization' && previewVisualization.timelineData"
+        [timelineData]="previewVisualization.timelineData">
+      </app-timeline-visualization>
+
+      <!-- D3 Histogram Visualization -->
+      <app-histogram-visualization
+        *ngIf="previewVisualization.type === 'histogram-visualization' && previewVisualization.histogramData"
+        [data]="previewVisualization.histogramData">
+      </app-histogram-visualization>
+
+      <!-- D3 Double Histogram Visualization -->
+      <app-double-histogram-visualization
+        *ngIf="previewVisualization.type === 'double-histogram-visualization' && previewVisualization.doubleHistogramData"
+        [data]="previewVisualization.doubleHistogramData">
+      </app-double-histogram-visualization>
+
+      <!-- D3 Bar Chart Visualization -->
+      <app-bar-chart-visualization
+        *ngIf="previewVisualization.type === 'bar-chart-visualization' && previewVisualization.barChartData"
+        [data]="previewVisualization.barChartData">
+      </app-bar-chart-visualization>
+
+      <!-- D3 Donut Chart Visualization -->
+      <app-donut-chart-visualization
+        *ngIf="previewVisualization.type === 'donut-chart-visualization' && previewVisualization.donutChartData"
+        [data]="previewVisualization.donutChartData">
+      </app-donut-chart-visualization>
+
+
+    </div>
+    <!-- Metrics Grid Preview 
+      <div *ngIf="previewVisualization.type === 'metrics-grid'" class="mini-metrics-grid">
+        <div *ngFor="let item of previewVisualization.items?.slice(0, 2)" class="mini-metric">
+          <span class="material-icons">{{ item.icon }}</span>
+          <div class="mini-metric-info">
+            <div class="mini-metric-value">{{ formatMetricValue(item.valueKey, item.format) }}</div>
+            <div class="mini-metric-label">{{ item.label }}</div>
+          </div>
+        </div>
+      </div>
+    -->
+    <!-- Timeline Preview 
+      <div *ngIf="previewVisualization.type === 'timeline-visualization'" class="mini-timeline">
+        <div class="mini-timeline-phases">
+          <div *ngFor="let phase of previewVisualization.timelineData?.phases?.slice(0, 3)" class="mini-phase"
+            [style.width.%]="phase.percentage">
+            <div class="mini-phase-name">{{ phase.name }}</div>
+            <div class="mini-phase-bar" [style.background]="getPhaseColor(phase.name)"></div>
+          </div>
+        </div>
+      </div>
+    -->
+    <!-- Allocations Preview 
+      <div *ngIf="previewVisualization.type === 'allocations-visualization'" class="mini-allocations">
+        <div *ngFor="let tier of previewVisualization.allocationData?.publisherTiers?.slice(0, 2)"
+          class="mini-allocation">
+          <div class="mini-allocation-name">{{ tier.name }}</div>
+          <div class="mini-allocation-bar">
+            <div class="mini-allocation-fill" [style.width.%]="tier.percentage"></div>
+          </div>
+        </div>
+      </div>-->
+
+    <!-- Generic Preview 
+      <div
+        *ngIf="!['metrics-grid', 'timeline-visualization', 'allocations-visualization'].includes(previewVisualization.type)"
+        class="mini-generic">
+        <span class="material-icons">{{ getVisualizationIcon(previewVisualization.type) }}</span>
+        <span>Click to view details</span>
+      </div>-->
+  </div>
+
+  <!-- Full Context Modal -->
+  <div class="context-modal-overlay" [class.visible]="showContextModal" (click)="closeContextModal($event)">
+    <div class="context-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ getContextButtonLabel() }}</h2>
+        <button class="close-btn" (click)="closeContextModal($event)">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="modal-content">
+
+
+        <div class="context-visualizations">
+
+          <!-- Dynamic Visualizations from Configuration -->
+          <div *ngFor="let visualization of visualizationsToShow; trackBy: trackVisualization; let i = index"
+            #visualizationCard class="context-visualization-card" [class]="'span-' + (visualization.gridSpan || 1)"
+            [style.animation-delay]="(i * 0.1) + 's'">
+
+            <div *ngIf="visualization" class="visual-components">
+
+      <!-- Metrics Visualization -->
+      <app-metrics-visualization *ngIf="visualization.metricData" [metricData]="visualization.metricData">
+      </app-metrics-visualization>
+
+      <!-- Allocations Visualization -->
+      <app-allocations-visualization *ngIf="visualization.channelAllocations"
+        [channelAllocations]="visualization.channelAllocations">
+      </app-allocations-visualization>
+
+      <!-- Segments Visualization -->
+      <app-segments-visualization *ngIf="visualization.segmentCards"
+        [segmentCards]="visualization.segmentCards">
+      </app-segments-visualization>
+
+      <!-- Channel Cards Visualization -->
+      <app-channels-visualization *ngIf="visualization.channelCards"
+        [channelCards]="visualization.channelCards">
+      </app-channels-visualization>
+
+      <!-- Creative Data Visualization -->
+      <app-creative-visualization *ngIf="visualization.creativeData"
+        [creativeData]="visualization.creativeData">
+      </app-creative-visualization>
+
+      <!-- Timeline Visualization -->
+      <app-timeline-visualization *ngIf="visualization.timelineData"
+        [timelineData]="visualization.timelineData">
+      </app-timeline-visualization>
+
+      <!-- Decision Tree Visualization
+      <app-decision-tree-visualization 
+        *ngIf="visualization.decisionTreeData"
+        [decisionTreeData]="visualization.decisionTreeData">
+      </app-decision-tree-visualization>-->
+
+      <!-- D3 Histogram Visualization -->
+      <app-histogram-visualization *ngIf="visualization.histogramData"
+        [data]="visualization.histogramData">
+      </app-histogram-visualization>
+
+      <!-- D3 Double Histogram Visualization -->
+      <app-double-histogram-visualization *ngIf="visualization.doubleHistogramData"
+        [data]="visualization.doubleHistogramData">
+      </app-double-histogram-visualization>
+
+      <!-- D3 Bar Chart Visualization -->
+      <app-bar-chart-visualization *ngIf="visualization.barChartData"
+        [data]="visualization.barChartData">
+      </app-bar-chart-visualization>
+
+      <!-- D3 Donut Chart Visualization -->
+      <app-donut-chart-visualization *ngIf="visualization.donutChartData"
+        [data]="visualization.donutChartData">
+      </app-donut-chart-visualization>
+
+      <!-- Creative Image Gallery (for backward compatibility) -->
+      <div *ngIf="visualization.creativeData && (visualization.creativeData.imagery?.length > 0)"
+        class="creative-gallery-section">
+        <app-image-gallery [creativeData]="visualization.creativeData"
+          [title]="visualization.creativeData.title || 'Creative Asset Gallery'">
+        </app-image-gallery>
+      </div>
+    </div>
+
+            <!-- Metrics Grid Visualization -->
+            <div *ngIf="visualization.type === 'metrics-visualization' && visualization.metrics&&visualization.metrics.items" class="metrics-grid-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="metrics-grid">
+                <div *ngFor="let item of visualization.metrics.items" class="metric-card">
+                  <div class="metric-header">
+                    <span class="material-icons metric-icon">{{ item.icon }}</span>
+                    <span class="metric-value">{{ formatMetricValue(item.valueKey, item.format) }}</span>
+                  </div>
+                  <div class="metric-label">{{ item.label }}</div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="visualization.type === 'channel-cards' && visualization.channels" class="channel-cards-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="channel-grid">
+                <div *ngFor="let channel of visualization.channels" class="channel-card">
+                  <div class="channel-header">
+                    <div class="channel-name">{{ channel.name }}</div>
+                    <div class="channel-type">{{ channel.type }}</div>
+                  </div>
+                  <div class="channel-metrics">
+                    <div class="metric-row">
+                      <span class="label">Budget</span>
+                      <span class="value">{{ (channel.budget / 1000).toFixed(0) }}K</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="label">Allocation</span>
+                      <span class="value">{{ channel.percentage }}%</span>
+                    </div>
+                    <div class="metric-row" *ngIf="channel.reach">
+                      <span class="label">Reach</span>
+                      <span class="value">{{ (channel.reach / 1000000).toFixed(1) }}M</span>
+                    </div>
+                    <div class="metric-row" *ngIf="channel.cpm">
+                      <span class="label">CPM</span>
+                      <span class="value">{{ channel.cpm }}</span>
+                    </div>
+                  </div>
+                  <div class="channel-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" [style.width.%]="channel.percentage"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Publisher Cards for Publisher Inventory -->
+            <div *ngIf="visualization.type === 'publisher-cards'" class="publisher-cards-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="publisher-grid" *ngIf="currentContext.publishers">
+                <div *ngFor="let publisher of currentContext.publishers" class="publisher-card">
+                  <div class="publisher-header">
+                    <div class="publisher-name">{{ publisher.name }}</div>
+                    <div class="publisher-tier" [style.color]="getTierColor(publisher.tier)">{{ publisher.tier }}
+                    </div>
+                  </div>
+                  <div class="publisher-metrics">
+                    <div class="metric-grid">
+                      <div class="metric-item">
+                        <span class="metric-value">{{ publisher.cpmFloor }}</span>
+                        <span class="metric-label">CPM Floor</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value" [style.color]="getScoreColor(publisher.brandSafety)">{{
+                          publisher.brandSafety }}%</span>
+                        <span class="metric-label">Brand Safety</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value" [style.color]="getFillRateColor(publisher.fillRateForecast)">{{
+                          publisher.fillRateForecast }}%</span>
+                        <span class="metric-label">Fill Rate</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value">{{ formatRevenue(publisher.revenuePrediction) }}</span>
+                        <span class="metric-label">Revenue</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="publisher-indicators">
+                    <div class="indicator" *ngIf="publisher.dynamicPricingEnabled">
+                      <span class="material-icons">autorenew</span>
+                      <span>Dynamic Pricing</span>
+                    </div>
+                    <div class="indicator" *ngIf="publisher.yieldOptimization >= 90">
+                      <span class="material-icons">trending_up</span>
+                      <span>High Yield</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bidding Metrics for RTB -->
+            <div *ngIf="visualization.type === 'bidding-metrics' && visualization.metrics" class="bidding-metrics-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="bidding-dashboard">
+                <div *ngFor="let metric of visualization.metrics" class="bidding-metric-card">
+                  <div class="metric-header">
+                    <span class="metric-label">{{ metric.label }}</span>
+                    <span class="metric-trend">
+                      <span class="material-icons" [style.color]="getTrendColor(metric.trend)">
+                        {{ getTrendIcon(metric.trend) }}
+                      </span>
+                      <span class="trend-value" [style.color]="getTrendColor(metric.trend)">{{ metric.change }}</span>
+                    </span>
+                  </div>
+                  <div class="metric-value-large">{{ metric.value }}</div>
+                </div>
+              </div>
+              <div *ngIf="visualization.strategy" class="bid-strategy-card">
+                <h4>Current Bid Strategy</h4>
+                <div class="strategy-details">
+                  <div class="strategy-item">
+                    <span class="label">Algorithm</span>
+                    <span class="value">{{ visualization.strategy.algorithm }}</span>
+                  </div>
+                  <div class="strategy-item">
+                    <span class="label">Target CPA</span>
+                    <span class="value">{{ visualization.strategy.targetCPA }}</span>
+                  </div>
+                  <div class="strategy-item">
+                    <span class="label">Max Bid</span>
+                    <span class="value">{{ visualization.strategy.maxBid }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campaign Performance Cards -->
+            <div *ngIf="visualization.type === 'campaign-performance' && visualization.campaignData"
+              class="campaign-performance-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="campaign-cards">
+                <div class="performance-card">
+                  <div class="card-header">
+                    <h4>{{ visualization.campaignData.campaign }}</h4>
+                    <span class="advertiser">{{ visualization.campaignData.advertiser }}</span>
+                  </div>
+                  <div class="performance-metrics">
+                    <div class="metric-grid">
+                      <div class="metric-item">
+                        <span class="metric-value">{{ (visualization.campaignData.budget / 1000).toFixed(0)
+                          }}K</span>
+                        <span class="metric-label">Budget</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value">{{ visualization.campaignData.duration }}</span>
+                        <span class="metric-label">Duration (days)</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value">{{ visualization.campaignData.expectedMetrics?.roas }}x</span>
+                        <span class="metric-label">Target ROAS</span>
+                      </div>
+                      <div class="metric-item">
+                        <span class="metric-value">{{ (visualization.campaignData.expectedMetrics?.impressions /
+                          1000000).toFixed(1) }}M</span>
+                        <span class="metric-label">Expected Impressions</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timeline Visualization -->
+            <div *ngIf="visualization.type === 'timeline-visualization'" class="timeline-viz">
+              <h3>{{ visualization.title }}</h3>
+              <div class="timeline-container">
+                <div class="timeline-header">
+                  <span class="timeline-duration">{{ visualization.timelineData?.totalDuration }} weeks total</span>
+                </div>
+                <div class="timeline-phases">
+                  <div *ngFor="let phase of visualization.timelineData?.phases" class="timeline-phase"
+                    [style.width.%]="phase.percentage">
+                    <div class="phase-header">
+                      <div class="phase-name">{{ phase.name }}</div>
+                      <div class="phase-weeks">{{ phase.weeks }}</div>
+                    </div>
+                    <div class="phase-metrics">
+                      <div class="phase-revenue">{{ formatRevenue(phase.publisherRevenue) }}</div>
+                      <div class="phase-percentage">{{ phase.percentage }}%</div>
+                    </div>
+                    <div class="phase-focus">{{ phase.focus }}</div>
+                    <div class="phase-bar" [style.background]="getPhaseColor(phase.name)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Allocations Visualization -->
+            <div *ngIf="visualization.type === 'allocations-visualization'" class="allocations-viz">
+              <h3>{{ visualization.title }}</h3>
+
+              <!-- Publisher Tiers -->
+              <div class="allocation-section" *ngIf="visualization.allocationData?.publisherTiers">
+                <h4>Publisher Tiers</h4>
+                <div class="allocation-grid">
+                  <div *ngFor="let tier of visualization.allocationData.publisherTiers" class="allocation-item">
+                    <div class="allocation-header">
+                      <div class="allocation-name">{{ tier.name }}</div>
+                      <div class="allocation-percentage">{{ tier.percentage }}%</div>
+                    </div>
+                    <div class="allocation-metrics">
+                      <div class="allocation-revenue">{{ formatRevenue(tier.publisherRevenue) }}</div>
+                      <div class="allocation-details">{{ tier.publishers }} • {{ tier.avgYield }}</div>
+                    </div>
+                    <div class="allocation-bar">
+                      <div class="allocation-fill" [style.width.%]="tier.percentage"
+                        [style.background]="getTierAllocationColor(tier.name)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content Categories -->
+              <div class="allocation-section" *ngIf="visualization.allocationData?.contentCategories">
+                <h4>Content Categories</h4>
+                <div class="allocation-grid">
+                  <div *ngFor="let category of visualization.allocationData.contentCategories" class="allocation-item">
+                    <div class="allocation-header">
+                      <div class="allocation-name">{{ category.name }}</div>
+                      <div class="allocation-percentage">{{ category.percentage }}%</div>
+                    </div>
+                    <div class="allocation-metrics">
+                      <div class="allocation-revenue">{{ formatRevenue(category.publisherRevenue) }}</div>
+                      <div class="allocation-details">{{ category.brandFit }} fit • {{ category.avgYield }}</div>
+                    </div>
+                    <div class="allocation-bar">
+                      <div class="allocation-fill" [style.width.%]="category.percentage"
+                        [style.background]="getCategoryAllocationColor(category.name)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Individual Visualization Modal -->
+    <div class="visualization-modal-overlay" [class.visible]="showVisualizationModal"
+      (click)="closeVisualizationModal($event)">
+      <div class="visualization-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ selectedVisualization?.title }}</h2>
+          <button class="close-btn" (click)="closeVisualizationModal($event)">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-content">
+          <!-- Single Visualization Display -->
+          <div *ngIf="selectedVisualization" class="single-visualization">
+
+            <!-- Metrics Grid Visualization -->
+            <div *ngIf="selectedVisualization.type === 'metrics-grid'" class="metrics-grid-viz">
+              <div class="metrics-grid">
+                <div *ngFor="let item of selectedVisualization.items" class="metric-card">
+                  <div class="metric-header">
+                    <span class="material-icons metric-icon">{{ item.icon }}</span>
+                    <span class="metric-value">{{ formatMetricValue(item.valueKey, item.format) }}</span>
+                  </div>
+                  <div class="metric-label">{{ item.label }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timeline Visualization -->
+            <div *ngIf="selectedVisualization.type === 'timeline-visualization'" class="timeline-viz">
+              <div class="timeline-container">
+                <div class="timeline-header">
+                  <span class="timeline-duration">{{ selectedVisualization.timelineData?.totalDuration }} weeks
+                    total</span>
+                </div>
+                <div class="timeline-phases">
+                  <div *ngFor="let phase of selectedVisualization.timelineData?.phases" class="timeline-phase"
+                    [style.width.%]="phase.percentage">
+                    <div class="phase-header">
+                      <div class="phase-name">{{ phase.name }}</div>
+                      <div class="phase-weeks">{{ phase.weeks }}</div>
+                    </div>
+                    <div class="phase-metrics">
+                      <div class="phase-revenue">{{ formatRevenue(phase.publisherRevenue) }}</div>
+                      <div class="phase-percentage">{{ phase.percentage }}%</div>
+                    </div>
+                    <div class="phase-focus">{{ phase.focus }}</div>
+                    <div class="phase-bar" [style.background]="getPhaseColor(phase.name)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Allocations Visualization -->
+            <div *ngIf="selectedVisualization.type === 'allocations-visualization'" class="allocations-viz">
+              <!-- Publisher Tiers -->
+              <div class="allocation-section" *ngIf="selectedVisualization.allocationData?.publisherTiers">
+                <h4>Publisher Tiers</h4>
+                <div class="allocation-grid">
+                  <div *ngFor="let tier of selectedVisualization.allocationData.publisherTiers" class="allocation-item">
+                    <div class="allocation-header">
+                      <div class="allocation-name">{{ tier.name }}</div>
+                      <div class="allocation-percentage">{{ tier.percentage }}%</div>
+                    </div>
+                    <div class="allocation-metrics">
+                      <div class="allocation-revenue">{{ formatRevenue(tier.publisherRevenue) }}</div>
+                      <div class="allocation-details">{{ tier.publishers }} • {{ tier.avgYield }}</div>
+                    </div>
+                    <div class="allocation-bar">
+                      <div class="allocation-fill" [style.width.%]="tier.percentage"
+                        [style.background]="getTierAllocationColor(tier.name)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content Categories -->
+              <div class="allocation-section" *ngIf="selectedVisualization.allocationData?.contentCategories">
+                <h4>Content Categories</h4>
+                <div class="allocation-grid">
+                  <div *ngFor="let category of selectedVisualization.allocationData.contentCategories"
+                    class="allocation-item">
+                    <div class="allocation-header">
+                      <div class="allocation-name">{{ category.name }}</div>
+                      <div class="allocation-percentage">{{ category.percentage }}%</div>
+                    </div>
+                    <div class="allocation-metrics">
+                      <div class="allocation-revenue">{{ formatRevenue(category.publisherRevenue) }}</div>
+                      <div class="allocation-details">{{ category.brandFit }} fit • {{ category.avgYield }}</div>
+                    </div>
+                    <div class="allocation-bar">
+                      <div class="allocation-fill" [style.width.%]="category.percentage"
+                        [style.background]="getCategoryAllocationColor(category.name)"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Current Context Visualizations -->
+            <!-- <div *ngIf="selectedVisualization.type === 'current-publisher' && currentPublisher"
+              class="current-context-viz">
+              <div class="context-details">
+                <div class="detail-item">
+                  <span class="label">Name</span>
+                  <span class="value">{{ currentPublisher.name }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Tier</span>
+                  <span class="value" [style.color]="getTierColor(currentPublisher.tier)">{{ currentPublisher.tier
+                    }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">CPM Floor</span>
+                  <span class="value">{{ currentPublisher.cpmFloor }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Brand Safety</span>
+                  <span class="value" [style.color]="getScoreColor(currentPublisher.brandSafety)">{{
+                    currentPublisher.brandSafety }}%</span>
+                </div>
+              </div>
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-value">{{ currentPublisher.fillRateForecast }}%</div>
+                  <div class="metric-label">Fill Rate Forecast</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{{ formatRevenue(currentPublisher.revenuePrediction) }}</div>
+                  <div class="metric-label">Revenue Forecast</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{{ currentPublisher.yieldOptimization }}%</div>
+                  <div class="metric-label">Yield Optimization</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{{ currentPublisher.competitivePressure }}%</div>
+                  <div class="metric-label">Competitive Pressure</div>
+                </div>
+              </div>
+            </div> -->
+
+            <!-- Add other visualization types as needed -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

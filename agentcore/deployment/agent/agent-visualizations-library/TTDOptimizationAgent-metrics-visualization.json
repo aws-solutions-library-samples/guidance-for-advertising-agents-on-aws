@@ -1,0 +1,33 @@
+{
+  "agentName": "TTDOptimizationAgent",
+  "agentId": "ttd-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Campaign performance metrics including impressions, clicks, conversions, ROAS, and CPA",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "TTD Campaign Performance Dashboard",
+    "subtitle": "Key performance indicators from REDS data feeds",
+    "metrics": [
+      {
+        "primaryLabel": "Performance Metrics",
+        "secondaryLabel": "Campaign and ad group level KPIs",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR', 'CPA', 'ROAS', 'VCR', 'Viewability Rate')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target or benchmark value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, $, count, x)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Data confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"],
+            "anomalyStatus": "Anomaly detection status: 'normal', 'warning', 'critical'"
+          }
+        ]
+      }
+    ]
+  }
+}

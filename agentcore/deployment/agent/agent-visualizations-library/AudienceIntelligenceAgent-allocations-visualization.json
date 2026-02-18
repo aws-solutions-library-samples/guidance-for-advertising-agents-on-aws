@@ -1,0 +1,31 @@
+{
+  "agentName": "AudienceIntelligenceAgent",
+  "agentId": "AudienceIntelligenceAgent",
+  "templateId": "allocations-visualization",
+  "usage": "Audience intelligence budget allocation and targeting optimization",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Audience Intelligence Allocation Strategy",
+    "subtitle": "Strategic budget distribution across audience intelligence segments",
+    "totalBudget": "Total audience intelligence budget",
+    "allocations": [
+      {
+        "primaryLabel": "Intelligence segment (e.g., 'Behavioral Analysis', 'Predictive Modeling', 'Sentiment Tracking')",
+        "secondaryLabel": "Intelligence type (e.g., 'Real-time', 'Historical', 'Predictive')",
+        "allocationPercentage": "Budget percentage for this intelligence segment",
+        "budgetAmount": "Allocated budget amount (e.g., '$750,000')",
+        "performanceLevel": "Intelligence performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Intelligence status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Intelligence risk: 'low', 'medium', 'high'",
+        "efficiency": "Intelligence gathering efficiency rating",
+        "safety": "Data quality and accuracy score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of intelligence segments",
+      "riskAllocations": "Number of underperforming intelligence areas"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+    "metadataAttributes": {
+        "data_source": "publisher_inventory",
+        "category": "inventory_yield",
+        "business_domain": "viewer_monetization",
+        "analysis_type": "inventory_analysis",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "inventory_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "publisher_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "country"
+                    },
+                    {
+                        "fieldName": "inventory_category"
+                    },
+                    {
+                        "fieldName": "available_slots"
+                    },
+                    {
+                        "fieldName": "avg_cpm_eur"
+                    },
+                    {
+                        "fieldName": "audience_quality"
+                    },
+                    {
+                        "fieldName": "brand_safety"
+                    },
+                    {
+                        "fieldName": "content_types"
+                    },
+                    {
+                        "fieldName": "peak_hours"
+                    },
+                    {
+                        "fieldName": "audience_demo"
+                    },
+                    {
+                        "fieldName": "engagement_rate"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,121 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Agents for Advertising Demo</h1>
+      <p>AI-Powered Campaign Intelligence</p>
+    </div>
+
+    <!-- Demo Credentials Banner -->
+    <div *ngIf="showDemoCredentials && !needsNewPassword" class="demo-banner">
+      <div class="demo-info">
+        <h3>🚀 Demo Access Available</h3>
+        <p>Use the pre-configured demo account to explore the platform</p>
+        <button type="button" class="demo-btn" (click)="useDemoCredentials()">
+          Use Demo Account
+        </button>
+      </div>
+    </div>
+
+    <!-- Sign In Form -->
+    <form *ngIf="!needsNewPassword" (ngSubmit)="signIn()" class="login-form">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          [(ngModel)]="email"
+          name="email"
+          required
+          autocomplete="email"
+          [disabled]="isLoading"
+          placeholder="Enter your email address"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          [(ngModel)]="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          [disabled]="isLoading"
+          placeholder="Enter your password"
+        />
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="sign-in-btn"
+          [disabled]="isLoading || !email || !password"
+        >
+          <span *ngIf="!isLoading">Sign In</span>
+          <span *ngIf="isLoading" class="loading-spinner">
+            <i class="spinner"></i> Signing In...
+          </span>
+        </button>
+      </div>
+    </form>
+
+    <!-- New Password Form -->
+    <form *ngIf="needsNewPassword" (ngSubmit)="setNewPassword()" class="login-form">
+      <div class="password-change-header">
+        <h2>Set New Password</h2>
+        <p>Please create a permanent password for your account</p>
+      </div>
+
+      <div class="form-group">
+        <label for="newPassword">New Password</label>
+        <input
+          type="password"
+          id="newPassword"
+          [(ngModel)]="newPassword"
+          name="newPassword"
+          required
+          [disabled]="isLoading"
+          placeholder="Enter your new password"
+        />
+        <div class="password-requirements">
+          <small>Password must be at least 8 characters long</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="sign-in-btn"
+          [disabled]="isLoading || !newPassword || newPassword.length < 8"
+        >
+          <span *ngIf="!isLoading">Set Password</span>
+          <span *ngIf="isLoading" class="loading-spinner">
+            <i class="spinner"></i> Updating...
+          </span>
+        </button>
+      </div>
+    </form>
+
+    <!-- Messages -->
+    <div *ngIf="error" class="error-message">
+      <i class="error-icon">⚠️</i>
+      {{ error }}
+    </div>
+
+    <div *ngIf="success" class="success-message">
+      <i class="success-icon">✅</i>
+      {{ success }}
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <p>Powered by Agents on AWS</p>
+      <div class="tech-stack">
+        <span class="tech-badge">Bedrock AgentCore</span>
+        <span class="tech-badge">AWS Cognito</span>
+        <span class="tech-badge">Angular</span>
+      </div>
+    </div>
+  </div>
+</div> 

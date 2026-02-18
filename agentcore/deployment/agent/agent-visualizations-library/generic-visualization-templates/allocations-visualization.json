@@ -1,0 +1,46 @@
+{
+  "templateId": "allocations-visualization",
+  "templateName": "Allocations Visualization (Simplified)",
+  "description": "Streamlined template for budget distribution and resource allocation with compact display",
+  "usage": [
+    "Budget distribution across channels",
+    "Resource allocation optimization",
+    "Investment strategies",
+    "Audience segment budgets",
+    "Creative variation budgets"
+  ],
+  "schema": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle (optional)",
+    "totalBudget": "string - Total budget amount",
+    "currency": "string - Currency code (e.g., USD, EUR, GBP)",
+    "allocations": [
+      {
+        "primaryLabel": "string - Allocation category (required)",
+        "secondaryLabel": "string - Type/description (optional, shown as subtitle)",
+        "allocationPercentage": "number - Percentage of total (required)",
+        "budgetAmount": "string - Allocated amount (optional)",
+        "performanceLevel": "string - high/good/medium/low (optional)",
+        "statusIndicator": "string - verified/pending/at-risk (optional)",
+        "confidenceLevel": "string - high/medium/low (optional)",
+        "riskLevel": "string - low/medium/high (optional)",
+        "efficiency": "string - Efficiency metric (optional)",
+        "safety": "string - Safety score (optional)"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "number - Total count",
+      "riskAllocations": "number - Count of at-risk allocations"
+    }
+  },
+  "displayRules": {
+    "maxMetricsPerCard": 3,
+    "priorityMetrics": ["statusIndicator", "riskLevel", "confidenceLevel", "efficiency", "safety"],
+    "compactMode": true,
+    "showInsights": false,
+    "showRecommendations": false,
+    "showRisks": false
+  }
+}

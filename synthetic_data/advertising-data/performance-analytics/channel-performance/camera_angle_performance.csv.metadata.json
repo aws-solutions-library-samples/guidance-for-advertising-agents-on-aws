@@ -1,0 +1,62 @@
+{
+    "metadataAttributes": {
+        "data_source": "camera_angle_analytics",
+        "category": "channel_performance", 
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "placement_optimization",
+        "content_type": "broadcast_analysis",
+        "industry": "sports_marketing",
+        "geographic_scope": "global_events",
+        "measurement_type": "visibility_effectiveness"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "event_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "event_name"
+                    },
+                    {
+                        "fieldName": "camera_angle"
+                    },
+                    {
+                        "fieldName": "placement_type"
+                    },
+                    {
+                        "fieldName": "brand_name"
+                    },
+                    {
+                        "fieldName": "visibility_frequency"
+                    },
+                    {
+                        "fieldName": "average_duration_seconds"
+                    },
+                    {
+                        "fieldName": "prominence_score"
+                    },
+                    {
+                        "fieldName": "audience_engagement_level"
+                    },
+                    {
+                        "fieldName": "cost_effectiveness_score"
+                    },
+                    {
+                        "fieldName": "optimal_timing_windows"
+                    },
+                    {
+                        "fieldName": "technical_quality_score"
+                    },
+                    {
+                        "fieldName": "recommendation"
+                    }
+                ]
+            }
+        }
+    }
+}

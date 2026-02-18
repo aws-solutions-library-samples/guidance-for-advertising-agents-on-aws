@@ -1,0 +1,37 @@
+{
+  "budget_optimization_strategies": [
+    {
+      "strategy_name": "Performance-Based Allocation",
+      "description": "Allocate budget based on historical performance metrics",
+      "methodology": "Analyze ROAS, CPA, and conversion rates by channel",
+      "allocation_rules": [
+        "60% to top-performing channels",
+        "30% to growth opportunity channels", 
+        "10% to testing new channels"
+      ],
+      "optimization_frequency": "Weekly"
+    },
+    {
+      "strategy_name": "Audience-Centric Budgeting",
+      "description": "Budget allocation based on audience value and reach",
+      "methodology": "Prioritize high-value audience segments",
+      "allocation_rules": [
+        "50% to high-value segments",
+        "35% to medium-value segments",
+        "15% to testing segments"
+      ],
+      "optimization_frequency": "Bi-weekly"
+    },
+    {
+      "strategy_name": "Seasonal Optimization",
+      "description": "Adjust budget allocation based on seasonal trends",
+      "methodology": "Use historical seasonal performance data",
+      "allocation_rules": [
+        "Increase budget during peak seasons",
+        "Reduce budget during low seasons",
+        "Maintain baseline for brand awareness"
+      ],
+      "optimization_frequency": "Monthly"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "TimingStrategyAgent",
+  "description": "Determines optimal campaign timing and scheduling based on audience behavior patterns and market dynamics.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/TimingStrategyAgent",
+  "skills": [
+    "timing_optimization",
+    "scheduling_strategy",
+    "dayparting_analysis"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

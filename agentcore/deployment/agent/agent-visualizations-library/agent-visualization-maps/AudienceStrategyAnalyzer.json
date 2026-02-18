@@ -1,0 +1,44 @@
+{
+  "agentName": "AudienceStrategyAnalyzer",
+  "agentId": "audience-strategy-analyzer",
+  "deploymentType": "agentcore",
+  "description": "AgentCore agent for comprehensive audience strategy analysis, segmentation, and targeting optimization",
+  "primaryCapabilities": [
+    "audience_segmentation",
+    "consumer_behavior_analysis", 
+    "targeting_strategy_development",
+    "journey_mapping",
+    "privacy_compliant_targeting"
+  ],
+  "visualizationTemplates": [
+    {
+      "templateId": "segments-visualization",
+      "usage": "PRIMARY - Audience segment profiles, prioritization, and targeting strategies",
+      "description": "Detailed audience segmentation with demographics, psychographics, and targeting parameters"
+    },
+    {
+      "templateId": "timeline-visualization", 
+      "usage": "Consumer journey mapping and touchpoint analysis",
+      "description": "Customer journey stages from awareness to advocacy with decision factors and touchpoints"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Audience performance metrics and engagement rates", 
+      "description": "Key performance indicators for audience engagement, conversion, and lifetime value"
+    }
+  ],
+  "toolAgents": [
+    "audience_segmentation_analyzer",
+    "consumer_journey_mapper",
+    "targeting_strategy_optimizer", 
+    "visualization_generator"
+  ],
+  "knowledgeBases": [
+    "CampaignIntelligenceKB"
+  ],
+  "collaborativeAgents": [
+    "MediaPlannerAgent",
+    "CampaignArchitectureAgent",
+    "BidOptimizationAgent"
+  ]
+}

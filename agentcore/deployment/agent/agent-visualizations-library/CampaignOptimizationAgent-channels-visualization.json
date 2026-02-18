@@ -1,0 +1,65 @@
+{
+  "agentName": "CampaignOptimizationAgent",
+  "agentId": "campaign-optimization-agent",
+  "templateId": "channels-visualization",
+  "usage": "Cross-channel media strategy and integration",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Integrated Cross-Channel Strategy",
+    "subtitle": "Strategic channel orchestration with creative and timing alignment",
+    "totalBudget": "Total media budget (e.g., '$4,500,000')",
+    "channels": [
+      {
+        "primaryLabel": "Channel name (e.g., 'Connected TV', 'Paid Social', 'Programmatic Display', 'Paid Search', 'Audio')",
+        "secondaryLabel": "Channel role (e.g., 'Brand Awareness', 'Consideration Driver', 'Performance Engine', 'Retargeting')",
+        "description": "Channel strategy and role in integrated campaign",
+        "currentValue": "Current performance (e.g., '4.8x ROAS', '2.5M impressions', '+32% brand lift')",
+        "targetValue": "Performance target (e.g., '5.5x ROAS', '3.0M impressions', '+40% brand lift')",
+        "forecastedValue": "Projected performance (e.g., '5.2x ROAS', '2.8M impressions', '+36% brand lift')",
+        "budgetAmount": "Channel budget allocation (e.g., '$1,575,000')",
+        "budgetPercentage": "Budget percentage (e.g., 35)",
+        "statusIndicator": "Channel status: 'optimized', 'active', 'testing', 'underperforming'",
+        "performanceLevel": "Performance level: 'high', 'good', 'medium', 'low'",
+        "confidenceLevel": "Strategy confidence: 'high', 'medium', 'low'",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Blended ROAS', 'Reach', 'Brand Lift')",
+          "value": "KPI value (e.g., '4.8x', '12.5M', '+32%')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Frequency', 'Engagement Rate', 'Viewability')",
+          "value": "KPI value (e.g., '3.2x', '8.5%', '78%')"
+        },
+        "insights": [
+          "Channel performance insights and strategic role"
+        ],
+        "recommendations": [
+          "Channel optimization and integration strategies"
+        ],
+        "metadata": {
+          "reach": "Channel reach (e.g., '8.5M users', '45% of target')",
+          "frequency": "Average frequency (e.g., '3.2x', 'Optimal')",
+          "efficiency": "Efficiency rating (e.g., 'High', 'Medium', 'Low')",
+          "brandSafety": "Brand safety score (e.g., '95%', 'Excellent')"
+        },
+        "creativeFormat": "Recommended creative format (e.g., '15s video', 'Carousel ads', 'Responsive display')",
+        "timingStrategy": "Optimal timing (e.g., 'Prime time focus', 'Always-on', 'Event-driven')",
+        "audienceAlignment": "Target audience segments (e.g., 'Brand Advocates, High-Intent Prospects')",
+        "synergies": [
+          "Cross-channel synergies and integration points (e.g., 'CTV drives search lift', 'Social amplifies display')"
+        ]
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of active channels",
+      "topPerformer": "Best performing channel",
+      "efficiencyLeader": "Most efficient channel",
+      "brandBuilder": "Primary brand-building channel",
+      "performanceDriver": "Primary performance channel"
+    },
+    "crossChannelInsights": [
+      "How channels work together to amplify campaign impact"
+    ],
+    "integrationStrategy": "Overall cross-channel orchestration approach"
+  }
+}

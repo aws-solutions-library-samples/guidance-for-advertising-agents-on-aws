@@ -1,0 +1,17 @@
+{
+  "name": "CampaignArchitectureAgent",
+  "description": "Designs end-to-end campaign structures including channel selection, budget allocation, and execution timelines.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/campaignarchitectureagent",
+  "skills": [
+    "campaign_design",
+    "budget_allocation",
+    "channel_selection"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

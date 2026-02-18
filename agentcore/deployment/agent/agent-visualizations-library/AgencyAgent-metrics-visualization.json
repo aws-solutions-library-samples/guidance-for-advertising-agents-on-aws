@@ -1,0 +1,23 @@
+{
+  "templateId": "metrics-visualization",
+  "agentName": "AgencyAgent",
+  "description": "Campaign performance metrics and KPIs",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "metrics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "metric_name": { "type": "string" },
+            "current_value": { "type": "number" },
+            "target_value": { "type": "number" },
+            "unit": { "type": "string" },
+            "trend": { "type": "string", "enum": ["up", "down", "stable"] }
+          }
+        }
+      }
+    }
+  }
+}

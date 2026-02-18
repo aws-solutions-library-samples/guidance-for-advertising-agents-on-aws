@@ -1,0 +1,46 @@
+{
+  "agentName": "CampaignOptimizationAgent",
+  "agentId": "campaign-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Integrated campaign budget allocation across all elements (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Integrated Campaign Budget Allocation",
+    "subtitle": "Strategic investment across creative, media, and execution elements",
+    "totalBudget": "Total campaign budget (e.g., '$5,000,000')",
+    "allocations": [
+      {
+        "primaryLabel": "Campaign element (e.g., 'Media Investment', 'Creative Development', 'Technology & Data', 'Testing & Optimization')",
+        "secondaryLabel": "Element category (e.g., 'Media', 'Creative', 'Infrastructure', 'Optimization')",
+        "allocationPercentage": "Budget percentage (e.g., 75)",
+        "budgetAmount": "Dollar allocation (e.g., '$3,750,000')",
+        "performanceLevel": "Expected performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Allocation status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Investment risk: 'low', 'medium', 'high'",
+        "efficiency": "Expected efficiency rating",
+        "safety": "Brand safety consideration",
+        "breakdown": [
+          {
+            "subLabel": "Sub-allocation (e.g., 'Connected TV', 'Paid Social', 'Display')",
+            "percentage": "Sub-allocation percentage (e.g., 35)",
+            "amount": "Sub-allocation amount (e.g., '$1,312,500')"
+          }
+        ],
+        "insights": [
+          "Strategic rationale for allocation"
+        ],
+        "recommendations": [
+          "Optimization opportunities"
+        ]
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of major allocations",
+      "riskAllocations": "Number of high-risk allocations",
+      "topPerformer": "Highest performing allocation",
+      "optimizationOpportunity": "Primary optimization opportunity"
+    }
+  }
+}

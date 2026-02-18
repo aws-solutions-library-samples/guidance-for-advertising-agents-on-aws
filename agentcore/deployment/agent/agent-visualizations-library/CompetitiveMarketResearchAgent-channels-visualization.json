@@ -1,0 +1,62 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templateId": "channels-visualization",
+  "usage": "Competitive channel strategy analysis and market presence",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Competitive Channel Analysis",
+    "subtitle": "Competitive channel strategies and market presence comparison",
+    "channels": [
+      {
+        "primaryLabel": "Primary channels label",
+        "secondaryLabel": "Secondary channels label",
+        "description": "Description for channels",
+        "primaryScore": {
+          "label": "Primary score",
+          "value": "0"
+        },
+        "secondaryScore": {
+          "label": "Secondary score",
+          "value": "0"
+        },
+        "qualityScore": "0",
+        "statusIndicator": "active",
+        "targetValue": "0",
+        "actualValue": "0",
+        "forecastedValue": "0",
+        "targetLabel": "Target value",
+        "actualLabel": "Current value",
+        "forecastedLabel": "Forecasted value",
+        "confidenceLevel": "medium",
+        "insights": [
+          "Key insights for channels"
+        ],
+        "risks": [
+          "Risk factors for channels"
+        ],
+        "opportunities": [
+          "Strategic opportunities in this channel"
+        ],
+        "recommendation": [
+          "Channel strategy recommendations"
+        ],
+        "metadata": {
+          "lastAnalyzed": "ISO date of last channel analysis",
+          "dataSource": "Analysis data source"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of analyzed channels",
+      "strongestChannel": "Our strongest competitive channel",
+      "weakestChannel": "Our weakest competitive channel",
+      "highestOpportunity": "Channel with highest opportunity",
+      "mostThreatened": "Most competitively threatened channel",
+      "recommendedFocus": "Recommended channel focus strategy",
+      "activeChannels": "0",
+      "topPerformer": "Top performing item"
+    }
+  }
+}

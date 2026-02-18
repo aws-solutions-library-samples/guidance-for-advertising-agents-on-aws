@@ -1,0 +1,47 @@
+{
+  "agentName": "MediaPlanningSupervisorAgent",
+  "agentId": "media-planning-supervisor-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Campaign performance projections and KPI dashboards",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Campaign Performance Projections",
+    "subtitle": "Strategic KPI forecasts and success metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "MediaPlanningSupervisorAgent",
+      "supportingAgent1": "ChannelMixOptimizationAgent",
+      "supportingAgent2": "AudienceStrategyAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Strategic metric category (e.g., 'Campaign Performance', 'Efficiency Metrics')",
+        "secondaryLabel": "Category description (e.g., 'Core business outcomes')",
+        "items": [
+          {
+            "primaryLabel": "Specific KPI name (e.g., 'Total ROAS', 'Brand Awareness Lift')",
+            "actualValue": "Current or baseline value (e.g., '3.2x', '15%')",
+            "targetValue": "Strategic target (e.g., '4.5x', '25%')",
+            "forecastedValue": "Projected outcome (e.g., '4.1x', '22%')",
+            "actualLabel": "Description of current state",
+            "targetLabel": "Description of strategic goal",
+            "forecastedLabel": "Description of expected outcome",
+            "unit": "Measurement unit (e.g., 'x', '%', '$', 'M impressions')",
+            "trend": "Performance direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Forecast confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary strategic metric",
+            "insights": [
+              "Strategic insights about this metric"
+            ],
+            "risks": [
+              "Risk factors that could impact performance"
+            ],
+            "recommendations": [
+              "Strategic actions to optimize this metric"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "agentName": "IdentityAgent",
+  "agentId": "identity-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Reach metrics and match rates by channel",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Identity Resolution Dashboard",
+    "subtitle": "Cross-device reach and match rate metrics",
+    "metrics": [
+      {
+        "primaryLabel": "Reach Metrics",
+        "secondaryLabel": "Cross-device reach estimation",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Total Reach', 'Match Rate', 'Household Coverage')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, households, individuals)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Estimate confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

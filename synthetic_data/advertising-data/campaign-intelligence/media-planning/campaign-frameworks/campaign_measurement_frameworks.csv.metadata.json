@@ -1,0 +1,127 @@
+{
+    "metadataAttributes": {
+        "file_name": "campaign_measurement_frameworks.csv",
+        "description": "Comprehensive measurement frameworks defining KPIs, attribution models, data sources, and success criteria for different campaign objectives and types",
+        "data_source": "Synthetic measurement planning based on industry best practices and analytics frameworks",
+        "last_updated": "2024-12-07",
+        "record_count": "12",
+        "data_type": "campaign_measurement_frameworks",
+        "framework_types": "Brand Awareness, Performance Conversion, Lead Generation, Engagement, Reach & Frequency, E-commerce, B2B Pipeline, Mobile App, Video Campaign, Omnichannel, Local Campaign, Retention",
+        "campaign_objectives": "Brand Awareness, Conversions, Lead Generation, Engagement, Reach, Sales, Pipeline Generation, App Installs, Video Views, Unified Customer Experience, Local Awareness, Customer Retention",
+        "primary_kpis": "Brand Lift %, ROAS, Cost per Lead, Engagement Rate, Unique Reach, Revenue, Pipeline Value, Install Rate, Video Completion Rate, Customer Lifetime Value, Store Visits, Retention Rate",
+        "attribution_models": "Even Credit, Data-Driven, First-Touch + Last-Touch, Linear, Reach Curves, Last-Click + View-through, Multi-Touch, Install Attribution, Video Attribution, Unified Attribution, Geo-Attribution, Customer Journey",
+        "lookback_windows": "7-90 days range",
+        "data_sources": "Survey + Platform Analytics, GA4 + CRM + Platforms, CRM + Marketing Automation, Platform Analytics + Social, Media Planning Tools, E-commerce Platform + Ads, CRM + MAP + Ads, MMP + App Analytics, Video Platform + Survey, CDP + All Channels, Location Data + POS, CRM + Survey + Analytics",
+        "reporting_frequencies": "Daily, Weekly, Monthly",
+        "dashboard_types": "Executive, Performance, Sales, Social, Media, E-commerce, Pipeline, App, Video, Unified, Local, Retention",
+        "stakeholder_audiences": "C-Suite, Marketing Team, Sales + Marketing, Social Team, Media Team, E-commerce Team, Product Team, Creative Team, CMO Office, Local Marketing, Customer Success",
+        "statistical_requirements": "confidence_level, sample_size_minimum, test_duration_minimum",
+        "privacy_compliance": "Low, Medium, High, Very High",
+        "cost_range": "$500 - $8000 per measurement cycle",
+        "automation_levels": "High, Medium, Low",
+        "usage_context": "framework selection, KPI definition, attribution design, measurement planning, success criteria",
+        "related_datasets": "campaign_implementation_templates.csv, attribution_modeling_configurations.csv",
+        "optimization_focus": "measurement_accuracy, statistical_validity, cost_efficiency, privacy_compliance"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "framework_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_objective"
+                    },
+                    {
+                        "fieldName": "primary_kpi"
+                    },
+                    {
+                        "fieldName": "secondary_kpi_1"
+                    },
+                    {
+                        "fieldName": "secondary_kpi_2"
+                    },
+                    {
+                        "fieldName": "tertiary_kpi_1"
+                    },
+                    {
+                        "fieldName": "tertiary_kpi_2"
+                    },
+                    {
+                        "fieldName": "measurement_method"
+                    },
+                    {
+                        "fieldName": "attribution_model"
+                    },
+                    {
+                        "fieldName": "lookback_window_days"
+                    },
+                    {
+                        "fieldName": "data_sources"
+                    },
+                    {
+                        "fieldName": "reporting_frequency"
+                    },
+                    {
+                        "fieldName": "dashboard_type"
+                    },
+                    {
+                        "fieldName": "stakeholder_audience"
+                    },
+                    {
+                        "fieldName": "success_threshold_primary"
+                    },
+                    {
+                        "fieldName": "success_threshold_secondary"
+                    },
+                    {
+                        "fieldName": "benchmark_comparison"
+                    },
+                    {
+                        "fieldName": "statistical_significance_required"
+                    },
+                    {
+                        "fieldName": "sample_size_minimum"
+                    },
+                    {
+                        "fieldName": "confidence_level"
+                    },
+                    {
+                        "fieldName": "test_duration_minimum_days"
+                    },
+                    {
+                        "fieldName": "incrementality_testing"
+                    },
+                    {
+                        "fieldName": "brand_lift_study"
+                    },
+                    {
+                        "fieldName": "survey_methodology"
+                    },
+                    {
+                        "fieldName": "offline_integration"
+                    },
+                    {
+                        "fieldName": "cross_device_tracking"
+                    },
+                    {
+                        "fieldName": "privacy_compliance_level"
+                    },
+                    {
+                        "fieldName": "cost_per_measurement"
+                    },
+                    {
+                        "fieldName": "automation_level"
+                    },
+                    {
+                        "fieldName": "real_time_monitoring"
+                    }
+                ]
+            }
+        }
+    }
+}

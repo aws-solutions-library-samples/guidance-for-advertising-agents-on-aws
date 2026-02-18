@@ -1,0 +1,6 @@
+"competitor_name","market_share","avg_bid_price","win_rate","primary_segments","content_categories","estimated_spend","performance_tier"
+"CompetitorX","0.15","3.25","0.35","sports_enthusiast;tech_enthusiast","IAB17;IAB19","2500000","tier_1"
+"CompetitorY","0.12","2.85","0.42","fashion_enthusiast;beauty_enthusiast","IAB18","1800000","tier_2"
+"CompetitorZ","0.08","4.10","0.28","luxury_lifestyle;travel_enthusiast","IAB18;IAB20","3200000","tier_1"
+"CompetitorA","0.06","2.50","0.38","health_enthusiast;fitness_enthusiast","IAB7","1200000","tier_2"
+"CompetitorB","0.04","5.20","0.25","finance_enthusiast;auto_intender","IAB13;IAB2","2800000","tier_1"

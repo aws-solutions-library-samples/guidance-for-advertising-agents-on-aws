@@ -1,0 +1,22 @@
+{
+  "agentName": "AdLoadOptimizationAgent",
+  "agentId": "AdLoadOptimizationAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Viewer retention metrics, revenue KPIs, ad tolerance"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Ad load distribution across content types"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Viewer segment tolerance analysis"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Ad load adjustment schedules"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "agentName": "ChannelMixOptimizationAgent",
+  "agentId": "channel-mix-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified channel budget allocation and optimization strategies",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Optimized Channel Budget Allocation",
+    "subtitle": "Data-driven budget distribution across media channels",
+    "totalBudget": "Total channel budget (e.g., '$5,000,000')",
+    "allocations": [
+      {
+        "primaryLabel": "Media channel (e.g., 'Connected TV', 'Paid Social', 'Programmatic Display', 'Search')",
+        "secondaryLabel": "Channel category (e.g., 'Video', 'Social', 'Display', 'Search')",
+        "allocationPercentage": "Budget percentage (e.g., 35)",
+        "budgetAmount": "Dollar allocation (e.g., '$1,750,000')",
+        "performanceLevel": "Channel performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Channel status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Channel risk: 'low', 'medium', 'high'",
+        "efficiency": "Channel efficiency rating",
+        "safety": "Brand safety score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of channel allocations",
+      "riskAllocations": "Number of underperforming channel allocations"
+    }
+  }
+}

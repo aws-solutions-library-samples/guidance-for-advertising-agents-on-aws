@@ -1,0 +1,18 @@
+{
+  "agentName": "SignalAgent",
+  "agentId": "signal-agent",
+  "templates": [
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Signal coverage and segment distribution"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Signal performance metrics and accuracy scores"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience segment catalog and targeting"
+    }
+  ]
+}

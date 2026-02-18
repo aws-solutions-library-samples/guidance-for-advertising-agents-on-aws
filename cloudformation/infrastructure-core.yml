@@ -1,0 +1,895 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "SO9631 Core Infrastructure for Bid Simulator for Agentic Campaign Planning - S3, IAM, OpenSearch, and Cognito"
+
+Parameters:
+  StackPrefix:
+    Type: String
+    Default: "sim"
+    Description: Stack prefix for resource naming
+    MinLength: 3
+    MaxLength: 10
+    AllowedPattern: ^[a-z0-9]+$
+    ConstraintDescription: Must be 3-10 lowercase alphanumeric characters.
+
+  UniqueId:
+    Type: String
+    Default: "default"
+    Description: Additional unique identifier for resource naming
+    MinLength: 1
+    MaxLength: 15
+    AllowedPattern: ^[a-zA-Z0-9]+$
+    ConstraintDescription: Must contain only alphanumeric characters.
+
+  TriggerUpdate:
+    Type: String
+    Default: "initial"
+    Description: Parameter to trigger custom resource updates
+
+  DemoUserEmail:
+    Type: String
+    Description: Email address for the demo user account
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+    ConstraintDescription: Must be a valid email address
+
+  AsyncImageProcessorS3Bucket:
+    Type: String
+    Description: S3 bucket containing the async image processor Lambda code
+    Default: ""
+
+  CreateDemoUserS3Key:
+    Type: String
+    Description: S3 key for the create demo user Lambda code
+    Default: "lambda/create-demo-user.zip"
+
+Resources:
+  # S3 Bucket for synthetic data
+  SyntheticDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${StackPrefix}-data-${UniqueId}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # IAM Role for Bedrock Knowledge Bases
+  BedrockExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "BedrockExecutionRole-${StackPrefix}-${UniqueId}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*
+      Policies:
+        - PolicyName: S3DataAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                Resource:
+                  - !GetAtt SyntheticDataBucket.Arn
+                  - !Sub "${SyntheticDataBucket.Arn}/*"
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${StackPrefix}-*"
+        - PolicyName: LambdaAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                  - lambda:GetFunction
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StackPrefix}-*"
+        - PolicyName: OpenSearchServerlessAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*"
+        - PolicyName: BedrockModelAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                  - bedrock:ListFoundationModels
+                  - bedrock:GetKnowledgeBase
+                  - bedrock:ListKnowledgeBases
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::*/*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
+
+  # OpenSearch Serverless Collection for Knowledge Bases
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - OpenSearchNetworkPolicy
+      - OpenSearchEncryptionPolicy
+      - OpenSearchDataAccessPolicy
+    Properties:
+      Name: !Sub "${StackPrefix}-kb-collection-${UniqueId}"
+      Type: VECTORSEARCH
+      Description: "OpenSearch Serverless collection for Bedrock Knowledge Bases"
+
+  # Network policy for OpenSearch Serverless
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub "${StackPrefix}-network-policy-${UniqueId}"
+      Type: network
+      Description: "Network policy for OpenSearch Serverless collection"
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "Resource": [
+                  "collection/${StackPrefix}-kb-collection-${UniqueId}"
+                ],
+                "ResourceType": "collection"
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  # Encryption policy for OpenSearch Serverless
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub "${StackPrefix}-encryption-policy-${UniqueId}"
+      Type: encryption
+      Description: "Encryption policy for OpenSearch Serverless collection"
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "Resource": [
+                "collection/${StackPrefix}-kb-collection-${UniqueId}"
+              ],
+              "ResourceType": "collection"
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  # Data access policy for OpenSearch Serverless
+  OpenSearchDataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: BedrockExecutionRole
+    Properties:
+      Name: !Sub "${StackPrefix}-dap-${UniqueId}"
+      Type: data
+      Description: "Data access policy for OpenSearch Serverless collection"
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "Resource": [
+                  "collection/${StackPrefix}-kb-collection-${UniqueId}"
+                ],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ],
+                "ResourceType": "collection"
+              },
+              {
+                "Resource": [
+                  "index/${StackPrefix}-kb-collection-${UniqueId}/*"
+                ],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ],
+                "ResourceType": "index"
+              }
+            ],
+            "Principal": [
+              "${BedrockExecutionRole.Arn}",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ],
+            "Description": "Access for Bedrock Knowledge Bases"
+          }
+        ]
+
+  # Cognito User Pool for Authentication
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${StackPrefix}-users-${UniqueId}"
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: true
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${StackPrefix}-client-${UniqueId}"
+      GenerateSecret: false
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - http://localhost:4200
+        - https://localhost:4200
+      LogoutURLs:
+        - http://localhost:4200
+        - https://localhost:4200
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # Identity Pool for AWS resource access
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub "${StackPrefix}-identity-${UniqueId}"
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders:
+        - ClientId: !Ref UserPoolClient
+          ProviderName: !GetAtt UserPool.ProviderName
+
+  # IAM roles for authenticated users
+  AuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "AuthenticatedRole-${StackPrefix}-${UniqueId}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: AuthUserAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                  - bedrock:InvokeModel
+                  - bedrock:GetAgent
+                  - bedrock:ListAgents
+                  - bedrock:GetKnowledgeBase
+                  - bedrock:ListKnowledgeBases
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - "arn:aws:bedrock:*::inference-profile/*"
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeAgentRuntime
+                  - bedrock-agentcore:InvokeAgentRuntimeForUser
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:ListActors                  
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:GetMemoryRecord
+                  - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:GetAgentCard
+                  - bedrock-agentcore:ListSessions
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:GetAgentRuntimeEndpoint
+                  - bedrock-agentcore:ListAgentRuntimeEndpoints
+                  - bedrock-agentcore:ListPolicyEngines
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:InvokeGateway
+                  - bedrock-agentcore:GetGateway
+                  - bedrock-agentcore:ListGateways
+                  - bedrock-agentcore:ListGatewayTargets
+                  - bedrock-agentcore:GetGatewayTarget
+                  - bedrock-agentcore:AuthorizeAction
+                  - bedrock-agentcore:PartiallyAuthorizeActions
+                  - bedrock-agentcore:GetPolicyEngine
+                Resource: !Sub "arn:aws:bedrock-agentcore:*:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${StackPrefix}-data-${UniqueId}"
+                  - !Sub "arn:aws:s3:::${StackPrefix}-data-${UniqueId}/*"
+                  - !Sub "arn:aws:s3:::${StackPrefix}-generated-content-${UniqueId}"
+                  - !Sub "arn:aws:s3:::${StackPrefix}-generated-content-${UniqueId}/*"
+
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/${StackPrefix}/*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${StackPrefix}-*"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StackPrefix}-*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${StackPrefix}-*"
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                  - ses:GetSendQuota
+                  - ses:GetSendStatistics
+                Resource: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - transcribe:StartStreamTranscription
+                  - transcribe:StartTranscriptionJob
+                  - transcribe:GetTranscriptionJob
+                  - transcribe:ListTranscriptionJobs
+                Resource: !Sub "arn:aws:transcribe:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - cloudfront:GetDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:CreateInvalidation
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/*"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-*"
+  UnauthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "UnauthenticatedRole-${StackPrefix}-${UniqueId}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+      Policies:
+        - PolicyName: DenyAll
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Deny
+                Action: "*"
+                Resource: "*"
+
+  # Attach roles to identity pool
+  IdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt AuthenticatedRole.Arn
+        unauthenticated: !GetAtt UnauthenticatedRole.Arn
+
+  # Lambda function to create demo user
+  CreateDemoUserLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "CreateDemoUserLambdaRole-${StackPrefix}-${UniqueId}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoUserManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminSetUserPassword
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminDeleteUser
+                Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}"
+
+  CreateDemoUserLambda:
+    Type: AWS::Lambda::Function
+    DependsOn: CreateDemoUserLambdaRole
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt CreateDemoUserLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        ZipFile: |-
+          import json
+          import boto3
+          import cfnresponse
+          import logging
+          import secrets
+          import string
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def generate_temp_password():
+              # Generate a secure temporary password
+              alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+              password = ''.join(secrets.choice(alphabet) for i in range(12))
+              # Ensure it meets requirements
+              if not any(c.isupper() for c in password):
+                  password = password[:-1] + 'A'
+              if not any(c.islower() for c in password):
+                  password = password[:-1] + 'a'
+              if not any(c.isdigit() for c in password):
+                  password = password[:-1] + '1'
+              return password
+
+          def lambda_handler(event, context):
+              logger.info(f"Event: {event}")
+              
+              user_pool_id = event['ResourceProperties']['UserPoolId']
+              email = event['ResourceProperties']['DemoUserEmail']
+              cognito = boto3.client('cognito-idp')
+              
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # Delete the demo user
+                      try:
+                          cognito.admin_delete_user(
+                              UserPoolId=user_pool_id,
+                              Username=email
+                          )
+                          logger.info(f"Deleted demo user: {email}")
+                      except cognito.exceptions.UserNotFoundException:
+                          logger.info(f"Demo user {email} not found, nothing to delete")
+                      except Exception as e:
+                          logger.warning(f"Error deleting user: {e}")
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  elif event['RequestType'] in ['Create', 'Update']:
+                      temp_password = generate_temp_password()
+                      
+                      try:
+                          # Check if user already exists
+                          try:
+                              existing_user = cognito.admin_get_user(
+                                  UserPoolId=user_pool_id,
+                                  Username=email
+                              )
+                              logger.info(f"User {email} already exists")
+                              # Set a new temporary password for existing user
+                              cognito.admin_set_user_password(
+                                  UserPoolId=user_pool_id,
+                                  Username=email,
+                                  Password=temp_password,
+                                  Permanent=False
+                              )
+                              logger.info(f"Updated password for existing user: {email}")
+                          except cognito.exceptions.UserNotFoundException:
+                              # Create new user - keep it simple
+                              response = cognito.admin_create_user(
+                                  UserPoolId=user_pool_id,
+                                  Username=email,
+                                  UserAttributes=[
+                                      {
+                                          'Name': 'email',
+                                          'Value': email
+                                      }
+                                  ],
+                                  TemporaryPassword=temp_password
+                                  # No MessageAction specified - use default behavior
+                              )
+                              logger.info(f"Created demo user: {email}")
+                          
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                              'Username': email,
+                              'TemporaryPassword': temp_password,
+                              'Message': f'Demo user created with email: {email}'
+                          })
+                          
+                      except Exception as e:
+                          logger.error(f"Error creating/updating user: {e}")
+                          cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+              
+              except Exception as e:
+                  logger.error(f"Unexpected error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+  CreateDemoUserCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn:
+      - CreateDemoUserLambda
+      - UserPool
+    Properties:
+      ServiceToken: !GetAtt CreateDemoUserLambda.Arn
+      UserPoolId: !Ref UserPool
+      DemoUserEmail: !Ref DemoUserEmail
+
+  # Logging Infrastructure
+  LogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${StackPrefix}-logs-${UniqueId}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 90
+            NoncurrentVersionExpirationInDays: 30
+
+  LogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: UICloudFrontDistribution
+    Properties:
+      Bucket: !Ref LogsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontLogging
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${LogsBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${UICloudFrontDistribution}"
+        Version: 2012-10-17
+
+  # UI Hosting Infrastructure
+  UIBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${StackPrefix}-ui-${UniqueId}"
+      AccessControl: Private
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: ["GET", "PUT", "POST", "DELETE"]
+            AllowedOrigins: ["*"]
+            ExposedHeaders: []
+
+  UIOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${StackPrefix}-ui-oac-${UniqueId}"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+        Description: Origin Access Control for UI bucket
+
+  UICloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - LogsBucket
+      - CFWAFACL
+    Properties:
+      DistributionConfig:
+        WebACLId: !GetAtt CFWAFACL.Arn
+        Logging:
+          Bucket: !GetAtt LogsBucket.RegionalDomainName
+          Prefix: cloudfront/ui/
+          IncludeCookies: false
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 400
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 300
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          DefaultTTL: 31536000
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          MaxTTL: 31536000
+          MinTTL: 31536000
+          TargetOriginId: origin1
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - ConnectionAttempts: 3
+            ConnectionTimeout: 10
+            DomainName: !GetAtt UIBucket.RegionalDomainName
+            Id: origin1
+            OriginAccessControlId: !Ref UIOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+  CFWAFACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "${StackPrefix}-cf-waf-${UniqueId}"
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub "${StackPrefix}CFWAFMetric"
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesCommonRuleSetMetrics
+            SampledRequestsEnabled: true
+
+  UIBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: UICloudFrontDistribution
+    Properties:
+      Bucket: !Ref UIBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipal
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${UIBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${UICloudFrontDistribution}"
+        Version: 2012-10-17
+
+  # CloudWatch Log Group for Demo Tracking
+  DemoLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${StackPrefix}-demos-${UniqueId}"
+      RetentionInDays: 30
+
+Outputs:
+  SyntheticDataBucketName:
+    Description: "Name of the S3 bucket containing synthetic data"
+    Value: !Ref SyntheticDataBucket
+    Export:
+      Name: !Sub "${StackPrefix}-SyntheticDataBucketName-${UniqueId}"
+
+  SyntheticDataBucketArn:
+    Description: "ARN of the S3 bucket containing synthetic data"
+    Value: !GetAtt SyntheticDataBucket.Arn
+    Export:
+      Name: !Sub "${StackPrefix}-SyntheticDataBucketArn-${UniqueId}"
+
+  OpenSearchCollectionArn:
+    Description: "ARN of the OpenSearch Serverless collection for Knowledge Bases"
+    Value: !GetAtt OpenSearchCollection.Arn
+    Export:
+      Name: !Sub "${StackPrefix}-OpenSearchCollectionArn-${UniqueId}"
+
+  OpenSearchCollectionEndpoint:
+    Description: "Endpoint of the OpenSearch Serverless collection"
+    Value: !GetAtt OpenSearchCollection.CollectionEndpoint
+    Export:
+      Name: !Sub "${StackPrefix}-OpenSearchCollectionEndpoint-${UniqueId}"
+
+  BedrockExecutionRoleArn:
+    Description: "ARN of the Bedrock execution role"
+    Value: !GetAtt BedrockExecutionRole.Arn
+    Export:
+      Name: !Sub "${StackPrefix}-BedrockExecutionRoleArn-${UniqueId}"
+
+  # Cognito Outputs
+  UserPoolId:
+    Description: "ID of the Cognito User Pool"
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub "${StackPrefix}-UserPoolId-${UniqueId}"
+
+  UserPoolClientId:
+    Description: "ID of the Cognito User Pool Client"
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub "${StackPrefix}-UserPoolClientId-${UniqueId}"
+
+  IdentityPoolId:
+    Description: "ID of the Cognito Identity Pool"
+    Value: !Ref IdentityPool
+    Export:
+      Name: !Sub "${StackPrefix}-IdentityPoolId-${UniqueId}"
+
+  AuthenticatedRoleArn:
+    Description: "ARN of the authenticated role for Cognito users"
+    Value: !GetAtt AuthenticatedRole.Arn
+    Export:
+      Name: !Sub "${StackPrefix}-AuthenticatedRoleArn-${UniqueId}"
+
+  DemoUserEmail:
+    Description: "Email of the demo user account"
+    Value: !Ref DemoUserEmail
+    Export:
+      Name: !Sub "${StackPrefix}-DemoUserEmail-${UniqueId}"
+
+  DemoUserPassword:
+    Description: "Temporary password for demo user (must be changed on first login)"
+    Value: !GetAtt CreateDemoUserCustomResource.TemporaryPassword
+    Export:
+      Name: !Sub "${StackPrefix}-DemoUserPassword-${UniqueId}"
+
+  # UI Hosting Outputs
+  UIBucketName:
+    Description: "S3 bucket name for hosting the UI"
+    Value: !Ref UIBucket
+    Export:
+      Name: !Sub "${StackPrefix}-UIBucketName-${UniqueId}"
+
+  UICloudFrontDistributionId:
+    Description: "CloudFront distribution ID for the UI"
+    Value: !Ref UICloudFrontDistribution
+    Export:
+      Name: !Sub "${StackPrefix}-UICloudFrontDistributionId-${UniqueId}"
+
+  UICloudFrontDomainName:
+    Description: "CloudFront distribution domain name for the UI"
+    Value: !GetAtt UICloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub "${StackPrefix}-UICloudFrontDomainName-${UniqueId}"
+
+  UIUrl:
+    Description: "URL for the deployed UI application"
+    Value: !Sub "https://${UICloudFrontDistribution.DomainName}"
+    Export:
+      Name: !Sub "${StackPrefix}-UIUrl-${UniqueId}"
+
+  # Demo Tracking Outputs
+  DemoLogGroupName:
+    Description: "CloudWatch log group name for demo tracking"
+    Value: !Ref DemoLogGroup
+    Export:
+      Name: !Sub "${StackPrefix}-DemoLogGroupName-${UniqueId}"
+
+  # Logging Outputs
+  LogsBucketName:
+    Description: "S3 bucket name for CloudFront and other service logs"
+    Value: !Ref LogsBucket
+    Export:
+      Name: !Sub "${StackPrefix}-LogsBucketName-${UniqueId}"
+
+  LogsBucketArn:
+    Description: "ARN of the logs bucket"
+    Value: !GetAtt LogsBucket.Arn
+    Export:
+      Name: !Sub "${StackPrefix}-LogsBucketArn-${UniqueId}"

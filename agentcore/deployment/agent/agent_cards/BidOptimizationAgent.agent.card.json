@@ -1,0 +1,17 @@
+{
+  "name": "BidOptimizationAgent",
+  "description": "Calculates optimal bid strategies using performance data, competitive intelligence, and ROI maximization algorithms.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/bidoptimizationagent",
+  "skills": [
+    "bid_calculation",
+    "performance_optimization",
+    "competitive_analysis"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

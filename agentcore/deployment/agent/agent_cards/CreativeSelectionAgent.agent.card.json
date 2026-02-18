@@ -1,0 +1,17 @@
+{
+  "name": "CreativeSelectionAgent",
+  "description": "Recommends creative assets and messaging strategies based on audience insights and performance data.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/creativeselectionagent",
+  "skills": [
+    "creative_recommendation",
+    "messaging_strategy",
+    "asset_optimization"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

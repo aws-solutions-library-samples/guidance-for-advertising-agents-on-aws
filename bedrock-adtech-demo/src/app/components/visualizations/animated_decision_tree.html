@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Decision Tree Animation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 1200px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .control-group {
+            display: inline-block;
+            margin: 10px 20px;
+            color: white;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        select,
+        input[type="range"] {
+            padding: 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            min-width: 120px;
+        }
+
+        .tree-container {
+            position: relative;
+            height: 600px;
+            overflow: hidden;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .node {
+            position: absolute;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .node.start {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+            width: 100px;
+            height: 100px;
+            font-size: 14px;
+        }
+
+        .node.good {
+            background: linear-gradient(135deg, #00d2d3, #54a0ff);
+            animation: pulse-good 2s infinite;
+        }
+
+        .node.bad {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            animation: pulse-bad 2s infinite;
+        }
+
+        .node.neutral {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+        }
+
+        .node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes pulse-good {
+
+            0%,
+            100% {
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(0, 210, 211, 0.7);
+            }
+
+            50% {
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 0 10px rgba(0, 210, 211, 0);
+            }
+        }
+
+        @keyframes pulse-bad {
+
+            0%,
+            100% {
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+
+            50% {
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+        }
+
+        .connection {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+            transform-origin: left center;
+            transition: all 0.5s ease;
+            z-index: 5;
+            border-radius: 2px;
+        }
+
+        .connection.active {
+            background: linear-gradient(90deg, #00d2d3, #54a0ff);
+            height: 4px;
+            box-shadow: 0 0 10px rgba(0, 210, 211, 0.5);
+        }
+
+        .connection.inactive {
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+            height: 4px;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .flow-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            z-index: 15;
+            opacity: 0;
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .legend-color.good {
+            background: linear-gradient(135deg, #00d2d3, #54a0ff);
+        }
+
+        .legend-color.bad {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        .legend-color.neutral {
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+        }
+
+        .legend-color.start {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .node {
+            animation: slideIn 0.5s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Interactive Decision Tree: Cause & Effect Visualization</h1>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label for="scenario">Scenario:</label>
+                <select id="scenario">
+                    <option value="business">Business Strategy</option>
+                    <option value="health">Health Choices</option>
+                    <option value="education">Learning Path</option>
+                    <option value="investment">Investment Decision</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="risk">Risk Level:</label>
+                <input type="range" id="risk" min="1" max="10" value="5">
+                <span id="riskValue">5</span>
+            </div>
+
+            <div class="control-group">
+                <label for="budget">Budget/Resources:</label>
+                <input type="range" id="budget" min="1" max="10" value="5">
+                <span id="budgetValue">5</span>
+            </div>
+        </div>
+
+        <div class="tree-container" id="treeContainer">
+            <!-- Nodes and connections will be dynamically generated -->
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            Click on any node to explore the decision path and see detailed outcomes.
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color start"></div>
+                <span>Starting Point</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color good"></div>
+                <span>Positive Outcome</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color bad"></div>
+                <span>Negative Outcome</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color neutral"></div>
+                <span>Neutral/Mixed</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scenarios = {
+            business: {
+                start: "New Product Launch",
+                nodes: [
+                    { id: 'market-research', text: 'Market Research', type: 'neutral', x: 200, y: 100 },
+                    { id: 'quick-launch', text: 'Quick Launch', type: 'neutral', x: 200, y: 200 },
+                    { id: 'success-research', text: 'Data-Driven Success', type: 'good', x: 400, y: 80 },
+                    { id: 'slow-research', text: 'Slow to Market', type: 'bad', x: 400, y: 140 },
+                    { id: 'viral-success', text: 'Viral Hit', type: 'good', x: 400, y: 180 },
+                    { id: 'market-failure', text: 'Market Rejection', type: 'bad', x: 400, y: 240 }
+                ],
+                connections: [
+                    { from: 'start', to: 'market-research' },
+                    { from: 'start', to: 'quick-launch' },
+                    { from: 'market-research', to: 'success-research' },
+                    { from: 'market-research', to: 'slow-research' },
+                    { from: 'quick-launch', to: 'viral-success' },
+                    { from: 'quick-launch', to: 'market-failure' }
+                ]
+            },
+            health: {
+                start: "Health Journey",
+                nodes: [
+                    { id: 'exercise', text: 'Regular Exercise', type: 'neutral', x: 200, y: 100 },
+                    { id: 'diet-only', text: 'Diet Only', type: 'neutral', x: 200, y: 200 },
+                    { id: 'strong-healthy', text: 'Strong & Healthy', type: 'good', x: 400, y: 80 },
+                    { id: 'injury-risk', text: 'Injury Risk', type: 'bad', x: 400, y: 140 },
+                    { id: 'slow-progress', text: 'Slow Progress', type: 'neutral', x: 400, y: 180 },
+                    { id: 'nutrient-deficiency', text: 'Deficiency', type: 'bad', x: 400, y: 240 }
+                ],
+                connections: [
+                    { from: 'start', to: 'exercise' },
+                    { from: 'start', to: 'diet-only' },
+                    { from: 'exercise', to: 'strong-healthy' },
+                    { from: 'exercise', to: 'injury-risk' },
+                    { from: 'diet-only', to: 'slow-progress' },
+                    { from: 'diet-only', to: 'nutrient-deficiency' }
+                ]
+            },
+            education: {
+                start: "Learning Path",
+                nodes: [
+                    { id: 'self-study', text: 'Self Study', type: 'neutral', x: 200, y: 100 },
+                    { id: 'formal-course', text: 'Formal Course', type: 'neutral', x: 200, y: 200 },
+                    { id: 'expert-level', text: 'Expert Level', type: 'good', x: 400, y: 80 },
+                    { id: 'knowledge-gaps', text: 'Knowledge Gaps', type: 'bad', x: 400, y: 140 },
+                    { id: 'certified-skill', text: 'Certified Skills', type: 'good', x: 400, y: 180 },
+                    { id: 'theory-heavy', text: 'Theory Heavy', type: 'bad', x: 400, y: 240 }
+                ],
+                connections: [
+                    { from: 'start', to: 'self-study' },
+                    { from: 'start', to: 'formal-course' },
+                    { from: 'self-study', to: 'expert-level' },
+                    { from: 'self-study', to: 'knowledge-gaps' },
+                    { from: 'formal-course', to: 'certified-skill' },
+                    { from: 'formal-course', to: 'theory-heavy' }
+                ]
+            },
+            investment: {
+                start: "Investment Choice",
+                nodes: [
+                    { id: 'high-risk', text: 'High Risk', type: 'neutral', x: 200, y: 100 },
+                    { id: 'safe-bet', text: 'Safe Investment', type: 'neutral', x: 200, y: 200 },
+                    { id: 'huge-returns', text: 'Huge Returns', type: 'good', x: 400, y: 80 },
+                    { id: 'major-loss', text: 'Major Loss', type: 'bad', x: 400, y: 140 },
+                    { id: 'steady-growth', text: 'Steady Growth', type: 'good', x: 400, y: 180 },
+                    { id: 'inflation-loss', text: 'Inflation Loss', type: 'bad', x: 400, y: 240 }
+                ],
+                connections: [
+                    { from: 'start', to: 'high-risk' },
+                    { from: 'start', to: 'safe-bet' },
+                    { from: 'high-risk', to: 'huge-returns' },
+                    { from: 'high-risk', to: 'major-loss' },
+                    { from: 'safe-bet', to: 'steady-growth' },
+                    { from: 'safe-bet', to: 'inflation-loss' }
+                ]
+            }
+        };
+
+        let currentScenario = 'business';
+        let activeNode = null;
+
+        function createNode(id, text, type, x, y) {
+            const node = document.createElement('div');
+            node.className = `node ${type}`;
+            node.id = id;
+            node.textContent = text;
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+
+            node.addEventListener('click', () => selectNode(id));
+
+            return node;
+        }
+
+        function createConnection(from, to) {
+            const fromNode = document.getElementById(from);
+            const toNode = document.getElementById(to);
+
+            if (!fromNode || !toNode) return null;
+
+            const connection = document.createElement('div');
+            connection.className = 'connection';
+            connection.id = `connection-${from}-${to}`;
+
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+            const containerRect = document.getElementById('treeContainer').getBoundingClientRect();
+
+            const fromX = fromNode.offsetLeft + fromNode.offsetWidth / 2;
+            const fromY = fromNode.offsetTop + fromNode.offsetHeight / 2;
+            const toX = toNode.offsetLeft + toNode.offsetWidth / 2;
+            const toY = toNode.offsetTop + toNode.offsetHeight / 2;
+
+            const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+            const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+
+            connection.style.left = `${fromX}px`;
+            connection.style.top = `${fromY}px`;
+            connection.style.width = `${length}px`;
+            connection.style.transform = `rotate(${angle}deg)`;
+
+            return connection;
+        }
+
+        function animateParticle(fromId, toId) {
+            const fromNode = document.getElementById(fromId);
+            const toNode = document.getElementById(toId);
+
+            if (!fromNode || !toNode) return;
+
+            const particle = document.createElement('div');
+            particle.className = 'flow-particle';
+
+            const fromX = fromNode.offsetLeft + fromNode.offsetWidth / 2;
+            const fromY = fromNode.offsetTop + fromNode.offsetHeight / 2;
+            const toX = toNode.offsetLeft + toNode.offsetWidth / 2;
+            const toY = toNode.offsetTop + toNode.offsetHeight / 2;
+
+            particle.style.left = `${fromX}px`;
+            particle.style.top = `${fromY}px`;
+
+            document.getElementById('treeContainer').appendChild(particle);
+
+            // Animate particle
+            particle.style.opacity = '1';
+            particle.style.transition = 'all 1s ease-in-out';
+
+            setTimeout(() => {
+                particle.style.left = `${toX}px`;
+                particle.style.top = `${toY}px`;
+            }, 50);
+
+            setTimeout(() => {
+                particle.style.opacity = '0';
+                setTimeout(() => particle.remove(), 200);
+            }, 800);
+        }
+
+        function selectNode(nodeId) {
+            activeNode = nodeId;
+            updateConnections();
+            updateInfoPanel(nodeId);
+
+            // Animate particles for connected nodes
+            const scenario = scenarios[currentScenario];
+            scenario.connections.forEach(conn => {
+                if (conn.from === nodeId || conn.to === nodeId) {
+                    setTimeout(() => {
+                        animateParticle(conn.from, conn.to);
+                    }, Math.random() * 500);
+                }
+            });
+        }
+
+        function updateConnections() {
+            const connections = document.querySelectorAll('.connection');
+            connections.forEach(conn => {
+                conn.classList.remove('active', 'inactive');
+
+                const risk = parseInt(document.getElementById('risk').value);
+                const budget = parseInt(document.getElementById('budget').value);
+
+                // Determine connection state based on risk and budget
+                if (risk > 6 && budget > 6) {
+                    conn.classList.add('active');
+                } else if (risk < 4 || budget < 4) {
+                    conn.classList.add('inactive');
+                }
+            });
+        }
+
+        function updateInfoPanel(nodeId) {
+            const infoPanel = document.getElementById('infoPanel');
+            const risk = parseInt(document.getElementById('risk').value);
+            const budget = parseInt(document.getElementById('budget').value);
+
+            const messages = {
+                'start': 'Starting point: Choose your path wisely based on your risk tolerance and available resources.',
+                'market-research': `Market Research: ${risk > 5 ? 'High risk approach may delay but increase accuracy' : 'Conservative approach ensures thorough analysis'}`,
+                'quick-launch': `Quick Launch: ${budget > 5 ? 'Adequate resources for rapid deployment' : 'Limited resources may compromise quality'}`,
+                'success-research': 'Data-driven success: Research pays off with targeted market entry and reduced risk.',
+                'viral-success': 'Viral hit: Sometimes quick action captures the perfect moment in the market.',
+                'market-failure': 'Market rejection: Without research, products may miss target audience needs.'
+            };
+
+            const message = messages[nodeId] || 'Explore different paths to see how risk and resources affect outcomes.';
+            infoPanel.textContent = message;
+        }
+
+        function buildTree() {
+            const container = document.getElementById('treeContainer');
+            container.innerHTML = '';
+
+            const scenario = scenarios[currentScenario];
+
+            // Create start node
+            const startNode = createNode('start', scenario.start, 'start', 50, 150);
+            container.appendChild(startNode);
+
+            // Create other nodes
+            scenario.nodes.forEach(node => {
+                const nodeElement = createNode(node.id, node.text, node.type, node.x, node.y);
+                container.appendChild(nodeElement);
+            });
+
+            // Create connections after nodes are in DOM
+            setTimeout(() => {
+                scenario.connections.forEach(conn => {
+                    const connection = createConnection(conn.from, conn.to);
+                    if (connection) {
+                        container.appendChild(connection);
+                    }
+                });
+            }, 100);
+        }
+
+        function updateScenario() {
+            currentScenario = document.getElementById('scenario').value;
+            buildTree();
+            updateInfoPanel('start');
+        }
+
+        function updateRiskValue() {
+            const value = document.getElementById('risk').value;
+            document.getElementById('riskValue').textContent = value;
+            updateConnections();
+        }
+
+        function updateBudgetValue() {
+            const value = document.getElementById('budget').value;
+            document.getElementById('budgetValue').textContent = value;
+            updateConnections();
+        }
+
+        // Event listeners
+        document.getElementById('scenario').addEventListener('change', updateScenario);
+        document.getElementById('risk').addEventListener('input', updateRiskValue);
+        document.getElementById('budget').addEventListener('input', updateBudgetValue);
+
+        // Initialize
+        buildTree();
+        updateInfoPanel('start');
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "AdLoadOptimizationAgent",
+  "description": "Optimizes ad load density and frequency to balance user experience with revenue generation across digital properties.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/adloadoptimizationagent",
+  "skills": [
+    "ad_density_optimization",
+    "frequency_capping",
+    "user_experience_balancing"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

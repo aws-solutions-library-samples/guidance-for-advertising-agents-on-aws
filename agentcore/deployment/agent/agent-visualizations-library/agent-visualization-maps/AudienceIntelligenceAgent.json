@@ -1,0 +1,45 @@
+{
+  "agentName": "AudienceIntelligenceAgent",
+  "agentId": "AudienceIntelligenceAgent",
+  "deploymentType": "agentcore",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "visualizationType": "metrics",
+      "title": "Audience Intelligence Metrics",
+      "description": "Key audience behavioral indicators"
+    },
+    {
+      "templateId": "allocations-visualization", 
+      "visualizationType": "allocations",
+      "title": "Audience Intelligence Allocation Strategy",
+      "description": "Strategic budget distribution across audience intelligence segments"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "visualizationType": "timeline", 
+      "title": "Audience Intelligence Timeline",
+      "description": "Intelligence gathering phases and insight development progression or consumer journeys"
+    },
+    {
+      "templateId": "segments-visualization",
+      "visualizationType": "segments",
+      "title": "Audience Intelligence Segment Strategy", 
+      "description": "Audience segment analysis and targeting intelligence prioritization supporting analysis approach"
+    }
+  ],
+  "collaborativeAgents": [
+    "AudienceStrategyAgent",
+    "MediaPlannerAgent",
+    "SocialSentimentAgent",
+    "TimingStrategyAgent"
+  ],
+  "primaryVisualization": "segments-visualization",
+  "capabilities": [
+    "Behavioral pattern analysis",
+    "Predictive audience modeling", 
+    "Real-time sentiment tracking",
+    "Intelligence-driven targeting",
+    "Cross-platform audience insights"
+  ]
+}

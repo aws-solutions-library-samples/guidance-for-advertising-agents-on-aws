@@ -1,0 +1,376 @@
+<!-- Main App Content (shown when authenticated) -->
+<div class="container" *ngIf="isAuthenticated">
+  <header class="modern-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1 class="app-title">{{title}}</h1>
+        <p class="app-subtitle">A <span class="playground-handwriting">playground</span> for simulating
+          {{getIndustry()}} scenarios using Agents on AWS</p>
+      </div>
+      <div class="user-section">
+
+        <div class="header-actions" (mouseenter)="onMenuHover(true)" (mouseleave)="onMenuHover(false)">
+
+          <!-- Expandable Menu Buttons (initially hidden) -->
+          <div class="expandable-buttons" [class.expanded]="isMenuExpanded">
+            <!-- <button class="nova-button secondary menu-button" 
+              class="nova-button secondary menu-button" 
+                    title="current user"
+                    [style.transform]="getButtonTransform(0)"
+                    [style.opacity]="getButtonOpacity(0)"><span class="user-email">{{ currentUser?.signInDetails?.loginId || 'User' }}</span>
+          </button> -->
+            <button class="nova-button secondary menu-button" (click)="startTour()" title="Start guided tour"
+              [style.transform]="getButtonTransform(1)" [style.opacity]="getButtonOpacity(1)">
+              <span class="material-icons">tour</span>
+              Tour
+            </button>
+            <button class="nova-button secondary menu-button hidden" (click)="clearDemoStorage()"
+              title="Clear demo local storage" [style.transform]="getButtonTransform(2)"
+              [style.opacity]="getButtonOpacity(2)">
+              <span class="material-icons">clear_all</span>
+              New Demo
+            </button>
+            <button class="nova-button secondary menu-button hidden" (click)="openAgentConfig()" title="Agent Configuration (Legacy)"
+              [style.transform]="getButtonTransform(3)" [style.opacity]="getButtonOpacity(3)">
+              <span class="material-icons">settings_applications</span>
+              Legacy Agents
+            </button>
+            <button class="nova-button secondary menu-button" (click)="openAgentManagement()" title="Agent Management"
+              [style.transform]="getButtonTransform(3)" [style.opacity]="getButtonOpacity(3)">
+              <span class="material-icons">hub</span>
+              Agents
+            </button>
+            <button class="nova-button secondary menu-button tab-setup-button" (click)="openQuickSetup()" title="Tab Configuration"
+              [style.transform]="getButtonTransform(4)" [style.opacity]="getButtonOpacity(4)">
+              <span class="material-icons">settings</span>
+              Tab Setup
+            </button>
+            <button class="nova-button primary menu-button" (click)="signOut()"
+              [style.transform]="getButtonTransform(5)" [style.opacity]="getButtonOpacity(5)">
+              <span class="material-icons">logout</span>
+              Sign Out
+            </button>
+          </div>
+
+          <!-- More Button (shows when menu is collapsed) -->
+          <button class="nova-button secondary more-button user-button" (click)="toggleMenu()" title="More options">
+            <span class="material-icons">more_horiz</span>
+            {{ currentUser?.signInDetails?.loginId || 'User' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoadingTabs">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <h3>Loading Tab Configurations</h3>
+      <p>Setting up your workspace...</p>
+    </div>
+  </div>
+
+  <!-- Tab Interface (shown when tabs are loaded) -->
+  <div class="nova-tab-container" *ngIf="!isLoadingTabs">
+    <div class="nova-tab-nav">
+      <div class="tabs-wrapper">
+        <button *ngFor="let tab of tabs" class="nova-tab" [class.active]="isActiveTab(tab.id)"
+          (click)="selectTab(tab.id)">
+          <div class="tab-icon-wrapper">
+            <span class="material-icons tab-icon">{{tab.icon}}</span>
+          </div>
+          <div class="tab-content">
+            <div class="tab-title">{{tab.title}}</div>
+            <div class="tab-description">{{tab.description}}</div>
+          </div>
+          <div class="tab-indicator" *ngIf="isActiveTab(tab.id)"></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="nova-tab-content">
+      <div class="content-wrapper">
+        <!-- Dynamic tab content - conditional rendering ensures component lifecycle -->
+        <ng-container *ngFor="let tab of tabs">
+          <app-generic-tab [tabId]="tab.id" [currentUser]="currentUser" *ngIf="isActiveTab(tab.id)"
+            (messagesUpdated)="messagesUpdated($event)" [tabConfig]="tab.config">
+          </app-generic-tab>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Router Outlet for Login -->
+<router-outlet *ngIf="!isAuthenticated"></router-outlet>
+
+<!-- Quick Setup Modal -->
+<div class="quick-setup-overlay" *ngIf="showQuickSetup" (click)="closeQuickSetup()">
+  <div class="quick-setup-modal standard-modal-panel" style='flex-direction: column;' (click)="$event.stopPropagation()">
+    <div class="quick-setup-header">
+      <h2>Quick Setup Configuration</h2>
+      <div class="header-actions" style="display: flex;gap:8px;">
+        <button class="nova-button primary" (click)="generateScenarios()" [disabled]="isGenerating">
+          <span class="material-icons">auto_awesome</span>
+          {{isGenerating ? 'Generating...' : 'Generate Scenarios'}}
+        </button>
+        <button class="nova-button secondary" (click)="addManualScenario()">
+          <span class="material-icons">add</span>
+          Add Manual Scenario
+        </button>
+        <button class="nova-button secondary circle-button" (click)="closeQuickSetup()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="quick-setup-content">
+      <!-- Version Management Section -->
+      <div class="setup-section">
+        <h3>Configuration Versions</h3>
+        <div class="version-selector" >
+          <label class="nova-label">Load Configuration Version:</label>
+          <div class="version-controls  nova-select">
+            <select [(ngModel)]="selectedVersionId" (change)="onVersionSelectionChange()"
+              [disabled]="isLoadingVersions">
+              <option *ngFor="let version of availableVersions" [value]="version.id">
+                {{version.name}} - {{version.description}}
+              </option>
+            </select>
+            <!--<button class="nova-button secondary delete-version-button" (click)="deleteVersion(selectedVersionId)"
+              [disabled]="selectedVersionId === 'current' || isLoadingVersions" title="Delete selected version">
+              <span class="material-icons">delete</span>
+            </button>-->
+          </div>
+          <div class="version-info" *ngIf="selectedVersionId !== 'current'">
+            <span class="material-icons">info</span>
+            <span>You are editing a previous version. Save to make it the current active configuration.</span>
+          </div>
+        </div>
+      </div>
+<div class="section-divider"></div>
+
+      <!-- Tab Management Section -->
+      <div class="setup-section">
+        <h3>Tab Management</h3>
+
+        <!-- Edit Mode Toggle -->
+        <div class="edit-mode-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" [checked]="isJsonEditMode" (change)="toggleJsonEditMode()">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Edit JSON Directly</span>
+          </label>
+        </div>
+
+        <!-- Form Mode (default) -->
+        <div *ngIf="!isJsonEditMode">
+          <div class="tab-selector">
+            <label>Selected Tab</label>
+              <select [(ngModel)]="selectedTabId" (change)="onTabSelectionChange()">
+              <option *ngFor="let tab of configTabs" [value]="tab.id">{{tab.title}}</option>
+            </select>
+            <div class="tab-actions">
+              <button class="nova-button secondary" (click)="addNewTab()">
+                <span class="material-icons">add</span>
+                Add Tab
+              </button>
+              <button class="nova-button secondary delete-button" (click)="deleteTab()"
+                [disabled]="configTabs.length <= 1" title="Delete current tab">
+                <span class="material-icons">delete</span>
+                Delete Tab
+              </button>
+            </div>
+          </div>
+
+          <!-- Tab Details Editor -->
+          <div class="tab-editor" *ngIf="selectedTab">
+            <div class="form-group">
+              <label>Tab Title:</label>
+              <input type="text" [(ngModel)]="selectedTab.title" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Description:</label>
+              <input type="text" [(ngModel)]="selectedTab.description" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Icon:</label>
+              <input type="text" [(ngModel)]="selectedTab.icon" class="form-control" placeholder="material-icons name">
+            </div>
+          </div>
+        </div>
+
+        <!-- JSON Edit Mode -->
+        <div *ngIf="isJsonEditMode" class="json-editor-section">
+          <div class="json-editor-header">
+            <h4>Configuration JSON Editor</h4>
+            <div class="json-editor-actions">
+              <button class="nova-button secondary" (click)="formatJson()" title="Format JSON">
+                <span class="material-icons">code</span>
+                Format
+              </button>
+              <button class="nova-button primary" (click)="applyJsonChanges()" title="Apply changes and return to form">
+                <span class="material-icons">check</span>
+                Apply Changes
+              </button>
+              <button class="nova-button secondary" (click)="cancelJsonChanges()" title="Cancel and return to form">
+                <span class="material-icons">close</span>
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div class="json-validation-error" *ngIf="jsonValidationError">
+            <span class="material-icons">error</span>
+            <span>{{jsonValidationError}}</span>
+          </div>
+
+          <div class="json-editor-container">
+            <textarea [(ngModel)]="configJsonString" class="json-editor-textarea"
+              placeholder="Configuration JSON will appear here..." spellcheck="false">
+            </textarea>
+          </div>
+
+          <div class="json-editor-help">
+            <p><strong>Tips:</strong></p>
+            <ul>
+              <li>Edit the JSON directly to make complex changes</li>
+              <li>Use the Format button to clean up indentation</li>
+              <li>Click Apply Changes to validate and return to the form view</li>
+              <li>Changes are not saved until you click "Save Configuration"</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+
+      <!-- Scenario Management Section -->
+      <div class="setup-section">
+        <h3>Scenario Management</h3>
+
+        <!-- Generation Prompt -->
+        <div class="generation-prompt" *ngIf="showGenerationPrompt">
+          <p>We will generate scenarios for you based on this prompt. Please update it if you need to.</p>
+          <textarea [(ngModel)]="generationPrompt" class="form-control prompt-textarea" rows="4"></textarea>
+          <div class="prompt-actions" style="display: flex">
+            <button class="nova-button primary" (click)="submitGeneration()" [disabled]="isGenerating">
+              {{isGenerating ? 'Generating...' : 'Generate'}}
+            </button>
+            <button class="nova-button secondary" (click)="cancelGeneration()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Scenarios List -->
+        <div class="scenarios-list" *ngIf="selectedTab && selectedTab.scenarios">
+          <div class=" standard-modal-panel scenario-item" *ngFor="let scenario of selectedTab.scenarios; let i = index">
+            <div class="scenario-header">
+              <h4>{{scenario.title}}</h4>
+              <div class="scenario-actions">
+                <button class="nova-button" (click)="editScenario(i)" title="Edit">
+                  <span class="material-icons">edit</span>
+                </button>
+                <button class="nova-button delete" (click)="deleteScenario(i)" title="Delete">
+                  <span class="material-icons">delete</span>
+                </button>
+              </div>
+            </div>
+            <p class="scenario-description">{{scenario.description}}</p>
+            <div class="scenario-meta">
+              <span class="category">{{scenario.category}}</span>
+              <span class="agent-type">{{scenario.agentType}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario Editor Modal -->
+      <div class="scenario-editor-overlay" *ngIf="showScenarioEditor" (click)="closeScenarioEditor()">
+        <div class="scenario-editor-modal" (click)="$event.stopPropagation()">
+          <div class="scenario-editor-header">
+            <h3>{{editingScenarioIndex >= 0 ? 'Edit' : 'Add'}} Scenario</h3>
+            <button class="close-button" (click)="closeScenarioEditor()">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          <div class="scenario-editor-content">
+            <div class="form-group">
+              <label>Title:</label>
+              <input type="text" [(ngModel)]="editingScenario.title" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Description:</label>
+              <textarea [(ngModel)]="editingScenario.description" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Query:</label>
+              <textarea [(ngModel)]="editingScenario.query" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Category:</label>
+              <input type="text" readonly [(ngModel)]="editingScenario.category" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Default Agent (Supervisor):</label>
+              <select [(ngModel)]="editingScenario.agentType" (change)="onAgentSelected()" class="form-control">
+                <option *ngFor="let agent of getAllAgents()" [value]="agent.name">{{agent.name}}</option>
+              </select>
+            </div>
+            <div class="scenario-editor-actions" style="display:flex; flex-direction: row; gap:8px;">
+              <button class="nova-button primary" (click)="saveScenario()">Save</button>
+              <button class="nova-button secondary" (click)="closeScenarioEditor()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-setup-footer">
+      <div class="footer-info" *ngIf="selectedVersionId !== 'current' || isJsonEditMode">
+        <span class="material-icons">info</span>
+        <span *ngIf="selectedVersionId !== 'current' && !isJsonEditMode">Saving will make this version the current
+          active configuration</span>
+        <span *ngIf="isJsonEditMode && selectedVersionId === 'current'">JSON changes will be applied and validated
+          before saving</span>
+        <span *ngIf="isJsonEditMode && selectedVersionId !== 'current'">JSON changes will be applied and this version
+          will become the current active configuration</span>
+      </div>
+      <div class="footer-actions" style="display:flex; flex-direction: row; gap:8px;">
+        <button class="nova-button primary" (click)="saveConfiguration()">
+          {{selectedVersionId === 'current' ? 'Save Configuration' : 'Save as Current Version'}}
+        </button>
+        <button class="nova-button secondary" (click)="closeQuickSetup()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Configuration Modal (Legacy) -->
+<div class="agent-config-overlay" *ngIf="showAgentConfig" (click)="closeAgentConfig()">
+  <div class="agent-config-modal" (click)="$event.stopPropagation()">
+    <app-agent-config (closeModal)="closeAgentConfig()"></app-agent-config>
+  </div>
+</div>
+
+<!-- Agent Management Modal -->
+<!-- Validates: Requirements 1.1, 1.2, 1.3, 1.4 -->
+<app-agent-management-modal
+  [isOpen]="showAgentManagement"
+  [currentUser]="currentUser?.signInDetails?.loginId || ''"
+  (closeModal)="closeAgentManagement()">
+</app-agent-management-modal>
+
+<!-- Demo Modal -->
+<app-demo-modal *ngIf="showDemoModal" [currentUser]="currentUser" (closeModal)="closeDemoModal()">
+</app-demo-modal>
+
+<!-- Context Panel Component (Floating) -->
+<app-context-panel class="context-panel-element" [style.bottom.px]="contextDetailsPosition.bottom"
+  [style.right.px]="contextDetailsPosition.right" *ngIf="isAuthenticated&&currentTab"
+  [tabConfig]="currentTab.config" [currentContext]="contextData"
+  (contextPanelShow)="onContextPanelShow()" (contextPanelHide)="onContextPanelHide()"
+  (publisherSelect)="selectPublisher($event)">
+</app-context-panel>
+
+<!-- Tour Overlay (shown at all times when authenticated) -->
+<app-tour-overlay *ngIf="isAuthenticated"></app-tour-overlay>

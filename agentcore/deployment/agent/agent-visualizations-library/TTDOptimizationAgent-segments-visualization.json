@@ -1,0 +1,52 @@
+{
+  "agentName": "TTDOptimizationAgent",
+  "agentId": "ttd-optimization-agent",
+  "templateId": "segments-visualization",
+  "usage": "Audience segment performance and bid factor optimization",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Segment Performance",
+    "subtitle": "Segment-level optimization with bid factor recommendations",
+    "segments": [
+      {
+        "primaryLabel": "Segment name (e.g., 'In-Market Auto', 'High-Value Shoppers', 'Brand Engagers')",
+        "secondaryLabel": "Segment type (e.g., 'First-Party', 'Third-Party', 'Contextual')",
+        "description": "Segment characteristics and targeting strategy",
+        "actualValue": "Current performance (e.g., '3.2x ROAS', '12% CVR')",
+        "targetValue": "Performance target",
+        "forecastedValue": "Projected performance with optimization",
+        "actualLabel": "Current performance description",
+        "targetLabel": "Target performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'ROAS', 'CPA')",
+          "value": "KPI value"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'CTR', 'CVR')",
+          "value": "KPI value"
+        },
+        "budgetAmount": "Segment spend allocation",
+        "statusIndicator": "Segment status: 'optimized', 'active', 'testing', 'underperforming'",
+        "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Performance level: 'high', 'medium', 'low'",
+        "insights": ["Key segment insights"],
+        "risks": ["Risk factors for this segment"],
+        "recommendations": ["Bid factor and targeting recommendations"],
+        "metadata": {
+          "size": "Segment reach size",
+          "bidFactor": "Current bid factor (e.g., '1.2x', '0.8x')",
+          "recommendedBidFactor": "Recommended bid factor adjustment",
+          "impressionShare": "Segment impression share"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of segments analyzed",
+      "activeSegments": "Number of active segments",
+      "topPerformer": "Best performing segment",
+      "optimizationOpportunity": "Segment with highest optimization potential"
+    }
+  }
+}

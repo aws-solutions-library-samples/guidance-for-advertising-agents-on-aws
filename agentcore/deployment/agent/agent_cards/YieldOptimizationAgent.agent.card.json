@@ -1,0 +1,17 @@
+{
+  "name": "YieldOptimizationAgent",
+  "description": "Maximizes publisher revenue through intelligent pricing, inventory management, and demand optimization.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/yieldoptimizationagent",
+  "skills": [
+    "revenue_optimization",
+    "pricing_strategy",
+    "demand_management"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

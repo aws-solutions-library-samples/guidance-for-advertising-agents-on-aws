@@ -1,0 +1,46 @@
+{
+  "agentName": "BidSimulatorAgent",
+  "agentId": "bid-simulator-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Budget distribution across strategies and channels",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Simulated Budget Allocation Strategy",
+    "subtitle": "Budget distribution based on bid simulation results",
+    "totalBudget": "Total simulated budget (e.g., '$3,000,000')",
+    "currency": "Currency symbol (e.g., '$')",
+    "allocations": [
+      {
+        "primaryLabel": "Bid strategy or scenario (e.g., 'Aggressive Bidding', 'Conservative Approach', 'Balanced Strategy')",
+        "secondaryLabel": "Strategy type (e.g., 'High-Risk/High-Reward', 'Stable Performance', 'Moderate Growth')",
+        "description": "Simulation-based allocation rationale (e.g., 'Aggressive bidding on high-converting segments')",
+        "allocationPercentage": "Budget percentage (e.g., 35)",
+        "budgetAmount": "Dollar allocation (e.g., '$1,050,000')",
+        "performanceLevel": "Simulated performance: 'high', 'medium', 'low'",
+        "statusIndicator": "Simulation status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Simulation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Strategy risk: 'low', 'medium', 'high'",
+        "insights": [
+          "Bid simulation insights for this allocation"
+        ],
+        "risks": [
+          "Simulated risks and potential challenges"
+        ],
+        "recommendations": [
+          "Strategy optimization suggestions based on simulation"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last simulation run",
+          "dataSource": "Simulation data source (e.g., 'Historical Performance Model', 'Market Trend Analysis')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of simulated allocation strategies",
+      "optimizedAllocations": "Number of high-confidence simulations",
+      "riskAllocations": "Number of high-risk strategy allocations",
+      "recommendedAdjustment": "Overall simulation-based recommendation"
+    }
+  }
+}

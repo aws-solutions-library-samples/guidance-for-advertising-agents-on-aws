@@ -1,0 +1,38 @@
+{
+    "metadataAttributes": {
+        "data_source": "brand_profile",
+        "category": "media_planning",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "brand_intelligence",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "brand_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "description"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "attribute_type"
+                    },
+                    {
+                        "fieldName": "attribute_name"
+                    },
+                    {
+                        "fieldName": "attribute_value"
+                    },
+                    {
+                        "fieldName": "market_relevance"
+                    }
+                ]
+            }
+        }
+    }
+}

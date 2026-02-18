@@ -1,0 +1,394 @@
+/* Sessions Panel Styles - Matching Scenarios Panel Design */
+
+/* Sessions Toggle Button */
+.sessions-toggle {
+  background: linear-gradient(135deg, #6842ff 0%, #491782 100%);
+  
+  &:hover {
+    box-shadow: 0 8px 24px rgba(73, 23, 130, 0.35);
+    background: linear-gradient(135deg, #491782 0%, #6712c7 100%);
+  }
+  
+  &.active {
+    background: linear-gradient(135deg, #c300e0 0%, #ff6200 100%);
+    box-shadow: 0 4px 16px rgba(195, 0, 224, 0.4);
+  }
+}
+
+/* Sessions Panel */
+.sessions-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 400px;
+  max-height: calc(100vh - 200px);
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e7eb;
+  z-index: 1000;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  
+  &.visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  .panel-header {
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #6842ff 0%, #491782 100%);
+    color: white;
+    
+    h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+    
+    .close-button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        transform: scale(1.05);
+      }
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+  
+  .panel-content {
+    padding: 20px;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    
+    .new-session-button {
+      width: 100%;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #6842ff 0%, #491782 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 16px rgba(73, 23, 130, 0.25);
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(73, 23, 130, 0.35);
+        background: linear-gradient(135deg, #491782 0%, #6712c7 100%);
+      }
+      
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+    
+    .session-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      margin-top: 24px;
+      
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    
+    .current-session-info {
+      margin-bottom: 20px;
+      
+      .session-item.current {
+        background: linear-gradient(135deg, rgba(104, 66, 255, 0.1) 0%, rgba(73, 23, 130, 0.05) 100%);
+        border: 2px solid #6842ff;
+        cursor: default;
+        
+        &:hover {
+          transform: none;
+          box-shadow: 0 4px 16px rgba(73, 23, 130, 0.15);
+        }
+      }
+    }
+    
+    .sessions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      
+      .session-item {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #6842ff, #c300e0, #ff6200);
+          transform: scaleX(0);
+          transition: transform 0.3s ease;
+          border-radius: 12px 12px 0 0;
+        }
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(73, 23, 130, 0.15);
+          border-color: #6842ff;
+          
+          &::before {
+            transform: scaleX(1);
+          }
+          
+          .delete-session-button {
+            opacity: 1;
+          }
+        }
+        
+        &.current {
+          background: linear-gradient(135deg, rgba(104, 66, 255, 0.1) 0%, rgba(73, 23, 130, 0.05) 100%);
+          border-color: #6842ff;
+          cursor: default;
+          
+          &::before {
+            transform: scaleX(1);
+          }
+          
+          &:hover {
+            transform: none;
+          }
+        }
+        
+        .session-icon {
+          margin-right: 12px;
+          color: #6842ff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          mat-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
+        }
+        
+        .session-details {
+          flex: 1;
+          min-width: 0;
+          
+          .session-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          
+          .session-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #6b7280;
+            
+            .message-count {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              background: rgba(73, 23, 130, 0.1);
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-weight: 500;
+              
+              &::before {
+                content: '💬';
+                font-size: 11px;
+              }
+            }
+            
+            .session-date {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              
+              &::before {
+                content: '🕒';
+                font-size: 11px;
+              }
+            }
+          }
+        }
+        
+        .delete-session-button {
+          opacity: 0;
+          background: none;
+          border: none;
+          color: #ef4444;
+          cursor: pointer;
+          padding: 6px;
+          border-radius: 50%;
+          transition: all 0.2s ease;
+          margin-left: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          &:hover {
+            background-color: #fee2e2;
+            transform: scale(1.1);
+          }
+          
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+      }
+    }
+    
+    .empty-sessions {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      
+      mat-icon {
+        font-size: 64px;
+        width: 64px;
+        height: 64px;
+        color: #d1d5db;
+        margin-bottom: 20px;
+      }
+      
+      p {
+        margin: 8px 0;
+        font-size: 15px;
+        color: #374151;
+        font-weight: 500;
+        
+        &.empty-subtitle {
+          font-size: 13px;
+          color: #9ca3af;
+          font-weight: 400;
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive design
+@media (max-width: 768px) {
+  .sessions-panel {
+    width: 100vw;
+    top: 0;
+    right: 0;
+    max-height: 100vh;
+    border-radius: 0;
+    
+    .panel-header {
+      padding: 20px 16px;
+      
+      h3 {
+        font-size: 18px;
+      }
+    }
+    
+    .panel-content {
+      padding: 16px;
+      max-height: calc(100vh - 80px);
+      
+      .new-session-button {
+        padding: 12px 16px;
+        margin-bottom: 20px;
+      }
+      
+      .sessions-list {
+        gap: 10px;
+        
+        .session-item {
+          padding: 12px;
+          
+          .session-icon mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+          
+          .session-details {
+            .session-title {
+              font-size: 14px;
+            }
+            
+            .session-meta {
+              font-size: 11px;
+              gap: 8px;
+            }
+          }
+        }
+      }
+      
+      .empty-sessions {
+        padding: 40px 16px;
+        
+        mat-icon {
+          font-size: 48px;
+          width: 48px;
+          height: 48px;
+        }
+      }
+    }
+  }
+}

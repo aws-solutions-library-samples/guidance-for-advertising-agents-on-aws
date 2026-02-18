@@ -1,0 +1,174 @@
+{
+  "logoDetectionInsights": {
+    "executiveSummary": {
+      "totalEventsAnalyzed": 15,
+      "totalInvestmentTracked": "€32.4M",
+      "averageROI": "234%",
+      "topPerformingEvent": "FIFA World Cup Final 2026",
+      "underperformingEvents": ["Wimbledon Championships", "French Open Final"],
+      "keyRecommendation": "Reallocate €1.2M from tennis sponsorships to football partnerships for 40% ROI improvement"
+    },
+    "performanceMetrics": {
+      "visibilityEfficiency": {
+        "bestPerformer": {
+          "event": "World Cup Final 2026",
+          "brand": "Global Sports Apparel",
+          "efficiency": "98.2%",
+          "actualVsContracted": "58.9 min vs 60.0 min"
+        },
+        "worstPerformer": {
+          "event": "Wimbledon Championships",
+          "brand": "Premium Automotive Brand", 
+          "efficiency": "74.8%",
+          "actualVsContracted": "18.7 min vs 25.0 min"
+        }
+      },
+      "costEffectiveness": {
+        "mostEfficient": {
+          "campaign": "Global Sports Apparel - World Cup Kit",
+          "costPerSecond": "€0.38",
+          "totalVisibility": "58.9 minutes",
+          "audienceReach": "1.2B viewers"
+        },
+        "leastEfficient": {
+          "campaign": "Premium Automotive Brand - Super Bowl",
+          "costPerSecond": "€2.15", 
+          "totalVisibility": "9.2 minutes",
+          "audienceReach": "125M viewers"
+        }
+      }
+    },
+    "competitiveIntelligence": {
+      "marketLeadership": {
+        "dominantBrands": [
+          {
+            "brand": "Global Sports Apparel",
+            "averageShare": "38%",
+            "strongestEvents": ["World Cup", "Premier League", "Champions League"],
+            "competitiveAdvantage": "Kit sponsorship provides consistent visibility"
+          },
+          {
+            "brand": "Premium Automotive Brand",
+            "averageShare": "32%",
+            "strongestEvents": ["Formula 1", "Champions League"],
+            "competitiveAdvantage": "High-value event title sponsorships"
+          }
+        ],
+        "emergingThreats": [
+          {
+            "threat": "Cryptocurrency brands entering sports",
+            "impact": "15% increase in sponsorship costs",
+            "affectedEvents": ["Premier League", "NBA Finals"]
+          },
+          {
+            "threat": "Streaming platforms as sponsors",
+            "impact": "New competition for premium placements",
+            "affectedEvents": ["Olympics", "World Cup"]
+          }
+        ]
+      }
+    },
+    "cameraAngleOptimization": {
+      "highestROIAngles": [
+        {
+          "angle": "Player celebration close-ups",
+          "averageVisibility": "8.2 seconds",
+          "engagementLevel": "Peak",
+          "recommendedEvents": ["Football", "Basketball", "Olympics"]
+        },
+        {
+          "angle": "Victory ceremony shots",
+          "averageVisibility": "15.8 seconds", 
+          "engagementLevel": "Peak",
+          "recommendedEvents": ["Tennis", "Golf", "Olympics"]
+        }
+      ],
+      "underperformingPlacements": [
+        {
+          "placement": "Sideline LED boards",
+          "issue": "Camera angle limitations during play",
+          "visibilityRate": "34%",
+          "recommendation": "Negotiate corner or goal-line placement"
+        },
+        {
+          "placement": "Dugout/bench branding",
+          "issue": "Limited camera focus during active play",
+          "visibilityRate": "42%",
+          "recommendation": "Focus on timeout and substitution moments"
+        }
+      ]
+    },
+    "seasonalTrends": {
+      "peakVisibilityPeriods": [
+        {
+          "period": "World Cup/Olympics years",
+          "visibilityIncrease": "340%",
+          "costIncrease": "180%",
+          "netROIImpact": "+89%"
+        },
+        {
+          "period": "European Championship years", 
+          "visibilityIncrease": "220%",
+          "costIncrease": "120%",
+          "netROIImpact": "+45%"
+        }
+      ],
+      "optimalInvestmentWindows": [
+        {
+          "window": "Non-major tournament years",
+          "strategy": "Secure multi-year deals at lower rates",
+          "potentialSavings": "25-40%"
+        }
+      ]
+    },
+    "portfolioOptimization": {
+      "renewalRecommendations": {
+        "strongRenew": [
+          {
+            "partnership": "Global Sports Apparel - World Cup Kit",
+            "reason": "451% ROI, 45% market share, peak engagement",
+            "recommendedInvestment": "Increase by 20%"
+          },
+          {
+            "partnership": "Premium Automotive - Formula 1 Monaco",
+            "reason": "276% ROI, 42% market share, luxury audience alignment",
+            "recommendedInvestment": "Maintain current level"
+          }
+        ],
+        "renegotiate": [
+          {
+            "partnership": "Premium Automotive - Champions League",
+            "reason": "187% ROI below target, 6% visibility shortfall",
+            "recommendedAction": "Demand 15% rate reduction or additional placements"
+          }
+        ],
+        "terminate": [
+          {
+            "partnership": "Premium Automotive - Wimbledon",
+            "reason": "124% ROI, 25% visibility shortfall, weak competitive position",
+            "recommendedAction": "Exit and reallocate €1.2M to football partnerships"
+          }
+        ]
+      },
+      "budgetReallocation": {
+        "fromUnderperforming": "€1.95M",
+        "toHighPerforming": "€1.95M",
+        "projectedROIIncrease": "67%",
+        "projectedVisibilityIncrease": "34%"
+      }
+    },
+    "technicalInsights": {
+      "detectionAccuracy": {
+        "averageAccuracy": "94.7%",
+        "highestAccuracy": "99.1% (World Cup Final - clear jersey logos)",
+        "lowestAccuracy": "87.3% (Monaco GP - fast-moving car logos)",
+        "improvementAreas": ["Motion blur handling", "Partial logo detection"]
+      },
+      "brandSafetyScores": {
+        "averageScore": "97.8",
+        "highestRisk": "Cryptocurrency sponsorships (95.8 average)",
+        "safestCategories": ["Sports apparel", "Luxury watches", "Automotive"]
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{"bidding_strategies": [
+    {
+      "strategy_id": "cpc_optimization",
+      "name": "CPC Optimization",
+      "type": "cost_focused",
+      "parameters": {
+        "target_cpc": 1.25,
+        "bid_adjustment_factor": 0.15,
+        "frequency_cap": 3,
+        "daypart_modifiers": {
+          "morning": 0.9,
+          "afternoon": 1.1,
+          "evening": 1.2,
+          "night": 0.8
+        }
+      },
+      "performance_expectations": {
+        "volume_multiplier": 1.2,
+        "efficiency_score": 0.85,
+        "conversion_rate_impact": 0.95
+      }
+    },
+    {
+      "strategy_id": "roas_maximization", 
+      "name": "ROAS Maximization",
+      "type": "revenue_focused",
+      "parameters": {
+        "target_roas": 3.5,
+        "bid_adjustment_factor": 0.25,
+        "audience_value_weighting": true,
+        "creative_performance_boost": 1.15
+      },
+      "performance_expectations": {
+        "volume_multiplier": 0.8,
+        "efficiency_score": 1.25,
+        "conversion_rate_impact": 1.15
+      }
+    }
+  ]
+}

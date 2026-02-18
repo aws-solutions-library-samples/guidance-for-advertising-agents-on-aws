@@ -1,0 +1,52 @@
+{
+  "agentName": "TTDOptimizationAgent",
+  "agentId": "ttd-optimization-agent",
+  "templateId": "channels-visualization",
+  "usage": "Device and supply channel performance with bid optimization",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Channel & Device Performance",
+    "subtitle": "Cross-device and supply source optimization",
+    "totalBudget": "Total campaign spend",
+    "channels": [
+      {
+        "primaryLabel": "Channel/Device name (e.g., 'Desktop', 'Mobile', 'CTV', 'Tablet')",
+        "secondaryLabel": "Supply type (e.g., 'Premium', 'Open Exchange', 'PMP')",
+        "description": "Channel strategy and performance characteristics",
+        "currentValue": "Current performance (e.g., '4.2x ROAS', '$8.50 CPA')",
+        "targetValue": "Performance target",
+        "forecastedValue": "Projected performance",
+        "budgetAmount": "Channel spend allocation",
+        "budgetPercentage": "Spend percentage",
+        "statusIndicator": "Channel status: 'optimized', 'active', 'testing', 'underperforming'",
+        "performanceLevel": "Performance level: 'high', 'good', 'medium', 'low'",
+        "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'ROAS', 'CPA')",
+          "value": "KPI value"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Viewability', 'VCR')",
+          "value": "KPI value"
+        },
+        "insights": ["Channel performance insights"],
+        "recommendations": ["Bid factor and budget recommendations"],
+        "metadata": {
+          "impressions": "Total impressions",
+          "clicks": "Total clicks",
+          "conversions": "Total conversions",
+          "bidFactor": "Current bid factor",
+          "recommendedBidFactor": "Recommended bid factor",
+          "viewabilityRate": "Viewability rate for this channel"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of active channels",
+      "topPerformer": "Best performing channel",
+      "efficiencyLeader": "Most efficient channel by CPA",
+      "scalingOpportunity": "Channel with highest scaling potential"
+    }
+  }
+}

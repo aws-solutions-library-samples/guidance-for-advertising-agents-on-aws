@@ -1,0 +1,17 @@
+{
+  "name": "AudienceIntelligenceAgent",
+  "description": "Provides consumer behavior analysis, audience segmentation, and privacy-compliant targeting strategies for campaign effectiveness.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/audienceintelligenceagent",
+  "skills": [
+    "audience_segmentation",
+    "behavioral_analysis",
+    "targeting_strategy"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

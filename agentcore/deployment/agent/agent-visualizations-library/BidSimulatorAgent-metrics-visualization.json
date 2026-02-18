@@ -1,0 +1,47 @@
+{
+  "agentName": "BidSimulatorAgent",
+  "agentId": "bid-simulator-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Performance metrics, ROAS projections, campaign KPIs",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Bid Performance Projections",
+    "subtitle": "ROAS forecasts and bidding strategy metrics",
+    "collaborativeInsights": {
+      "primaryAgent": "BidSimulatorAgent",
+      "supportingAgent1": "BidOptimizationAgent",
+      "supportingAgent2": "ChannelMixOptimizationAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Bidding Performance (e.g., 'ROAS Metrics', 'Efficiency Indicators')",
+        "secondaryLabel": "Category description (e.g., 'Return on ad spend projections')",
+        "items": [
+          {
+            "primaryLabel": "Specific metric (e.g., 'Projected ROAS', 'Win Rate', 'Average CPC')",
+            "actualValue": "Current performance (e.g., '3.2x', '45%', '$2.50')",
+            "targetValue": "Bidding target (e.g., '4.5x', '60%', '$2.00')",
+            "forecastedValue": "Projected outcome (e.g., '4.1x', '55%', '$2.15')",
+            "actualLabel": "Current bidding performance description",
+            "targetLabel": "Target bidding goal description",
+            "forecastedLabel": "Forecasted bidding outcome description",
+            "unit": "Measurement unit (e.g., 'x', '%', '$')",
+            "trend": "Performance direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Simulation confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary bidding metric",
+            "insights": [
+              "Bidding strategy insights and optimization opportunities"
+            ],
+            "risks": [
+              "Risk factors affecting bid performance"
+            ],
+            "recommendations": [
+              "Bid optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

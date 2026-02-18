@@ -1,0 +1,57 @@
+{
+  "templateId": "segments-visualization",
+  "templateName": "Segments Visualization",
+  "description": "Template for audience segments, content categories, and market segments analysis",
+  "usage": [
+    "Audience segment analysis",
+    "Content type performance",
+    "Market segment optimization",
+    "Behavioral cohorts",
+    "Demographic targeting"
+  ],
+  "schema": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "segments": [
+      {
+        "primaryLabel": "string - Segment name",
+        "secondaryLabel": "string - Segment category",
+        "description": "string - Detailed description",
+        "actualValue": "string - Current performance",
+        "targetValue": "string - Target performance",
+        "forecastedValue": "string - Projected performance",
+        "actualLabel": "string - Actual description",
+        "targetLabel": "string - Target description",
+        "forecastedLabel": "string - Forecast description",
+        "primaryMetric": {
+          "label": "string - Primary KPI name",
+          "value": "string - Primary KPI value"
+        },
+        "secondaryMetric": {
+          "label": "string - Secondary KPI name",
+          "value": "string - Secondary KPI value"
+        },
+        "budgetAmount": "string - Allocated budget",
+        "statusIndicator": "string - optimized/active/underperforming",
+        "confidenceLevel": "string - high/medium/low",
+        "performanceLevel": "string - high/medium/low",
+        "insights": ["array of string - Segment insights"],
+        "risks": ["array of string - Risk factors"],
+        "recommendations": ["array of string - Optimization strategies"],
+        "metadata": {
+          "size": "string - Segment size",
+          "growth": "string - Growth rate",
+          "engagement": "string - Engagement level"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "number",
+      "activeSegments": "number",
+      "topPerformer": "string - Best segment",
+      "growthOpportunity": "string - Growth potential"
+    }
+  }
+}

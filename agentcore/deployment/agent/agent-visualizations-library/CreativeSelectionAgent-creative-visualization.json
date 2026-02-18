@@ -1,0 +1,53 @@
+{
+  "agentName": "CreativeSelectionAgent",
+  "agentId": "CreativeSelectionAgent",
+  "templateId": "creative-visualization",
+  "usage": "Generated creative assets display (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "creative",
+    "templateId": "creative-visualization",
+    "title": "Creative Asset Strategy",
+    "subtitle": "Generated creative variations and performance predictions",
+    "creatives": [
+      {
+        "imageId": "Unique identifier from image generation (e.g., 'img_001_brand_hero')",
+        "primaryLabel": "Creative name or concept (e.g., 'Hero Brand Message', 'Product Focus Variant')",
+        "secondaryLabel": "Target audience (e.g., 'High-Value Prospects', 'Millennials 25-35')",
+        "description": "Creative concept and strategy description",
+        "imageUrl": "Full resolution image URL from generation service",
+        "thumbnailUrl": "Thumbnail image URL for preview",
+        "status": "Creative status: 'pending', 'ready', 'approved'",
+        "metadata": {
+          "colorScheme": [
+            "Hex color codes used in creative (e.g., '#FF6B35', '#004E89')"
+          ],
+          "dimensions": "Image dimensions (e.g., '1920x1080', '1080x1080')",
+          "format": "File format (e.g., 'PNG', 'JPG', 'SVG')",
+          "generated": "Generation timestamp (ISO format)",
+          "tags": [
+            "Creative tags for categorization (e.g., 'hero', 'product', 'lifestyle')"
+          ]
+        },
+        "performance": {
+          "expectedCTR": "Expected click-through rate (e.g., '2.8%')",
+          "expectedEngagement": "Engagement prediction (e.g., '4.5%', 'High')",
+          "targetAudience": "Primary target demographic (e.g., 'Adults 25-45, HHI $75K+')"
+        }
+      }
+    ],
+    "summary": {
+      "totalCreatives": "Number of creative variations generated",
+      "readyForUse": "Number of creatives ready for deployment",
+      "averageScore": "Average performance prediction score",
+      "recommendedVariation": "Top recommended creative variation",
+      "strategy": "Overall creative testing and deployment strategy"
+    },
+    "guidelines": {
+      "brandColors": [
+        "Brand color palette hex codes"
+      ],
+      "tone": "Brand voice and tone description",
+      "keyMessage": "Core brand message or value proposition"
+    }
+  }
+}

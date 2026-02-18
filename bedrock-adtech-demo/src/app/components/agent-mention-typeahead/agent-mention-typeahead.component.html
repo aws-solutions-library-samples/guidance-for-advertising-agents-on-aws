@@ -1,0 +1,43 @@
+<div 
+  #typeaheadContainer
+  class="agent-typeahead-container" id="typeaheadContainer" (keydown)="onKeyDown($event)"
+  [style.bottom.vh]="5" 
+  [style.left.px]="position.left"
+  [class.visible]="isVisible && suggestions.length > 0">
+  
+  <div class="typeahead-header">
+    <span class="material-icons header-icon">alternate_email</span>
+    <span class="header-text">Mention an agent</span>
+  </div>
+  
+  <div 
+    class="agent-suggestion" 
+    *ngFor="let suggestion of suggestions; let i = index"
+    [class.selected]="i === selectedIndex"
+    (click)="selectAgent(suggestion)"
+    (mouseenter)="selectedIndex = i">
+    
+    <div class="agent-icon" [style.color]="suggestion.agent.color">
+      <span class="material-icons">{{ getAgentIcon(suggestion.key) }}</span>
+    </div>
+    
+    <div class="agent-details">
+      <div class="agent-name" [innerHTML]="highlightSearchText(suggestion.displayName)"></div>
+      <div class="agent-team" *ngIf="getAgentTeam(suggestion.key)">
+        <span class="team-badge">{{ getAgentTeam(suggestion.key) }}</span>
+      </div>
+      <div class="agent-description">{{ suggestion.description }}</div>
+    </div>
+    
+    <div class="selection-indicator" *ngIf="i === selectedIndex">
+      <span class="material-icons">keyboard_return</span>
+    </div>
+  </div>
+  
+  <div class="typeahead-footer" *ngIf="suggestions.length > 0">
+    <div class="footer-hint">
+      <span class="material-icons hint-icon">keyboard</span>
+      <span>Use ↑↓ to navigate, Enter to select, Esc to cancel</span>
+    </div>
+  </div>
+</div> 

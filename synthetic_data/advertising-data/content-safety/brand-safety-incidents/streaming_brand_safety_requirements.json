@@ -1,0 +1,283 @@
+{
+  "advertiser_brand_safety_profiles": [
+    {
+      "advertiser_id": "ADV001",
+      "company_name": "EcoTech Solutions",
+      "industry": "Sustainable Technology",
+      "brand_safety_tier": "Premium",
+      "content_rating_requirements": ["G", "PG", "PG-13"],
+      "prohibited_content_categories": [
+        "Violence",
+        "Adult Content",
+        "Controversial Politics",
+        "Gambling",
+        "Alcohol/Tobacco"
+      ],
+      "preferred_content_categories": [
+        "Environmental Documentaries",
+        "Educational Content",
+        "Family Programming",
+        "Science & Technology",
+        "Sustainable Living"
+      ],
+      "demographic_targeting": {
+        "primary": "Environmentally conscious families 25-55",
+        "secondary": "Tech-forward professionals 28-45",
+        "avoid": "Content with high teen-only viewership"
+      },
+      "seasonal_preferences": {
+        "high_spend_periods": ["Earth Day", "Back to School", "New Year"],
+        "avoid_periods": ["Black Friday", "Holiday Shopping"],
+        "content_alignment": "Environmental awareness campaigns"
+      },
+      "geographic_requirements": {
+        "primary_markets": ["North America", "Europe", "Australia"],
+        "content_localization": "Environmental messaging must be culturally appropriate",
+        "avoid_regions": "Areas with conflicting environmental policies"
+      },
+      "brand_safety_score_minimum": 9.5,
+      "social_sentiment_minimum": 8.0,
+      "family_co_viewing_preference": "High",
+      "educational_value_minimum": 7.0,
+      "advertising_integration_preferences": [
+        "Native content integration",
+        "Educational sponsorships",
+        "Environmental impact messaging",
+        "Sustainable product placements"
+      ]
+    },
+    {
+      "advertiser_id": "ADV002", 
+      "company_name": "FamilyFirst Foods",
+      "industry": "Family Food Products",
+      "brand_safety_tier": "Family Premium",
+      "content_rating_requirements": ["G", "PG"],
+      "prohibited_content_categories": [
+        "Violence",
+        "Adult Content", 
+        "Mature Themes",
+        "Controversial Topics",
+        "Competitive Food Brands"
+      ],
+      "preferred_content_categories": [
+        "Family Programming",
+        "Kids Content",
+        "Cooking Shows",
+        "Educational Content",
+        "Wholesome Entertainment"
+      ],
+      "demographic_targeting": {
+        "primary": "Families with children 6-16",
+        "secondary": "Parents 25-45",
+        "avoid": "Adult-only or teen-exclusive content"
+      },
+      "seasonal_preferences": {
+        "high_spend_periods": ["Back to School", "Summer Vacation", "Holiday Season"],
+        "content_alignment": "Family meal times and activities"
+      },
+      "geographic_requirements": {
+        "primary_markets": ["North America", "Family-focused International"],
+        "content_localization": "Family values must align with local culture"
+      },
+      "brand_safety_score_minimum": 9.8,
+      "social_sentiment_minimum": 8.5,
+      "family_co_viewing_preference": "Very High",
+      "educational_value_minimum": 6.0,
+      "advertising_integration_preferences": [
+        "Family meal integration",
+        "Cooking show sponsorships", 
+        "Nutritional education content",
+        "Family activity tie-ins"
+      ]
+    },
+    {
+      "advertiser_id": "ADV003",
+      "company_name": "TechForward Gaming",
+      "industry": "Gaming Technology",
+      "brand_safety_tier": "Teen/Young Adult",
+      "content_rating_requirements": ["PG", "PG-13", "T for Teen equivalent"],
+      "prohibited_content_categories": [
+        "Excessive Violence",
+        "Adult Content",
+        "Gambling (Real Money)",
+        "Substance Abuse"
+      ],
+      "preferred_content_categories": [
+        "Gaming Content",
+        "Technology Documentaries", 
+        "Adventure Programming",
+        "Competitive Sports",
+        "Innovation Content"
+      ],
+      "demographic_targeting": {
+        "primary": "Gamers and tech enthusiasts 13-35",
+        "secondary": "STEM-focused audiences",
+        "avoid": "Very young children content"
+      },
+      "seasonal_preferences": {
+        "high_spend_periods": ["Gaming Conventions", "Holiday Gaming Season", "Summer Gaming"],
+        "content_alignment": "Gaming culture and technology innovation"
+      },
+      "geographic_requirements": {
+        "primary_markets": ["Global Gaming Markets", "Tech Hubs"],
+        "content_localization": "Gaming culture sensitivity required"
+      },
+      "brand_safety_score_minimum": 8.5,
+      "social_sentiment_minimum": 7.5,
+      "family_co_viewing_preference": "Medium",
+      "educational_value_minimum": 5.0,
+      "advertising_integration_preferences": [
+        "Gaming content integration",
+        "Technology showcase opportunities",
+        "Competitive gaming sponsorships",
+        "Innovation demonstrations"
+      ]
+    },
+    {
+      "advertiser_id": "ADV004",
+      "company_name": "Wellness Life Premium",
+      "industry": "Health & Wellness",
+      "brand_safety_tier": "Premium Wellness",
+      "content_rating_requirements": ["G", "PG", "PG-13"],
+      "prohibited_content_categories": [
+        "Unhealthy Lifestyle Content",
+        "Excessive Junk Food",
+        "Sedentary Lifestyle Promotion",
+        "Negative Body Image",
+        "Substance Abuse"
+      ],
+      "preferred_content_categories": [
+        "Health & Wellness Content",
+        "Fitness Programming",
+        "Mindfulness Content",
+        "Educational Health Content",
+        "Active Lifestyle Programming"
+      ],
+      "demographic_targeting": {
+        "primary": "Health-conscious adults 25-55",
+        "secondary": "Active families",
+        "avoid": "Unhealthy lifestyle content"
+      },
+      "seasonal_preferences": {
+        "high_spend_periods": ["New Year Wellness", "Spring Fitness", "Summer Health"],
+        "content_alignment": "Wellness journey and healthy living"
+      },
+      "geographic_requirements": {
+        "primary_markets": ["Health-conscious Urban Areas", "Wellness Communities"],
+        "content_localization": "Cultural wellness practices respected"
+      },
+      "brand_safety_score_minimum": 9.0,
+      "social_sentiment_minimum": 8.0,
+      "family_co_viewing_preference": "High",
+      "educational_value_minimum": 8.0,
+      "advertising_integration_preferences": [
+        "Wellness content integration",
+        "Healthy lifestyle demonstrations",
+        "Mindfulness and meditation content",
+        "Active family activities"
+      ]
+    },
+    {
+      "advertiser_id": "ADV005",
+      "company_name": "Adventure Gear Pro",
+      "industry": "Outdoor Recreation",
+      "brand_safety_tier": "Adventure Sports",
+      "content_rating_requirements": ["PG", "PG-13"],
+      "prohibited_content_categories": [
+        "Extreme Dangerous Activities",
+        "Reckless Behavior",
+        "Environmental Damage",
+        "Unsafe Practices"
+      ],
+      "preferred_content_categories": [
+        "Adventure Programming",
+        "Outdoor Sports",
+        "Nature Documentaries",
+        "Travel Content",
+        "Environmental Conservation"
+      ],
+      "demographic_targeting": {
+        "primary": "Adventure enthusiasts 18-50",
+        "secondary": "Outdoor families",
+        "avoid": "Indoor-only lifestyle content"
+      },
+      "seasonal_preferences": {
+        "high_spend_periods": ["Spring Outdoor Season", "Summer Adventure", "Fall Hiking"],
+        "content_alignment": "Outdoor adventure and exploration"
+      },
+      "geographic_requirements": {
+        "primary_markets": ["Adventure Tourism Regions", "Outdoor Recreation Areas"],
+        "content_localization": "Local outdoor culture and safety practices"
+      },
+      "brand_safety_score_minimum": 8.5,
+      "social_sentiment_minimum": 7.8,
+      "family_co_viewing_preference": "Medium",
+      "educational_value_minimum": 6.5,
+      "advertising_integration_preferences": [
+        "Adventure content integration",
+        "Outdoor gear demonstrations",
+        "Safety education content",
+        "Environmental stewardship messaging"
+      ]
+    }
+  ],
+  "platform_brand_safety_standards": {
+    "content_rating_system": {
+      "G": "General Audiences - All ages appropriate",
+      "PG": "Parental Guidance - Some material may not be suitable for children",
+      "PG-13": "Parents Strongly Cautioned - Some material may be inappropriate for children under 13",
+      "TV-Y": "All Children - Appropriate for all children",
+      "TV-G": "General Audience - Suitable for all ages"
+    },
+    "brand_safety_scoring": {
+      "methodology": "AI-powered content analysis + human review",
+      "scale": "1-10 (10 = highest brand safety)",
+      "factors": [
+        "Content appropriateness",
+        "Audience demographics",
+        "Social sentiment",
+        "Cultural sensitivity",
+        "Educational value"
+      ],
+      "update_frequency": "Real-time monitoring with daily scoring updates"
+    },
+    "advertiser_matching_algorithm": {
+      "primary_factors": [
+        "Brand safety score alignment",
+        "Demographic targeting match",
+        "Content category preferences",
+        "Geographic requirements",
+        "Seasonal alignment"
+      ],
+      "secondary_factors": [
+        "Social sentiment compatibility",
+        "Family co-viewing preferences",
+        "Educational value requirements",
+        "Cultural appropriateness"
+      ]
+    }
+  },
+  "content_safety_incidents": {
+    "total_incidents_q1_2025": 3,
+    "incident_categories": [
+      {
+        "type": "Minor Content Concern",
+        "count": 2,
+        "resolution_time_hours": 4,
+        "advertiser_impact": "Minimal"
+      },
+      {
+        "type": "Demographic Mismatch",
+        "count": 1,
+        "resolution_time_hours": 2,
+        "advertiser_impact": "None"
+      }
+    ],
+    "prevention_measures": [
+      "Enhanced AI content screening",
+      "Improved demographic targeting algorithms",
+      "Real-time brand safety monitoring",
+      "Advertiser preference learning system"
+    ]
+  }
+}

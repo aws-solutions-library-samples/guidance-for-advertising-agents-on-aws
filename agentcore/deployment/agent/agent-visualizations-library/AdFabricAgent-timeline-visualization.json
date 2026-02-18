@@ -1,0 +1,60 @@
+{
+  "agentName": "MediaPlanningAgent",
+  "agentId": "MediaPlanningAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Strategic media plan implementation timeline with collaborative team coordination",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Strategic Media Plan Implementation Timeline",
+    "subtitle": "Collaborative implementation roadmap for revenue optimization",
+    "startDate": "Implementation start date (ISO format)",
+    "endDate": "Implementation completion date (ISO format)",
+    "totalDuration": "Total implementation duration description",
+    "overallObjective": "Strategic media planning objective",
+    "phases": [
+      {
+        "primaryLabel": "Implementation phase name (e.g., 'Foundation Setup', 'Optimization Launch', 'Performance Enhancement', 'Scale & Expand')",
+        "secondaryLabel": "Phase focus (e.g., 'Infrastructure', 'Audience Alignment', 'Format Optimization', 'Timing Coordination')",
+        "description": "Phase objectives, key activities, and collaborative team involvement",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration description",
+        "status": "Phase status: 'planned', 'active', 'completed'",
+        "priority": "Strategic priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected revenue impact and performance improvements",
+        "budget": "Phase budget allocation and resource requirements",
+        "resources": [
+          "Required specialist teams and resources"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites and team coordination requirements"
+        ],
+        "risks": [
+          "Risk factors and mitigation strategies for this phase"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key milestone date (ISO format)",
+        "label": "Strategic milestone name",
+        "description": "Milestone details and success criteria",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": [
+      "Revenue optimization success criteria and KPIs"
+    ],
+    "criticalPath": [
+      "Critical phase names for revenue optimization"
+    ]
+  }
+}

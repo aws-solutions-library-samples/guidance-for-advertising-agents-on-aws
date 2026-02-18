@@ -1,0 +1,31 @@
+{
+  "agentName": "CampaignArchitectureAgent",
+  "agentId": "campaign-architecture-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified campaign structure and budget allocation",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Campaign Architecture Budget Allocation",
+    "subtitle": "Strategic budget distribution across campaign components",
+    "totalBudget": "Total campaign budget (e.g., '$3,500,000')",
+    "allocations": [
+      {
+        "primaryLabel": "Architecture component (e.g., 'Brand Awareness Layer', 'Performance Marketing Layer', 'Retention Architecture')",
+        "secondaryLabel": "Component category (e.g., 'Upper Funnel', 'Mid Funnel', 'Lower Funnel')",
+        "allocationPercentage": "Budget percentage (e.g., 40)",
+        "budgetAmount": "Budget amount (e.g., '$1,400,000')",
+        "performanceLevel": "Component performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Architecture status: 'optimized', 'active', 'planned'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Architecture risk: 'low', 'medium', 'high'",
+        "efficiency": "Component efficiency rating",
+        "safety": "Campaign safety score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of architecture components",
+      "riskAllocations": "Number of high-risk architecture allocations"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "agentId": "campaign-optimization-agent",
+  "agentName": "CampaignOptimizationAgent",
+  "templates": [
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Integrated campaign budget allocation across all elements (PRIMARY)"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "End-to-end campaign execution roadmap and phases"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Integrated brand and performance KPIs"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Strategic audience prioritization and targeting"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Cross-channel media strategy and integration"
+    }
+  ]
+}

@@ -1,0 +1,362 @@
+<div class="agent-config-container">
+  <!-- Clean Header -->
+  <header class="config-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1 class="title">Agent Configuration</h1>
+        <p class="subtitle">Manage and configure your AI agents</p>
+      </div>
+      <div class="header-actions">
+        <button class="nova-button secondary circle-button" (click)="discoverAgents()" [disabled]="isDiscovering"
+          title="Discover new agents">
+          <span class="material-icons" [class.spinning]="isDiscovering">search</span>
+        </button>
+        <button class="nova-button secondary circle-button" (click)="toggleRemoveMode()" [class.active]="isRemoveMode"
+          title="Toggle remove mode">
+          <span class="material-icons">{{isRemoveMode ? 'check' : 'delete_sweep'}}</span>
+        </button>
+        <button class="nova-button secondary circle-button" (click)="closeAgentConfig()" title="Close">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Clean Messages -->
+  <div *ngIf="showSuccessMessage" class="message-toast success">
+    <span class="material-icons">check_circle</span>
+    <span class="message-text">{{ successMessage }}</span>
+    <button class="message-close" (click)="dismissMessage()">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <div *ngIf="showErrorMessage" class="message-toast error">
+    <span class="material-icons">error</span>
+    <span class="message-text">{{ errorMessage }}</span>
+    <button class="message-close" (click)="dismissMessage()">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <!-- Simple Loading State -->
+  <div *ngIf="isLoading || isLoadingAgentConfig || isLoadingTabConfig" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading configuration...</p>
+  </div>
+
+  <!-- AppConfig Error -->
+  <div *ngIf="appConfigError && !isLoading && !isLoadingAgentConfig && !isLoadingTabConfig" class="message-toast error">
+    <span class="material-icons">cloud_off</span>
+    <span class="message-text">AppConfig Error: {{ appConfigError }}</span>
+    <button class="message-close" (click)="appConfigError = null">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <!-- Progress Indicators -->
+  <div *ngIf="operationProgress.isActive" class="progress-card">
+    <div class="progress-header">
+      <span class="material-icons">settings</span>
+      <h3>{{ operationProgress.operation }}</h3>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="operationProgress.progress"></div>
+    </div>
+    <p class="progress-message">{{ operationProgress.message }}</p>
+  </div>
+
+  <div *ngIf="deploymentStatus.isDeploying" class="progress-card deployment">
+    <div class="progress-header">
+      <span class="material-icons">cloud_upload</span>
+      <h3>Deploying Configuration</h3>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="deploymentStatus.progress"></div>
+    </div>
+    <p class="progress-message">{{ deploymentStatus.message }}</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorState.hasError" class="error-card">
+    <div class="error-header">
+      <span class="material-icons">error_outline</span>
+      <h3>Operation Failed</h3>
+    </div>
+    <p class="error-message">{{ errorState.errorMessage }}</p>
+    <div class="error-actions">
+      <button class="btn secondary" (click)="resetErrorHandling()">Dismiss</button>
+      <button *ngIf="errorState.canRetry" class="btn primary" (click)="retryFailedOperation()">
+        <span class="material-icons">refresh</span>
+        Retry
+      </button>
+    </div>
+  </div>
+
+  <!-- Degradation Notice -->
+  <div *ngIf="degradationMode.isActive" class="warning-card">
+    <div class="warning-header">
+      <span class="material-icons">warning</span>
+      <span>Limited Functionality</span>
+    </div>
+    <p>{{ degradationMode.reason }}</p>
+    <button class="btn primary" (click)="loadAppConfigData()">
+      <span class="material-icons">refresh</span>
+      Restore Full Functionality
+    </button>
+  </div>
+
+  <!-- Agent Grid -->
+  <main class="main-content">
+    <div class="agents-grid" *ngIf="nodes.length > 0">
+      <div *ngFor="let node of nodes" class="agent-card" 
+        [class.supervisor]="node.role === 'supervisor'"
+        [class.collaborator]="node.role === 'collaborator'" 
+        [class.agentcore]="node.agentType === 'agentcore'"
+        [class.selected]="selectedNode?.id === node.id"
+        (click)="selectAgent(node)">
+
+        <!-- Agent Icon -->
+        <div class="agent-icon" [style.background]="getNodeColor(node)">
+          <span class="material-icons">{{ getNodeIcon(node) }}</span>
+        </div>
+
+        <!-- Agent Details -->
+        <div class="agent-details">
+          <h3 class="agent-name">{{ node.displayName || node.name }}</h3>
+          <div class="agent-badges">
+            <span class="badge type-badge" [class]="node.role">{{ node.role }}</span>
+            <span class="badge platform-badge" [class]="node.agentType">
+              {{ node.agentType === 'agentcore' ? 'AgentCore' : 'Bedrock' }}
+            </span>
+          </div>
+          <p class="agent-description">{{ getAgentDescription(node) }}</p>
+        </div>
+
+        <!-- Status & Actions -->
+        <div class="agent-status">
+          <div class="status-dot" [class.active]="node.status === 'active'"></div>
+          <div class="kb-count" *ngIf="node.knowledgeBases.length > 0">
+            {{ node.knowledgeBases.length }} KB
+          </div>
+        </div>
+
+        <!-- Remove Button (when in remove mode) -->
+        <button *ngIf="isRemoveMode" class="remove-btn" 
+          (click)="removeAgentFromConfig(node, $event)"
+          title="Remove agent">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="nodes.length === 0 && !isLoading" class="empty-state">
+      <div class="empty-icon">
+        <span class="material-icons">psychology</span>
+      </div>
+      <h3>No Agents Found</h3>
+      <p>No active agents are currently available for configuration.</p>
+      <button class="btn primary" (click)="refreshData()">
+        <span class="material-icons">refresh</span>
+        Refresh
+      </button>
+    </div>
+  </main>
+
+  <!-- Node Editor Modal -->
+  <div *ngIf="showNodeEditor" class="modal-overlay" (click)="closeEditor()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="agent-title">
+          <div class="agent-icon-wrapper" [style.background]="getSelectedNodeColor()">
+            <span class="material-icons">{{ getSelectedNodeIcon() }}</span>
+          </div>
+          <div class="agent-info">
+            <h3 class="agent-name">{{ selectedNode?.displayName || selectedNode?.name || selectedNode?.id }}</h3>
+            <div class="agent-badges">
+              <span class="agent-type-badge" [class]="selectedNode?.role">{{ selectedNode?.role }}</span>
+              <span class="deployment-badge" [class]="selectedNode?.agentType">
+                {{ selectedNode?.agentType === 'agentcore' ? 'AgentCore' : 'Bedrock' }}
+              </span>
+            </div>
+            <!-- Show collaborators for supervisors -->
+            <div *ngIf="selectedNode?.role === 'supervisor'" class="collaborators-info">
+              <span class="collaborators-label">Collaborators:</span>
+              <div class="collaborators-names" *ngIf="selectedNode">
+                <span *ngFor="let collaboratorId of getCollaborators(selectedNode.id); let last = last"
+                  class="collaborator-name">
+                  {{ getCollaboratorName(collaboratorId) }}<span *ngIf="!last">, </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="close-btn" (click)="closeEditor()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Agent Info -->
+        <div class="info-section">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Agent ID:</label>
+              <span class="code">{{ selectedNode?.id }}</span>
+            </div>
+            <div class="info-item">
+              <label>Type:</label>
+              <span class="badge" [class]="selectedNode?.role">{{ selectedNode?.role }}</span>
+            </div>
+            <div class="info-item">
+              <label>Status:</label>
+              <span class="badge status">{{ selectedNode?.status }}</span>
+            </div>
+            <div class="info-item">
+              <label>Alias ID:</label>
+              <span class="code">{{ selectedNode?.aliasId }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructions Editor -->
+        <div class="editor-section">
+          <label class="section-label">Agent Instructions</label>
+          <textarea [(ngModel)]="editingInstructions" class="instructions-textarea"
+            placeholder="Enter agent instructions..." rows="8">
+          </textarea>
+        </div>
+
+        <!-- Knowledge Bases Editor -->
+        <div class="editor-section">
+          <label class="section-label">Associated Knowledge Bases</label>
+
+          <!-- Current Knowledge Bases -->
+          <div class="kb-list">
+            <div *ngFor="let kb of editingKnowledgeBases" class="kb-item">
+              <div class="kb-info">
+                <span class="kb-name">{{ kb.name }}</span>
+                <span class="kb-id">{{ kb.knowledgeBaseId }}</span>
+                <span class="kb-state" [class]="kb.state.toLowerCase()">{{ kb.state }}</span>
+              </div>
+              <button class="remove-btn" (click)="removeKnowledgeBase(kb.knowledgeBaseId)"
+                title="Remove Knowledge Base">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <div *ngIf="editingKnowledgeBases.length === 0" class="empty-state">
+              No knowledge bases associated
+            </div>
+          </div>
+
+          <!-- Add Knowledge Base -->
+          <div class="add-kb-section">
+            <select class="kb-select"
+              (change)="addKnowledgeBase($any($event.target).value); $any($event.target).value = ''">
+              <option value="">Select knowledge base to add...</option>
+              <option *ngFor="let kb of getAvailableKnowledgeBasesForSelection()" [value]="kb.knowledgeBaseId">
+                {{ kb.name || kb.knowledgeBaseId }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn secondary" (click)="closeEditor()" [disabled]="isSaving">
+          Cancel
+        </button>
+        <button class="btn primary" (click)="saveChanges()" [disabled]="isSaving">
+          <span *ngIf="isSaving" class="spinner-small"></span>
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent Discovery Results Modal -->
+  <div *ngIf="showDiscoveryResults" class="modal-overlay" (click)="closeDiscoveryResults()">
+    <div class="modal-content discovery-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Discovered Agents</h3>
+        <button class="close-btn" (click)="closeDiscoveryResults()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="discovery-info">
+          <p>Found {{discoveredAgents.length}} new agent(s) matching your stack pattern. Select the agents you want to
+            add to your configuration:</p>
+        </div>
+
+        <div class="discovered-agents-list">
+          <div *ngFor="let agent of discoveredAgents" class="discovered-agent-item" [class.selected]="agent.selected">
+
+            <div class="agent-checkbox">
+              <input type="checkbox" [id]="'agent-' + agent.id" [(ngModel)]="agent.selected"
+                (change)="toggleAgentSelection(agent)">
+              <label [for]="'agent-' + agent.id"></label>
+            </div>
+
+            <div class="agent-details">
+              <div class="agent-header">
+                <h4 class="agent-name">{{agent.name}}</h4>
+                <div class="agent-badges">
+                  <span class="agent-type" [class]="agent.deploymentType">{{agent.deploymentType}}</span>
+                  <span class="agent-status" [class]="agent.status.toLowerCase()">{{agent.status}}</span>
+                </div>
+              </div>
+
+              <div class="agent-meta">
+                <div class="meta-item">
+                  <label>Agent Type:</label>
+                  <span class="code">{{agent.agentType}}</span>
+                </div>
+                <div class="meta-item">
+                  <label>Agent ID:</label>
+                  <span class="code">{{agent.id}}</span>
+                </div>
+                <div class="meta-item">
+                  <label>Alias ID:</label>
+                  <span class="code">{{agent.aliasId}}</span>
+                </div>
+              </div>
+
+              <div *ngIf="agent.description" class="agent-description">
+                {{agent.description}}
+              </div>
+
+              <div class="agent-timestamps">
+                <span *ngIf="agent.createdAt">Created: {{agent.createdAt | date:'short'}}</span>
+                <span *ngIf="agent.updatedAt">Updated: {{agent.updatedAt | date:'short'}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="discoveredAgents.length === 0" class="empty-state">
+            <span class="material-icons">search_off</span>
+            <p>No new agents found</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="selection-info">
+          {{getSelectedUnselectedAgents(true)}} out of {{discoveredAgents.length}} selected
+        </div>
+        <div class="footer-actions">
+          <button class="nova-button secondary" (click)="closeDiscoveryResults()">
+            Cancel
+          </button>
+          <button class="nova-button primary" 
+            [disabled]="getSelectedUnselectedAgents(false).length==0">
+            Add Selected Agents
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+{
+  "agentName": "MediaPlannerAgent",
+  "agentId": "media-planner-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Content calendar integration and campaign scheduling",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Publisher Content-Campaign Integration Timeline",
+    "subtitle": "Strategic scheduling and content calendar alignment",
+    "startDate": "Campaign start date (ISO format)",
+    "endDate": "Campaign end date (ISO format)",
+    "totalDuration": "Total campaign duration description",
+    "overallObjective": "Main campaign objective",
+    "phases": [
+      {
+        "primaryLabel": "Campaign phase name (e.g., 'Pre-Launch', 'Launch', 'Optimization', 'Scale')",
+        "secondaryLabel": "Phase type (e.g., 'Planning', 'Execution', 'Analysis')",
+        "description": "Phase objectives and key activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration description",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected deliverables and outcomes",
+        "budget": "Phase budget allocation",
+        "resources": [
+          "Required resources and team members"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites and dependencies"
+        ],
+        "risks": [
+          "Risk factors for this phase"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Milestone details",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": [
+      "Success criteria and KPIs"
+    ],
+    "criticalPath": [
+      "Critical phase names"
+    ]
+  }
+}

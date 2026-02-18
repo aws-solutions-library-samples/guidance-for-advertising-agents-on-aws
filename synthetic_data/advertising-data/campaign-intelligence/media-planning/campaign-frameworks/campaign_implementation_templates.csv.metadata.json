@@ -1,0 +1,88 @@
+{
+    "metadataAttributes": {
+        "file_name": "campaign_implementation_templates.csv",
+        "description": "Detailed campaign implementation templates showing phase-by-phase activities, deliverables, timelines, and resource requirements for different campaign types",
+        "data_source": "Synthetic implementation planning based on industry best practices and project management frameworks",
+        "last_updated": "2024-12-07",
+        "record_count": "36",
+        "data_type": "campaign_implementation_templates",
+        "campaign_types": "Brand Awareness Launch, Performance Conversion, B2B Lead Generation",
+        "implementation_phases": "Planning, Setup, Launch, Optimization",
+        "timeline_range": "1-8 weeks",
+        "activity_types": "Strategy Development, Audience Research, Channel Planning, Campaign Architecture, Creative Development, Platform Setup, Performance Analysis",
+        "owner_roles": "Media Planner, Audience Strategist, Campaign Manager, Creative Team, Analytics Specialist, Performance Analyst",
+        "resource_requirements": "Platform Access, Analytics Tools, Creative Resources, Research Tools, Optimization Tools",
+        "budget_components": "Research, Creative Production, Platform Setup, Tracking Implementation, Testing",
+        "risk_levels": "High, Medium, Low",
+        "complexity_scores": "1-5 scale",
+        "quality_gates": "Strategy Review, Creative Review, QA Testing, Performance Check, Launch Review",
+        "usage_context": "campaign planning, project management, resource allocation, timeline estimation",
+        "related_datasets": "budget_allocation_scenarios.csv, campaign_measurement_frameworks.csv",
+        "optimization_focus": "implementation_efficiency, resource_planning, timeline_optimization, quality_assurance"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "template_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_type"
+                    },
+                    {
+                        "fieldName": "phase"
+                    },
+                    {
+                        "fieldName": "week_number"
+                    },
+                    {
+                        "fieldName": "activity_type"
+                    },
+                    {
+                        "fieldName": "deliverable"
+                    },
+                    {
+                        "fieldName": "owner_role"
+                    },
+                    {
+                        "fieldName": "dependencies"
+                    },
+                    {
+                        "fieldName": "duration_days"
+                    },
+                    {
+                        "fieldName": "effort_hours"
+                    },
+                    {
+                        "fieldName": "risk_level"
+                    },
+                    {
+                        "fieldName": "success_criteria"
+                    },
+                    {
+                        "fieldName": "budget_required"
+                    },
+                    {
+                        "fieldName": "resource_requirements"
+                    },
+                    {
+                        "fieldName": "quality_gates"
+                    },
+                    {
+                        "fieldName": "approval_required"
+                    },
+                    {
+                        "fieldName": "category"
+                    },
+                    {
+                        "fieldName": "complexity_score"
+                    }
+                ]
+            }
+        }
+    }
+}

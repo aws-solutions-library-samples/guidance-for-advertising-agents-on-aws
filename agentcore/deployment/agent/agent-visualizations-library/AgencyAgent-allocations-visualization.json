@@ -1,0 +1,24 @@
+{
+  "templateId": "allocations-visualization",
+  "agentName": "AgencyAgent",
+  "description": "Budget allocation across publishers and channels",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "total_budget": { "type": "number" },
+      "currency": { "type": "string" },
+      "allocations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "budget": { "type": "number" },
+            "percentage": { "type": "number" },
+            "channel": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

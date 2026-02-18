@@ -1,0 +1,46 @@
+{
+  "templateId": "donut-chart-visualization",
+  "templateName": "Donut Chart Visualization",
+  "description": "Template for displaying proportional data with central summary",
+  "usage": [
+    "Budget allocation breakdown",
+    "Audience segment distribution",
+    "Channel mix visualization",
+    "Creative format distribution",
+    "Campaign performance shares"
+  ],
+  "schema": {
+    "visualizationType": "donut-chart",
+    "templateId": "donut-chart-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "centerText": {
+      "primary": "string - Main center text",
+      "secondary": "string - Secondary center text"
+    },
+    "data": [
+      {
+        "category": "string - Segment name",
+        "value": "number - Numeric value",
+        "percentage": "number - Percentage of total",
+        "color": "string - Optional hex color override",
+        "label": "string - Display label",
+        "metadata": {
+          "description": "string - Additional context",
+          "performance": "string - high/medium/low",
+          "trend": "string - up/down/stable"
+        }
+      }
+    ],
+    "colorScheme": "string - agent-palette/custom",
+    "showPercentages": "boolean - Display percentages on segments",
+    "showLegend": "boolean - Display legend",
+    "innerRadius": "number - Inner radius ratio (0-1)",
+    "insights": ["array of string - Key insights"],
+    "summary": {
+      "total": "number - Total value",
+      "segments": "number - Number of segments",
+      "topPerformer": "string - Largest segment"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+    "metadataAttributes": {
+        "data_source": "brand_safety_monitoring",
+        "category": "safety_incidents",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "brand_safety_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "publisher_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "incident_id"
+                    },
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "url"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "violation_type"
+                    },
+                    {
+                        "fieldName": "severity"
+                    },
+                    {
+                        "fieldName": "brand_affected"
+                    },
+                    {
+                        "fieldName": "resolution_time_hours"
+                    },
+                    {
+                        "fieldName": "impact_score"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,151 @@
+{
+  "brandProfile": {
+    "name": "LuxeChoco & Sprüngli",
+    "category": "Premium Chocolate",
+    "founded": 1845,
+    "headquarters": "Kilchberg, Switzerland",
+    "positioning": "Swiss luxury chocolate heritage and craftsmanship",
+    "brandValues": ["Quality", "Tradition", "Innovation", "Sustainability"],
+    "targetMarkets": {
+      "primary": ["Germany", "Switzerland", "Austria"],
+      "secondary": ["Netherlands", "Belgium", "France", "UK", "Italy"],
+      "emerging": ["Poland", "Czech Republic", "Spain"]
+    },
+    "pricePoint": {
+      "category": "Premium",
+      "range": "€15-45 per product",
+      "positioning": "Accessible luxury"
+    },
+    "seasonalPeaks": [
+      {
+        "season": "Valentine's Day",
+        "period": "January 15 - February 14",
+        "salesLift": "180%",
+        "keyProducts": ["Heart-shaped boxes", "LINDOR truffles"]
+      },
+      {
+        "season": "Easter",
+        "period": "March 1 - April 15",
+        "salesLift": "220%",
+        "keyProducts": ["Gold Bunny", "Easter eggs", "Spring collection"]
+      },
+      {
+        "season": "Christmas",
+        "period": "November 1 - December 31",
+        "salesLift": "350%",
+        "keyProducts": ["Advent calendars", "Gift boxes", "LINDOR collections"]
+      }
+    ],
+    "keyCompetitors": {
+      "direct": [
+        {
+          "name": "PremiumSweets",
+          "positioning": "Ultra-premium Belgian chocolate",
+          "marketShare": "12%",
+          "strengths": ["Luxury positioning", "Gift market dominance"],
+          "weaknesses": ["Higher price point", "Limited accessibility"]
+        },
+        {
+          "name": "GoldenTreats Rocher",
+          "positioning": "Premium gifting chocolate",
+          "marketShare": "18%",
+          "strengths": ["Strong gift association", "Global recognition"],
+          "weaknesses": ["Limited product range", "Seasonal dependency"]
+        },
+        {
+          "name": "MountainChoco",
+          "positioning": "American premium chocolate",
+          "marketShare": "8%",
+          "strengths": ["US market presence", "Baking segment"],
+          "weaknesses": ["Limited European presence", "Brand heritage"]
+        }
+      ],
+      "indirect": [
+        {
+          "name": "PurpleChoco",
+          "positioning": "Mass premium chocolate",
+          "marketShare": "25%",
+          "threat": "Price accessibility"
+        },
+        {
+          "name": "AlpineBar",
+          "positioning": "Swiss heritage chocolate",
+          "marketShare": "6%",
+          "threat": "Swiss authenticity claims"
+        }
+      ]
+    },
+    "brandSafetyRequirements": {
+      "level": "High",
+      "restrictions": [
+        "No controversial content",
+        "Family-friendly environments only",
+        "Premium publisher standards",
+        "Avoid price-sensitive contexts",
+        "Maintain luxury brand perception"
+      ],
+      "preferredContexts": [
+        "Lifestyle content",
+        "Cooking shows",
+        "Premium editorial",
+        "Cultural programming",
+        "Travel content"
+      ]
+    },
+    "retailPartnerships": {
+      "premium": ["Harrods", "Galeries Lafayette", "KaDeWe", "Selfridges"],
+      "mainstream": ["Carrefour", "Tesco", "REWE", "Albert Heijn"],
+      "specialty": ["Chocolate boutiques", "Airport duty-free", "Hotel minibars"]
+    }
+  },
+  "marketIntelligence": {
+    "europeanMarketSize": {
+      "totalValue": "€24.8B",
+      "premiumSegment": "€8.2B",
+      "luxeChocoShare": "4.2%",
+      "growthRate": "3.1% annually"
+    },
+    "consumerInsights": {
+      "primaryDemographics": {
+        "age": "25-55 years",
+        "income": "€50,000+ household income",
+        "lifestyle": "Quality-conscious, brand-aware consumers",
+        "purchaseBehavior": "Gift-giving occasions, personal indulgence"
+      },
+      "purchaseDrivers": [
+        "Swiss heritage and quality perception",
+        "Gift-giving appropriateness",
+        "Taste and texture superiority",
+        "Brand prestige and recognition",
+        "Packaging aesthetics"
+      ],
+      "barriers": [
+        "Premium pricing vs mass market alternatives",
+        "Limited availability in some regions",
+        "Health consciousness trends",
+        "Sustainability concerns"
+      ]
+    },
+    "digitalPresence": {
+      "socialMediaFollowing": {
+        "instagram": "2.1M followers",
+        "facebook": "3.8M followers",
+        "youtube": "145K subscribers",
+        "tiktok": "890K followers"
+      },
+      "engagementRates": {
+        "instagram": "4.2%",
+        "facebook": "2.8%",
+        "youtube": "6.1%",
+        "tiktok": "8.7%"
+      },
+      "contentThemes": [
+        "Swiss craftsmanship",
+        "Recipe inspiration",
+        "Gift-giving moments",
+        "Behind-the-scenes production",
+        "Sustainability initiatives"
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+<div class="scenarios-panel" *ngIf="scenarios.length > 0" [class.open]="showScenariosPanel"
+    [class.closed]="!showScenariosPanel">
+
+    <div class="scenarios-panel-content">
+      <div class="scenarios-header">
+        <h3>Example Scenarios</h3>
+        <p>Click any card to start a conversation</p>
+      </div>
+
+      <div class="scenarios-grid">
+        <div class="scenario-card" *ngFor="let scenario of scenarios; let i = index"
+          [class.flipping]="selectedScenarioIndex === i" (click)="selectScenario(scenario, i)">
+          <div class="card-inner">
+            <div class="card-front">
+              <!-- Agent Type Indicator -->
+              <div class="agent-type-indicator" *ngIf="scenario.agentType">
+                <span class="material-icons agent-icon" [style.color]="getAgentColor(scenario.agentType)">
+                  {{ getAgentIcon(scenario.agentType) }}
+                </span>
+                <span class="agent-name" [style.color]="getAgentColor(scenario.agentType)">
+                  {{ scenario.agentType }}
+                </span>
+              </div>
+              <h4>{{scenario.title}}</h4>
+              <p>{{scenario.description}}</p>
+              <span class="scenario-category">{{scenario.category}}</span>
+            </div>
+            <div class="card-back">
+              <div class="card-back-content">
+                <span class="material-icons">chat</span>
+                <p>Starting conversation...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel overlay for mobile -->
+    <div class="scenarios-overlay" (click)="closeScenariosPanel()"></div>
+  </div>

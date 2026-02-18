@@ -1,0 +1,30 @@
+{
+  "agentName": "SignalAgent",
+  "agentId": "signal-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Signal coverage and segment distribution",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Signal Coverage Distribution",
+    "subtitle": "Audience signal coverage and segment sizes",
+    "totalBudget": "Total addressable audience",
+    "allocations": [
+      {
+        "primaryLabel": "Signal name",
+        "secondaryLabel": "Signal type (audience, contextual, geographic)",
+        "allocationPercentage": "Coverage percentage",
+        "budgetAmount": "Segment size (individuals)",
+        "performanceLevel": "Accuracy level: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Activation status: 'live', 'pending', 'inactive'",
+        "confidenceLevel": "Data confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Privacy risk: 'low', 'medium', 'high'"
+      }
+    ],
+    "summary": {
+      "totalSignals": "Number of signals",
+      "liveSignals": "Number of live signals",
+      "totalCoverage": "Total audience coverage"
+    }
+  }
+}

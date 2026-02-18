@@ -1,0 +1,30 @@
+{
+  "agentName": "AdvertiserAgent",
+  "agentId": "advertiser-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Budget allocation and channel mix",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Campaign Budget Allocation",
+    "subtitle": "Strategic budget distribution across channels and publishers",
+    "totalBudget": "Total campaign budget",
+    "allocations": [
+      {
+        "primaryLabel": "Channel or publisher name",
+        "secondaryLabel": "Allocation category",
+        "allocationPercentage": "Budget percentage for this allocation",
+        "budgetAmount": "Budget amount allocated",
+        "performanceLevel": "Expected performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Allocation status: 'approved', 'pending', 'rejected'",
+        "confidenceLevel": "Planning confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Risk assessment: 'low', 'medium', 'high'"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of allocation categories",
+      "approvedAllocations": "Number of approved allocations",
+      "pendingAllocations": "Number of pending allocations"
+    }
+  }
+}

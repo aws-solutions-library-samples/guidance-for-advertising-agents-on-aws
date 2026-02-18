@@ -1,0 +1,18 @@
+{
+  "agentName": "MediaPlanningAgent",
+  "agentId": "MediaPlanningAgent",
+  "templates": [
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Publisher inventory allocation and revenue optimization strategies"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Publisher revenue forecasts and performance metrics"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Implementation planning and collaborative team coordination"
+    }
+  ]
+}

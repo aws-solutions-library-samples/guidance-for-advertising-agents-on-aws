@@ -1,0 +1,54 @@
+{
+  "agentName": "ContextualAnalysisAgent",
+  "agentId": "contextual-analysis-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Content moderation schedules and safety review timelines",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Content Safety Review Timeline",
+    "subtitle": "Content moderation and brand safety assessment schedule",
+    "totalDuration": "Total review period (e.g., '6 weeks', '42 days')",
+    "startDate": "Safety review start (ISO format: '2024-01-15')",
+    "endDate": "Safety review end (ISO format: '2024-02-26')",
+    "overallObjective": "Primary safety objective (e.g., 'Achieve 95% brand safety compliance across all placements')",
+    "phases": [
+      {
+        "primaryLabel": "Safety phase (e.g., 'Initial Assessment', 'Deep Content Review', 'Compliance Verification')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase safety objectives and review scope",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '2 weeks', '14 days')",
+        "status": "Review status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Safety priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected safety outcomes and compliance levels",
+        "budget": "Review budget allocation (e.g., '$75K', 'Safety audit costs')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Safety milestone (e.g., 'Publisher Audit Complete', 'Safety Score Achieved')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Safety milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'Safety score > 9.0/10', 'Zero high-risk placements')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Safety dependencies (e.g., 'Publisher list finalized', 'Safety criteria defined')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Safety success metrics (e.g., '95% brand safety compliance', 'Zero brand risk incidents')"
+    ],
+    "riskFactors": [
+      "Safety risks (e.g., 'Content policy changes', 'New publisher risks', 'Contextual misalignment')"
+    ]
+  }
+}

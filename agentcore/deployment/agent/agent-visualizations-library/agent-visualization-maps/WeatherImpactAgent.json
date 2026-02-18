@@ -1,0 +1,18 @@
+{
+  "agentName": "WeatherImpactAgent",
+  "agentId": "WeatherImpactAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Weather impact metrics on audience behavior, media consumption, and campaign performance"
+    },
+    {
+      "templateId": "segments-visualization", 
+      "usage": "Weather-driven audience segments and behavioral cohorts analysis"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Weather forecast timeline and campaign optimization scheduling"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "agentName": "CampaignArchitectureAgent",
+  "agentId": "campaign-architecture-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Architecture performance metrics and KPIs",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Campaign Architecture Performance Metrics",
+    "subtitle": "Campaign structure effectiveness and architectural KPIs",
+    "metrics": [
+      {
+        "primaryLabel": "Architecture Metrics",
+        "secondaryLabel": "Campaign architecture performance and structural KPIs",
+        "items": [
+          {
+            "primaryLabel": "Architecture metric name (e.g., 'Funnel Conversion Rate', 'Cross-Channel Synergy', 'Architecture Efficiency')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "forecastedValue": "Forecasted metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "forecastedLabel": "Forecast description",
+            "unit": "Metric unit (%, score, index, etc.)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Forecast confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": [
+              "Key architectural insights and structural performance analysis"
+            ],
+            "risks": [
+              "Risk factors affecting architecture performance"
+            ],
+            "recommendations": [
+              "Architecture optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overallScore": "Overall architecture performance score (1-100)",
+      "architectureHealth": "Architecture health assessment (e.g., 'Optimized', 'Needs Adjustment', 'Requires Restructure')",
+      "keyStrengths": "Primary architectural strengths",
+      "improvementAreas": "Areas requiring architectural improvement",
+      "efficiencyScore": "Campaign architecture efficiency score (1-10)"
+    }
+  }
+}

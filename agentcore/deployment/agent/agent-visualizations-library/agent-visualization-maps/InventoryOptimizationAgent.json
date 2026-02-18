@@ -1,0 +1,22 @@
+{
+  "agentName": "InventoryOptimizationAgent",
+  "agentId": "inventory-optimization-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Inventory availability forecasts, fill rates"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Content segment inventory projections"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Seasonal inventory patterns and forecasts"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Inventory allocation and optimization strategies"
+    }
+  ]
+}

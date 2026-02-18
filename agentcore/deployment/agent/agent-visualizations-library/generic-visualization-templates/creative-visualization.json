@@ -1,0 +1,53 @@
+{
+  "templateId": "creative-visualization",
+  "templateName": "Creative Visualization",
+  "description": "Template for displaying creative assets, visual recommendations, and design strategies",
+  "usage": [
+    "Creative asset generation display",
+    "Visual strategy recommendations",
+    "Brand guideline compliance",
+    "Creative performance predictions",
+    "A/B testing variations"
+  ],
+  "schema": {
+    "visualizationType": "creative",
+    "templateId": "creative-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "creatives": [
+      {
+        "imageId": "string - Unique identifier from generation",
+        "primaryLabel": "string - Creative name",
+        "secondaryLabel": "string - Target audience",
+        "description": "string - Creative concept description",
+        "imageUrl": "string - Full image URL",
+        "thumbnailUrl": "string - Thumbnail URL",
+        "status": "string - pending/ready/approved",
+        "metadata": {
+          "colorScheme": ["array of string - Hex color codes"],
+          "dimensions": "string - Image dimensions",
+          "format": "string - File format",
+          "generated": "string - ISO timestamp",
+          "tags": ["array of string - Creative tags"]
+        },
+        "performance": {
+          "expectedCTR": "string - Expected click rate",
+          "expectedEngagement": "string - Engagement prediction",
+          "targetAudience": "string - Target demographic"
+        }
+      }
+    ],
+    "summary": {
+      "totalCreatives": "number",
+      "readyForUse": "number",
+      "averageScore": "number",
+      "recommendedVariation": "string - Top recommendation",
+      "strategy": "string - Testing strategy"
+    },
+    "guidelines": {
+      "brandColors": ["array of string - Brand color codes"],
+      "tone": "string - Brand voice description",
+      "keyMessage": "string - Core message"
+    }
+  }
+}

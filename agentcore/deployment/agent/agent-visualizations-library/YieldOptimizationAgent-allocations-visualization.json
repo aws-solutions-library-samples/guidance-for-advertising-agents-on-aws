@@ -1,0 +1,51 @@
+{
+  "agentName": "YieldOptimizationAgent",
+  "agentId": "YieldOptimizationAgent",
+  "templateId": "allocations-visualization",
+  "usage": "Revenue distribution, format yield performance",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Revenue Allocation & Yield Distribution",
+    "subtitle": "Format-specific yield performance and revenue optimization allocation",
+    "collaborativeInsights": {
+      "primaryAgent": "YieldOptimizationAgent",
+      "supportingAgent1": "FormatStrategyOptimizerAgent",
+      "supportingAgent2": "InventoryOptimizationAgent"
+    },
+    "totalBudget": "Total revenue target (e.g., '$2.5M annual revenue target')",
+    "currency": "Currency symbol (e.g., '$', '€')",
+    "allocations": [
+      {
+        "primaryLabel": "Revenue allocation category (e.g., 'Premium Video Yield', 'Display Revenue Optimization', 'Native Content Monetization')",
+        "secondaryLabel": "Secondary allocations label",
+        "description": "Allocation category description and yield strategy",
+        "allocationPercentage": "0",
+        "budgetAmount": "$0",
+        "performanceLevel": "medium",
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "riskLevel": "low",
+        "insights": [
+          "Key insights for allocations"
+        ],
+        "risks": [
+          "Risk factors (e.g., 'Market competition', 'Demand volatility', 'Technical implementation')"
+        ],
+        "recommendations": [
+          "Recommendations for allocations"
+        ],
+        "metadata": {
+          "lastUpdated": "2024-01-01T00:00:00Z",
+          "dataSource": "Agent analysis"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "0",
+      "optimizedAllocations": "0",
+      "riskAllocations": "0",
+      "recommendedAdjustment": "Value for recommendedAdjustment"
+    }
+  }
+}

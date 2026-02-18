@@ -1,0 +1,65 @@
+{
+    "metadataAttributes": {
+        "data_source": "competitor_analysis",
+        "category": "bidding_intelligence",
+        "business_domain": "performance_analytics",
+        "analysis_type": "competitive_intelligence",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "competitive_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "competitor_brand"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "monthly_spend_eur"
+                    },
+                    {
+                        "fieldName": "market_share_percentage"
+                    },
+                    {
+                        "fieldName": "preferred_format_1"
+                    },
+                    {
+                        "fieldName": "preferred_format_1_percentage"
+                    },
+                    {
+                        "fieldName": "preferred_format_2"
+                    },
+                    {
+                        "fieldName": "preferred_format_2_percentage"
+                    },
+                    {
+                        "fieldName": "preferred_format_3"
+                    },
+                    {
+                        "fieldName": "preferred_format_3_percentage"
+                    },
+                    {
+                        "fieldName": "strong_market_1"
+                    },
+                    {
+                        "fieldName": "strong_market_2"
+                    },
+                    {
+                        "fieldName": "strong_market_3"
+                    },
+                    {
+                        "fieldName": "strategy_focus"
+                    },
+                    {
+                        "fieldName": "inventory_blocking_level"
+                    }
+                ]
+            }
+        }
+    }
+}

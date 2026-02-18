@@ -1,0 +1,444 @@
+/* Shared Agent Layout Styles */
+
+/* Main Container Layout */
+.agent-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-content {
+  display: flex;
+  height: 100%;
+  gap: 24px;
+}
+
+.agent-sidebar {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  height:75vh;
+}
+
+.chat-area {
+  flex: 1; 
+  min-width: 0; /* Allow chat to shrink */
+  overflow: hidden;
+}
+
+/* Overview Section */
+.overview-section {
+  h2 {
+    
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--hype-theme-text-primary);
+  
+    margin-bottom: 20px;
+    
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.3px;
+  }
+}
+
+/* Section Title with Tooltip */
+/* Remove custom tooltip implementation - using the one from styles.scss */
+
+/* Card Styles */
+.card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  //padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  margin-bottom: 20px;
+  position: relative;
+  overflow: visible;
+
+  h3 {
+    color: #4b5563;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Grid Layouts */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.metric-card {
+  text-align: center;
+  padding: 16px 12px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  position: relative;
+  overflow: visible;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(248, 250, 252, 0.95);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .metric-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    display: block;
+    margin-bottom: 4px;
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+.metric-label-with-tooltip {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+  z-index: 1;
+  cursor: help;
+  
+  &:hover {
+    visibility: visible;
+    .info-icon {
+      opacity: 1;
+    }
+    
+    .custom-tooltip {
+      opacity: 1;
+      visibility: visible !important;
+    }
+  }
+  
+  .info-icon-container {
+    position: relative;
+    display: inline-block;
+    
+    .info-icon {
+      font-size: 18px;
+      color: #667eea;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+    
+    .custom-tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 8px;
+      background: #333;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      width: 280px;
+      z-index: 99999;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      white-space: normal;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid #333;
+      }
+    }
+  }
+}
+
+/* Detail Items */
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .value {
+    font-size: 14px;
+    color: #1f2937;
+    font-weight: 500;
+    font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Floating Action Buttons */
+.floating-actions {
+  position: fixed;
+  top: 50%;
+  right: 10px; /* Position them so they look attached to the right edge */
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1600; /* Higher than panels */
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* When panels are open, move buttons left with the panel */
+  &.panel-open {
+    right: 385px; /* 400px panel width - 28px button offset */
+  }
+}
+
+.floating-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #7a42a9 0%, #fda83b 100%) !important;
+  color: white;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  
+  /* Add a subtle glow effect to suggest attachment to panel */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -4px;
+    width: 8px;
+    height: 32px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    border-radius: 0 4px 4px 0;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    
+    background: linear-gradient(135deg,  #fda83b 0%,#7a42a9 100%) !important;
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  .material-icons {
+    font-size: 24px;
+  }
+}
+
+/* Context Selector Panel */
+.context-selector-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background: white;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1500;
+  overflow-y: auto;
+
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+.context-selector-content {
+  padding: 24px;
+  height: 100%;
+
+  h3 {
+    color: #333;
+    margin-bottom: 24px;
+    font-weight: 600;
+    font-size: 1.5rem;
+  }
+}
+
+.context-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.context-item {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+
+  &:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &.selected {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  }
+}
+
+.context-info {
+  margin-bottom: 8px;
+
+  .context-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  .context-details {
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 4px;
+  }
+
+  .context-budget {
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+  }
+}
+
+.context-metrics {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .metric {
+    font-size: 12px;
+    color: #666;
+    background: #f1f3f4;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+}
+
+.context-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1499;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+
+  .context-selector-panel.open ~ & {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .agent-sidebar {
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .agent-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .floating-actions {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+    flex-direction: row;
+    justify-content: center;
+    margin: 16px 0;
+    z-index: auto;
+
+    &.panel-open {
+      right: auto;
+    }
+  }
+
+  .context-selector-panel {
+    width: 100%;
+    transform: translateX(100%);
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+} 

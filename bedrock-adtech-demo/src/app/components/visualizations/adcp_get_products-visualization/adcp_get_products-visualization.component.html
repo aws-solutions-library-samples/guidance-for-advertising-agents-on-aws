@@ -1,0 +1,129 @@
+<!-- ADCP Inventory Visualization - Official AdCP Schema -->
+<div *ngIf="inventoryData" class="adcp_get_products-section">
+
+
+  <!-- Errors section -->
+  <div *ngIf="hasErrors()" class="errors-section">
+    <div class="error-item" *ngFor="let error of getErrors()">
+      <span class="material-icons">warning</span>
+      <span class="error-message">{{error.message || error.code}}</span>
+    </div>
+  </div>
+
+  <!-- Products grid -->
+  <div class="products-grid">
+    <div class="product-card" *ngFor="let product of getProcessedProducts(); trackBy: trackByProductId">
+      <!-- Product header -->
+      <div class="product-header">
+        <div class="channel-badge">
+          <span class="material-icons">{{getChannelIcon(getChannelFromFormats(product))}}</span>
+          <span class="channel-name">{{getChannelFromFormats(product) | uppercase}}</span>
+        </div>
+        <div class="delivery-type-badge" >
+          {{formatDeliveryType(product.delivery_type)}}
+        </div>
+      </div>
+
+      <!-- Product info -->
+      <div class="product-info">
+        <h5 class="product-name">{{product.name}}</h5>
+        <p class="product-description" *ngIf="product.description">{{product.description}}</p>
+        <div class="publisher-info">
+          <span class="publisher-domain">{{getPrimaryPublisher(product)}}</span>
+        </div>
+      </div>
+
+      <!-- Brief relevance (when provided) -->
+      <div class="relevance-section" *ngIf="product.brief_relevance">
+        <span class="material-icons">lightbulb</span>
+        <span class="relevance-text">{{product.brief_relevance}}</span>
+      </div>
+
+      <!-- Pricing section -->
+      <div class="pricing-section" *ngIf="product.primaryPricing || product.pricing_options?.length > 0">
+        <ng-container *ngIf="product.primaryPricing as pricing">
+          <div class="price-item rate">
+            <span class="price-label">{{getPricingModelLabel(pricing.model)}}</span>
+            <span class="price-value">{{pricing.formattedRate}}</span>
+          </div>
+          <div class="price-item min-spend" *ngIf="pricing.formattedMinSpend">
+            <span class="price-label">Min Spend</span>
+            <span class="price-value">{{pricing.formattedMinSpend}}</span>
+          </div>
+        </ng-container>
+        <!-- Fallback for unprocessed data -->
+        <ng-container *ngIf="!product.primaryPricing && product.pricing_options?.length > 0">
+          <div class="price-item rate">
+            <span class="price-label">{{getPricingModelLabel(product.pricing_options[0].pricing_model)}}</span>
+            <span class="price-value">{{formatCurrency(product.pricing_options[0].rate, product.pricing_options[0].currency)}}</span>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- Estimated exposures -->
+      <div class="metrics-section" *ngIf="product.estimated_exposures">
+        <div class="metric-item">
+          <span class="material-icons">visibility</span>
+          <div class="metric-content">
+            <span class="metric-value">{{product.formattedExposures || formatNumber(product.estimated_exposures)}}</span>
+            <span class="metric-label">Est. Exposures</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery measurement -->
+      <div class="measurement-section" *ngIf="product.delivery_measurement">
+        <span class="section-label">Measurement</span>
+        <div class="measurement-info">
+          <span class="provider">{{product.delivery_measurement.provider}}</span>
+          <span class="notes" *ngIf="product.delivery_measurement.notes">{{product.delivery_measurement.notes}}</span>
+        </div>
+      </div>
+
+      <!-- Publisher properties -->
+      <div class="properties-section" *ngIf="product.publisher_properties?.length > 0">
+        <span class="section-label">Properties</span>
+        <div class="property-chips">
+          <div class="property-chip" *ngFor="let prop of product.publisher_properties; trackBy: trackByIndex">
+            <span class="domain">{{prop.publisher_domain}}</span>
+            <span class="selection-type">({{prop.selection_type}})</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Format IDs -->
+      <div class="formats-section" *ngIf="product.format_ids?.length > 0">
+        <span class="section-label">Formats</span>
+        <div class="format-chips">
+          <ng-container *ngIf="product.formatsDisplay?.length > 0; else rawFormats">
+            <span class="format-chip" *ngFor="let format of product.formatsDisplay; trackBy: trackByIndex">
+              {{format.label}}
+            </span>
+          </ng-container>
+          <ng-template #rawFormats>
+            <span class="format-chip" *ngFor="let format of product.format_ids; trackBy: trackByIndex">
+              {{format.id}}
+              <span *ngIf="format.duration_ms"> {{format.duration_ms / 1000}}s</span>
+              <span *ngIf="format.width && format.height"> ({{format.width}}x{{format.height}})</span>
+            </span>
+          </ng-template>
+        </div>
+      </div>
+
+      <!-- Additional pricing options (if multiple) -->
+      <div class="additional-pricing" *ngIf="product.pricing_options?.length > 1">
+        <span class="section-label">Other Pricing Options</span>
+        <div class="pricing-chips">
+          <span class="pricing-chip" *ngFor="let option of product.pricing_options.slice(1); trackBy: trackByIndex">
+            {{getPricingModelLabel(option.pricing_model)}}: {{formatCurrency(option.rate, option.currency)}}
+          </span>
+        </div>
+      </div>
+
+      <!-- Product ID footer -->
+      <div class="product-footer">
+        <span class="product-id">{{product.product_id}}</span>
+      </div>
+    </div>
+  </div>
+</div>

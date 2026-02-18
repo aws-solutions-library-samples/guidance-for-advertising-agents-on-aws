@@ -1,0 +1,64 @@
+{
+  "agentName": "WeatherImpactAgent",
+  "agentId": "WeatherImpactAgent",
+  "templateId": "segments-visualization",
+  "usage": "Weather-driven audience segments and behavioral cohorts analysis",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Weather-Driven Audience Segments",
+    "subtitle": "Behavioral cohorts and audience segments based on weather response patterns",
+    "segments": [
+      {
+        "primaryLabel": "Weather-Sensitive Indoor Enthusiasts",
+        "templateId": "segments-visualization",
+        "secondaryLabel": "High weather responsiveness - Indoor activity preference",
+        "description": "Audience segment that significantly increases indoor media consumption and online shopping during adverse weather conditions",
+        "actualValue": "Current segment performance (e.g., '85%', '92%', '78%')",
+        "targetValue": "Target engagement rate (e.g., '80%', '85%', '75%')",
+        "forecastedValue": "Predicted performance with weather forecast (e.g., '88%', '95%', '82%')",
+        "actualLabel": "Current weather-driven engagement rate",
+        "targetLabel": "Target engagement for this weather-sensitive segment",
+        "forecastedLabel": "Forecasted engagement based on weather predictions",
+        "primaryMetric": {
+          "label": "Weather Response Index",
+          "value": "Responsiveness score (e.g., '8.7', '9.2', '7.8')"
+        },
+        "secondaryMetric": {
+          "label": "Indoor Activity Increase",
+          "value": "Activity boost percentage (e.g., '+45%', '+60%', '+35%')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$25,000', '$18,500', '$32,000')",
+        "statusIndicator": "optimized/active/underperforming",
+        "confidenceLevel": "high/medium/low",
+        "performanceLevel": "high/medium/low",
+        "insights": [
+          "Weather behavior insights (e.g., 'This segment increases streaming by 60% during rain', 'Cold weather drives 40% more online shopping in this group')",
+          "Seasonal patterns (e.g., 'Winter months show 3x higher responsiveness', 'Storm events trigger immediate behavior changes')",
+          "Media consumption shifts (e.g., 'Prefer long-form content during extended weather events', 'Mobile usage spikes during commute disruptions')"
+        ],
+        "risks": [
+          "Weather prediction accuracy affects targeting precision",
+          "Sudden weather changes may disrupt planned campaigns",
+          "Over-reliance on weather patterns may miss other behavioral drivers"
+        ],
+        "recommendations": [
+          "Increase indoor digital media budget allocation during adverse weather forecasts",
+          "Develop weather-triggered automated campaign adjustments",
+          "Create weather-specific creative content for this segment"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '2.3M users', '18% of total audience', '450K households')",
+          "growth": "Growth rate (e.g., '+12% YoY', 'Stable', '+8% seasonal')",
+          "engagement": "Engagement level (e.g., 'Very High', 'Weather-Dependent', 'Highly Responsive')"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": 4,
+      "activeSegments": 4,
+      "topPerformer": "Weather-Sensitive Indoor Enthusiasts",
+      "growthOpportunity": "Weather-Opportunistic Shoppers show highest growth potential with +15% YoY expansion"
+    }
+  }
+}

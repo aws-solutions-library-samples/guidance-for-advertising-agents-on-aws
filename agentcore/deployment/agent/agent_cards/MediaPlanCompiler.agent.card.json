@@ -1,0 +1,17 @@
+{
+  "name": "MediaPlanCompiler",
+  "description": "Compiles and synthesizes media planning insights into comprehensive, actionable media plans.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/mediaplancompiler",
+  "skills": [
+    "plan_synthesis",
+    "insight_compilation",
+    "recommendation_aggregation"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

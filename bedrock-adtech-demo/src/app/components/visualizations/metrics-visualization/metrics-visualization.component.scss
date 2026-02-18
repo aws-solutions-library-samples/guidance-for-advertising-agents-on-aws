@@ -1,0 +1,254 @@
+// Import or copy the metrics styles from chat interface
+.metrics-section {
+  margin-bottom: 16px;
+
+  .component-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 12px 0;
+  }
+
+  .component-subtitle {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin: -8px 0 12px 0;
+    font-style: italic;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+  }
+
+  .metric-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #d1d5db;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-item-header {
+      margin-bottom: 12px;
+
+      .metric-item-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 0 0 4px 0;
+      }
+
+      .metric-item-category {
+        display: inline-block;
+        background: #f3f4f6;
+        color: #6b7280;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+      }
+    }
+
+    .metric-subgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .metric-subcard {
+      padding: 8px;
+      border-radius: 6px;
+      background: #f8fafc;
+
+      &.highlight {
+        background: #eff6ff;
+        border: 1px solid #3b82f6;
+      }
+
+      .metric-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 4px;
+
+        &.trend-up {
+          color: #059669;
+        }
+
+        &.trend-down {
+          color: #dc2626;
+        }
+
+        &.trend-stable {
+          color: #6b7280;
+        }
+
+        .metric-unit {
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #6b7280;
+        }
+      }
+
+      .metric-label {
+        font-size: 0.7rem;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+    }
+
+    // Simple metrics format
+    .metric-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 4px;
+
+      &.trend-up {
+        color: #059669;
+      }
+
+      &.trend-down {
+        color: #dc2626;
+      }
+
+      &.trend-stable {
+        color: #6b7280;
+      }
+
+      .metric-unit {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #6b7280;
+      }
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+
+    .metric-target, .metric-benchmark {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin: 2px 0;
+    }
+
+    .metric-confidence {
+      font-size: 0.7rem;
+      font-weight: 500;
+      margin-top: 4px;
+
+      &.confidence-high {
+        color: #059669;
+      }
+
+      &.confidence-medium {
+        color: #f59e0b;
+      }
+
+      &.confidence-low {
+        color: #dc2626;
+      }
+    }
+
+    .metric-insights, .metric-recommendations, .metric-risks {
+      margin-top: 8px;
+      text-align: left;
+
+      h6 {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 12px;
+        font-size: 0.7rem;
+        line-height: 1.4;
+
+        li {
+          margin-bottom: 2px;
+        }
+      }
+    }
+
+    .metric-insights {
+      .insights-title {
+        color: #3b82f6;
+      }
+      ul {
+        color: #374151;
+      }
+    }
+
+    .metric-recommendations {
+      .recommendations-title {
+        color: #059669;
+      }
+      ul {
+        color: #374151;
+      }
+    }
+
+    .metric-risks {
+      .risks-title {
+        color: #dc2626;
+      }
+      ul {
+        color: #374151;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .metrics-section .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 6px;
+  }
+
+  .metrics-section .metric-card {
+    .metric-subgrid {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .metric-item-header {
+      margin-bottom: 8px;
+
+      .metric-item-title {
+        font-size: 0.8rem;
+      }
+    }
+
+    .metric-subcard {
+      padding: 6px 4px;
+
+      .metric-value {
+        font-size: 0.8rem;
+      }
+
+      .metric-label {
+        font-size: 0.6rem;
+      }
+    }
+  }
+} 

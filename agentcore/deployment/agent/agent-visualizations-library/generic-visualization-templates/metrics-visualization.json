@@ -1,0 +1,47 @@
+{
+  "templateId": "metrics-visualization",
+  "templateName": "Metrics Visualization",
+  "description": "Template for displaying performance data, KPIs, forecasts, and comparative analysis",
+  "usage": [
+    "Performance metrics and KPIs",
+    "Forecasting and projections",
+    "Comparative analysis",
+    "Campaign performance tracking",
+    "Revenue and engagement metrics"
+  ],
+  "schema": {
+    "visualizationType": "metrics",
+    "title": "string - Main title for the metrics display",
+    "subtitle": "string - Descriptive subtitle",
+    "collaborativeInsights": {
+      "description": "Optional - Attribution when multiple agents contribute",
+      "primaryAgent": "string - Primary analysis source",
+      "supportingAgent1": "string - Supporting insights source",
+      "supportingAgent2": "string - Additional supporting source"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "string - Metric category name",
+        "secondaryLabel": "string - Optional category description",
+        "items": [
+          {
+            "primaryLabel": "string - Specific metric name",
+            "actualValue": "string - Current value",
+            "targetValue": "string - Target/goal value",
+            "forecastedValue": "string - Predicted future value",
+            "actualLabel": "string - Description of actual value",
+            "targetLabel": "string - Description of target value",
+            "forecastedLabel": "string - Description of forecast",
+            "unit": "string - Unit of measurement (%, $, x, etc.)",
+            "trend": "string - up/down/stable",
+            "confidenceLevel": "string - high/medium/low",
+            "isPrimary": "boolean - Highlight as primary metric",
+            "insights": ["array of string - Key insights"],
+            "risks": ["array of string - Risk factors"],
+            "recommendations": ["array of string - Action items"]
+          }
+        ]
+      }
+    ]
+  }
+}

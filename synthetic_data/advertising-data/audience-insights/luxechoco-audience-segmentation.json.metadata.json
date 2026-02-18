@@ -1,0 +1,45 @@
+{
+    "metadataAttributes": {
+        "data_source": "audience_segmentation",
+        "category": "audience_insights",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "demographic_psychographic_analysis",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "audience_intelligence"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "audienceSegments"
+                },
+                {
+                    "fieldName": "targetingStrategies"
+                },
+                {
+                    "fieldName": "behavioralPatterns"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "demographics"
+                },
+                {
+                    "fieldName": "psychographics"
+                },
+                {
+                    "fieldName": "purchaseBehavior"
+                },
+                {
+                    "fieldName": "mediaConsumption"
+                },
+                {
+                    "fieldName": "seasonalTrends"
+                }
+            ]
+        }
+    }
+}

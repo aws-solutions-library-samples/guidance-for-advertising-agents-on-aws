@@ -1,0 +1,22 @@
+{
+  "agentName": "CurrentEventsAgent",
+  "agentId": "current-events-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Current events impact analysis and performance correlation (PRIMARY)"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience segment response analysis during events"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Event progression tracking and recovery timelines"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Event-driven budget reallocation recommendations"
+    }
+  ]
+}

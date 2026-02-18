@@ -1,0 +1,46 @@
+{
+  "agentName": "FormatStrategyOptimizerAgent",
+  "agentId": "FormatStrategyOptimizerAgent",
+  "templateId": "allocations-visualization",
+  "usage": "Format mix recommendations",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Revenue Format Mix Allocation",
+    "subtitle": "Optimal ad format distribution for revenue maximization",
+    "totalBudget": "Total format budget (e.g., '2,000,000')",
+    "currency": "Currency symbol (e.g., 'USD', 'EUR', 'GBP')",
+    "allocations": [
+      {
+        "primaryLabel": "Ad format type (e.g., 'Video Ads', 'Display Banners', 'Native Content')",
+        "secondaryLabel": "Format category (e.g., 'Premium Video', 'Standard Display', 'In-Feed Native')",
+        "description": "Format allocation rationale (e.g., 'High-engagement video format with premium CPMs')",
+        "allocationPercentage": "Format percentage (e.g., 45)",
+        "budgetAmount": "Format budget (e.g., '900,000')",
+        "performanceLevel": "Format performance: 'high', 'medium', 'low'",
+        "statusIndicator": "Format status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Format confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Format risk: 'low', 'medium', 'high'",
+        "insights": [
+          "Format-specific performance insights"
+        ],
+        "risks": [
+          "Format performance risks and user experience factors"
+        ],
+        "recommendations": [
+          "Format optimization suggestions"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last format analysis",
+          "dataSource": "Format data source (e.g., 'Revenue Performance Data', 'User Engagement Metrics')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of format allocations",
+      "optimizedAllocations": "Number of optimized formats",
+      "riskAllocations": "Number of high-risk format allocations",
+      "recommendedAdjustment": "Overall format mix recommendation"
+    }
+  }
+}

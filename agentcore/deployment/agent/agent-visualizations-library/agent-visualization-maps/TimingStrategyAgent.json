@@ -1,0 +1,22 @@
+{
+  "agentName": "TimingStrategyAgent",
+  "agentId": "TimingStrategyAgent",
+  "templates": [
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Campaign execution schedules and multi-platform timing coordination"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Timing performance metrics and engagement tracking"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Channel-specific timing strategies and platform coordination"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience viewing patterns and timing preferences"
+    }
+  ]
+}

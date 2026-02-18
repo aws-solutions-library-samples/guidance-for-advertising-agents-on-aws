@@ -1,0 +1,6 @@
+"incident_id","date","publisher_id","url","content_category","violation_type","severity","brand_affected","resolution_time_hours","impact_score"
+"inc-001","2025-05-15","pub-12345","sportsillustrated.com/controversial-article","IAB11","political_content","medium","brand-12345","4","0.6"
+"inc-002","2025-05-16","pub-67890","wired.com/tech-scandal-news","IAB19","negative_brand_mention","low","brand-24680","2","0.3"
+"inc-003","2025-05-17","pub-24680","healthline.com/unverified-claims","IAB7","misinformation","high","brand-97531","8","0.9"
+"inc-004","2025-05-18","pub-13579","nytimes.com/financial-crisis-report","IAB13","negative_finance","medium","brand-13579","6","0.7"
+"inc-005","2025-05-19","pub-97531","espn.com/gambling-content","IAB17","gambling_related","high","brand-12345","12","0.8"

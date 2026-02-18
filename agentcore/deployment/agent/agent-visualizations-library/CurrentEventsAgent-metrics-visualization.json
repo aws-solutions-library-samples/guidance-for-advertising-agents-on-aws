@@ -1,0 +1,47 @@
+{
+  "agentName": "CurrentEventsAgent",
+  "agentId": "current-events-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Current events impact analysis and performance correlation",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Current Events Impact Analysis",
+    "subtitle": "Real-time analysis of event impact on media performance and audience behavior",
+    "collaborativeInsights": {
+      "primaryAgent": "CurrentEventsAgent",
+      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent2": "MediaPlanningSupervisorAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Event impact category (e.g., 'Audience Engagement Impact', 'Revenue Performance Impact', 'Content Consumption Changes')",
+        "secondaryLabel": "Category description (e.g., 'Event-driven audience behavior changes', 'Ad revenue fluctuations during events')",
+        "items": [
+          {
+            "primaryLabel": "Specific impact metric (e.g., 'News Content Consumption', 'Entertainment Content Decline', 'Ad Revenue Drop', 'Social Media Engagement')",
+            "actualValue": "Current performance during event (e.g., '45.2', '-15.3', '+125.7')",
+            "targetValue": "Baseline/normal performance (e.g., '35.0', '42.1', '85.2')",
+            "forecastedValue": "Projected performance post-event (e.g., '42.8', '38.5', '95.4')",
+            "actualLabel": "Current event impact description (e.g., 'Breaking news drives engagement spike', 'Entertainment viewing declined')",
+            "targetLabel": "Normal performance baseline (e.g., 'Baseline engagement level', 'Pre-event performance')",
+            "forecastedLabel": "Recovery projection (e.g., 'Expected stabilization', 'Projected recovery to baseline')",
+            "unit": "Measurement unit (e.g., '%', '$M', 'hours', 'impressions')",
+            "trend": "Performance direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Prediction confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary event impact metric",
+            "insights": [
+              "Event impact insights (e.g., 'Breaking news drives 45% increase in real-time engagement', 'Weather emergency increases mobile streaming by 80%')"
+            ],
+            "risks": [
+              "Event-related risks (e.g., 'Entertainment content consumption declining by 15%', 'Ad revenue may drop 25% during crisis period')"
+            ],
+            "recommendations": [
+              "Strategic recommendations (e.g., 'Pivot content strategy to news-adjacent entertainment', 'Increase weather-related content during storm season')"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

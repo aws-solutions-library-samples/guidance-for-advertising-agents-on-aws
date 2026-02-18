@@ -1,0 +1,57 @@
+{
+  "agentName": "BidSimulatorAgent",
+  "agentId": "bid-simulator-agent",
+  "templateId": "decision-tree-visualization",
+  "usage": "Strategic decision scenarios and outcome analysis",
+  "dataMapping": {
+    "visualizationType": "decision-tree",
+    "templateId": "decision-tree-visualization",
+    "title": "Bidding Strategy Decision Framework",
+    "subtitle": "Strategic bidding scenarios and outcome analysis",
+    "description": "Decision tree for optimal bidding strategy selection",
+    "startNode": "Initial bidding decision point (e.g., 'Campaign Objective: Performance vs. Brand')",
+    "nodes": [
+      {
+        "id": "Unique node identifier (e.g., 'start', 'performance_path', 'brand_path')",
+        "text": "Node label (e.g., 'High ROAS Target', 'Brand Awareness Focus')",
+        "type": "Node type: 'start', 'good', 'bad', 'neutral'",
+        "x": "X coordinate (0-600) for node positioning",
+        "y": "Y coordinate (0-400) for node positioning",
+        "description": "Detailed bidding scenario description",
+        "probability": "Probability of this outcome (0-1)",
+        "impact": "Business impact: 'High', 'Medium', 'Low'",
+        "riskLevel": "Risk score (1-10) for this bidding approach",
+        "cost": "Associated cost (e.g., '$50,000 additional spend')",
+        "timeframe": "Time requirement (e.g., '2-3 weeks to optimize')",
+        "expectedValue": "Expected ROAS or performance outcome",
+        "potentialLoss": "Potential downside (e.g., '20% efficiency loss')",
+        "metrics": {
+          "roi": "Return on investment projection",
+          "timeToValue": "Time to realize bidding optimization"
+        },
+        "mitigation": "Risk mitigation strategy for this bidding path"
+      }
+    ],
+    "connections": [
+      {
+        "from": "Source node ID",
+        "to": "Target node ID",
+        "label": "Connection label (e.g., 'Choose Performance', 'Choose Brand')",
+        "condition": "Condition description (e.g., 'If ROAS target > 4x')",
+        "probability": "Path probability (0-1)"
+      }
+    ],
+    "parameters": {
+      "riskFactor": "Overall bidding risk (1-10)",
+      "budgetLevel": "Budget requirement (1-10)",
+      "timeframe": "Total optimization timeframe",
+      "confidenceLevel": "Decision confidence level"
+    },
+    "summary": {
+      "recommendedPath": "Suggested bidding strategy path",
+      "expectedValue": "Expected performance outcome",
+      "riskScore": "Overall risk assessment",
+      "decisionConfidence": "Confidence in recommendation"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "templateId": "metrics-visualization",
+  "agentName": "AdvertiserAgent",
+  "description": "Campaign KPI tracking and brand metrics",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "campaign_name": { "type": "string" },
+      "metrics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "kpi_name": { "type": "string" },
+            "target": { "type": "number" },
+            "actual": { "type": "number" },
+            "status": { "type": "string", "enum": ["on_track", "at_risk", "exceeded"] }
+          }
+        }
+      }
+    }
+  }
+}

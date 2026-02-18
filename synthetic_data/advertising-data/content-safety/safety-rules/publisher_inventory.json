@@ -1,0 +1,76 @@
+{
+    "publisher_inventory_data": [
+        {
+            "publisher_id": "pub-premium-001",
+            "name": "Premium News Network",
+            "tier": "premium",
+            "content_categories": [
+                "IAB11",
+                "IAB13",
+                "IAB19"
+            ],
+            "audience_demographics": {
+                "age_distribution": {
+                    "25-34": 0.25,
+                    "35-44": 0.35,
+                    "45-54": 0.25,
+                    "55+": 0.15
+                },
+                "income_distribution": {
+                    "high": 0.60,
+                    "middle": 0.35,
+                    "low": 0.05
+                },
+                "education": {
+                    "college+": 0.80,
+                    "high_school": 0.20
+                }
+            },
+            "performance_metrics": {
+                "average_ctr": 0.018,
+                "average_viewability": 0.85,
+                "brand_safety_score": 0.92,
+                "fraud_rate": 0.02
+            },
+            "pricing": {
+                "cpm_floor": 3.50,
+                "premium_multiplier": 1.4
+            }
+        },
+        {
+            "publisher_id": "pub-sports-001",
+            "name": "Sports Central",
+            "tier": "standard",
+            "content_categories": [
+                "IAB17"
+            ],
+            "audience_demographics": {
+                "age_distribution": {
+                    "18-24": 0.20,
+                    "25-34": 0.40,
+                    "35-44": 0.25,
+                    "45+": 0.15
+                },
+                "income_distribution": {
+                    "high": 0.30,
+                    "middle": 0.50,
+                    "low": 0.20
+                },
+                "education": {
+                    "college+": 0.55,
+                    "high_school": 0.45
+                }
+            },
+            "performance_metrics": {
+                "average_ctr": 0.022,
+                "average_viewability": 0.78,
+                "brand_safety_score": 0.88,
+                "fraud_rate": 0.04
+            },
+            "pricing": {
+                "cpm_floor": 2.25,
+                "premium_multiplier": 1.1
+            }
+        }
+    ]
+}

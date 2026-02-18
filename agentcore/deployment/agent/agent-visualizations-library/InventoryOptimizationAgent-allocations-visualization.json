@@ -1,0 +1,31 @@
+{
+  "agentName": "InventoryOptimizationAgent",
+  "agentId": "inventory-optimization-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified inventory allocation and optimization strategies",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Inventory Allocation Optimization",
+    "subtitle": "Strategic inventory distribution for maximum yield and fill rates",
+    "totalBudget": "Total inventory value (e.g., '$5,000,000')",
+    "allocations": [
+      {
+        "primaryLabel": "Inventory segment (e.g., 'Premium Video Inventory', 'Display Banner Slots', 'Native Content Placements')",
+        "secondaryLabel": "Inventory category (e.g., 'High-Value Video', 'Standard Display', 'In-Feed Native')",
+        "allocationPercentage": "Inventory percentage (e.g., 40)",
+        "budgetAmount": "Inventory value (e.g., '$2,000,000')",
+        "performanceLevel": "Inventory performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Inventory status: 'optimized', 'available', 'constrained'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Inventory risk: 'low', 'medium', 'high'",
+        "efficiency": "Yield efficiency rating",
+        "safety": "Inventory quality score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of inventory segments",
+      "riskAllocations": "Number of high-risk inventory allocations"
+    }
+  }
+}

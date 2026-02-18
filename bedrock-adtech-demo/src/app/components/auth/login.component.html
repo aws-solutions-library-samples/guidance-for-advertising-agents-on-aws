@@ -1,0 +1,126 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo-section">
+      <h2>Agents for Advertising</h2>
+      <p>Sign in to access the Agents Playground</p>
+    </div>
+
+    <!-- Regular Sign In Form -->
+    <div *ngIf="!showNewPasswordForm" class="form-section">
+      <form (ngSubmit)="signIn()" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            [(ngModel)]="email"
+            required
+            email
+            class="form-control"
+            [disabled]="isLoading"
+            placeholder="Enter your email address"
+            (keypress)="onKeyPress($event)"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            [(ngModel)]="password"
+            required
+            class="form-control"
+            [disabled]="isLoading"
+            placeholder="Enter your password"
+            (keypress)="onKeyPress($event)"
+          />
+        </div>
+
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="isLoading || !loginForm.form.valid"
+        >
+          <span *ngIf="isLoading" class="spinner"></span>
+          {{ isLoading ? 'Signing In...' : 'Sign In' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- New Password Required Form -->
+    <div *ngIf="showNewPasswordForm" class="form-section">
+      <h3>New Password Required</h3>
+      <p>Please choose a new password for your account.</p>
+      
+      <form (ngSubmit)="completeNewPassword()" #passwordForm="ngForm">
+        <div class="form-group">
+          <label for="newPassword">New Password</label>
+          <input
+            type="password"
+            id="newPassword"
+            name="newPassword"
+            [(ngModel)]="newPassword"
+            required
+            minlength="8"
+            class="form-control"
+            [disabled]="isLoading"
+            placeholder="Enter new password (min 8 characters)"
+            (keypress)="onKeyPress($event)"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            [(ngModel)]="confirmPassword"
+            required
+            class="form-control"
+            [disabled]="isLoading"
+            placeholder="Confirm new password"
+            (keypress)="onKeyPress($event)"
+          />
+        </div>
+
+        <div class="password-requirements">
+          <small>
+            Password must be at least 8 characters long and contain:
+            <ul>
+              <li>At least one uppercase letter</li>
+              <li>At least one lowercase letter</li>
+              <li>At least one number</li>
+              <li>At least one special character</li>
+            </ul>
+          </small>
+        </div>
+
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="isLoading || !passwordForm.form.valid"
+        >
+          <span *ngIf="isLoading" class="spinner"></span>
+          {{ isLoading ? 'Updating Password...' : 'Update Password' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="info-section">
+      <p><strong>Demo Information:</strong></p>
+      <p>This is a demonstration of Agents on AWS using Amazon Bedrock AgentCore.<br/>Contact the admin for login credentials.</p>
+    </div>
+  </div>
+</div> 

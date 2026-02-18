@@ -1,0 +1,50 @@
+{
+  "agentName": "MeasurementAgent",
+  "agentId": "measurement-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Study timeline and reporting milestones",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Measurement Study Timeline",
+    "subtitle": "Study phases and reporting schedule",
+    "startDate": "Study start date (ISO format)",
+    "endDate": "Study end date (ISO format)",
+    "totalDuration": "Total study duration description",
+    "overallObjective": "Primary measurement objective",
+    "phases": [
+      {
+        "primaryLabel": "Study phase (e.g., 'Configuration', 'Data Collection', 'Analysis', 'Reporting')",
+        "secondaryLabel": "Phase type (e.g., 'Setup', 'Execution', 'Delivery')",
+        "description": "Phase objectives and activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration description",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected study outcomes",
+        "budget": "Phase budget allocation",
+        "resources": ["Required study resources"],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name (e.g., 'Interim Report', 'Final Report')",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": ["Prerequisites and dependencies"],
+        "risks": ["Risk factors for this phase"]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Milestone details",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": ["Study success criteria"],
+    "criticalPath": ["Critical study phases"]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "agentName": "InventoryOptimizationAgent",
+  "agentId": "inventory-optimization-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Seasonal inventory patterns and forecasts",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Inventory Optimization Timeline",
+    "subtitle": "Seasonal inventory patterns and availability projections",
+    "totalDuration": "Forecasting period (e.g., '12 months', '1 year')",
+    "startDate": "Forecast start date (ISO format: '2024-01-01')",
+    "endDate": "Forecast end date (ISO format: '2024-12-31')",
+    "overallObjective": "Primary inventory objective (e.g., 'Maintain 95% fill rate across all seasonal periods')",
+    "phases": [
+      {
+        "primaryLabel": "Seasonal phase (e.g., 'Q1 Low Season', 'Holiday Peak', 'Back-to-School Rush')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Seasonal inventory characteristics and market dynamics",
+        "startDate": "Season start date (ISO format)",
+        "endDate": "Season end date (ISO format)",
+        "duration": "Season duration (e.g., '3 months', '6 weeks')",
+        "status": "Forecast status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Season priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected inventory levels and fill rates",
+        "budget": "Revenue projection (e.g., '$2.5M projected revenue', '15% above baseline')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Inventory milestone (e.g., 'Peak Demand Forecast', 'Pricing Optimization Complete')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'Fill rate > 95%', 'CPM within 10% of target')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites (e.g., 'Historical data analysis complete', 'Market trend analysis ready')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Success criteria (e.g., 'Maintain 95% fill rate', 'Revenue within 5% of forecast')"
+    ],
+    "riskFactors": [
+      "Risk factors (e.g., 'Market volatility', 'Demand fluctuation', 'Competitive pressure')"
+    ]
+  }
+}

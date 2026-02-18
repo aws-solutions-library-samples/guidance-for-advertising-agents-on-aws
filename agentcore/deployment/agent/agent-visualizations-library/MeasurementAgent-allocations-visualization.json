@@ -1,0 +1,31 @@
+{
+  "agentName": "MeasurementAgent",
+  "agentId": "measurement-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Sample allocation and budget distribution",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Study Sample Allocation",
+    "subtitle": "Control and exposed sample distribution",
+    "totalBudget": "Total study budget",
+    "allocations": [
+      {
+        "primaryLabel": "Sample group (e.g., 'Control', 'Exposed')",
+        "secondaryLabel": "Study type",
+        "allocationPercentage": "Sample percentage",
+        "budgetAmount": "Sample size or cost",
+        "performanceLevel": "Collection status: 'on-track', 'ahead', 'behind'",
+        "statusIndicator": "Sample status: 'complete', 'in-progress', 'pending'",
+        "confidenceLevel": "Statistical power: 'high', 'medium', 'low'",
+        "riskLevel": "Collection risk: 'low', 'medium', 'high'"
+      }
+    ],
+    "summary": {
+      "totalSampleSize": "Total sample size",
+      "controlSample": "Control group size",
+      "exposedSample": "Exposed group size",
+      "studyCost": "Total study cost"
+    }
+  }
+}

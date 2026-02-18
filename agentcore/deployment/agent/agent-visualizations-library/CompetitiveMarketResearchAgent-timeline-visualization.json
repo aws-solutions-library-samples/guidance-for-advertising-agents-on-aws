@@ -1,0 +1,84 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templateId": "timeline-visualization",
+  "usage": "Competitive campaign timelines and market trend analysis",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Competitive Market Timeline",
+    "subtitle": "Competitive campaign activities and market trend analysis",
+    "timeRange": {
+      "start": "Timeline start date (ISO format)",
+      "end": "Timeline end date (ISO format)",
+      "granularity": "Time granularity: 'day', 'week', 'month', 'quarter'"
+    },
+    "startDate": "Timeline start date (ISO format)",
+    "endDate": "Timeline end date (ISO format)",
+    "totalDuration": "Total timeline duration description",
+    "overallObjective": "Main competitive analysis objective",
+    "phases": [
+      {
+        "primaryLabel": "Competitive phase name (e.g., 'Market Entry Analysis', 'Competitive Response', 'Market Defense')",
+        "secondaryLabel": "Phase type (e.g., 'Research', 'Monitoring', 'Response')",
+        "description": "Phase objectives and competitive activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration description",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected competitive insights and deliverables",
+        "budget": "Phase budget allocation",
+        "resources": [
+          "Required resources and team members"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites and dependencies"
+        ],
+        "risks": [
+          "Risk factors for this competitive phase"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Milestone details",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": [
+      "Success criteria and competitive KPIs"
+    ],
+    "criticalPath": [
+      "Critical phase names"
+    ],
+    "trends": [
+      {
+        "name": "Trend name (e.g., 'Digital Transformation', 'Sustainability Focus', 'Price Competition')",
+        "startDate": "Trend emergence date",
+        "intensity": "Trend intensity: 'high', 'medium', 'low'",
+        "trajectory": "Trend direction: 'increasing', 'stable', 'decreasing'",
+        "impactedCompetitors": [
+          "List of affected competitors"
+        ],
+        "marketImplications": "Overall market implications"
+      }
+    ],
+    "summary": {
+      "totalEvents": "Number of competitive events tracked",
+      "highImpactEvents": "Number of high-impact competitive events",
+      "activeTrends": "Number of active market trends",
+      "competitiveIntensity": "Overall competitive intensity level",
+      "nextMilestone": "Next significant competitive milestone"
+    }
+  }
+}

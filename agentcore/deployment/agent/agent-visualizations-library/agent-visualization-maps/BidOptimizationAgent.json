@@ -1,0 +1,22 @@
+{
+  "agentName": "BidOptimizationAgent",
+  "agentId": "bid-optimization-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Bid performance metrics, win rates, ROI analysis"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget allocation recommendations"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Channel-specific bid recommendations"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Segment-level bid optimization"
+    }
+  ]
+}

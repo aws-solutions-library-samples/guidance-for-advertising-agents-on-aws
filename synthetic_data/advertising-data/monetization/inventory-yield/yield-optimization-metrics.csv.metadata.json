@@ -1,0 +1,50 @@
+{
+    "metadataAttributes": {
+        "data_source": "yield_optimization_metrics",
+        "category": "inventory_yield",
+        "business_domain": "viewer_monetization",
+        "analysis_type": "yield_performance",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "optimization_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "metric_type"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "time_period"
+                    },
+                    {
+                        "fieldName": "inventory_category"
+                    },
+                    {
+                        "fieldName": "baseline_value"
+                    },
+                    {
+                        "fieldName": "optimized_value"
+                    },
+                    {
+                        "fieldName": "improvement_percentage"
+                    },
+                    {
+                        "fieldName": "revenue_impact_eur"
+                    },
+                    {
+                        "fieldName": "optimization_strategy"
+                    },
+                    {
+                        "fieldName": "confidence_level"
+                    }
+                ]
+            }
+        }
+    }
+}

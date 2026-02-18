@@ -1,0 +1,49 @@
+{
+  "agentName": "MediaPlanningAgent",
+  "agentId": "MediaPlanningAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Publisher revenue performance projections and strategic KPIs through collaborative intelligence",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Publisher Revenue Performance Dashboard",
+    "subtitle": "Strategic revenue optimization through collaborative media planning analysis",
+    "collaborativeInsights": {
+      "description": "Multi-specialist team media planning analysis",
+      "primaryAgent": "MediaPlanningAgent",
+      "supportingAgent1": "AudienceIntelligenceTeam",
+      "supportingAgent2": "FormatStrategyTeam",
+      "supportingAgent3": "TimingStrategyTeam"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Revenue Performance Metrics",
+        "secondaryLabel": "Publisher revenue optimization and advertiser value creation",
+        "items": [
+          {
+            "primaryLabel": "Revenue metric name (e.g., 'Total Revenue Forecast', 'Average CPM', 'Inventory Utilization', 'Advertiser Satisfaction')",
+            "actualValue": "Current performance value",
+            "targetValue": "Strategic target value",
+            "forecastedValue": "Projected performance value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Strategic target description",
+            "forecastedLabel": "Projection description with confidence",
+            "unit": "Metric unit (%, $, score, etc.)",
+            "trend": "Performance trajectory: 'up', 'down', 'stable'",
+            "confidenceLevel": "Projection confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary revenue KPI: true/false",
+            "insights": [
+              "Strategic insights from collaborative analysis"
+            ],
+            "risks": [
+              "Revenue risk factors and mitigation strategies"
+            ],
+            "recommendations": [
+              "Actionable optimization recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

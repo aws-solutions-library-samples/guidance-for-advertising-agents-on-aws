@@ -1,0 +1,154 @@
+{
+  "agentName": "TimingStrategyAgent",
+  "agentId": "TimingStrategyAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Timing performance metrics, reach and frequency",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Performance Monitoring & Optimization Triggers",
+    "subtitle": "Key performance indicators and tactical adjustment thresholds",
+    "metrics": [
+      {
+        "primaryLabel": "Viewership Performance",
+        "secondaryLabel": "Premiere and ongoing engagement metrics",
+        "items": [
+          {
+            "primaryLabel": "Premiere Viewership",
+            "actualValue": "TBD",
+            "targetValue": "12.5M",
+            "forecastedValue": "13.2M",
+            "actualLabel": "Current viewership",
+            "targetLabel": "Target viewership (85% live/same-day)",
+            "forecastedLabel": "Projected based on pre-campaign engagement",
+            "unit": "M viewers",
+            "trend": "up",
+            "confidenceLevel": "high",
+            "isPrimary": true,
+            "insights": [
+              "Optimal viewing window: 7:00-9:00 PM ET family prime time",
+              "Secondary viewing peak: Weekend daytime co-viewing"
+            ],
+            "recommendations": [
+              "If viewership exceeds 14M: Accelerate episode 2 promotional window",
+              "Monitor live vs. time-shifted viewing ratio"
+            ]
+          },
+          {
+            "primaryLabel": "Family Co-Viewing Rate",
+            "actualValue": "TBD",
+            "targetValue": "80%",
+            "forecastedValue": "82%",
+            "actualLabel": "Current co-viewing rate",
+            "targetLabel": "Target for premiere event",
+            "forecastedLabel": "Projected based on content type and timing",
+            "unit": "%",
+            "trend": "stable",
+            "confidenceLevel": "high",
+            "isPrimary": false,
+            "insights": [
+              "Sunday 7:00 PM ET optimized for family viewing",
+              "Weekend daytime provides secondary co-viewing opportunity"
+            ],
+            "recommendations": [
+              "If family co-viewing below 75%: Deploy mid-week family engagement content"
+            ]
+          },
+          {
+            "primaryLabel": "Completion Rate",
+            "actualValue": "TBD",
+            "targetValue": "92%",
+            "forecastedValue": "93%",
+            "actualLabel": "Current completion rate",
+            "targetLabel": "Target for premiere episode",
+            "forecastedLabel": "Projected based on content quality",
+            "unit": "%",
+            "trend": "up",
+            "confidenceLevel": "medium",
+            "isPrimary": false,
+            "insights": [
+              "High completion rate indicates strong content engagement",
+              "Critical for ad inventory value"
+            ],
+            "recommendations": [
+              "If completion rate below 88%: Evaluate episode pacing and enhance recap content"
+            ]
+          }
+        ]
+      },
+      {
+        "primaryLabel": "Social Engagement",
+        "secondaryLabel": "Cross-platform social media performance",
+        "items": [
+          {
+            "primaryLabel": "Social Interactions",
+            "actualValue": "TBD",
+            "targetValue": "3.5M",
+            "forecastedValue": "3.8M",
+            "actualLabel": "Current social interactions",
+            "targetLabel": "Target during premiere window",
+            "forecastedLabel": "Projected based on pre-campaign momentum",
+            "unit": "M interactions",
+            "trend": "up",
+            "confidenceLevel": "high",
+            "isPrimary": true,
+            "insights": [
+              "Platform-specific timing: Instagram (4-7PM), TikTok (7-9PM), Twitter (Live during premiere)",
+              "Character journeys campaign: January 5-18 (daily content)"
+            ],
+            "recommendations": [
+              "If social engagement below 3M: Increase community engagement and post-episode discussions"
+            ]
+          },
+          {
+            "primaryLabel": "Second Screen Activation",
+            "actualValue": "TBD",
+            "targetValue": "35%",
+            "forecastedValue": "37%",
+            "actualLabel": "Current second screen usage",
+            "targetLabel": "Target of viewing households",
+            "forecastedLabel": "Projected based on mobile companion content",
+            "unit": "%",
+            "trend": "up",
+            "confidenceLevel": "medium",
+            "isPrimary": false,
+            "insights": [
+              "Mobile companion content launches 3 days pre-premiere (Jan 16)",
+              "Second screen experience synchronized with premiere",
+              "Peak usage window: 5:00-10:00 PM daily"
+            ],
+            "recommendations": [
+              "Monitor mobile app engagement and optimize companion content timing"
+            ]
+          }
+        ]
+      },
+      {
+        "primaryLabel": "Monetization Performance",
+        "secondaryLabel": "Ad completion and inventory optimization",
+        "items": [
+          {
+            "primaryLabel": "Ad Completion",
+            "actualValue": "TBD",
+            "targetValue": "94%",
+            "forecastedValue": "95%",
+            "actualLabel": "Current ad completion rate",
+            "targetLabel": "Target for premium inventory",
+            "forecastedLabel": "Projected based on content engagement",
+            "unit": "%",
+            "trend": "stable",
+            "confidenceLevel": "high",
+            "isPrimary": false,
+            "insights": [
+              "High completion rate supports premium inventory pricing",
+              "Critical for advertiser satisfaction"
+            ],
+            "recommendations": [
+              "Maintain optimal ad load to preserve completion rates"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

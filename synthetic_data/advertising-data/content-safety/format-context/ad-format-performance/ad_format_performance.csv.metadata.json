@@ -1,0 +1,61 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "creative_analytics",
+        "business_domain": "ad_format_optimization",
+        "analysis_type": "format_performance_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "ad_format"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "placement_position"
+                    },
+                    {
+                        "fieldName": "ctr_percent"
+                    },
+                    {
+                        "fieldName": "conversion_rate"
+                    },
+                    {
+                        "fieldName": "viewability_rate"
+                    },
+                    {
+                        "fieldName": "engagement_score"
+                    },
+                    {
+                        "fieldName": "revenue_per_impression"
+                    },
+                    {
+                        "fieldName": "cost_per_click"
+                    },
+                    {
+                        "fieldName": "brand_safety_score"
+                    },
+                    {
+                        "fieldName": "user_experience_score"
+                    },
+                    {
+                        "fieldName": "load_time_ms"
+                    },
+                    {
+                        "fieldName": "video_completion_rate"
+                    }
+                ]
+            }
+        }
+    }
+}

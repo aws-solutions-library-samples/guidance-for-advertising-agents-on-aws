@@ -1,0 +1,14 @@
+{
+  "agentName": "IdentityAgent",
+  "agentId": "identity-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Reach metrics and match rates by channel"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Channel reach distribution and coverage"
+    }
+  ]
+}

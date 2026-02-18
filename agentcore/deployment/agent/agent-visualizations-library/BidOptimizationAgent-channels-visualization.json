@@ -1,0 +1,57 @@
+{
+  "agentName": "BidOptimizationAgent",
+  "agentId": "bid-optimization-agent",
+  "templateId": "channels-visualization",
+  "usage": "Channel-specific bid recommendations",
+  "dataMapping": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "Channel Bid Optimization Strategy",
+    "subtitle": "Channel-specific bidding recommendations and performance",
+    "channels": [
+      {
+        "primaryLabel": "Channel name (e.g., 'Google Search', 'Facebook Ads', 'Programmatic Display')",
+        "secondaryLabel": "Channel type (e.g., 'Search', 'Social', 'Display')",
+        "description": "Channel bidding strategy and approach",
+        "primaryScore": {
+          "label": "Primary bid metric (e.g., 'Win Rate', 'CPC Efficiency')",
+          "value": "Metric value (e.g., '75%', '$1.85')"
+        },
+        "secondaryScore": {
+          "label": "Secondary metric (e.g., 'ROAS', 'Conversion Rate')",
+          "value": "Metric value (e.g., '4.2x', '8.5%')"
+        },
+        "qualityScore": "Bid quality rating (e.g., 'Excellent', 'Good', 'Needs Improvement')",
+        "statusIndicator": "Bid status: 'verified', 'active', 'paused'",
+        "targetValue": "Bid target (e.g., '80% win rate')",
+        "actualValue": "Current bid performance (e.g., '75% win rate')",
+        "forecastedValue": "Projected bid improvement (e.g., '78% win rate')",
+        "targetLabel": "Target bid performance description",
+        "actualLabel": "Current bid performance description",
+        "forecastedLabel": "Forecasted bid improvement description",
+        "confidenceLevel": "Bid optimization confidence: 'high', 'medium', 'low'",
+        "insights": [
+          "Channel-specific bid optimization insights"
+        ],
+        "risks": [
+          "Bidding risks for this channel"
+        ],
+        "opportunities": [
+          "Bid optimization opportunities"
+        ],
+        "recommendation": "Strategic bid recommendation for this channel",
+        "metadata": {
+          "category": "Bid category (e.g., 'Automated', 'Manual', 'Smart Bidding')",
+          "reach": "Channel reach potential",
+          "engagement": "Bid engagement effectiveness"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "Number of channels with bid optimization",
+      "activeChannels": "Number of actively optimized channels",
+      "topPerformer": "Best performing channel for bidding",
+      "recommendedFocus": "Bid optimization focus recommendation"
+    }
+  }
+}

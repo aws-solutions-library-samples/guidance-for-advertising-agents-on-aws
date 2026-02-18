@@ -1,0 +1,58 @@
+{
+    "metadataAttributes": {
+        "data_source": "seasonal_analytics",
+        "category": "trend_analysis",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "seasonal_performance_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "industry_vertical"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "month"
+                    },
+                    {
+                        "fieldName": "week_of_year"
+                    },
+                    {
+                        "fieldName": "search_volume_index"
+                    },
+                    {
+                        "fieldName": "competition_level"
+                    },
+                    {
+                        "fieldName": "cpc_multiplier"
+                    },
+                    {
+                        "fieldName": "conversion_rate_modifier"
+                    },
+                    {
+                        "fieldName": "audience_size_factor"
+                    },
+                    {
+                        "fieldName": "engagement_score"
+                    },
+                    {
+                        "fieldName": "seasonal_event"
+                    },
+                    {
+                        "fieldName": "holiday_impact_score"
+                    },
+                    {
+                        "fieldName": "weather_correlation"
+                    },
+                    {
+                        "fieldName": "economic_indicator"
+                    }
+                ]
+            }
+        }
+    }
+}

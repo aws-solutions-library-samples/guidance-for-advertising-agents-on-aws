@@ -1,0 +1,67 @@
+{
+    "metadataAttributes": {
+        "data_source": "engagement_tracking",
+        "category": "user_engagement",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "viewer_engagement_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "content_id"
+                    },
+                    {
+                        "fieldName": "content_duration_minutes"
+                    },
+                    {
+                        "fieldName": "viewer_age_group"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "engagement_score"
+                    },
+                    {
+                        "fieldName": "watch_time_percentage"
+                    },
+                    {
+                        "fieldName": "interaction_rate"
+                    },
+                    {
+                        "fieldName": "scroll_depth"
+                    },
+                    {
+                        "fieldName": "ad_tolerance_level"
+                    },
+                    {
+                        "fieldName": "session_frequency"
+                    },
+                    {
+                        "fieldName": "return_viewer_rate"
+                    },
+                    {
+                        "fieldName": "social_sharing_rate"
+                    },
+                    {
+                        "fieldName": "time_of_day"
+                    },
+                    {
+                        "fieldName": "day_of_week"
+                    },
+                    {
+                        "fieldName": "geographic_region"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,45 @@
+# Core AWS and deployment dependencies
+boto3>=1.26.0
+botocore>=1.29.0
+pyyaml>=6.0
+requests>=2.28.0
+aws-opentelemetry-distro>=0.10.0
+
+# AgentCore dependencies (without starter toolkit to avoid CodeBuild issues)
+# bedrock-agentcore>=1.0.0 required for MemorySessionManager (used by AgentCoreMemoryConversationManager)
+bedrock-agentcore>=1.0.0
+strands-agents>=1.21.0
+strands-agents-tools
+strands-agents[a2a]>=1.21.0
+
+a2a-sdk[sql]>=0.3.0
+# Data analysis dependencies
+pandas>=2.0.0
+
+# Utility dependencies
+packaging>=21.0
+setuptools>=65.0
+wheel>=0.37.0
+PyPDF2>=3.0.0
+python-docx>=1.1.0
+python-pptx>=0.6.23
+Pillow>=10.0.0
+
+# Optional dependencies
+IPython
+uv
+
+# Knowledge MCP Server Dependencies
+fastmcp
+mcp
+mcp-proxy-for-aws>=0.1.0
+starlette
+uvicorn
+
+gql
+requests_aws4auth
+requests_toolbelt
+requests_aws_sign
+websocket-client
+pydantic
+typing

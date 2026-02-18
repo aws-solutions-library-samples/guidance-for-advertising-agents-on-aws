@@ -1,0 +1,49 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templateId": "metrics-visualization",
+  "usage": "Market share analysis, competitive performance metrics, and research KPIs (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Competitive Market Research Metrics",
+    "subtitle": "Market share analysis and competitive performance indicators",
+    "metrics": [
+      {
+        "primaryLabel": "Competitive Market Metrics",
+        "secondaryLabel": "Market share analysis and competitive performance indicators",
+        "items": [
+          {
+            "primaryLabel": "Market metric name (e.g., 'Market Share Growth', 'Competitive Position Index', 'Brand Awareness Gap')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "forecastedValue": "Forecasted metric value",
+            "actualLabel": "Current market performance description",
+            "targetLabel": "Target market performance description",
+            "forecastedLabel": "Forecast description",
+            "unit": "Metric unit (%, index, points, etc.)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Forecast confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": [
+              "Key competitive insights and market positioning analysis"
+            ],
+            "risks": [
+              "Risk factors affecting competitive performance"
+            ],
+            "recommendations": [
+              "Strategic recommendations based on competitive metrics"
+            ]
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overallScore": "Overall competitive performance score (1-100)",
+      "marketPosition": "Market position assessment (e.g., 'Market Leader', 'Strong Challenger', 'Niche Player')",
+      "competitiveAdvantage": "Key competitive advantages identified",
+      "threatLevel": "Competitive threat level: 'low', 'medium', 'high'",
+      "opportunityScore": "Market opportunity score (1-10)"
+    }
+  }
+}

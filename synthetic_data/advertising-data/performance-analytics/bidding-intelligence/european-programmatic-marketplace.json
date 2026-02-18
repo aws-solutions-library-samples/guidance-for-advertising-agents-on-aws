@@ -1,0 +1,168 @@
+{
+  "marketplaceIntelligence": {
+    "timestamp": "2024-01-15T10:30:00Z",
+    "reportingPeriod": "Last 30 days",
+    "markets": {
+      "germany": {
+        "marketSize": "€2.8B annual programmatic spend",
+        "inventory": {
+          "premiumVideo": {
+            "availableSlots": 15420,
+            "avgCPM": "€12.50",
+            "competition": "high",
+            "topPublishers": ["RTL Digital", "ProSiebenSat.1", "ARD Mediathek"],
+            "peakHours": "19:00-22:00",
+            "audienceQuality": "High (HHI €65k+)"
+          },
+          "displayPremium": {
+            "availableSlots": 45200,
+            "avgCPM": "€4.20",
+            "competition": "medium",
+            "topPublishers": ["Spiegel Online", "Bild.de", "Focus Online"],
+            "peakHours": "08:00-10:00, 18:00-20:00",
+            "audienceQuality": "Medium-High"
+          },
+          "nativeContent": {
+            "availableSlots": 8900,
+            "avgCPM": "€18.75",
+            "competition": "low",
+            "topPublishers": ["Stern.de", "Brigitte.de", "Essen & Trinken"],
+            "peakHours": "12:00-14:00, 20:00-22:00",
+            "audienceQuality": "Very High"
+          }
+        },
+        "competitiveLandscape": {
+          "chocolateCategory": {
+            "topSpenders": ["GoldenTreats (€1.2M/month)", "GlobalSnacks (€980K/month)", "RedPlanet (€750K/month)"],
+            "avgBidIncrease": "25% during Christmas season",
+            "inventoryScarcity": "High during Q4",
+            "preferredFormats": ["Video (45%)", "Display (35%)", "Native (20%)"]
+          }
+        }
+      },
+      "netherlands": {
+        "marketSize": "€890M annual programmatic spend",
+        "inventory": {
+          "premiumVideo": {
+            "availableSlots": 8930,
+            "avgCPM": "€9.80",
+            "competition": "medium",
+            "topPublishers": ["NPO Start", "RTL XL", "Videoland"],
+            "peakHours": "20:00-23:00",
+            "audienceQuality": "High"
+          },
+          "displayPremium": {
+            "availableSlots": 28900,
+            "avgCPM": "€3.80",
+            "competition": "low",
+            "topPublishers": ["NU.nl", "Telegraaf.nl", "AD.nl"],
+            "peakHours": "09:00-11:00, 19:00-21:00",
+            "audienceQuality": "Medium-High"
+          },
+          "socialVideo": {
+            "availableSlots": 12400,
+            "avgCPM": "€7.20",
+            "competition": "medium",
+            "topPublishers": ["Instagram", "TikTok", "YouTube"],
+            "peakHours": "18:00-21:00",
+            "audienceQuality": "High (younger demographics)"
+          }
+        }
+      },
+      "france": {
+        "marketSize": "€2.1B annual programmatic spend",
+        "inventory": {
+          "premiumVideo": {
+            "availableSlots": 22100,
+            "avgCPM": "€11.20",
+            "competition": "high",
+            "topPublishers": ["France Télévisions", "TF1", "M6 Group"],
+            "peakHours": "20:30-22:30",
+            "audienceQuality": "Very High"
+          },
+          "displayPremium": {
+            "availableSlots": 52300,
+            "avgCPM": "€4.90",
+            "competition": "medium",
+            "topPublishers": ["Le Figaro", "Le Monde", "20 Minutes"],
+            "peakHours": "08:00-10:00, 17:00-19:00",
+            "audienceQuality": "High"
+          },
+          "cookingContent": {
+            "availableSlots": 6800,
+            "avgCPM": "€22.50",
+            "competition": "low",
+            "topPublishers": ["Marmiton", "750g", "Cuisine AZ"],
+            "peakHours": "11:00-13:00, 17:00-19:00",
+            "audienceQuality": "Excellent for food brands"
+          }
+        }
+      },
+      "uk": {
+        "marketSize": "€3.2B annual programmatic spend",
+        "inventory": {
+          "premiumVideo": {
+            "availableSlots": 18750,
+            "avgCPM": "€13.90",
+            "competition": "very_high",
+            "topPublishers": ["ITV Hub", "All 4", "BBC iPlayer"],
+            "peakHours": "19:00-22:00",
+            "audienceQuality": "Very High"
+          },
+          "displayPremium": {
+            "availableSlots": 41800,
+            "avgCPM": "€5.60",
+            "competition": "high",
+            "topPublishers": ["The Guardian", "Daily Mail", "BBC News"],
+            "peakHours": "08:00-10:00, 18:00-20:00",
+            "audienceQuality": "High"
+          },
+          "lifestyleContent": {
+            "availableSlots": 9200,
+            "avgCPM": "€16.80",
+            "competition": "medium",
+            "topPublishers": ["Vogue UK", "Harper's Bazaar", "Elle UK"],
+            "peakHours": "12:00-14:00, 20:00-22:00",
+            "audienceQuality": "Premium demographics"
+          }
+        }
+      }
+    },
+    "crossMarketInsights": {
+      "seasonalTrends": {
+        "valentine_period": {
+          "cpmIncrease": "40-60%",
+          "inventoryScarcity": "High",
+          "competitionLevel": "Very High",
+          "recommendedStrategy": "Book inventory 6 weeks in advance"
+        },
+        "easter_period": {
+          "cpmIncrease": "25-35%",
+          "inventoryScarcity": "Medium",
+          "competitionLevel": "High",
+          "recommendedStrategy": "Focus on family-oriented content"
+        },
+        "christmas_period": {
+          "cpmIncrease": "80-120%",
+          "inventoryScarcity": "Very High",
+          "competitionLevel": "Extreme",
+          "recommendedStrategy": "Secure premium inventory by September"
+        }
+      },
+      "audienceOverlap": {
+        "affluent_chocolate_consumers": {
+          "crossMarketSimilarity": "85%",
+          "platforms": ["Premium Publishers", "Lifestyle Streaming", "Food Content"],
+          "engagement": "High during evening hours (19:00-22:00)",
+          "overlap": "85% with luxury goods consumers"
+        },
+        "gift_purchasers": {
+          "crossMarketSimilarity": "78%",
+          "platforms": ["Social Media", "Retail Websites", "Lifestyle Content"],
+          "engagement": "Peak during gift-giving seasons",
+          "overlap": "70% with premium food buyers"
+        }
+      }
+    }
+  }
+}

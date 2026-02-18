@@ -1,0 +1,63 @@
+{
+  "templateId": "decision-tree-visualization",
+  "templateName": "Decision Tree Visualization",
+  "description": "Template for strategic decision scenarios, outcome analysis, and risk assessment",
+  "usage": [
+    "Strategic scenario planning",
+    "Risk/reward analysis",
+    "Campaign strategy decisions",
+    "Budget allocation choices",
+    "Optimization path selection"
+  ],
+  "schema": {
+    "visualizationType": "decision-tree",
+    "templateId": "decision-tree-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "description": "string - Scenario description",
+    "startNode": "string - Initial decision point text",
+    "nodes": [
+      {
+        "id": "string - Unique node identifier",
+        "text": "string - Node label",
+        "type": "string - start/good/bad/neutral",
+        "x": "number - X coordinate (0-600)",
+        "y": "number - Y coordinate (0-400)",
+        "description": "string - Detailed node description",
+        "probability": "number - Probability (0-1)",
+        "impact": "string - High/Medium/Low",
+        "riskLevel": "number - Risk score (1-10)",
+        "cost": "string - Associated cost",
+        "timeframe": "string - Time requirement",
+        "expectedValue": "string - Expected outcome value",
+        "potentialLoss": "string - Potential downside",
+        "metrics": {
+          "roi": "string - Return on investment",
+          "timeToValue": "string - Time to realize value"
+        },
+        "mitigation": "string - Risk mitigation strategy"
+      }
+    ],
+    "connections": [
+      {
+        "from": "string - Source node ID",
+        "to": "string - Target node ID",
+        "label": "string - Connection label",
+        "condition": "string - Condition description",
+        "probability": "number - Path probability"
+      }
+    ],
+    "parameters": {
+      "riskFactor": "number - Overall risk (1-10)",
+      "budgetLevel": "number - Budget requirement (1-10)",
+      "timeframe": "string - Total timeframe",
+      "confidenceLevel": "string - Decision confidence"
+    },
+    "summary": {
+      "recommendedPath": "string - Suggested path",
+      "expectedValue": "string - Expected outcome",
+      "riskScore": "string - Overall risk level",
+      "decisionConfidence": "string - Confidence level"
+    }
+  }
+}

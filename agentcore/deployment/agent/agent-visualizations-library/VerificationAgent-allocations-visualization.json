@@ -1,0 +1,30 @@
+{
+  "agentName": "VerificationAgent",
+  "agentId": "verification-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Publisher quality distribution and risk assessment",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Publisher Quality Distribution",
+    "subtitle": "Brand safety and quality assessment by publisher",
+    "totalBudget": "Total verified impressions",
+    "allocations": [
+      {
+        "primaryLabel": "Publisher name",
+        "secondaryLabel": "Channel type",
+        "allocationPercentage": "Impression share percentage",
+        "budgetAmount": "Impression count",
+        "performanceLevel": "Quality level: 'excellent', 'good', 'fair', 'poor'",
+        "statusIndicator": "Safety status: 'tier-1', 'tier-2', 'tier-3', 'blocked'",
+        "confidenceLevel": "Verification confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Risk level: 'low', 'medium', 'high', 'critical'"
+      }
+    ],
+    "summary": {
+      "totalPublishers": "Number of publishers",
+      "tier1Publishers": "Number of Tier 1 publishers",
+      "blockedPublishers": "Number of blocked publishers"
+    }
+  }
+}

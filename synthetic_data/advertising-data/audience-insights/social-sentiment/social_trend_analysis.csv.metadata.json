@@ -1,0 +1,64 @@
+{
+  "metadataAttributes": {
+    "file_name": "social_trend_analysis.csv",
+    "description": "Comprehensive social media trend analysis for streaming content and advertising opportunities",
+    "data_source": "Multi-platform social media monitoring and trend detection algorithms",
+    "last_updated": "2025-01-10",
+    "record_count": "15",
+    "data_type": "social_trend_analysis",
+    "trend_categories": "Environmental, Entertainment, Technology, Sports, Education, Health & Wellness, Lifestyle, Parenting, Community",
+    "lifecycle_stages": "emergence_date, peak_date, decline_date with 36-74 day longevity",
+    "platform_coverage": "TikTok, Instagram, Twitter, Facebook, LinkedIn, YouTube",
+    "demographic_focus": "Parents 25-45, Gen Z 18-25, Tech Workers 22-45, Sports Fans 18-54, Educators, Students",
+    "geographic_scope": "Global with concentration in North America, Europe, Tech Hubs, Cultural Communities",
+    "engagement_metrics": "total_mentions, peak_daily_mentions, sentiment_score, brand_alignment_score, advertising_opportunity_score",
+    "commercial_potential": "High, Very High, Medium ratings with advertiser category alignment",
+    "cultural_significance": "Medium to Very High cultural impact scores",
+    "business_applications": "content strategy alignment, advertising campaign timing, audience targeting, brand safety assessment",
+    "related_datasets": "streaming_content_social_sentiment.csv, audience_segmentation_profiles.csv, influencer_partnership_opportunities.csv"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "trend_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "trend_name"
+          },
+          {
+            "fieldName": "trend_category"
+          },
+          {
+            "fieldName": "primary_demographics"
+          },
+          {
+            "fieldName": "platforms_active"
+          },
+          {
+            "fieldName": "sentiment_score"
+          },
+          {
+            "fieldName": "brand_alignment_score"
+          },
+          {
+            "fieldName": "advertising_opportunity_score"
+          },
+          {
+            "fieldName": "geographic_concentration"
+          },
+          {
+            "fieldName": "commercial_potential"
+          },
+          {
+            "fieldName": "cultural_significance"
+          }
+        ]
+      }
+    }
+  }
+}

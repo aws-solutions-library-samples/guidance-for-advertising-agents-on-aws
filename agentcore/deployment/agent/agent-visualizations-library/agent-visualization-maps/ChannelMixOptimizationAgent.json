@@ -1,0 +1,26 @@
+{
+  "agentId": "channel-mix-optimization-agent",
+  "agentName": "ChannelMixOptimizationAgent",
+  "templates": [
+    {
+      "templateId": "channels-visualization",
+      "usage": "Channel performance analysis and optimization (PRIMARY)"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Channel budget allocation and reallocation strategies"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Reach, frequency, and efficiency metrics"
+    },
+    {
+      "templateId": "bar-chart-visualization",
+      "usage": "Channel performance comparisons and benchmarks"
+    },
+    {
+      "templateId": "histogram-visualization",
+      "usage": "Performance distribution analysis across channels"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "agentName": "CampaignArchitectureAgent",
+  "agentId": "campaign-architecture-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Implementation phases and milestone planning (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Campaign Implementation Roadmap",
+    "subtitle": "Structured implementation phases and optimization milestones",
+    "startDate": "Campaign start date (ISO format: '2024-01-15')",
+    "endDate": "Campaign end date (ISO format: '2024-03-15')",
+    "totalDuration": "Total campaign duration (e.g., '8 weeks', '60 days')",
+    "overallObjective": "Primary campaign goal (e.g., 'Brand awareness campaign with 25% lift target')",
+    "phases": [
+      {
+        "primaryLabel": "Phase name (e.g., 'Foundation Phase', 'Optimization Phase', 'Scale Phase')",
+        "secondaryLabel": "Phase type (e.g., 'Setup & Testing', 'Performance Optimization', 'Full Deployment')",
+        "description": "Phase objectives and key activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '2 weeks', '14 days')",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Key deliverables and outcomes for this phase",
+        "budget": "Phase budget allocation (e.g., '$500,000', '20% of total')",
+        "resources": [
+          "Required resources and team members"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name (e.g., 'Campaign Launch', 'First Optimization')",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites and dependencies"
+        ],
+        "risks": [
+          "Risk factors for this phase"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Detailed milestone description",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": [
+      "Success criteria and KPIs for the campaign"
+    ],
+    "criticalPath": [
+      "Critical phase names that determine overall timeline"
+    ]
+  }
+}

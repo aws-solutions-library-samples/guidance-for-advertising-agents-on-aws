@@ -1,0 +1,65 @@
+{
+    "metadataAttributes": {
+        "data_source": "video_analysis",
+        "category": "computer_vision",
+        "business_domain": "media_intelligence",
+        "analysis_type": "logo_text_detection",
+        "brand": "F1 Hungarian GP",
+        "industry": "sports broadcasting",
+        "geographic_scope": "global",
+        "content_type": "video_frame_data"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "Timecode_SMPTE"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "Timestamp_Millis"
+                    },
+                    {
+                        "fieldName": "Frame_Index"
+                    },
+                    {
+                        "fieldName": "Type"
+                    },
+                    {
+                        "fieldName": "Text"
+                    },
+                    {
+                        "fieldName": "Confidence"
+                    },
+                    {
+                        "fieldName": "Left"
+                    },
+                    {
+                        "fieldName": "Top"
+                    },
+                    {
+                        "fieldName": "Width"
+                    },
+                    {
+                        "fieldName": "Height"
+                    },
+                    {
+                        "fieldName": "Event_Name"
+                    },
+                    {
+                        "fieldName": "City"
+                    },
+                    {
+                        "fieldName": "Country"
+                    },
+                    {
+                        "fieldName": "Event_Date"
+                    }
+                ]
+            }
+        }
+    }
+}

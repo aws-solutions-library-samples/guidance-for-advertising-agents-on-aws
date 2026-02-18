@@ -1,0 +1,6 @@
+"template_id","template_name","product_category","audience_segment","device_type","impressions","clicks","conversions","ctr","cvr","cpc","performance_score"
+"tmpl-001","Product Showcase","electronics","tech_enthusiast","desktop","500000","12500","500","0.025","0.040","2.40","8.5"
+"tmpl-002","Lifestyle Image","electronics","tech_enthusiast","mobile","400000","8000","280","0.020","0.035","2.50","7.8"
+"tmpl-003","Testimonial","health","health_enthusiast","mobile","600000","12000","480","0.020","0.040","2.25","8.2"
+"tmpl-004","Limited Offer","fashion","fashion_enthusiast","mobile","800000","24000","960","0.030","0.040","2.08","9.1"
+"tmpl-005","Brand Story","luxury","luxury_lifestyle","desktop","300000","9000","360","0.030","0.040","4.17","8.8"

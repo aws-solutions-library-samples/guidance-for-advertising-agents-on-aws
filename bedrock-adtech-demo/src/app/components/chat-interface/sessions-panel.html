@@ -1,0 +1,84 @@
+<!-- Sessions Panel -->
+<!-- Add this after the scenarios panel in chat-interface.component.html -->
+
+<!-- Sessions Toggle Button (add next to scenarios button) -->
+<button 
+  class="icon-button sessions-toggle"
+  (click)="toggleSessionsPanel()"
+  [class.active]="showSessionsPanel"
+  title="Session History"
+  data-tour-step="sessions-button">
+  <mat-icon>history</mat-icon>
+</button>
+
+<!-- Sessions Panel -->
+<div class="floating-panel sessions-panel" 
+     [class.visible]="showSessionsPanel"
+     [class.expanded]="showSessionsPanel">
+  <div class="panel-header">
+    <h3>
+      <mat-icon>history</mat-icon>
+      Session History
+    </h3>
+    <button class="close-button" (click)="closeSessionsPanel()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+  
+  <div class="panel-content">
+    <!-- New Session Button -->
+    <button class="new-session-button" (click)="createNewSession()">
+      <mat-icon>add</mat-icon>
+      Start New Session
+    </button>
+    
+    <!-- Current Session Info -->
+    <div class="current-session-info" *ngIf="currentSessionInfo">
+      <div class="session-label">Current Session</div>
+      <div class="session-item current">
+        <div class="session-icon">
+          <mat-icon>{{ getSessionIcon(currentSessionInfo) }}</mat-icon>
+        </div>
+        <div class="session-details">
+          <div class="session-title">{{ currentSessionInfo.title }}</div>
+          <div class="session-meta">
+            <span class="message-count">{{ currentSessionInfo.messageCount || 0 }} messages</span>
+            <span class="session-date">{{ formatSessionDate(currentSessionInfo.lastUsed) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Available Sessions -->
+    <div class="sessions-list" *ngIf="availableSessions.length > 0">
+      <div class="session-label">Previous Sessions</div>
+      <div class="session-item" 
+           *ngFor="let session of availableSessions; trackBy: trackBySessionId"
+           [class.current]="isCurrentSession(session.sessionId)"
+           (click)="switchToSession(session.sessionId)">
+        <div class="session-icon">
+          <mat-icon>{{ getSessionIcon(session) }}</mat-icon>
+        </div>
+        <div class="session-details">
+          <div class="session-title">{{ session.title }}</div>
+          <div class="session-meta">
+            <span class="message-count">{{ session.messageCount || 0 }} messages</span>
+            <span class="session-date">{{ formatSessionDate(session.lastUsed) }}</span>
+          </div>
+        </div>
+        <button class="delete-session-button" 
+                (click)="deleteSession(session.sessionId, $event)"
+                title="Delete Session">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Empty State -->
+    <div class="empty-sessions" *ngIf="availableSessions.length === 0">
+      <mat-icon>chat_bubble_outline</mat-icon>
+      <p>No previous sessions found</p>
+      <p class="empty-subtitle">Start a new conversation to create your first session</p>
+    </div>
+  </div>
+</div>

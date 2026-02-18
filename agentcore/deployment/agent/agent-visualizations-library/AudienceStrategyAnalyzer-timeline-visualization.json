@@ -1,0 +1,60 @@
+{
+  "agentName": "AudienceStrategyAnalyzer",
+  "agentId": "audience-strategy-analyzer",
+  "templateId": "timeline-visualization",
+  "usage": "Consumer journey mapping and touchpoint analysis",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Consumer Journey Timeline",
+    "subtitle": "Audience touchpoints and engagement progression analysis",
+    "phases": [
+      {
+        "primaryLabel": "Journey stage name (e.g., 'Awareness', 'Consideration', 'Decision')",
+        "secondaryLabel": "Stage category (e.g., 'Discovery Phase', 'Evaluation Phase')",
+        "description": "Detailed description of audience behavior and touchpoints in this stage",
+        "startDate": "Phase start date (e.g., '2024-01-01')",
+        "endDate": "Phase end date (e.g., '2024-01-15')",
+        "duration": "Phase duration (e.g., '14 days', '2-3 weeks')",
+        "status": "Phase status: 'completed', 'active', 'planned'",
+        "priority": "Stage priority level: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected audience behavior outcome",
+        "budget": "Recommended budget allocation for this stage",
+        "resources": "Required resources and channels",
+        "milestones": [
+          {
+            "name": "First Impression",
+            "date": "Milestone date",
+            "description": "Initial brand exposure and recognition touchpoint",
+            "status": "Milestone status",
+            "impact": "Audience impact level: 'high', 'medium', 'low'"
+          },
+          {
+            "name": "Interest Generation",
+            "date": "Milestone date",
+            "description": "Audience shows interest in brand/product",
+            "status": "Milestone status",
+            "impact": "Interest impact level"
+          },
+          {
+            "name": "Consideration Trigger",
+            "date": "Milestone date",
+            "description": "Audience moves to active consideration",
+            "status": "Milestone status",
+            "impact": "Consideration impact level"
+          }
+        ],
+        "dependencies": "Stage dependencies and prerequisites",
+        "risks": [
+          "Risk factors for this journey stage (e.g., 'High competition for attention')"
+        ]
+      }
+    ],
+    "summary": {
+      "totalPhases": "Number of journey phases analyzed",
+      "averageDuration": "Average journey duration from awareness to conversion",
+      "overallConversion": "End-to-end conversion rate",
+      "keyBottleneck": "Primary conversion bottleneck phase"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+    "metadataAttributes": {
+        "data_source": "competitive_intelligence",
+        "category": "campaign_performance",
+        "business_domain": "performance_analytics", 
+        "analysis_type": "competitive_positioning",
+        "content_type": "market_share_analysis",
+        "industry": "sports_marketing",
+        "geographic_scope": "global_events",
+        "measurement_type": "competitive_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "event_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "event_name"
+                    },
+                    {
+                        "fieldName": "event_date"
+                    },
+                    {
+                        "fieldName": "our_brand"
+                    },
+                    {
+                        "fieldName": "our_visibility_minutes"
+                    },
+                    {
+                        "fieldName": "our_share_percent"
+                    },
+                    {
+                        "fieldName": "competitor_1"
+                    },
+                    {
+                        "fieldName": "competitor_1_visibility"
+                    },
+                    {
+                        "fieldName": "competitor_1_share"
+                    },
+                    {
+                        "fieldName": "competitor_2"
+                    },
+                    {
+                        "fieldName": "competitor_2_visibility"
+                    },
+                    {
+                        "fieldName": "competitor_2_share"
+                    },
+                    {
+                        "fieldName": "competitor_3"
+                    },
+                    {
+                        "fieldName": "competitor_3_visibility"
+                    },
+                    {
+                        "fieldName": "competitor_3_share"
+                    },
+                    {
+                        "fieldName": "market_concentration_index"
+                    },
+                    {
+                        "fieldName": "our_competitive_position"
+                    },
+                    {
+                        "fieldName": "key_moment_dominance"
+                    },
+                    {
+                        "fieldName": "strategic_recommendation"
+                    }
+                ]
+            }
+        }
+    }
+}

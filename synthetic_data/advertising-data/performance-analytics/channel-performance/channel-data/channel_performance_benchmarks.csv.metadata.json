@@ -1,0 +1,94 @@
+{
+    "metadataAttributes": {
+        "file_name": "channel_performance_benchmarks.csv",
+        "description": "Comprehensive channel performance benchmarks across industries showing key performance indicators, efficiency metrics, and strategic positioning data",
+        "data_source": "Synthetic benchmark analysis based on industry performance standards and market research",
+        "last_updated": "2024-12-07",
+        "record_count": "28",
+        "data_type": "channel_performance_benchmarks",
+        "industry_categories": "CPG, Automotive, Retail, Financial",
+        "channels_covered": "TV, Digital Video, Social Media, Search, Display, Radio, OOH",
+        "benchmark_metrics": "CPM, CTR, CPC, CPA, ROAS, reach_efficiency, brand_lift",
+        "performance_indicators": "viewability_rate, completion_rate, audience_quality_score",
+        "strategic_metrics": "cost_efficiency_rank, scale_potential, competitive_pressure, innovation_score",
+        "attribution_data": "attribution_weight, multi_touch_modeling",
+        "seasonality_insights": "seasonality_variance, timing_optimization",
+        "usage_context": "performance evaluation, budget prioritization, channel selection, measurement design",
+        "related_datasets": "media_mix_modeling_results.csv, budget_allocation_scenarios.csv",
+        "optimization_focus": "channel_comparison, efficiency_ranking, strategic_positioning"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "channel"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "industry_category"
+                    },
+                    {
+                        "fieldName": "cpm_benchmark"
+                    },
+                    {
+                        "fieldName": "ctr_benchmark"
+                    },
+                    {
+                        "fieldName": "cpc_benchmark"
+                    },
+                    {
+                        "fieldName": "cpa_benchmark"
+                    },
+                    {
+                        "fieldName": "roas_benchmark"
+                    },
+                    {
+                        "fieldName": "reach_efficiency"
+                    },
+                    {
+                        "fieldName": "frequency_optimal"
+                    },
+                    {
+                        "fieldName": "viewability_rate"
+                    },
+                    {
+                        "fieldName": "completion_rate"
+                    },
+                    {
+                        "fieldName": "brand_lift_avg"
+                    },
+                    {
+                        "fieldName": "consideration_lift_avg"
+                    },
+                    {
+                        "fieldName": "purchase_intent_lift"
+                    },
+                    {
+                        "fieldName": "audience_quality_score"
+                    },
+                    {
+                        "fieldName": "cost_efficiency_rank"
+                    },
+                    {
+                        "fieldName": "scale_potential"
+                    },
+                    {
+                        "fieldName": "seasonality_variance"
+                    },
+                    {
+                        "fieldName": "competitive_pressure"
+                    },
+                    {
+                        "fieldName": "innovation_score"
+                    },
+                    {
+                        "fieldName": "attribution_weight"
+                    }
+                ]
+            }
+        }
+    }
+}

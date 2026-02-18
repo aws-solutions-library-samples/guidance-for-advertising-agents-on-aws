@@ -1,0 +1,70 @@
+{
+    "metadataAttributes": {
+        "data_source": "campaign_management",
+        "category": "pacing_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "campaign_pacing_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "campaign_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_duration_days"
+                    },
+                    {
+                        "fieldName": "total_budget_usd"
+                    },
+                    {
+                        "fieldName": "pacing_strategy"
+                    },
+                    {
+                        "fieldName": "week_1_spend_percent"
+                    },
+                    {
+                        "fieldName": "week_2_spend_percent"
+                    },
+                    {
+                        "fieldName": "week_3_spend_percent"
+                    },
+                    {
+                        "fieldName": "week_4_spend_percent"
+                    },
+                    {
+                        "fieldName": "performance_score"
+                    },
+                    {
+                        "fieldName": "conversion_rate"
+                    },
+                    {
+                        "fieldName": "cost_per_conversion"
+                    },
+                    {
+                        "fieldName": "reach_efficiency"
+                    },
+                    {
+                        "fieldName": "frequency_cap"
+                    },
+                    {
+                        "fieldName": "dayparting_enabled"
+                    },
+                    {
+                        "fieldName": "weekend_multiplier"
+                    },
+                    {
+                        "fieldName": "budget_burn_rate"
+                    },
+                    {
+                        "fieldName": "optimization_score"
+                    }
+                ]
+            }
+        }
+    }
+}

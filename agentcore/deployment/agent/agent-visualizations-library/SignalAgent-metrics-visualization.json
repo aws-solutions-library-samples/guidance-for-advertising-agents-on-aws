@@ -1,0 +1,31 @@
+{
+  "agentName": "SignalAgent",
+  "agentId": "signal-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Signal performance metrics and accuracy scores",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Signal Performance Dashboard",
+    "subtitle": "Signal accuracy and activation metrics",
+    "metrics": [
+      {
+        "primaryLabel": "Signal Metrics",
+        "secondaryLabel": "Performance and accuracy tracking",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Accuracy Score', 'Coverage', 'CPM')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, score, $)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

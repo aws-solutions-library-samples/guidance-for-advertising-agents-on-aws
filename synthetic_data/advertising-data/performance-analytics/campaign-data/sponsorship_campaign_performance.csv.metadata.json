@@ -1,0 +1,74 @@
+{
+    "metadataAttributes": {
+        "data_source": "sponsorship_analytics",
+        "category": "campaign_performance",
+        "business_domain": "performance_analytics",
+        "analysis_type": "sponsorship_roi_tracking",
+        "content_type": "campaign_data",
+        "industry": "sports_marketing",
+        "geographic_scope": "global_campaigns",
+        "measurement_type": "performance_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "campaign_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_name"
+                    },
+                    {
+                        "fieldName": "brand_name"
+                    },
+                    {
+                        "fieldName": "event_type"
+                    },
+                    {
+                        "fieldName": "start_date"
+                    },
+                    {
+                        "fieldName": "end_date"
+                    },
+                    {
+                        "fieldName": "total_investment_euros"
+                    },
+                    {
+                        "fieldName": "contracted_impressions"
+                    },
+                    {
+                        "fieldName": "actual_impressions"
+                    },
+                    {
+                        "fieldName": "logo_visibility_minutes"
+                    },
+                    {
+                        "fieldName": "cost_per_impression"
+                    },
+                    {
+                        "fieldName": "roi_percentage"
+                    },
+                    {
+                        "fieldName": "brand_lift_percentage"
+                    },
+                    {
+                        "fieldName": "audience_reach_millions"
+                    },
+                    {
+                        "fieldName": "engagement_rate"
+                    },
+                    {
+                        "fieldName": "competitor_share"
+                    },
+                    {
+                        "fieldName": "renewal_status"
+                    }
+                ]
+            }
+        }
+    }
+}

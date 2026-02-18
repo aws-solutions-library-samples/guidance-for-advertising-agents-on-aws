@@ -1,0 +1,65 @@
+{
+  "agentName": "CampaignOptimizationAgent",
+  "agentId": "campaign-optimization-agent",
+  "templateId": "timeline-visualization",
+  "usage": "End-to-end campaign execution roadmap and phases",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Integrated Campaign Execution Roadmap",
+    "subtitle": "Strategic phases from planning through optimization and scale",
+    "startDate": "Campaign start date (ISO format: '2024-01-15')",
+    "endDate": "Campaign end date (ISO format: '2024-06-15')",
+    "totalDuration": "Total campaign duration (e.g., '22 weeks', '154 days')",
+    "overallObjective": "Primary campaign goal (e.g., 'Brand launch with 40% awareness and 15K conversions')",
+    "phases": [
+      {
+        "primaryLabel": "Phase name (e.g., 'Strategic Foundation', 'Creative Development', 'Launch Phase', 'Optimization Phase', 'Scale Phase')",
+        "secondaryLabel": "Phase type (e.g., 'Planning & Strategy', 'Asset Creation', 'Initial Activation', 'Performance Tuning', 'Full Deployment')",
+        "description": "Phase objectives, key activities, and deliverables",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '4 weeks', '28 days')",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Key deliverables and success criteria for this phase",
+        "budget": "Phase budget allocation (e.g., '$750,000', '15% of total')",
+        "resources": [
+          "Required resources, teams, and specialist agents"
+        ],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name (e.g., 'Strategy Approval', 'Creative Launch', 'First Optimization')",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites and cross-phase dependencies"
+        ],
+        "risks": [
+          "Risk factors and mitigation strategies"
+        ],
+        "integrationPoints": [
+          "Cross-functional integration requirements (e.g., 'Creative-Media Alignment', 'Timing-Channel Coordination')"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Detailed milestone description and success criteria",
+        "status": "Milestone status: 'upcoming', 'achieved'",
+        "type": "Milestone type: 'strategic', 'creative', 'media', 'optimization'"
+      }
+    ],
+    "successMetrics": [
+      "Integrated success criteria covering brand and performance KPIs"
+    ],
+    "criticalPath": [
+      "Critical phase names that determine overall timeline success"
+    ],
+    "integrationStrategy": "How creative, media, and timing elements work together across phases"
+  }
+}

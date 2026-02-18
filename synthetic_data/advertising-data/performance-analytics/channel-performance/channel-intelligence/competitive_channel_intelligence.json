@@ -1,0 +1,62 @@
+{
+  "competitive_channel_intelligence": [
+    {
+      "industry": "E-commerce",
+      "competitive_landscape": {
+        "top_channels": [
+          {"channel": "Search", "market_share": "35%", "growth_trend": "Stable"},
+          {"channel": "Social", "market_share": "28%", "growth_trend": "Growing"},
+          {"channel": "Display", "market_share": "20%", "growth_trend": "Declining"},
+          {"channel": "Video", "market_share": "17%", "growth_trend": "Growing"}
+        ],
+        "emerging_channels": [
+          {"channel": "Connected TV", "adoption_rate": "15%", "growth_rate": "45%"},
+          {"channel": "Audio/Podcast", "adoption_rate": "8%", "growth_rate": "60%"}
+        ]
+      },
+      "competitive_strategies": [
+        {
+          "strategy": "Search Dominance",
+          "description": "Heavy investment in branded and category search terms",
+          "adoption_rate": "85%",
+          "effectiveness": "High"
+        },
+        {
+          "strategy": "Social-First Approach",
+          "description": "Primary focus on social platforms for brand building",
+          "adoption_rate": "60%",
+          "effectiveness": "Medium-High"
+        }
+      ]
+    },
+    {
+      "industry": "Financial Services",
+      "competitive_landscape": {
+        "top_channels": [
+          {"channel": "Search", "market_share": "40%", "growth_trend": "Stable"},
+          {"channel": "Display", "market_share": "25%", "growth_trend": "Stable"},
+          {"channel": "Social", "market_share": "20%", "growth_trend": "Growing"},
+          {"channel": "Email", "market_share": "15%", "growth_trend": "Stable"}
+        ],
+        "emerging_channels": [
+          {"channel": "Connected TV", "adoption_rate": "12%", "growth_rate": "35%"},
+          {"channel": "Influencer", "adoption_rate": "5%", "growth_rate": "80%"}
+        ]
+      },
+      "competitive_strategies": [
+        {
+          "strategy": "Trust-Based Messaging",
+          "description": "Focus on credibility and security messaging across channels",
+          "adoption_rate": "90%",
+          "effectiveness": "High"
+        },
+        {
+          "strategy": "Educational Content",
+          "description": "Content marketing approach across digital channels",
+          "adoption_rate": "70%",
+          "effectiveness": "Medium-High"
+        }
+      ]
+    }
+  ]
+}

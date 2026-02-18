@@ -1,0 +1,61 @@
+{
+    "metadataAttributes": {
+        "data_source": "user_behavior",
+        "category": "engagement_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "session_duration_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "session_id"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "user_segment"
+                    },
+                    {
+                        "fieldName": "session_start_time"
+                    },
+                    {
+                        "fieldName": "total_session_minutes"
+                    },
+                    {
+                        "fieldName": "videos_watched"
+                    },
+                    {
+                        "fieldName": "ad_breaks_encountered"
+                    },
+                    {
+                        "fieldName": "ad_skip_rate"
+                    },
+                    {
+                        "fieldName": "engagement_drop_points"
+                    },
+                    {
+                        "fieldName": "fatigue_score"
+                    },
+                    {
+                        "fieldName": "optimal_session_length"
+                    },
+                    {
+                        "fieldName": "user_return_probability"
+                    },
+                    {
+                        "fieldName": "content_diversity_score"
+                    }
+                ]
+            }
+        }
+    }
+}

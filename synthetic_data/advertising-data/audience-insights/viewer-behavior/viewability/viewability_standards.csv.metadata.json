@@ -1,0 +1,61 @@
+{
+    "metadataAttributes": {
+        "data_source": "viewability_metrics",
+        "category": "quality_standards",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "viewability_compliance_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "placement_type"
+                    },
+                    {
+                        "fieldName": "ad_format"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "iab_standard_viewability"
+                    },
+                    {
+                        "fieldName": "custom_viewability_threshold"
+                    },
+                    {
+                        "fieldName": "measured_viewability_rate"
+                    },
+                    {
+                        "fieldName": "viewport_visibility_percent"
+                    },
+                    {
+                        "fieldName": "time_in_view_seconds"
+                    },
+                    {
+                        "fieldName": "scroll_depth_when_visible"
+                    },
+                    {
+                        "fieldName": "interaction_overlap_rate"
+                    },
+                    {
+                        "fieldName": "brand_safety_score"
+                    },
+                    {
+                        "fieldName": "fraud_score"
+                    },
+                    {
+                        "fieldName": "attention_score"
+                    }
+                ]
+            }
+        }
+    }
+}

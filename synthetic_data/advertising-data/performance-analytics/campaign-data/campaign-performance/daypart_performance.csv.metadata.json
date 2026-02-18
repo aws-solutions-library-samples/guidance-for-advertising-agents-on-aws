@@ -1,0 +1,52 @@
+{
+    "metadataAttributes": {
+        "data_source": "temporal_analytics",
+        "category": "daypart_performance",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "time_based_performance_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "time_period"
+                    },
+                    {
+                        "fieldName": "audience_segment"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "cpc"
+                    },
+                    {
+                        "fieldName": "cpa"
+                    }
+                ]
+            }
+        }
+    }
+}

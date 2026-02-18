@@ -1,0 +1,61 @@
+{
+    "metadataAttributes": {
+        "data_source": "audience_analytics",
+        "category": "segment_performance",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "audience_segment_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "segment_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_id"
+                    },
+                    {
+                        "fieldName": "month"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "spend"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "cpc"
+                    },
+                    {
+                        "fieldName": "cpa"
+                    },
+                    {
+                        "fieldName": "roas"
+                    },
+                    {
+                        "fieldName": "average_order_value"
+                    },
+                    {
+                        "fieldName": "lifetime_value"
+                    }
+                ]
+            }
+        }
+    }
+}

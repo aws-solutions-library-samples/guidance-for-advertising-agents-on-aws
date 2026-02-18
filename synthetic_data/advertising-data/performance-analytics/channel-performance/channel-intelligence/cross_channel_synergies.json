@@ -1,0 +1,49 @@
+{
+  "cross_channel_synergies": [
+    {
+      "channel_combination": "Search + Display",
+      "synergy_type": "Sequential Targeting",
+      "description": "Display ads increase search brand query volume",
+      "performance_lift": {
+        "search_ctr_improvement": "15-25%",
+        "brand_search_volume_increase": "30-40%",
+        "overall_conversion_lift": "20-30%"
+      },
+      "implementation": {
+        "sequence": "Display first, then Search retargeting",
+        "timing": "Display 1-3 days before Search activation",
+        "audience_overlap": "70-80%"
+      }
+    },
+    {
+      "channel_combination": "Social + Video",
+      "synergy_type": "Content Amplification",
+      "description": "Social engagement amplifies video content reach",
+      "performance_lift": {
+        "video_completion_rate": "10-20%",
+        "social_engagement_increase": "25-35%",
+        "brand_awareness_lift": "15-25%"
+      },
+      "implementation": {
+        "sequence": "Video content shared on Social platforms",
+        "timing": "Simultaneous activation",
+        "content_adaptation": "Platform-specific video formats"
+      }
+    },
+    {
+      "channel_combination": "Email + Retargeting",
+      "synergy_type": "Audience Reinforcement", 
+      "description": "Email subscribers show higher retargeting performance",
+      "performance_lift": {
+        "retargeting_ctr": "20-30%",
+        "email_open_rate": "5-15%",
+        "conversion_rate": "25-40%"
+      },
+      "implementation": {
+        "sequence": "Email first, then retargeting to non-openers",
+        "timing": "Retargeting 2-5 days after email send",
+        "message_consistency": "Aligned creative and messaging"
+      }
+    }
+  ]
+}

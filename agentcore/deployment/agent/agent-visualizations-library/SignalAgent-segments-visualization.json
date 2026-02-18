@@ -1,0 +1,30 @@
+{
+  "agentName": "SignalAgent",
+  "agentId": "signal-agent",
+  "templateId": "segments-visualization",
+  "usage": "Audience segment catalog and targeting",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Segment Catalog",
+    "subtitle": "Available signals and targeting segments",
+    "segments": [
+      {
+        "segmentName": "Segment name",
+        "segmentDescription": "Segment description",
+        "segmentType": "Segment type (audience, contextual, geographic)",
+        "size": "Segment size (individuals)",
+        "accuracy": "Accuracy score",
+        "cpm": "Signal CPM",
+        "platforms": ["List of supported platforms"],
+        "status": "Activation status: 'live', 'pending', 'inactive'",
+        "priority": "Targeting priority: 'high', 'medium', 'low'"
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of segments",
+      "audienceSegments": "Number of audience segments",
+      "contextualSegments": "Number of contextual segments"
+    }
+  }
+}

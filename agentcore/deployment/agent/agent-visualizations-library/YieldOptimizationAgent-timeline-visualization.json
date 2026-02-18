@@ -1,0 +1,54 @@
+{
+  "agentName": "YieldOptimizationAgent",
+  "agentId": "YieldOptimizationAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Seasonal yield patterns, optimization schedules",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Yield Optimization Timeline",
+    "subtitle": "Seasonal yield patterns and revenue optimization schedule",
+    "totalDuration": "Optimization period (e.g., '12 months', '1 year')",
+    "startDate": "Optimization start date (ISO format: '2024-01-01')",
+    "endDate": "Optimization end date (ISO format: '2024-12-31')",
+    "overallObjective": "Primary yield objective (e.g., 'Increase overall yield by 25% through strategic optimization')",
+    "phases": [
+      {
+        "primaryLabel": "Seasonal optimization phase (e.g., 'Valentine Season Yield Boost', 'Christmas Premium Positioning', 'Summer Yield Recovery')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Seasonal yield characteristics and optimization strategies",
+        "startDate": "Season start date (ISO format)",
+        "endDate": "Season end date (ISO format)",
+        "duration": "Season duration (e.g., '6 weeks', '2 months')",
+        "status": "Optimization status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Season priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected yield improvements and revenue impact",
+        "budget": "Revenue projection (e.g., '+$450K revenue increase', '35% yield improvement')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Yield milestone (e.g., 'Premium Pricing Launch', 'Yield Target Achievement', 'Revenue Optimization Complete')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'Yield increase > 20%', 'Revenue per visitor > $0.15')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Prerequisites (e.g., 'Historical yield analysis complete', 'Competitive pricing research ready')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Success criteria (e.g., 'Achieve 25% yield improvement', 'Maintain 95% fill rate', 'Revenue growth > 30%')"
+    ],
+    "riskFactors": [
+      "Risk factors (e.g., 'Market volatility', 'Competitive pressure', 'Demand fluctuation', 'Pricing sensitivity')"
+    ]
+  }
+}

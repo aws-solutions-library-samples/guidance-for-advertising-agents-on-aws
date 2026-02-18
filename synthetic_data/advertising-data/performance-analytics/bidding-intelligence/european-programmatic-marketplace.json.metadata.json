@@ -1,0 +1,45 @@
+{
+    "metadataAttributes": {
+        "data_source": "programmatic_marketplace",
+        "category": "bidding_intelligence",
+        "business_domain": "performance_analytics",
+        "analysis_type": "market_dynamics",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "bidding_intelligence"
+    },
+    "documentStructureConfiguration": {
+        "type": "HIERARCHICAL_STRUCTURE_METADATA",
+        "hierarchicalStructureMetadata": {
+            "level1Fields": [
+                {
+                    "fieldName": "marketDynamics"
+                },
+                {
+                    "fieldName": "biddingStrategies"
+                },
+                {
+                    "fieldName": "competitiveIntelligence"
+                }
+            ],
+            "level2Fields": [
+                {
+                    "fieldName": "supplyDemand"
+                },
+                {
+                    "fieldName": "pricingTrends"
+                },
+                {
+                    "fieldName": "inventoryAvailability"
+                },
+                {
+                    "fieldName": "competitorActivity"
+                },
+                {
+                    "fieldName": "performanceMetrics"
+                }
+            ]
+        }
+    }
+}

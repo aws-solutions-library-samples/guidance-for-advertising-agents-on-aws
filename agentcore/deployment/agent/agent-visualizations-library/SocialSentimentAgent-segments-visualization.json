@@ -1,0 +1,150 @@
+{
+  "agentName": "social-sentiment-analyzer",
+  "agentId": "social-sentiment-analyzer",
+  "templateId": "segments-visualization",
+  "usage": "Audience sentiment segments and behavioral cohorts analysis based on social media sentiment patterns",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Social Sentiment Audience Segments",
+    "subtitle": "Audience segmentation based on brand sentiment patterns and social media behavior",
+    "segments": [
+      {
+        "templateId": "segments-visualization",
+        "primaryLabel": "Brand Advocates",
+        "secondaryLabel": "High positive sentiment - Active brand promotion and recommendation",
+        "description": "Audience segment with consistently positive brand sentiment, high engagement rates, and strong advocacy behaviors across social platforms",
+        "actualValue": "Current advocacy engagement rate (e.g., '92%', '88%', '95%')",
+        "targetValue": "Target advocacy engagement (e.g., '90%', '85%', '90%')",
+        "forecastedValue": "Predicted advocacy with campaign (e.g., '94%', '91%', '97%')",
+        "actualLabel": "Current brand advocacy and positive sentiment rate",
+        "targetLabel": "Target advocacy engagement benchmark",
+        "forecastedLabel": "Forecasted advocacy with amplification campaign",
+        "primaryMetric": {
+          "label": "Advocacy Score",
+          "value": "Brand advocacy strength (e.g., '9.2', '8.8', '9.5')"
+        },
+        "secondaryMetric": {
+          "label": "Positive Mention Rate",
+          "value": "Positive brand mentions percentage (e.g., '87%', '82%', '91%')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$35,000', '$28,500', '$42,000')",
+        "statusIndicator": "optimized/active/underperforming",
+        "confidenceLevel": "high/medium/low",
+        "performanceLevel": "high/medium/low",
+        "insights": [
+          "Brand advocacy insights (e.g., 'This segment generates 3x more positive word-of-mouth than average', 'Strong correlation between product satisfaction and social advocacy')",
+          "Engagement patterns (e.g., 'Peak advocacy activity occurs during product launches and customer success stories', 'Visual content drives 40% higher advocacy engagement')",
+          "Amplification behavior (e.g., 'Advocates share brand content 5x more frequently', 'User-generated content from advocates has 60% higher engagement')"
+        ],
+        "risks": [
+          "Advocacy fatigue from over-targeting may reduce authentic engagement",
+          "Negative experiences can quickly convert advocates to detractors",
+          "Competitor campaigns may influence advocate sentiment"
+        ],
+        "recommendations": [
+          "Develop exclusive advocate programs with early access to products and content",
+          "Create user-generated content campaigns to amplify authentic advocacy",
+          "Implement advocate feedback loops to maintain positive sentiment momentum"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '850K users', '12% of total audience', '320K active advocates')",
+          "growth": "Growth rate (e.g., '+18% YoY', 'Expanding', '+25% in advocacy activity')",
+          "engagement": "Engagement level (e.g., 'Very High', 'Consistently Positive', 'Highly Active')"
+        }
+      },
+      {
+        "primaryLabel": "Sentiment Neutral",
+        "secondaryLabel": "Balanced sentiment - Conversion opportunity through targeted messaging",
+        "description": "Audience segment with neutral brand sentiment, moderate engagement, and potential for positive sentiment conversion through strategic campaign messaging",
+        "actualValue": "Current neutral sentiment rate (e.g., '68%', '72%', '65%')",
+        "targetValue": "Target positive conversion rate (e.g., '75%', '78%', '70%')",
+        "forecastedValue": "Predicted positive conversion (e.g., '73%', '76%', '69%')",
+        "actualLabel": "Current neutral sentiment and engagement rate",
+        "targetLabel": "Target positive sentiment conversion rate",
+        "forecastedLabel": "Forecasted positive sentiment with targeted campaigns",
+        "primaryMetric": {
+          "label": "Conversion Potential",
+          "value": "Positive sentiment conversion likelihood (e.g., '6.8', '7.1', '6.5')"
+        },
+        "secondaryMetric": {
+          "label": "Engagement Receptivity",
+          "value": "Campaign message receptivity score (e.g., '72%', '68%', '75%')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$25,000', '$22,000', '$28,000')",
+        "statusIndicator": "opportunity/testing/developing",
+        "confidenceLevel": "medium/high/medium",
+        "performanceLevel": "medium/medium/medium",
+        "insights": [
+          "Conversion opportunity insights (e.g., 'Educational content increases positive sentiment by 35% in this segment', 'Product demonstrations drive highest engagement rates')",
+          "Messaging preferences (e.g., 'Responds well to value-focused messaging and social proof', 'Visual storytelling increases brand consideration by 28%')",
+          "Platform behavior (e.g., 'Most active on Instagram and LinkedIn', 'Prefers authentic, non-promotional content')"
+        ],
+        "risks": [
+          "Aggressive marketing may push neutral sentiment toward negative",
+          "Competitor messaging may capture attention during conversion efforts",
+          "Inconsistent brand experiences can prevent positive sentiment development"
+        ],
+        "recommendations": [
+          "Develop educational content series to build brand awareness and trust",
+          "Implement social proof campaigns featuring customer testimonials",
+          "Create targeted messaging focused on value proposition and benefits"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '1.2M users', '28% of total audience', '680K potential converts')",
+          "growth": "Growth rate (e.g., '+8% YoY', 'Stable', '+12% in engagement')",
+          "engagement": "Engagement level (e.g., 'Moderate', 'Opportunity-Rich', 'Receptive to Messaging')"
+        }
+      },
+      {
+        "primaryLabel": "At-Risk Detractors",
+        "secondaryLabel": "Negative sentiment trend - Reputation management and recovery focus",
+        "description": "Audience segment showing declining or negative brand sentiment, requiring immediate attention for reputation management and sentiment recovery",
+        "actualValue": "Current negative sentiment rate (e.g., '78%', '82%', '75%')",
+        "targetValue": "Target sentiment recovery rate (e.g., '45%', '50%', '40%')",
+        "forecastedValue": "Predicted recovery with intervention (e.g., '52%', '58%', '48%')",
+        "actualLabel": "Current negative sentiment and detraction rate",
+        "targetLabel": "Target sentiment recovery and neutralization rate",
+        "forecastedLabel": "Forecasted sentiment improvement with recovery campaign",
+        "primaryMetric": {
+          "label": "Recovery Potential",
+          "value": "Sentiment recovery likelihood (e.g., '5.2', '4.8', '5.6')"
+        },
+        "secondaryMetric": {
+          "label": "Issue Resolution Rate",
+          "value": "Problem resolution and satisfaction rate (e.g., '65%', '58%', '71%')"
+        },
+        "budgetAmount": "Recommended budget allocation (e.g., '$15,000', '$18,000', '$12,000')",
+        "statusIndicator": "critical/recovery/monitoring",
+        "confidenceLevel": "medium/low/medium",
+        "performanceLevel": "low/critical/low",
+        "insights": [
+          "Detraction drivers (e.g., 'Customer service issues account for 60% of negative sentiment', 'Product quality concerns drive 25% of negative mentions')",
+          "Recovery patterns (e.g., 'Proactive customer service outreach improves sentiment by 40%', 'Transparent communication reduces negative sentiment spread')",
+          "Platform-specific issues (e.g., 'Twitter shows highest negative sentiment concentration', 'Review platforms amplify negative experiences')"
+        ],
+        "risks": [
+          "Negative sentiment may spread to neutral and positive segments",
+          "Unaddressed issues can escalate to broader reputation crises",
+          "Competitor amplification of negative sentiment through comparative campaigns"
+        ],
+        "recommendations": [
+          "Implement immediate customer service recovery programs for affected users",
+          "Develop transparent communication strategy addressing key concerns",
+          "Create targeted content addressing specific issues and demonstrating improvements"
+        ],
+        "metadata": {
+          "size": "Segment size (e.g., '180K users', '4% of total audience', '95K active detractors')",
+          "growth": "Growth rate (e.g., '+5% in negative sentiment', 'Concerning', 'Requires immediate attention')",
+          "engagement": "Engagement level (e.g., 'High Negative Activity', 'Critical Attention Needed', 'Recovery Opportunity')"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": 4,
+      "activeSegments": 4,
+      "topPerformer": "Brand Advocates show strongest positive sentiment and highest engagement rates",
+      "growthOpportunity": "Sentiment Neutral segment shows highest conversion potential with +35% positive sentiment increase opportunity"
+    }
+  }
+}

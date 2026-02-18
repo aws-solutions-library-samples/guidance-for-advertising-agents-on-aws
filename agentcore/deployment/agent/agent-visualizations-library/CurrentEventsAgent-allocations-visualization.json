@@ -1,0 +1,58 @@
+{
+  "agentName": "CurrentEventsAgent",
+  "agentId": "current-events-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Event-driven budget reallocation recommendations",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Event-Driven Budget Reallocation",
+    "subtitle": "Recommended budget shifts and resource allocation based on current events impact",
+    "totalBudget": "Total available budget for reallocation (e.g., '$500,000', '$2.5M quarterly budget')",
+    "allocations": [
+      {
+        "primaryLabel": "Budget category/content type (e.g., 'News-Adjacent Content', 'Crisis Communication', 'Comfort Entertainment', 'Local Market Support')",
+        "secondaryLabel": "Allocation category description (e.g., 'Breaking news and current events coverage', 'Emergency audience communication', 'Stress-relief entertainment content')",
+        "description": "Detailed rationale for budget allocation during event (e.g., 'Increased allocation for real-time news content due to 65% spike in news consumption', 'Emergency budget for crisis communication across all channels')",
+        "allocationPercentage": "Percentage of total budget allocated (e.g., 35, 20, 15)",
+        "budgetAmount": "Dollar amount allocated (e.g., '$175,000', '$100K emergency fund')",
+        "performanceLevel": "Expected performance level: 'high', 'medium', 'low'",
+        "statusIndicator": "Allocation recommendation status: 'recommended', 'critical', 'optional', 'reducing'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "low",
+        "insights": [
+          "Allocation insights (e.g., 'High engagement during event periods', 'Critical for audience retention', 'Opportunity for new audience acquisition')"
+        ],
+        "risks": [
+          "Allocation risks (e.g., 'May not sustain post-event', 'High competition for news content', 'Budget may be insufficient for full impact')"
+        ],
+        "recommendations": [
+          "Strategic recommendations (e.g., 'Increase allocation during major news cycles', 'Maintain flexible budget for rapid response', 'Monitor performance daily for adjustments')"
+        ],
+        "metadata": {
+          "impactedAudience": "Audience size affected (e.g., '2.3M users', '45% of total audience')",
+          "urgency": "Allocation urgency level (e.g., 'Immediate', 'Within 24h', 'This week')",
+          "dependencies": "Budget dependencies (e.g., 'Requires content team expansion', 'Needs emergency approval')"
+        }
+      }
+    ],
+    "summary": {
+      "totalReallocationAmount": "Total budget being reallocated (e.g., '$200,000')",
+      "percentageOfBudget": "Percentage of total budget being reallocated (e.g., '40%')",
+      "priorityAllocations": "Number of high-priority allocations (e.g., 3)",
+      "expectedImpact": "Overall expected impact of reallocation (e.g., 'Maintain 85% audience engagement during crisis')",
+      "riskLevel": "Overall risk level of reallocation strategy: 'low', 'medium', 'high'",
+      "totalAllocations": "0",
+      "optimizedAllocations": "0",
+      "riskAllocations": "0",
+      "recommendedAdjustment": "Value for recommendedAdjustment"
+    },
+    "approvalProcess": {
+      "requiredApprovals": [
+        "Required approvals (e.g., 'Crisis Response Team', 'CFO approval for emergency funds', 'Content Strategy Lead')"
+      ],
+      "approvalTimeline": "Approval timeline (e.g., '2-4 hours', 'Same day', '24-48 hours')",
+      "emergencyProtocol": "Emergency approval process if needed"
+    }
+  }
+}

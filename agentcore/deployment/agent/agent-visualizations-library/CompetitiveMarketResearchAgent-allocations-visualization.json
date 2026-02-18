@@ -1,0 +1,48 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templateId": "allocations-visualization",
+  "usage": "Competitive budget allocation insights and market investment strategies",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Competitive Market Investment Allocation",
+    "subtitle": "Strategic budget distribution based on competitive market analysis",
+    "totalBudget": "Total competitive analysis budget (e.g., '$2,500,000')",
+    "currency": "Currency symbol (e.g., '$')",
+    "allocations": [
+      {
+        "primaryLabel": "Market segment (e.g., 'Premium Brand Competition', 'Direct Competitor Analysis', 'Market Share Defense')",
+        "secondaryLabel": "Research category (e.g., 'Brand Monitoring', 'Competitive Intelligence', 'Market Positioning')",
+        "description": "Allocation rationale (e.g., 'Monitor premium brand competitive landscape and pricing strategies')",
+        "allocationPercentage": "Budget percentage (e.g., 35)",
+        "budgetAmount": "Budget amount (e.g., '$875,000')",
+        "performanceLevel": "Research effectiveness: 'high', 'medium', 'low'",
+        "statusIndicator": "Research status: 'active', 'planned', 'completed'",
+        "confidenceLevel": "Data confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Market risk: 'low', 'medium', 'high'",
+        "insights": [
+          "Competitive intelligence findings and market positioning insights"
+        ],
+        "risks": [
+          "Market volatility risks and competitive response factors"
+        ],
+        "recommendations": [
+          "Strategic recommendations for competitive positioning"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last competitive analysis",
+          "dataSource": "Research data source (e.g., 'Market Intelligence Platform', 'Competitive Analysis Tools')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of competitive research segments",
+      "activeResearch": "Number of active competitive monitoring initiatives",
+      "highRiskSegments": "Number of high-risk competitive areas",
+      "recommendedAdjustment": "Overall competitive strategy recommendation",
+      "optimizedAllocations": "0",
+      "riskAllocations": "0"
+    }
+  }
+}

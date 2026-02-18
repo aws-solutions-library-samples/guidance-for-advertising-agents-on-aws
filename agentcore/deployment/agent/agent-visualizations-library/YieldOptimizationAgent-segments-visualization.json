@@ -1,0 +1,70 @@
+{
+  "agentName": "YieldOptimizationAgent",
+  "agentId": "YieldOptimizationAgent",
+  "templateId": "segments-visualization",
+  "usage": "Audience-specific yield analysis",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "Audience Yield Segmentation",
+    "subtitle": "Yield performance analysis by audience segments and demographics",
+    "collaborativeInsights": {
+      "primaryAgent": "YieldOptimizationAgent",
+      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent2": "InventoryOptimizationAgent"
+    },
+    "segments": [
+      {
+        "primaryLabel": "Audience segment (e.g., 'Premium Chocolate Enthusiasts', 'Luxury Lifestyle Consumers', 'Gift Purchasers')",
+        "secondaryLabel": "Secondary segments label",
+        "description": "Segment characteristics and yield potential",
+        "actualValue": "0",
+        "targetValue": "0",
+        "forecastedValue": "0",
+        "actualLabel": "Current value",
+        "targetLabel": "Target value",
+        "forecastedLabel": "Forecasted value",
+        "primaryMetric": {
+          "label": "Primary metric",
+          "value": "0"
+        },
+        "secondaryMetric": {
+          "label": "Secondary metric",
+          "value": "0"
+        },
+        "budgetAmount": "$0",
+        "statusIndicator": "active",
+        "confidenceLevel": "medium",
+        "performanceLevel": "medium",
+        "insights": [
+          "Key insights for segments"
+        ],
+        "risks": [
+          "Risk factors for segments"
+        ],
+        "recommendations": [
+          "Yield optimization recommendations for segment (e.g., 'Implement premium pricing for luxury content', 'Increase native content allocation')"
+        ],
+        "metadata": {
+          "lastUpdated": "2024-01-01T00:00:00Z",
+          "dataSource": "Agent analysis"
+        }
+      }
+    ],
+    "crossSegmentInsights": {
+      "overlapAnalysis": "Segment overlap analysis and yield implications",
+      "yieldCorrelations": [
+        "Yield correlations between segments"
+      ],
+      "optimizationPriorities": [
+        "Cross-segment optimization priorities"
+      ]
+    },
+    "summary": {
+      "totalSegments": "0",
+      "activeSegments": "0",
+      "topPerformer": "Top performing item",
+      "growthOpportunity": "Value for growthOpportunity"
+    }
+  }
+}

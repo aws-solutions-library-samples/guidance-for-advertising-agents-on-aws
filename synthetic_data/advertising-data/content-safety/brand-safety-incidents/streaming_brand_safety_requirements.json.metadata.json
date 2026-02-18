@@ -1,0 +1,66 @@
+{
+  "metadataAttributes": {
+    "file_name": "streaming_brand_safety_requirements.json",
+    "description": "Comprehensive brand safety requirements and advertiser profiles for MagicStream Entertainment platform",
+    "data_source": "Advertiser onboarding data, brand safety compliance systems, and content monitoring analytics",
+    "last_updated": "2025-01-10",
+    "record_count": "5",
+    "data_type": "streaming_brand_safety_requirements",
+    "advertiser_categories": "Sustainable Technology, Family Food Products, Gaming Technology, Health & Wellness, Outdoor Recreation",
+    "brand_safety_tiers": "Premium, Family Premium, Teen/Young Adult, Premium Wellness, Adventure Sports",
+    "content_ratings": "G, PG, PG-13, TV-Y, TV-G with family-friendly focus",
+    "prohibited_categories": "Violence, Adult Content, Controversial Politics, Gambling, Alcohol/Tobacco, Mature Themes",
+    "preferred_categories": "Environmental, Educational, Family Programming, Science & Technology, Health & Wellness, Adventure",
+    "demographic_targeting": "Environmentally conscious families, Tech professionals, Gamers 13-35, Health enthusiasts, Adventure seekers",
+    "brand_safety_scores": "8.5-9.8 minimum requirements with family content achieving highest standards",
+    "seasonal_alignment": "Earth Day, Back to School, New Year, Gaming seasons, Spring/Summer outdoor activities",
+    "geographic_focus": "North America, Europe, Australia, Tech Hubs, Adventure Tourism Regions",
+    "compliance_features": "AI-powered content analysis, real-time monitoring, automated matching, cultural sensitivity assessment",
+    "business_applications": "automated advertiser-content matching, brand safety compliance, premium inventory identification, family-focused advertising packages",
+    "related_datasets": "streaming_content_performance.csv, streaming_family_segments.csv, streaming_content_social_sentiment.csv"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "advertiser_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "company_name"
+          },
+          {
+            "fieldName": "industry"
+          },
+          {
+            "fieldName": "brand_safety_tier"
+          },
+          {
+            "fieldName": "content_rating_requirements"
+          },
+          {
+            "fieldName": "prohibited_content_categories"
+          },
+          {
+            "fieldName": "preferred_content_categories"
+          },
+          {
+            "fieldName": "demographic_targeting"
+          },
+          {
+            "fieldName": "brand_safety_score_minimum"
+          },
+          {
+            "fieldName": "family_co_viewing_preference"
+          },
+          {
+            "fieldName": "advertising_integration_preferences"
+          }
+        ]
+      }
+    }
+  }
+}

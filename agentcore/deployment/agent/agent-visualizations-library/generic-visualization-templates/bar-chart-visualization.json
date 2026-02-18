@@ -1,0 +1,43 @@
+{
+  "templateId": "bar-chart-visualization",
+  "templateName": "Bar Chart Visualization",
+  "description": "Template for displaying categorical data with horizontal or vertical bars",
+  "usage": [
+    "Channel performance comparison",
+    "Budget allocation by category",
+    "Campaign metrics by segment",
+    "Publisher performance rankings",
+    "Creative format effectiveness"
+  ],
+  "schema": {
+    "visualizationType": "bar-chart",
+    "templateId": "bar-chart-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "orientation": "string - horizontal/vertical",
+    "xAxisLabel": "string - X-axis label",
+    "yAxisLabel": "string - Y-axis label",
+    "data": [
+      {
+        "category": "string - Category name",
+        "value": "number - Numeric value",
+        "color": "string - Optional hex color override",
+        "label": "string - Display label",
+        "metadata": {
+          "description": "string - Additional context",
+          "trend": "string - up/down/stable",
+          "change": "string - Change from previous period"
+        }
+      }
+    ],
+    "colorScheme": "string - agent-palette/custom",
+    "showValues": "boolean - Display values on bars",
+    "sortOrder": "string - ascending/descending/none",
+    "insights": ["array of string - Key insights"],
+    "summary": {
+      "total": "number - Sum of all values",
+      "highest": "string - Highest performing category",
+      "lowest": "string - Lowest performing category"
+    }
+  }
+}

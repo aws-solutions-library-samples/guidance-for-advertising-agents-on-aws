@@ -1,0 +1,77 @@
+{
+    "metadataAttributes": {
+        "data_source": "logo_detection_analytics",
+        "category": "channel_performance",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "sponsorship_roi_analysis",
+        "content_type": "sporting_events",
+        "industry": "sports_marketing",
+        "geographic_scope": "global_events",
+        "measurement_type": "logo_visibility_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "event_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "event_name"
+                    },
+                    {
+                        "fieldName": "event_date"
+                    },
+                    {
+                        "fieldName": "brand_name"
+                    },
+                    {
+                        "fieldName": "sponsor_type"
+                    },
+                    {
+                        "fieldName": "contracted_visibility_minutes"
+                    },
+                    {
+                        "fieldName": "actual_visibility_minutes"
+                    },
+                    {
+                        "fieldName": "total_detections"
+                    },
+                    {
+                        "fieldName": "average_detection_duration_seconds"
+                    },
+                    {
+                        "fieldName": "prominence_score"
+                    },
+                    {
+                        "fieldName": "cost_per_impression_euros"
+                    },
+                    {
+                        "fieldName": "roi_score"
+                    },
+                    {
+                        "fieldName": "camera_angle_effectiveness"
+                    },
+                    {
+                        "fieldName": "peak_visibility_moments"
+                    },
+                    {
+                        "fieldName": "competitor_share_percent"
+                    },
+                    {
+                        "fieldName": "audience_engagement_correlation"
+                    },
+                    {
+                        "fieldName": "brand_safety_score"
+                    },
+                    {
+                        "fieldName": "renewal_recommendation"
+                    }
+                ]
+            }
+        }
+    }
+}

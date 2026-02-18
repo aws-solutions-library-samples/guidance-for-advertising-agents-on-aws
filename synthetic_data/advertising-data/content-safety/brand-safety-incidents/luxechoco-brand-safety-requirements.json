@@ -1,0 +1,196 @@
+{
+  "brandSafetyRequirements": {
+    "brand": "LuxeChoco",
+    "category": "Premium Chocolate",
+    "safetyLevel": "High",
+    "lastUpdated": "2024-01-15",
+    "requirements": {
+      "contentRestrictions": {
+        "prohibited": [
+          {
+            "category": "Controversial Content",
+            "description": "Political content, religious debates, social controversies",
+            "reasoning": "Maintain neutral luxury brand positioning"
+          },
+          {
+            "category": "Adult Content",
+            "description": "Any adult or suggestive content",
+            "reasoning": "Family-friendly brand image"
+          },
+          {
+            "category": "Negative Health Content",
+            "description": "Diet culture, weight loss, health warnings",
+            "reasoning": "Avoid negative associations with indulgence"
+          },
+          {
+            "category": "Competitive Context",
+            "description": "Direct competitor content or price comparison sites",
+            "reasoning": "Protect premium positioning"
+          },
+          {
+            "category": "Low-Quality Content",
+            "description": "User-generated content without moderation, clickbait",
+            "reasoning": "Maintain premium brand standards"
+          }
+        ],
+        "cautionary": [
+          {
+            "category": "Economic Content",
+            "description": "Recession, inflation, economic hardship content",
+            "reasoning": "May conflict with premium pricing message",
+            "threshold": "Monitor sentiment, avoid during economic downturns"
+          },
+          {
+            "category": "Health and Wellness",
+            "description": "Fitness, diet, health-focused content",
+            "reasoning": "Potential conflict with indulgence messaging",
+            "threshold": "Allow if balanced lifestyle approach"
+          }
+        ]
+      },
+      "preferredContexts": {
+        "highly_preferred": [
+          {
+            "category": "Lifestyle Content",
+            "description": "Premium lifestyle, luxury experiences, travel",
+            "reasoning": "Aligns with target audience aspirations",
+            "examples": ["Vogue", "Harper's Bazaar", "Conde Nast Traveler"]
+          },
+          {
+            "category": "Cooking Shows",
+            "description": "Recipe content, chef programs, food culture",
+            "reasoning": "Natural product integration opportunities",
+            "examples": ["Food Network", "Marmiton", "750g", "Essen & Trinken"]
+          },
+          {
+            "category": "Cultural Programming",
+            "description": "Arts, culture, heritage content",
+            "reasoning": "Reinforces Swiss heritage and craftsmanship",
+            "examples": ["BBC Culture", "Arte", "Cultural documentaries"]
+          },
+          {
+            "category": "Premium Editorial",
+            "description": "High-quality journalism, thought leadership",
+            "reasoning": "Associates brand with quality and authority",
+            "examples": ["The Guardian", "Le Monde", "Spiegel", "Financial Times"]
+          }
+        ],
+        "acceptable": [
+          {
+            "category": "Entertainment",
+            "description": "General entertainment, streaming content",
+            "reasoning": "Broad reach with appropriate content",
+            "conditions": "Family-friendly, high production value"
+          },
+          {
+            "category": "News Content",
+            "description": "General news, current events",
+            "reasoning": "Reach educated, affluent audience",
+            "conditions": "Avoid breaking news, controversial topics"
+          }
+        ]
+      },
+      "publisherStandards": {
+        "tier1_premium": {
+          "description": "Top-tier premium publishers",
+          "requirements": [
+            "Established brand reputation",
+            "High editorial standards",
+            "Affluent audience demographics",
+            "Brand safety controls"
+          ],
+          "examples": [
+            "BBC", "The Guardian", "Le Monde", "Spiegel Online",
+            "Vogue", "Harper's Bazaar", "Conde Nast Digital",
+            "Food Network", "Arte", "National Geographic"
+          ],
+          "budgetAllocation": "60%"
+        },
+        "tier2_quality": {
+          "description": "Quality publishers with good standards",
+          "requirements": [
+            "Good editorial standards",
+            "Moderate brand safety controls",
+            "Relevant audience demographics"
+          ],
+          "examples": [
+            "Regional premium publishers",
+            "Specialized food and lifestyle sites",
+            "Quality streaming platforms"
+          ],
+          "budgetAllocation": "30%"
+        },
+        "tier3_selective": {
+          "description": "Selective placements with strict controls",
+          "requirements": [
+            "Strong content filtering",
+            "Manual approval process",
+            "Limited to specific content categories"
+          ],
+          "budgetAllocation": "10%"
+        }
+      },
+      "monitoringProtocols": {
+        "realTimeMonitoring": {
+          "frequency": "Continuous",
+          "alerts": [
+            "Placement next to prohibited content",
+            "Negative brand mentions in content",
+            "Competitor mentions in same article",
+            "Sentiment score below threshold (6.0)"
+          ]
+        },
+        "weeklyReviews": {
+          "metrics": [
+            "Brand safety compliance rate",
+            "Content category distribution",
+            "Publisher performance scores",
+            "Audience quality metrics"
+          ],
+          "thresholds": {
+            "compliance_rate": "98% minimum",
+            "premium_publisher_percentage": "60% minimum",
+            "audience_quality_score": "7.5 minimum"
+          }
+        }
+      },
+      "incidentResponse": {
+        "immediate_actions": [
+          "Pause placement within 15 minutes of detection",
+          "Document incident details",
+          "Notify brand safety team",
+          "Assess brand impact"
+        ],
+        "escalation_criteria": [
+          "High-visibility inappropriate placement",
+          "Multiple incidents with same publisher",
+          "Negative social media attention",
+          "Competitor advantage situation"
+        ],
+        "recovery_protocols": [
+          "Publisher communication and resolution",
+          "Audience sentiment monitoring",
+          "Compensatory premium placements",
+          "Brand reputation assessment"
+        ]
+      }
+    },
+    "performanceMetrics": {
+      "brandSafetyScore": {
+        "current": 9.2,
+        "target": 9.0,
+        "calculation": "Weighted average of compliance, context quality, audience alignment"
+      },
+      "contextQualityScore": {
+        "current": 8.7,
+        "target": 8.5,
+        "factors": ["Content relevance", "Publisher reputation", "Audience engagement"]
+      },
+      "complianceRate": {
+        "current": "99.1%",
+        "target": "98.0%",
+        "measurement": "Percentage of placements meeting all safety criteria"
+      }
+    }
+  }
+}

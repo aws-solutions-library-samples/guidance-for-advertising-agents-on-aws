@@ -1,0 +1,95 @@
+<!-- Tour Overlay Container -->
+<div *ngIf="isActive" class="tour-overlay" (window:resize)="onWindowResize()">
+  
+  <!-- Backdrop -->
+  <div 
+    *ngIf="currentStep?.backdrop" 
+    class="tour-backdrop"
+    [@fadeIn]>
+  </div>
+  
+  <!-- Tooltip -->
+  <div 
+    #tooltip
+    class="tour-tooltip"
+    [class.center-tooltip]="currentStep?.position === 'center'"
+    [style.top]="tooltipPosition.top"
+    [style.left]="tooltipPosition.left"
+    [@slideIn]>
+    
+    <!-- Draggable Tooltip Header -->
+    <div 
+      class="tooltip-header"
+      (mousedown)="onDragStart($event)"
+      (mousemove)="onDrag($event)"
+      (mouseup)="onDragEnd()"
+      (mouseleave)="onDragEnd()">
+      <div class="tooltip-title-section">
+        <h3 class="tooltip-title">{{currentStep?.title}}</h3>
+        <div class="tooltip-step-indicator">
+          Step {{currentStepIndex + 1}} of {{totalSteps}}
+        </div>
+      </div>
+      <button class="tooltip-close" (click)="closeTour()" aria-label="Close tour">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    
+    <!-- Progress Bar -->
+    
+    <!-- Tooltip Content -->
+    <div class="tooltip-content">
+      <p>{{currentStep?.content}}</p>
+    </div>
+    
+    <!-- Tooltip Footer -->
+    <div class="tooltip-footer">
+      <button 
+        class="btn secondaryButton"
+        [disabled]="currentStepIndex === 0"
+        (click)="previousStep()">
+        <span class="material-icons">arrow_back</span>
+        Previous
+      </button>
+      
+      <button 
+        class="btn primaryButton"
+        (click)="nextStep()">
+        <span *ngIf="currentStepIndex === totalSteps - 1">Complete Tour</span>
+        <span *ngIf="currentStepIndex < totalSteps - 1">
+          Next
+          <span class="material-icons">arrow_forward</span>
+        </span>
+      </button>
+    </div>
+    <div class="tooltip-progress">
+      <div class="progress-bar">
+        <div 
+          class="progress-fill" 
+          [style.width.%]="getProgressPercentage()">
+        </div>
+      </div>
+      <div class="progress-dots">
+        <button 
+          *ngFor="let step of [].constructor(totalSteps); let i = index"
+          class="progress-dot"
+          [class.active]="i === currentStepIndex"
+          [class.completed]="i < currentStepIndex"
+          (click)="goToStep(i)"
+          [attr.aria-label]="'Go to step ' + (i + 1)">
+        </button>
+      </div>
+    </div>
+    
+    
+    <!-- Tooltip Arrow -->
+    <div 
+      class="tooltip-arrow"
+      [class.arrow-top]="currentStep?.position === 'bottom'"
+      [class.arrow-bottom]="currentStep?.position === 'top'"
+      [class.arrow-left]="currentStep?.position === 'right'"
+      [class.arrow-right]="currentStep?.position === 'left'"
+      *ngIf="currentStep?.position !== 'center'">
+    </div>
+  </div>
+</div> 

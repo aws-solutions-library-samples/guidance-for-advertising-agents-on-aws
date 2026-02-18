@@ -1,0 +1,58 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "pricing_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "pricing_model_performance"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "pricing_model"
+                    },
+                    {
+                        "fieldName": "publisher_tier"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "base_cpm"
+                    },
+                    {
+                        "fieldName": "dynamic_adjustment_factor"
+                    },
+                    {
+                        "fieldName": "floor_price_strategy"
+                    },
+                    {
+                        "fieldName": "ceiling_price_limit"
+                    },
+                    {
+                        "fieldName": "performance_score"
+                    },
+                    {
+                        "fieldName": "revenue_optimization"
+                    },
+                    {
+                        "fieldName": "fill_rate_impact"
+                    },
+                    {
+                        "fieldName": "user_experience_score"
+                    },
+                    {
+                        "fieldName": "implementation_complexity"
+                    }
+                ]
+            }
+        }
+    }
+}

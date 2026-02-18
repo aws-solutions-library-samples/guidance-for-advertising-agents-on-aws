@@ -1,0 +1,187 @@
+{
+  "agentName": "social-sentiment-analyzer",
+  "agentId": "social-sentiment-analyzer",
+  "templateId": "timeline-visualization",
+  "usage": "Social sentiment trends over time and campaign impact analysis",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Social Sentiment Timeline Analysis",
+    "subtitle": "Brand sentiment trends, campaign impact, and optimization timeline",
+    "collaborativeInsights": {
+      "primaryAgent": "social-sentiment-analyzer",
+      "supportingAgent1": "TimingStrategyAgent",
+      "supportingAgent2": "AudienceStrategyAgent"
+    },
+    "timeline": [
+      {
+        "phase": "Pre-Campaign Baseline",
+        "timeframe": "Baseline sentiment measurement period (e.g., '2 weeks before campaign', 'January 1-14', 'Pre-launch period')",
+        "primaryLabel": "Baseline Sentiment Establishment",
+        "secondaryLabel": "Initial brand sentiment measurement and competitive benchmarking",
+        "description": "Comprehensive baseline sentiment analysis across all platforms to establish pre-campaign brand perception metrics",
+        "keyActivities": [
+          "Social media sentiment monitoring across all major platforms",
+          "Competitive sentiment benchmarking and share of voice analysis",
+          "Audience sentiment segmentation and behavioral pattern identification",
+          "Historical sentiment trend analysis and seasonal pattern recognition"
+        ],
+        "metrics": {
+          "primaryMetric": {
+            "label": "Baseline Sentiment Score",
+            "value": "Pre-campaign sentiment measurement (e.g., '6.8', '7.2', '6.4')",
+            "unit": "score"
+          },
+          "secondaryMetric": {
+            "label": "Share of Voice",
+            "value": "Pre-campaign mention share (e.g., '18%', '22%', '15%')",
+            "unit": "%"
+          }
+        },
+        "insights": [
+          "Baseline sentiment insights (e.g., 'Brand sentiment 15% below category average', 'Strongest positive sentiment among 25-34 age group')",
+          "Competitive positioning (e.g., 'Main competitor holds 35% share of voice with 7.8 sentiment score', 'Opportunity gap identified in premium segment')",
+          "Platform analysis (e.g., 'Instagram shows highest positive sentiment at 8.2', 'Twitter sentiment more volatile with 6.1 average')"
+        ],
+        "risks": [
+          "Seasonal sentiment fluctuations may affect baseline accuracy",
+          "Competitor campaign activity during baseline period may skew results",
+          "Limited historical data may impact trend analysis reliability"
+        ],
+        "recommendations": [
+          "Establish comprehensive monitoring across all relevant social platforms",
+          "Implement real-time sentiment tracking systems for campaign period",
+          "Develop sentiment-based campaign trigger mechanisms for optimization"
+        ],
+        "status": "completed/active/planned",
+        "confidenceLevel": "high/medium/low"
+      },
+      {
+        "phase": "Campaign Launch Impact",
+        "timeframe": "Initial campaign impact period (e.g., 'Week 1-2 of campaign', 'Launch phase', 'February 1-14')",
+        "primaryLabel": "Launch Sentiment Monitoring",
+        "secondaryLabel": "Real-time sentiment tracking and immediate campaign impact assessment",
+        "description": "Intensive sentiment monitoring during campaign launch to capture immediate audience response and identify early optimization opportunities",
+        "keyActivities": [
+          "Real-time sentiment monitoring and alert system activation",
+          "Campaign message resonance analysis and emotional response tracking",
+          "Viral content identification and amplification opportunity assessment",
+          "Negative sentiment early warning system and crisis prevention protocols"
+        ],
+        "metrics": {
+          "primaryMetric": {
+            "label": "Launch Impact Score",
+            "value": "Campaign launch sentiment change (e.g., '+0.8', '+1.2', '+0.4')",
+            "unit": "score change"
+          },
+          "secondaryMetric": {
+            "label": "Engagement Velocity",
+            "value": "Engagement rate increase (e.g., '+45%', '+62%', '+28%')",
+            "unit": "% increase"
+          }
+        },
+        "insights": [
+          "Launch impact insights (e.g., 'Positive sentiment increased 25% within 48 hours of launch', 'Video content driving 3x higher engagement than static posts')",
+          "Message resonance (e.g., 'Sustainability messaging resonating strongly with target audience', 'Humor elements increasing share rate by 40%')",
+          "Platform performance (e.g., 'TikTok showing unexpected viral potential', 'LinkedIn engagement exceeding expectations by 60%')"
+        ],
+        "risks": [
+          "Rapid sentiment changes require immediate response capabilities",
+          "Viral negative content can quickly damage brand perception",
+          "Competitor response campaigns may dilute positive sentiment gains"
+        ],
+        "recommendations": [
+          "Implement hourly sentiment monitoring during first 72 hours",
+          "Prepare rapid response content for both positive amplification and negative mitigation",
+          "Activate influencer network for positive sentiment amplification"
+        ],
+        "status": "active/monitoring/optimizing",
+        "confidenceLevel": "high/medium/high"
+      },
+      {
+        "phase": "Mid-Campaign Optimization",
+        "timeframe": "Campaign optimization period (e.g., 'Week 3-6 of campaign', 'Optimization phase', 'February 15 - March 15')",
+        "primaryLabel": "Sentiment-Driven Optimization",
+        "secondaryLabel": "Data-driven campaign adjustments based on sentiment analysis and audience feedback",
+        "description": "Strategic campaign optimization based on accumulated sentiment data, audience feedback patterns, and performance analytics",
+        "keyActivities": [
+          "Sentiment trend analysis and pattern identification for optimization opportunities",
+          "Message testing and creative optimization based on sentiment feedback",
+          "Audience segment refinement based on sentiment response patterns",
+          "Competitive sentiment monitoring and strategic positioning adjustments"
+        ],
+        "metrics": {
+          "primaryMetric": {
+            "label": "Optimization Impact",
+            "value": "Sentiment improvement from optimization (e.g., '+1.5', '+2.1', '+0.9')",
+            "unit": "score improvement"
+          },
+          "secondaryMetric": {
+            "label": "Conversion Rate",
+            "value": "Sentiment-to-action conversion (e.g., '12%', '15%', '9%')",
+            "unit": "%"
+          }
+        },
+        "insights": [
+          "Optimization insights (e.g., 'A/B testing shows emotional storytelling increases positive sentiment by 35%', 'User-generated content campaigns driving authentic advocacy')",
+          "Audience refinement (e.g., 'Millennial segment showing highest sentiment improvement', 'B2B audience responding better to thought leadership content')",
+          "Channel optimization (e.g., 'Instagram Stories format driving highest engagement rates', 'LinkedIn video content exceeding benchmark performance')"
+        ],
+        "risks": [
+          "Over-optimization may reduce authentic brand voice and sentiment",
+          "Frequent changes may confuse audience and dilute message consistency",
+          "Competitor counter-campaigns may neutralize optimization gains"
+        ],
+        "recommendations": [
+          "Implement systematic A/B testing for all major creative and messaging elements",
+          "Develop sentiment-triggered automated optimization rules",
+          "Create feedback loops with high-engagement audience segments for continuous improvement"
+        ],
+        "status": "optimizing/testing/refining",
+        "confidenceLevel": "high/high/medium"
+      },
+      {
+        "phase": "Campaign Conclusion & Analysis",
+        "timeframe": "Campaign wrap-up and analysis period (e.g., 'Final week + 2 weeks post', 'March 16-31', 'Post-campaign analysis')",
+        "primaryLabel": "Final Impact Assessment",
+        "secondaryLabel": "Comprehensive sentiment impact analysis and long-term brand perception measurement",
+        "description": "Complete campaign sentiment impact assessment, long-term brand perception analysis, and strategic recommendations for future campaigns",
+        "keyActivities": [
+          "Comprehensive sentiment impact analysis and ROI calculation",
+          "Long-term brand perception shift measurement and trend analysis",
+          "Audience sentiment segment evolution tracking and future targeting insights",
+          "Competitive positioning analysis and market share impact assessment"
+        ],
+        "metrics": {
+          "primaryMetric": {
+            "label": "Total Sentiment Lift",
+            "value": "Overall campaign sentiment improvement (e.g., '+2.3', '+3.1', '+1.7')",
+            "unit": "total score improvement"
+          },
+          "secondaryMetric": {
+            "label": "Brand Perception ROI",
+            "value": "Sentiment improvement per dollar spent (e.g., '0.08', '0.12', '0.05')",
+            "unit": "sentiment points per $"
+          }
+        },
+        "insights": [
+          "Campaign impact insights (e.g., 'Overall brand sentiment improved 40% with sustained positive momentum', 'Brand advocacy segment expanded by 25% during campaign period')",
+          "Long-term effects (e.g., 'Positive sentiment gains maintained 3 months post-campaign', 'Brand consideration increased 18% in target demographic')",
+          "Strategic learnings (e.g., 'Authentic storytelling drives most sustainable sentiment improvements', 'Cross-platform consistency crucial for sentiment coherence')"
+        ],
+        "risks": [
+          "Sentiment gains may decay without continued engagement and content",
+          "Competitor campaigns may erode positive sentiment achievements",
+          "Market changes may affect long-term brand perception sustainability"
+        ],
+        "recommendations": [
+          "Develop sustained engagement strategy to maintain sentiment gains",
+          "Create sentiment monitoring and maintenance protocols for ongoing brand management",
+          "Implement learnings into brand guidelines and future campaign development processes"
+        ],
+        "status": "completed/analyzing/planning",
+        "confidenceLevel": "high/high/high"
+      }
+    ]
+  }
+}

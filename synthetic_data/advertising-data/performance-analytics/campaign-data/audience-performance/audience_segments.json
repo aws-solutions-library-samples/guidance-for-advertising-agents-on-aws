@@ -1,0 +1,628 @@
+{
+  "segments": [
+    {
+      "segment_id": "sports_enthusiast",
+      "description": "Users interested in sports content",
+      "vector": [0.12, 0.45, 0.78, -0.23, 0.56, 0.34, -0.67, 0.89, 0.21, -0.43, 0.65, 0.32, -0.11, 0.54, 0.76, -0.87, 0.23, 0.45, 0.67, -0.12, 0.34, 0.56, -0.78, 0.90, 0.32, -0.54, 0.76, 0.98, -0.21, 0.43, 0.65, 0.87],
+      "demographic_affinity": ["male", "25-44", "active lifestyle"],
+      "interest_categories": ["sports", "fitness", "outdoor activities"],
+      "purchase_intent": ["athletic apparel", "sports equipment", "event tickets"],
+      "average_value": 2.8,
+      "conversion_rate": 0.012,
+      "device_preferences": {
+        "mobile": 0.65,
+        "desktop": 0.25,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.25,
+        "evening": 0.45,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB17": 0.85,
+        "IAB1": 0.35,
+        "IAB9": 0.45
+      }
+    },
+    {
+      "segment_id": "tech_enthusiast",
+      "description": "Users interested in technology and gadgets",
+      "vector": [0.78, 0.23, -0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65],
+      "demographic_affinity": ["male", "25-54", "early adopters"],
+      "interest_categories": ["technology", "computing", "gadgets"],
+      "purchase_intent": ["electronics", "software", "tech accessories"],
+      "average_value": 3.2,
+      "conversion_rate": 0.015,
+      "device_preferences": {
+        "mobile": 0.45,
+        "desktop": 0.50,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.10,
+        "afternoon": 0.30,
+        "evening": 0.40,
+        "night": 0.20
+      },
+      "content_affinities": {
+        "IAB19": 0.90,
+        "IAB13": 0.50,
+        "IAB9": 0.40
+      }
+    },
+    {
+      "segment_id": "fashion_enthusiast",
+      "description": "Users interested in fashion and style",
+      "vector": [-0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12],
+      "demographic_affinity": ["female", "18-44", "style conscious"],
+      "interest_categories": ["fashion", "beauty", "shopping"],
+      "purchase_intent": ["clothing", "accessories", "beauty products"],
+      "average_value": 2.5,
+      "conversion_rate": 0.018,
+      "device_preferences": {
+        "mobile": 0.70,
+        "desktop": 0.20,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.30,
+        "evening": 0.40,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB18": 0.85,
+        "IAB1": 0.60,
+        "IAB9": 0.35
+      }
+    },
+    {
+      "segment_id": "home_enthusiast",
+      "description": "Users interested in home decor and improvement",
+      "vector": [0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32],
+      "demographic_affinity": ["female", "30-65", "homeowners"],
+      "interest_categories": ["home decor", "DIY", "gardening"],
+      "purchase_intent": ["furniture", "home accessories", "tools"],
+      "average_value": 3.0,
+      "conversion_rate": 0.014,
+      "device_preferences": {
+        "mobile": 0.40,
+        "desktop": 0.35,
+        "tablet": 0.25
+      },
+      "active_hours": {
+        "morning": 0.20,
+        "afternoon": 0.35,
+        "evening": 0.35,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB6": 0.80,
+        "IAB9": 0.45,
+        "IAB8": 0.40
+      }
+    },
+    {
+      "segment_id": "travel_enthusiast",
+      "description": "Users interested in travel and tourism",
+      "vector": [0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65],
+      "demographic_affinity": ["mixed gender", "25-65", "affluent"],
+      "interest_categories": ["travel", "tourism", "dining"],
+      "purchase_intent": ["flights", "hotels", "vacation packages"],
+      "average_value": 4.5,
+      "conversion_rate": 0.010,
+      "device_preferences": {
+        "mobile": 0.50,
+        "desktop": 0.40,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.25,
+        "evening": 0.45,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB20": 0.85,
+        "IAB8": 0.50,
+        "IAB1": 0.40
+      }
+    },
+    {
+      "segment_id": "finance_enthusiast",
+      "description": "Users interested in financial services and investing",
+      "vector": [0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90],
+      "demographic_affinity": ["male", "35-65", "affluent"],
+      "interest_categories": ["finance", "investing", "business"],
+      "purchase_intent": ["financial services", "investment products", "insurance"],
+      "average_value": 5.0,
+      "conversion_rate": 0.008,
+      "device_preferences": {
+        "mobile": 0.30,
+        "desktop": 0.65,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.25,
+        "afternoon": 0.40,
+        "evening": 0.30,
+        "night": 0.05
+      },
+      "content_affinities": {
+        "IAB13": 0.90,
+        "IAB11": 0.60,
+        "IAB19": 0.45
+      }
+    },
+    {
+      "segment_id": "gaming_enthusiast",
+      "description": "Users interested in video games and gaming content",
+      "vector": [-0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21],
+      "demographic_affinity": ["male", "13-34", "tech-savvy"],
+      "interest_categories": ["gaming", "entertainment", "technology"],
+      "purchase_intent": ["video games", "gaming hardware", "digital content"],
+      "average_value": 2.2,
+      "conversion_rate": 0.020,
+      "device_preferences": {
+        "mobile": 0.40,
+        "desktop": 0.55,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.10,
+        "afternoon": 0.20,
+        "evening": 0.40,
+        "night": 0.30
+      },
+      "content_affinities": {
+        "IAB9": 0.90,
+        "IAB19": 0.70,
+        "IAB1": 0.50
+      }
+    },
+    {
+      "segment_id": "health_enthusiast",
+      "description": "Users interested in health and wellness",
+      "vector": [0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98],
+      "demographic_affinity": ["female", "25-54", "health conscious"],
+      "interest_categories": ["health", "fitness", "nutrition"],
+      "purchase_intent": ["fitness equipment", "health supplements", "wellness services"],
+      "average_value": 2.7,
+      "conversion_rate": 0.015,
+      "device_preferences": {
+        "mobile": 0.60,
+        "desktop": 0.25,
+        "tablet": 0.15
+      },
+      "active_hours": {
+        "morning": 0.30,
+        "afternoon": 0.30,
+        "evening": 0.35,
+        "night": 0.05
+      },
+      "content_affinities": {
+        "IAB7": 0.90,
+        "IAB8": 0.65,
+        "IAB6": 0.40
+      }
+    },
+    {
+      "segment_id": "auto_intender",
+      "description": "Users actively researching vehicle purchases",
+      "vector": [0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45],
+      "demographic_affinity": ["mixed gender", "30-55", "middle to high income"],
+      "interest_categories": ["automotive", "finance", "technology"],
+      "purchase_intent": ["vehicles", "auto financing", "auto insurance"],
+      "average_value": 6.5,
+      "conversion_rate": 0.005,
+      "device_preferences": {
+        "mobile": 0.35,
+        "desktop": 0.55,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.30,
+        "evening": 0.45,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB2": 0.90,
+        "IAB13": 0.60,
+        "IAB19": 0.40
+      }
+    },
+    {
+      "segment_id": "beauty_enthusiast",
+      "description": "Users interested in beauty products and cosmetics",
+      "vector": [-0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54, -0.76, 0.98, 0.21, -0.43, 0.65, 0.87, -0.23, 0.45, 0.67, 0.12, -0.34, 0.56, 0.78, -0.90, 0.32, 0.54],
+      "demographic_affinity": ["female", "18-44", "style conscious"],
+      "interest_categories": ["beauty", "fashion", "lifestyle"],
+      "purchase_intent": ["cosmetics", "skincare", "beauty services"],
+      "average_value": 2.3,
+      "conversion_rate": 0.022,
+      "device_preferences": {
+        "mobile": 0.70,
+        "desktop": 0.20,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.25,
+        "evening": 0.45,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB18": 0.90,
+        "IAB1": 0.55,
+        "IAB7": 0.40
+      }
+    },
+    {
+      "segment_id": "luxury_lifestyle",
+      "description": "Affluent users interested in premium products and experiences",
+      "vector": [0.91, -0.23, 0.67, 0.45, -0.78, 0.34, 0.89, -0.56, 0.12, 0.76, -0.45, 0.67, 0.23, -0.89, 0.45, 0.78, -0.23, 0.56, 0.89, -0.34, 0.67, 0.12, -0.45, 0.78, 0.91, -0.23, 0.45, 0.67, -0.89, 0.34, 0.56, 0.78],
+      "demographic_affinity": ["mixed gender", "35-65", "high income"],
+      "interest_categories": ["luxury goods", "premium services", "exclusive experiences"],
+      "purchase_intent": ["luxury items", "premium services", "high-end travel"],
+      "average_value": 8.5,
+      "conversion_rate": 0.006,
+      "device_preferences": {
+        "mobile": 0.45,
+        "desktop": 0.50,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.20,
+        "afternoon": 0.30,
+        "evening": 0.40,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB18": 0.80,
+        "IAB20": 0.75,
+        "IAB2": 0.70
+      }
+    },
+    {
+      "segment_id": "new_parent",
+      "description": "Recent parents interested in family-focused products",
+      "vector": [0.45, 0.78, -0.23, 0.56, 0.89, -0.34, 0.12, 0.67, -0.45, 0.91, 0.23, -0.78, 0.56, 0.34, -0.89, 0.45, 0.67, -0.12, 0.78, 0.23, -0.56, 0.89, 0.34, -0.45, 0.67, 0.91, -0.23, 0.78, 0.45, -0.56, 0.34, 0.89],
+      "demographic_affinity": ["mixed gender", "25-40", "family focused"],
+      "interest_categories": ["parenting", "baby products", "family activities"],
+      "purchase_intent": ["baby products", "family services", "educational toys"],
+      "average_value": 3.8,
+      "conversion_rate": 0.025,
+      "device_preferences": {
+        "mobile": 0.75,
+        "desktop": 0.20,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.25,
+        "afternoon": 0.35,
+        "evening": 0.30,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB6": 0.85,
+        "IAB7": 0.60,
+        "IAB8": 0.70
+      }
+    },
+    {
+      "segment_id": "outdoor_enthusiast",
+      "description": "Users passionate about outdoor activities and adventure",
+      "vector": [0.67, -0.45, 0.89, 0.23, -0.78, 0.45, 0.91, -0.34, 0.56, 0.78, -0.23, 0.67, 0.45, -0.89, 0.34, 0.76, -0.45, 0.89, 0.23, -0.67, 0.78, 0.91, -0.34, 0.45, 0.56, -0.78, 0.89, 0.23, -0.45, 0.67, 0.91, -0.34],
+      "demographic_affinity": ["mixed gender", "25-55", "active lifestyle"],
+      "interest_categories": ["outdoor activities", "adventure sports", "nature"],
+      "purchase_intent": ["outdoor gear", "adventure travel", "camping equipment"],
+      "average_value": 4.2,
+      "conversion_rate": 0.012,
+      "device_preferences": {
+        "mobile": 0.65,
+        "desktop": 0.25,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.20,
+        "afternoon": 0.25,
+        "evening": 0.40,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB17": 0.70,
+        "IAB20": 0.80,
+        "IAB7": 0.65
+      }
+    },
+    {
+      "segment_id": "food_enthusiast",
+      "description": "Users passionate about cooking, dining, and culinary experiences",
+      "vector": [0.34, 0.78, -0.45, 0.89, 0.23, -0.67, 0.91, 0.45, -0.78, 0.34, 0.56, -0.89, 0.23, 0.67, -0.45, 0.91, 0.34, -0.78, 0.56, 0.89, -0.23, 0.45, 0.67, -0.91, 0.34, 0.78, -0.45, 0.56, 0.89, -0.23, 0.67, 0.91],
+      "demographic_affinity": ["mixed gender", "25-54", "food focused"],
+      "interest_categories": ["cooking", "dining", "food delivery", "recipes"],
+      "purchase_intent": ["food delivery", "kitchen appliances", "gourmet products"],
+      "average_value": 3.1,
+      "conversion_rate": 0.018,
+      "device_preferences": {
+        "mobile": 0.70,
+        "desktop": 0.20,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.20,
+        "evening": 0.50,
+        "night": 0.15
+      },
+      "content_affinities": {
+        "IAB8": 0.90,
+        "IAB6": 0.45,
+        "IAB1": 0.50
+      }
+    },
+    {
+      "segment_id": "pet_owner",
+      "description": "Users who own pets and are interested in pet-related products",
+      "vector": [0.78, -0.34, 0.56, 0.91, -0.23, 0.45, 0.89, -0.67, 0.34, 0.78, -0.45, 0.91, 0.23, -0.56, 0.89, 0.67, -0.34, 0.78, 0.45, -0.91, 0.23, 0.56, -0.89, 0.34, 0.67, -0.78, 0.45, 0.91, -0.23, 0.56, 0.89, -0.34],
+      "demographic_affinity": ["mixed gender", "25-65", "pet lovers"],
+      "interest_categories": ["pet care", "veterinary services", "pet products"],
+      "purchase_intent": ["pet food", "pet accessories", "veterinary services"],
+      "average_value": 3.5,
+      "conversion_rate": 0.016,
+      "device_preferences": {
+        "mobile": 0.55,
+        "desktop": 0.30,
+        "tablet": 0.15
+      },
+      "active_hours": {
+        "morning": 0.25,
+        "afternoon": 0.35,
+        "evening": 0.30,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB16": 0.85,
+        "IAB6": 0.40,
+        "IAB7": 0.35
+      }
+    },
+    {
+      "segment_id": "deal_seeker",
+      "description": "Price-conscious users who actively seek deals and discounts",
+      "vector": [0.23, 0.89, -0.45, 0.67, 0.91, -0.34, 0.78, 0.45, -0.89, 0.23, 0.56, -0.67, 0.91, 0.34, -0.78, 0.45, 0.89, -0.23, 0.67, 0.91, -0.34, 0.56, 0.78, -0.45, 0.89, 0.23, -0.67, 0.91, 0.34, -0.78, 0.45, 0.56],
+      "demographic_affinity": ["mixed gender", "25-54", "budget conscious"],
+      "interest_categories": ["deals", "discounts", "bargain shopping", "coupons"],
+      "purchase_intent": ["discounted products", "sale items", "bulk purchases"],
+      "average_value": 2.1,
+      "conversion_rate": 0.025,
+      "device_preferences": {
+        "mobile": 0.80,
+        "desktop": 0.15,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.20,
+        "afternoon": 0.30,
+        "evening": 0.40,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB9": 0.85,
+        "IAB1": 0.60,
+        "IAB8": 0.45
+      }
+    },
+    {
+      "segment_id": "tech_early_adopter",
+      "description": "Users who embrace cutting-edge technology and innovation",
+      "vector": [0.91, 0.45, -0.78, 0.34, 0.89, -0.56, 0.23, 0.67, -0.91, 0.45, 0.78, -0.34, 0.89, 0.56, -0.23, 0.67, 0.91, -0.45, 0.78, 0.34, -0.89, 0.56, 0.23, -0.67, 0.91, 0.45, -0.78, 0.34, 0.89, -0.56, 0.23, 0.67],
+      "demographic_affinity": ["male", "22-45", "high tech adoption"],
+      "interest_categories": ["emerging tech", "AI", "blockchain", "startups"],
+      "purchase_intent": ["cutting-edge gadgets", "beta products", "tech investments"],
+      "average_value": 4.8,
+      "conversion_rate": 0.008,
+      "device_preferences": {
+        "mobile": 0.40,
+        "desktop": 0.55,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.35,
+        "evening": 0.40,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB19": 0.95,
+        "IAB13": 0.70,
+        "IAB11": 0.60
+      }
+    },
+    {
+      "segment_id": "crypto_investor",
+      "description": "Users interested in cryptocurrency and digital assets",
+      "vector": [0.67, -0.89, 0.34, 0.78, -0.45, 0.91, 0.23, -0.56, 0.89, 0.67, -0.34, 0.78, 0.45, -0.91, 0.23, 0.56, -0.89, 0.67, 0.34, -0.78, 0.45, 0.91, -0.23, 0.56, 0.89, -0.67, 0.34, 0.78, -0.45, 0.91, 0.23, -0.56],
+      "demographic_affinity": ["male", "25-45", "tech-savvy investors"],
+      "interest_categories": ["cryptocurrency", "DeFi", "blockchain", "trading"],
+      "purchase_intent": ["crypto services", "trading platforms", "digital wallets"],
+      "average_value": 7.2,
+      "conversion_rate": 0.004,
+      "device_preferences": {
+        "mobile": 0.35,
+        "desktop": 0.60,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.10,
+        "afternoon": 0.25,
+        "evening": 0.45,
+        "night": 0.20
+      },
+      "content_affinities": {
+        "IAB13": 0.90,
+        "IAB19": 0.85,
+        "IAB11": 0.65
+      }
+    },
+    {
+      "segment_id": "entertainment_seeker",
+      "description": "Users who consume large amounts of entertainment content",
+      "vector": [0.45, 0.91, -0.23, 0.78, 0.34, -0.89, 0.56, 0.67, -0.45, 0.91, 0.23, -0.78, 0.34, 0.89, -0.56, 0.67, 0.45, -0.91, 0.23, 0.78, -0.34, 0.89, 0.56, -0.67, 0.45, 0.91, -0.23, 0.78, 0.34, -0.89, 0.56, 0.67],
+      "demographic_affinity": ["mixed gender", "18-44", "entertainment focused"],
+      "interest_categories": ["streaming", "movies", "TV shows", "music"],
+      "purchase_intent": ["streaming subscriptions", "entertainment services", "media devices"],
+      "average_value": 2.9,
+      "conversion_rate": 0.020,
+      "device_preferences": {
+        "mobile": 0.60,
+        "desktop": 0.25,
+        "tablet": 0.15
+      },
+      "active_hours": {
+        "morning": 0.10,
+        "afternoon": 0.20,
+        "evening": 0.45,
+        "night": 0.25
+      },
+      "content_affinities": {
+        "IAB1": 0.90,
+        "IAB9": 0.70,
+        "IAB19": 0.45
+      }
+    },
+    {
+      "segment_id": "sustainability_conscious",
+      "description": "Environmentally conscious users interested in sustainable products",
+      "vector": [0.78, -0.45, 0.91, 0.34, -0.89, 0.67, 0.23, -0.78, 0.56, 0.91, -0.34, 0.89, 0.45, -0.67, 0.78, 0.23, -0.91, 0.56, 0.89, -0.34, 0.67, 0.78, -0.45, 0.91, 0.23, -0.89, 0.56, 0.67, -0.78, 0.34, 0.91, -0.45],
+      "demographic_affinity": ["mixed gender", "25-54", "environmentally conscious"],
+      "interest_categories": ["sustainability", "eco-friendly products", "green living"],
+      "purchase_intent": ["eco-friendly products", "sustainable services", "green technologies"],
+      "average_value": 3.6,
+      "conversion_rate": 0.014,
+      "device_preferences": {
+        "mobile": 0.50,
+        "desktop": 0.35,
+        "tablet": 0.15
+      },
+      "active_hours": {
+        "morning": 0.25,
+        "afternoon": 0.35,
+        "evening": 0.30,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB14": 0.85,
+        "IAB6": 0.60,
+        "IAB7": 0.55
+      }
+    },
+    {
+      "segment_id": "luxury_consumer",
+      "description": "High-income users interested in premium and luxury products",
+      "vector": [0.89, 0.23, -0.67, 0.91, 0.45, -0.78, 0.34, 0.89, -0.56, 0.67, 0.91, -0.23, 0.78, 0.45, -0.89, 0.34, 0.67, -0.91, 0.56, 0.78, -0.23, 0.89, 0.45, -0.67, 0.91, 0.34, -0.78, 0.56, 0.89, -0.23, 0.67, 0.91],
+      "demographic_affinity": ["mixed gender", "35-65", "affluent"],
+      "interest_categories": ["luxury goods", "premium brands", "exclusive services"],
+      "purchase_intent": ["luxury products", "premium services", "high-end experiences"],
+      "average_value": 9.5,
+      "conversion_rate": 0.003,
+      "device_preferences": {
+        "mobile": 0.40,
+        "desktop": 0.55,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.20,
+        "afternoon": 0.30,
+        "evening": 0.40,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB18": 0.90,
+        "IAB20": 0.85,
+        "IAB2": 0.75
+      }
+    },
+    {
+      "segment_id": "student",
+      "description": "College and university students with education-focused interests",
+      "vector": [0.34, 0.67, -0.91, 0.45, 0.78, -0.23, 0.89, 0.56, -0.67, 0.34, 0.91, -0.45, 0.78, 0.23, -0.89, 0.56, 0.67, -0.34, 0.91, 0.45, -0.78, 0.23, 0.89, -0.56, 0.67, 0.34, -0.91, 0.45, 0.78, -0.23, 0.89, 0.56],
+      "demographic_affinity": ["mixed gender", "18-25", "education focused"],
+      "interest_categories": ["education", "student life", "budget products", "career"],
+      "purchase_intent": ["educational services", "budget products", "textbooks", "technology"],
+      "average_value": 1.8,
+      "conversion_rate": 0.030,
+      "device_preferences": {
+        "mobile": 0.75,
+        "desktop": 0.20,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.15,
+        "afternoon": 0.40,
+        "evening": 0.35,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB5": 0.90,
+        "IAB19": 0.60,
+        "IAB9": 0.55
+      }
+    },
+    {
+      "segment_id": "senior_citizen",
+      "description": "Users aged 65+ with interests in health, leisure, and family",
+      "vector": [0.56, -0.78, 0.34, 0.91, -0.45, 0.67, 0.23, -0.89, 0.56, 0.78, -0.34, 0.91, 0.45, -0.67, 0.23, 0.89, -0.56, 0.78, 0.34, -0.91, 0.45, 0.67, -0.23, 0.89, 0.56, -0.78, 0.34, 0.91, -0.45, 0.67, 0.23, -0.89],
+      "demographic_affinity": ["mixed gender", "65+", "family oriented"],
+      "interest_categories": ["health", "leisure activities", "family", "retirement"],
+      "purchase_intent": ["health products", "leisure services", "family gifts"],
+      "average_value": 4.1,
+      "conversion_rate": 0.010,
+      "device_preferences": {
+        "mobile": 0.30,
+        "desktop": 0.60,
+        "tablet": 0.10
+      },
+      "active_hours": {
+        "morning": 0.40,
+        "afternoon": 0.35,
+        "evening": 0.20,
+        "night": 0.05
+      },
+      "content_affinities": {
+        "IAB7": 0.80,
+        "IAB6": 0.70,
+        "IAB20": 0.50
+      }
+    },
+    {
+      "segment_id": "news_reader",
+      "description": "Users who regularly consume news and current events content",
+      "vector": [0.91, -0.34, 0.78, 0.45, -0.89, 0.56, 0.23, -0.67, 0.91, 0.34, -0.78, 0.45, 0.89, -0.56, 0.23, 0.67, -0.91, 0.34, 0.78, -0.45, 0.89, 0.56, -0.23, 0.67, 0.91, -0.34, 0.78, 0.45, -0.89, 0.56, 0.23, -0.67],
+      "demographic_affinity": ["mixed gender", "30-65", "informed citizens"],
+      "interest_categories": ["current events", "politics", "world news", "analysis"],
+      "purchase_intent": ["news subscriptions", "informed products", "analysis services"],
+      "average_value": 3.3,
+      "conversion_rate": 0.012,
+      "device_preferences": {
+        "mobile": 0.45,
+        "desktop": 0.50,
+        "tablet": 0.05
+      },
+      "active_hours": {
+        "morning": 0.35,
+        "afternoon": 0.25,
+        "evening": 0.30,
+        "night": 0.10
+      },
+      "content_affinities": {
+        "IAB11": 0.90,
+        "IAB12": 0.75,
+        "IAB13": 0.45
+      }
+    }
+  ]
+}

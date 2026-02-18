@@ -1,0 +1,70 @@
+{
+  "agentName": "WeatherImpactAgent",
+  "agentId": "WeatherImpactAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Weather impact metrics on audience behavior, media consumption, and campaign performance",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Weather Impact Analysis",
+    "subtitle": "Weather-driven audience behavior and campaign performance analysis",
+    "collaborativeInsights": {
+      "primaryAgent": "WeatherImpactAgent",
+      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent2": "TimingStrategyAgent"
+    },
+    "metrics": [
+      {
+        "templateId": "metrics-visualization",
+        "primaryLabel": "Indoor Media Consumption Impact",
+        "secondaryLabel": "Weather-driven changes in indoor digital media usage and streaming behavior",
+        "items": [
+          {
+            "primaryLabel": "Indoor Streaming Hours",
+            "actualValue": "Current weather-driven streaming hours (e.g., '6.8', '4.2', '8.1')",
+            "targetValue": "Normal weather baseline hours (e.g., '5.2', '5.2', '5.2')",
+            "forecastedValue": "Predicted hours with weather forecast (e.g., '7.5', '3.9', '6.8')",
+            "actualLabel": "Current weather impact on streaming (e.g., 'Rainy weather increases indoor streaming', 'Sunny weather reduces indoor time')",
+            "targetLabel": "Clear weather baseline streaming hours",
+            "forecastedLabel": "Weather forecast streaming projection (e.g., 'Continued rain expected to maintain high streaming', 'Clearing weather will reduce indoor time')",
+            "unit": "hours",
+            "trend": "Weather impact direction: 'up', 'down', 'stable'",
+            "confidenceLevel": "Weather prediction confidence: 'high', 'medium', 'low'",
+            "isPrimary": true,
+            "insights": [
+              "Weather behavior insights (e.g., 'Rainy weather increases indoor media consumption by 45%', 'Cold temperatures drive streaming platform usage up 30%')"
+            ],
+            "risks": [
+              "Weather-related risks (e.g., 'Sudden weather changes may disrupt viewing patterns', 'Power outages during storms affect streaming')"
+            ],
+            "recommendations": [
+              "Weather-based optimization recommendations (e.g., 'Increase streaming platform ad spend during rain forecast', 'Target indoor entertainment content during cold snaps')"
+            ]
+          },
+          {
+            "primaryLabel": "Mobile App Usage",
+            "actualValue": "Current weather-driven mobile usage (e.g., '+25%', '-15%', '+40%')",
+            "targetValue": "Normal weather mobile usage baseline (e.g., '100%', '100%', '100%')",
+            "forecastedValue": "Predicted mobile usage with forecast (e.g., '+30%', '-10%', '+35%')",
+            "actualLabel": "Current weather impact on mobile usage",
+            "targetLabel": "Clear weather mobile usage baseline",
+            "forecastedLabel": "Weather forecast mobile usage projection",
+            "unit": "%",
+            "trend": "up/down/stable",
+            "confidenceLevel": "high/medium/low",
+            "isPrimary": false,
+            "insights": [
+              "Mobile usage weather insights"
+            ],
+            "risks": [
+              "Mobile usage weather risks"
+            ],
+            "recommendations": [
+              "Mobile targeting weather recommendations"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

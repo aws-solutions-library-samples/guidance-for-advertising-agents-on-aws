@@ -1,0 +1,55 @@
+{
+  "templateId": "timeline-visualization",
+  "templateName": "Timeline Visualization",
+  "description": "Template for implementation plans, campaign schedules, and phased rollouts",
+  "usage": [
+    "Campaign execution schedules",
+    "Creative rollout plans",
+    "Testing and optimization phases",
+    "Content release timing",
+    "Strategic implementation roadmaps"
+  ],
+  "schema": {
+    "visualizationType": "timeline",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "startDate": "string - ISO date",
+    "endDate": "string - ISO date",
+    "totalDuration": "string - Duration description",
+    "overallObjective": "string - Main goal",
+    "phases": [
+      {
+        "primaryLabel": "string - Phase name",
+        "secondaryLabel": "string - Phase type",
+        "description": "string - Phase objectives",
+        "startDate": "string - ISO date",
+        "endDate": "string - ISO date",
+        "duration": "string - Phase duration",
+        "status": "string - upcoming/active/completed",
+        "priority": "string - high/medium/low",
+        "expectedOutcome": "string - Deliverables",
+        "budget": "string - Phase budget",
+        "resources": ["array of string - Required resources"],
+        "milestones": [
+          {
+            "date": "string - ISO date",
+            "label": "string - Milestone name",
+            "status": "string - pending/achieved"
+          }
+        ],
+        "dependencies": ["array of string - Prerequisites"],
+        "risks": ["array of string - Risk factors"]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "string - ISO date",
+        "label": "string - Milestone name",
+        "description": "string - Milestone details",
+        "status": "string - upcoming/achieved"
+      }
+    ],
+    "successMetrics": ["array of string - Success criteria"],
+    "criticalPath": ["array of string - Critical phase names"]
+  }
+}

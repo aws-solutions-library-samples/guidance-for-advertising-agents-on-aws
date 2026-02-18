@@ -1,0 +1,64 @@
+{
+    "metadataAttributes": {
+        "data_source": "publisher_analytics",
+        "category": "performance_metrics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "publisher_performance_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "domain"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "publisher_id"
+                    },
+                    {
+                        "fieldName": "publisher_name"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "month"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "revenue"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "cpm"
+                    },
+                    {
+                        "fieldName": "viewability_rate"
+                    },
+                    {
+                        "fieldName": "brand_safety_violations"
+                    },
+                    {
+                        "fieldName": "fraud_rate"
+                    }
+                ]
+            }
+        }
+    }
+}

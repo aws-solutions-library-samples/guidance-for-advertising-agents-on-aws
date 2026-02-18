@@ -1,0 +1,53 @@
+{
+  "agentName": "AudienceIntelligenceAgent",
+  "agentId": "AudienceIntelligenceAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Audience intelligence gathering timeline and insight development",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Audience Intelligence Timeline",
+    "subtitle": "Intelligence gathering phases and insight development progression",
+    "phases": [
+      {
+        "primaryLabel": "Primary timeline label",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Initial audience data collection and baseline intelligence establishment",
+        "startDate": "Phase start date (e.g., '2024-01-01')",
+        "endDate": "Phase end date (e.g., '2024-01-15')",
+        "duration": "Phase duration (e.g., '14 days')",
+        "status": "Phase status: 'completed', 'active', 'planned'",
+        "priority": "Value for priority",
+        "expectedOutcome": "Value for expectedOutcome",
+        "budget": "Value for budget",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "name": "Data Collection",
+            "date": "Milestone date",
+            "description": "Initial audience data gathering and profiling",
+            "status": "Milestone status",
+            "impact": "Intelligence impact level: 'high', 'medium', 'low'"
+          },
+          {
+            "name": "Pattern Analysis",
+            "date": "Milestone date",
+            "description": "Behavioral pattern identification and analysis",
+            "status": "Milestone status",
+            "impact": "Analysis impact level"
+          }
+        ],
+        "dependencies": "Value for dependencies",
+        "risks": [
+          "Risk factors for intelligence timeline"
+        ]
+      }
+    ],
+    "summary": {
+      "totalPhases": "Number of intelligence phases",
+      "averageDuration": "Average intelligence gathering duration",
+      "overallAccuracy": "End-to-end intelligence accuracy rate",
+      "keyBottleneck": "Primary intelligence gathering bottleneck phase"
+    }
+  }
+}

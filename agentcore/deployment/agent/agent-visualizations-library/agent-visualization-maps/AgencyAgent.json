@@ -1,0 +1,22 @@
+{
+  "agentName": "AgencyAgent",
+  "agentId": "agency-agent",
+  "templates": [
+    {
+      "templateId": "adcp_get_products-visualization",
+      "usage": "AdCP product inventory from get_products calls - displays interactive product grid with pricing, reach, and audience composition"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget allocation across publishers and channels"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Campaign performance KPIs and delivery metrics"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Campaign workflow phases and milestones"
+    }
+  ]
+}

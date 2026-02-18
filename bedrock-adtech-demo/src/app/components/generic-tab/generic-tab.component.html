@@ -1,0 +1,147 @@
+<div class="generic-tab-container">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <p>Loading configuration...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !isLoading" class="error-container">
+    <div class="error-content">
+      <span class="material-icons">error</span>
+      <h3>Configuration Error</h3>
+      <p>{{ error }}</p>
+      <button class="btn btn-primary" (click)="ngOnInit()">Retry</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="tabConfig && !isLoading && !error" class="main-content">
+
+
+
+    <!-- Chat Interface (Full Width) -->
+    <div class="chat-area full-width">
+      <app-chat-interface [agentType]="selectedAgent?.name || ''" [tabConfig]="tabConfig" [scenarios]="tabConfig.scenarios || []"
+        [tabId]="tabId"
+        [currentUser]="currentUser" [contextData]="getContextData()" [showScenariosPanel]="showScenariosPanel" [showSessionsPanel]="showSessionsPanel"
+        [currentPublisher]="contextData?.publishers&&contextData?.publishers.length>0?contextData.publishers[0]:(contextData?.publisher?[contextData?.publisher]:{})" [currentCampaign]="currentCampaign" [currentContent]="currentContent"
+        [publishers]="contextData?.publishers?contextData.publishers:(contextData?.publisher?[contextData?.publisher]:[])" (contextPanelShow)="onContextPanelShow()" (contextPanelHide)="onContextPanelHide()"
+        (publisherSelect)="selectPublisher($event)" (closeContextSelectorEvent)="closeContextSelector()"
+        (messagesUpdated)="triggerMessagesUpdatedEvent($event)"
+        (messageEvent)="onMessageSent($event)" (scenariosPanelToggle)="toggleScenariosPanel()">
+      </app-chat-interface>
+    </div>
+    
+  </div>
+
+  <!-- Floating Action Buttons (Original) -->
+  <div class="floating-actions" [class.panel-open]="showScenariosPanel || showAgentSelector || showSessionsPanel">
+    
+
+    <!-- Agent Selector Button -->
+    <button class="floating-btn agent-btn" (click)="toggleAgentSelector()"
+      [title]="showAgentSelector ? 'Hide Agent Selector' : 'Select Agent'"
+      [style.background-color]="getCurrentAgent()?.color || '#6842ff'" style="display: none;">
+      <span class="material-icons">{{ showAgentSelector ? 'close' : (getCurrentAgent()?.icon || 'smart_toy') }}</span>
+    </button>
+
+    <!-- Scenarios Button -->
+    <button class="floating-btn primaryButton scenarios-btn" (click)="toggleScenariosPanel()"
+      [title]="showScenariosPanel ? 'Hide Examples' : 'Show Example Scenarios'">
+      <span class="material-icons">{{ showScenariosPanel ? 'close' : 'bolt' }}</span>
+    </button>
+
+    <!-- Sessions Button 
+    <button class="floating-btn secondary" (click)="toggleSessionsPanel()"
+      [title]="showSessionsPanel ? 'Hide Session History' : 'View Session History'">
+      <span class="material-icons">{{ showSessionsPanel ? 'close' : 'history' }}</span>
+    </button>-->
+
+    <!-- Visibility Settings Button -->
+    <button class="floating-btn secondary" (click)="togglePreferencesSelector()"
+      title="Configure message visibility settings">
+      <span class="material-icons">list</span>
+    </button>
+
+    <!-- Export PDF Button -->
+    <button class="floating-btn pdf-btn" (click)="exportChatToPdf()"
+      [disabled]="isExportingPdf"
+      title="Export conversation to PDF">
+      <span class="material-icons">{{ isExportingPdf ? 'hourglass_empty' : 'picture_as_pdf' }}</span>
+    </button>
+  </div>
+
+  <!-- Agent Selector Panel -->
+  <div class="agent-selector-panel" style="display: none;" [class.open]="showAgentSelector">
+    <div class="agent-selector-content">
+
+      <!-- Current Agent Display -->
+      <div class="current-agent-section" *ngIf="getCurrentAgent()">
+        <h3>Current Agent</h3>
+        <div class="current-agent-display">
+          <div class="agent-icon" [style.background-color]="getCurrentAgent()?.color || '#6842ff'">
+            <span class="material-icons">{{ getCurrentAgent()?.icon || 'smart_toy' }}</span>
+          </div>
+          <div class="agent-info">
+            <div class="agent-name">{{ getCurrentAgent()?.displayName || 'Loading...' }}</div>
+            <div class="agent-type">{{ getCurrentAgent()?.agentType || '' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Available Agents -->
+      <div class="available-agents-section">
+        <h3>Select Agent</h3>
+        <div class="agents-list">
+          <div class="agent-item" *ngFor="let agent of availableAgents"
+            [class.selected]="agent.agentType === selectedAgent" (click)="selectAgent(agent.agentType)">
+            <div class="agent-icon" [style.background-color]="agent.color">
+              <span class="material-icons">{{ agent.icon }}</span>
+            </div>
+            <div class="agent-info">
+              <div class="agent-name">{{ agent.displayName }}</div>
+              <div class="agent-description">{{ agent.description }}</div>
+            </div>
+            <div class="selection-indicator" *ngIf="agent.agentType === selectedAgent">
+              <span class="material-icons">check_circle</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="agent-selector-overlay" [class.notvisible]="!showAgentSelector" (click)="closeAgentSelector()"></div>
+  </div>
+
+  
+
+  <!-- Context Modal Overlay (for sticky modals) -->
+  <div class="context-modal-overlay" 
+       *ngIf="stickyContextSection"
+       (click)="closeContextModal()"></div>
+
+  <!-- Visibility Settings Modal -->
+  <app-visibility-settings-modal
+    [isVisible]="showVisibilitySettings"
+    [currentSettings]="visibilitySettings"
+    [contextData]="getContextData()"
+    [availableAgents]="availableAgents"
+    (settingsChanged)="onVisibilitySettingsChanged($event)"
+    (modalClosed)="onVisibilitySettingsClosed()">
+  </app-visibility-settings-modal>
+
+  <!-- Session Prompt Modal -->
+  <app-session-prompt-modal
+    [isVisible]="showSessionPrompt"
+    [currentSession]="currentSessionInfo"
+    [sessionSummary]="sessionSummary"
+    [isLoadingSummary]="isLoadingSessionSummary"
+    (continueSession)="onContinueSession($event)"
+    (startNewSession)="onStartNewSession()"
+    (modalClosed)="onSessionPromptClosed()">
+  </app-session-prompt-modal>
+
+</div>

@@ -1,0 +1,57 @@
+{
+  "templateId": "channels-visualization",
+  "templateName": "Channels Visualization",
+  "description": "Template for channel/publisher analysis, platform performance, and placement optimization",
+  "usage": [
+    "Publisher safety assessments",
+    "Channel performance analysis",
+    "Platform-specific strategies",
+    "Inventory availability",
+    "Cross-channel optimization"
+  ],
+  "schema": {
+    "visualizationType": "channels",
+    "templateId": "channels-visualization",
+    "title": "string - Main title",
+    "subtitle": "string - Descriptive subtitle",
+    "channels": [
+      {
+        "primaryLabel": "string - Channel/Publisher name",
+        "secondaryLabel": "string - Category or type",
+        "description": "string - Detailed description",
+        "primaryScore": {
+          "label": "string - Primary metric name",
+          "value": "string - Primary metric value"
+        },
+        "secondaryScore": {
+          "label": "string - Secondary metric name",
+          "value": "string - Secondary metric value"
+        },
+        "qualityScore": "string - Quality rating",
+        "statusIndicator": "string - verified/active/paused",
+        "targetValue": "string - Target metric",
+        "actualValue": "string - Current metric",
+        "forecastedValue": "string - Projected metric",
+        "targetLabel": "string - Target description",
+        "actualLabel": "string - Actual description",
+        "forecastedLabel": "string - Forecast description",
+        "confidenceLevel": "string - high/medium/low",
+        "insights": ["array of string - Channel insights"],
+        "risks": ["array of string - Risk factors"],
+        "opportunities": ["array of string - Growth opportunities"],
+        "recommendation": "string - Strategic recommendation",
+        "metadata": {
+          "category": "string - Channel category",
+          "reach": "string - Audience reach",
+          "engagement": "string - Engagement level"
+        }
+      }
+    ],
+    "summary": {
+      "totalChannels": "number",
+      "activeChannels": "number",
+      "topPerformer": "string - Best performing channel",
+      "recommendedFocus": "string - Strategic focus"
+    }
+  }
+}

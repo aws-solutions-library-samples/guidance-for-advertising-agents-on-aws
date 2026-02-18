@@ -1,0 +1,203 @@
+{
+  "brands": [
+    {
+      "brand_id": "brand-12345",
+      "brand_name": "FamilyFriendly Products",
+      "industry": "Consumer Packaged Goods",
+      "safety_tier": "Conservative",
+      "block_categories": [
+        "adult_content", "violence", "gambling", "alcohol", "drugs", 
+        "hate_speech", "profanity", "weapons", "controversial_politics"
+      ],
+      "sensitive_topics": [
+        "religion", "politics", "medical_conditions", "natural_disasters"
+      ],
+      "keyword_blocklist": [
+        "explicit", "controversial", "scandal", "violent"
+      ],
+      "domain_blocklist": [
+        "adultsite.com", "controversialnews.net"
+      ],
+      "contextual_rules": [
+        {
+          "rule_id": "rule-1",
+          "description": "No content with violence references",
+          "content_type": "violence",
+          "threshold": 0.2,
+          "action": "block"
+        },
+        {
+          "rule_id": "rule-2",
+          "description": "Caution for political content",
+          "content_type": "politics",
+          "threshold": 0.4,
+          "action": "review"
+        }
+      ],
+      "exclusion_windows": {
+        "tragedies": 72,
+        "political_events": 48, 
+        "natural_disasters": 72
+      }
+    },
+    {
+      "brand_id": "brand-67890",
+      "brand_name": "LuxuryStyle",
+      "industry": "Fashion & Apparel",
+      "safety_tier": "Moderate",
+      "block_categories": [
+        "adult_content", "violence", "hate_speech", "profanity"
+      ],
+      "sensitive_topics": [
+        "controversial_politics", "natural_disasters"
+      ],
+      "keyword_blocklist": [
+        "cheap", "discount", "bargain", "explicit"
+      ],
+      "domain_blocklist": [
+        "bargainshopping.com", "discountdeals.net"
+      ],
+      "contextual_rules": [
+        {
+          "rule_id": "rule-1",
+          "description": "No low-quality content",
+          "content_type": "quality",
+          "threshold": 0.6,
+          "action": "block"
+        },
+        {
+          "rule_id": "rule-2",
+          "description": "Prefer premium content",
+          "content_type": "premium",
+          "threshold": 0.7,
+          "action": "prefer"
+        }
+      ],
+      "exclusion_windows": {
+        "tragedies": 48,
+        "political_events": 24, 
+        "natural_disasters": 48
+      }
+    },
+    {
+      "brand_id": "brand-24680",
+      "brand_name": "TechInnovate",
+      "industry": "Technology",
+      "safety_tier": "Standard",
+      "block_categories": [
+        "adult_content", "hate_speech"
+      ],
+      "sensitive_topics": [
+        "data_breaches", "privacy_concerns"
+      ],
+      "keyword_blocklist": [
+        "hack", "breach", "lawsuit", "failure"
+      ],
+      "domain_blocklist": [
+        "techrumors.com", "techscandals.net"
+      ],
+      "contextual_rules": [
+        {
+          "rule_id": "rule-1",
+          "description": "Avoid competitor content",
+          "content_type": "competitor",
+          "threshold": 0.5,
+          "action": "block"
+        },
+        {
+          "rule_id": "rule-2",
+          "description": "Prefer tech-focused content",
+          "content_type": "technology",
+          "threshold": 0.6,
+          "action": "prefer"
+        }
+      ],
+      "exclusion_windows": {
+        "tragedies": 24,
+        "political_events": 12, 
+        "natural_disasters": 24
+      }
+    },
+    {
+      "brand_id": "brand-13579",
+      "brand_name": "FinancialTrust",
+      "industry": "Financial Services",
+      "safety_tier": "Conservative",
+      "block_categories": [
+        "adult_content", "violence", "gambling", "alcohol", "drugs", 
+        "hate_speech", "profanity", "weapons"
+      ],
+      "sensitive_topics": [
+        "market_crash", "recession", "financial_scandal", "fraud"
+      ],
+      "keyword_blocklist": [
+        "bankruptcy", "collapse", "crisis", "scandal", "fraud"
+      ],
+      "domain_blocklist": [
+        "financialrumors.com", "marketcrash.net"
+      ],
+      "contextual_rules": [
+        {
+          "rule_id": "rule-1",
+          "description": "No negative financial news",
+          "content_type": "negative_finance",
+          "threshold": 0.3,
+          "action": "block"
+        },
+        {
+          "rule_id": "rule-2",
+          "description": "Prefer business and finance content",
+          "content_type": "business",
+          "threshold": 0.6,
+          "action": "prefer"
+        }
+      ],
+      "exclusion_windows": {
+        "tragedies": 48,
+        "political_events": 24, 
+        "natural_disasters": 48,
+        "market_events": 72
+      }
+    },
+    {
+      "brand_id": "brand-97531",
+      "brand_name": "HealthyLife",
+      "industry": "Health & Wellness",
+      "safety_tier": "Conservative",
+      "block_categories": [
+        "adult_content", "violence", "gambling", "alcohol", "drugs", 
+        "hate_speech", "profanity", "weapons"
+      ],
+      "sensitive_topics": [
+        "terminal_illness", "epidemics", "mental_health_crises"
+      ],
+      "keyword_blocklist": [
+        "death", "fatal", "addiction", "overdose", "suicide"
+      ],
+      "domain_blocklist": [
+        "alternativehealth.com", "unverifiedcures.net"
+      ],
+      "contextual_rules": [
+        {
+          "rule_id": "rule-1",
+          "description": "No unverified health claims",
+          "content_type": "unverified_health",
+          "threshold": 0.3,
+          "action": "block"
+        },
+        {
+          "rule_id": "rule-2",
+          "description": "Prefer positive health content",
+          "content_type": "positive_health",
+          "threshold": 0.6,
+          "action": "prefer"
+        }
+      ],
+      "exclusion_windows": {
+        "tragedies": 72,
+        "health_crises": 96, 
+        "natural_disasters": 48
+      }
+    }
+  ]
+}

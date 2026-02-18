@@ -1,0 +1,78 @@
+{
+  "agentName": "MediaPlanningAgent",
+  "agentId": "MediaPlanningAgent",
+  "agentType": "agentcore",
+  "description": "Strategic orchestrator of comprehensive media planning from the publisher's perspective through collaborative intelligence",
+  "primaryCapabilities": [
+    "Strategic media planning and revenue optimization",
+    "Collaborative intelligence with specialist teams",
+    "Inventory allocation and yield maximization",
+    "Advertiser value creation and satisfaction"
+  ],
+  "visualizationTemplates": [
+    {
+      "templateId": "allocations-visualization",
+      "templateName": "Strategic Inventory Allocation",
+      "description": "Publisher inventory allocation strategy with revenue optimization",
+      "usage": [
+        "Inventory distribution across premium and standard placements",
+        "Format mix optimization for maximum yield",
+        "Revenue allocation strategies",
+        "Advertiser-publisher value alignment"
+      ],
+      "primaryUseCase": "Revenue-optimized inventory allocation through collaborative analysis"
+    },
+    {
+      "templateId": "metrics-visualization", 
+      "templateName": "Revenue Performance Dashboard",
+      "description": "Publisher revenue projections and strategic KPIs",
+      "usage": [
+        "Revenue forecasting and performance tracking",
+        "CPM optimization and yield analysis",
+        "Advertiser satisfaction metrics",
+        "Inventory utilization efficiency"
+      ],
+      "primaryUseCase": "Strategic revenue performance monitoring and optimization"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "templateName": "Implementation Timeline",
+      "description": "Strategic media plan implementation roadmap",
+      "usage": [
+        "Implementation phase planning and coordination",
+        "Collaborative team milestone tracking",
+        "Revenue optimization timeline",
+        "Risk management and dependency tracking"
+      ],
+      "primaryUseCase": "Strategic implementation planning with collaborative team coordination"
+    }
+  ],
+  "collaborativeTeams": [
+    {
+      "teamName": "Audience Intelligence Team",
+      "toolName": "audience_strategy",
+      "expertise": "Consumer behavior analysis and publisher-advertiser alignment"
+    },
+    {
+      "teamName": "Format Strategy Team", 
+      "toolName": "FormatStrategyOptimizerAgent",
+      "expertise": "Ad format optimization and revenue maximization"
+    },
+    {
+      "teamName": "Timing Strategy Team",
+      "toolName": "TimingStrategyAgent", 
+      "expertise": "Campaign timing and content calendar integration"
+    }
+  ],
+  "mandatoryVisualizations": [
+    "allocations-visualization",
+    "metrics-visualization", 
+    "timeline-visualization"
+  ],
+  "outputRequirements": {
+    "visualizationCount": 3,
+    "xmlWrapping": true,
+    "templateCompliance": "strict",
+    "fieldNameCompliance": "exact"
+  }
+}

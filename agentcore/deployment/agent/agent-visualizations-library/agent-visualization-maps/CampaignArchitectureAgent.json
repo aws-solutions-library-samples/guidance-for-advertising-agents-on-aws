@@ -1,0 +1,26 @@
+{
+  "agentId": "campaign-architecture-agent",
+  "agentName": "CampaignArchitectureAgent",
+  "templates": [
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Implementation phases and milestone planning (PRIMARY)"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget allocation frameworks and pacing strategies"
+    },
+    {
+      "templateId": "metrics-visualization",
+      "usage": "KPI frameworks and measurement dashboards"
+    },
+    {
+      "templateId": "decision-tree-visualization",
+      "usage": "Campaign structure decisions and optimization paths"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience architecture and segmentation"
+    }
+  ]
+}

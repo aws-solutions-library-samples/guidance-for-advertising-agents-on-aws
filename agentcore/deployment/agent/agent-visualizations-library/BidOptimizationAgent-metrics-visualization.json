@@ -1,0 +1,47 @@
+{
+  "agentName": "BidOptimizationAgent",
+  "agentId": "bid-optimization-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Bid performance metrics, win rates, ROI analysis",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Bid Optimization Performance",
+    "subtitle": "Win rates, efficiency metrics, and ROI analysis",
+    "collaborativeInsights": {
+      "primaryAgent": "BidOptimizationAgent",
+      "supportingAgent1": "BidSimulatorAgent",
+      "supportingAgent2": "ChannelMixOptimizationAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Bid optimization category (e.g., 'Win Rate Metrics', 'Cost Efficiency')",
+        "secondaryLabel": "Category description (e.g., 'Auction performance and cost optimization')",
+        "items": [
+          {
+            "primaryLabel": "Specific bid metric (e.g., 'Win Rate', 'Average CPC', 'Bid Efficiency')",
+            "actualValue": "Current performance (e.g., '65%', '$1.85', '4.2x')",
+            "targetValue": "Optimization target (e.g., '75%', '$1.50', '5.0x')",
+            "forecastedValue": "Projected improvement (e.g., '72%', '$1.60', '4.7x')",
+            "actualLabel": "Current bid performance description",
+            "targetLabel": "Target bid optimization goal",
+            "forecastedLabel": "Forecasted bid improvement",
+            "unit": "Measurement unit (e.g., '%', '$', 'x')",
+            "trend": "Optimization trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary bid metric",
+            "insights": [
+              "Bid optimization insights and patterns"
+            ],
+            "risks": [
+              "Risks to bid performance"
+            ],
+            "recommendations": [
+              "Specific bid optimization actions"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

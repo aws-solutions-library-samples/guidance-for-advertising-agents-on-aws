@@ -1,0 +1,53 @@
+{
+  "agentName": "AudienceStrategyAgent",
+  "agentId": "audience-strategy-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Consumer journey mapping and touchpoint analysis",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Consumer Journey Timeline",
+    "subtitle": "Audience touchpoints and engagement progression analysis",
+    "phases": [
+      {
+        "primaryLabel": "Primary timeline label",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Initial audience discovery and brand awareness phase",
+        "startDate": "Phase start date (e.g., '2024-01-01')",
+        "endDate": "Phase end date (e.g., '2024-01-15')",
+        "duration": "Phase duration (e.g., '14 days')",
+        "status": "Phase status: 'completed', 'active', 'planned'",
+        "priority": "Value for priority",
+        "expectedOutcome": "Value for expectedOutcome",
+        "budget": "Value for budget",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "name": "First Impression",
+            "date": "Milestone date",
+            "description": "Initial brand exposure and recognition",
+            "status": "Milestone status",
+            "impact": "Audience impact level: 'high', 'medium', 'low'"
+          },
+          {
+            "name": "Interest Generation",
+            "date": "Milestone date",
+            "description": "Audience shows interest in brand/product",
+            "status": "Milestone status",
+            "impact": "Interest impact level"
+          }
+        ],
+        "dependencies": "Value for dependencies",
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "summary": {
+      "totalPhases": "Number of journey phases",
+      "averageDuration": "Average journey duration",
+      "overallConversion": "End-to-end conversion rate",
+      "keyBottleneck": "Primary conversion bottleneck phase"
+    }
+  }
+}

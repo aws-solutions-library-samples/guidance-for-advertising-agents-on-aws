@@ -1,0 +1,30 @@
+{
+  "agentName": "BidSimulatorAgent",
+  "agentId": "bid-simulator-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Performance metrics, ROAS projections, campaign KPIs"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget distribution across strategies and channels"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Channel performance analysis and recommendations"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Audience segment performance and optimization"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Campaign execution plans and optimization phases"
+    },
+    {
+      "templateId": "decision-tree-visualization",
+      "usage": "Strategic decision scenarios and outcome analysis"
+    }
+  ]
+}

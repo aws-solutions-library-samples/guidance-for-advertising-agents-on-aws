@@ -1,0 +1,31 @@
+{
+  "agentName": "AudienceStrategyAgent",
+  "agentId": "audience-strategy-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Simplified audience segment budget allocation and targeting optimization",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Audience Targeting Allocation Strategy",
+    "subtitle": "Strategic budget distribution across audience segments",
+    "totalBudget": "Total audience targeting budget",
+    "allocations": [
+      {
+        "primaryLabel": "Audience segment (e.g., 'High-Value Customers', 'Lookalike Audiences', 'Retargeting Pool')",
+        "secondaryLabel": "Targeting type (e.g., 'Behavioral', 'Demographic', 'Interest-based')",
+        "allocationPercentage": "Budget percentage for this segment",
+        "budgetAmount": "Allocated budget amount (e.g., '$750,000')",
+        "performanceLevel": "Segment performance: 'high', 'good', 'medium', 'low'",
+        "statusIndicator": "Segment status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Allocation confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Segment risk: 'low', 'medium', 'high'",
+        "efficiency": "Targeting efficiency rating",
+        "safety": "Audience quality score"
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of audience segments",
+      "riskAllocations": "Number of underperforming segments"
+    }
+  }
+}

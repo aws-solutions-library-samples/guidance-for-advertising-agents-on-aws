@@ -1,0 +1,168 @@
+.scenarios-panel {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 90%;
+  max-width: 600px;
+  height: 100vh;
+  background: white;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
+
+  &.open {
+    right: 0;
+  }
+
+  &.closed {
+    right: -100%;
+  }
+}
+
+.scenarios-panel-content {
+  padding: 2rem;
+}
+
+.scenarios-header {
+  margin-bottom: 2rem;
+
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    color: #333;
+  }
+
+  p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+  }
+}
+
+.scenarios-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.scenario-card {
+  perspective: 1000px;
+  cursor: pointer;
+  height: 200px;
+
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+
+  &.flipping .card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .card-front,
+  .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-front {
+    background: white;
+    border: 1px solid #e0e0e0;
+
+    .agent-type-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+
+      .agent-icon {
+        font-size: 1.2rem;
+      }
+
+      .agent-name {
+        font-weight: 500;
+      }
+    }
+
+    h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      color: #333;
+    }
+
+    p {
+      margin: 0 0 1rem 0;
+      color: #666;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .scenario-category {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: #f0f0f0;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      color: #666;
+    }
+  }
+
+  .card-back {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: rotateY(180deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .card-back-content {
+      text-align: center;
+
+      .material-icons {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        margin: 0;
+        font-size: 1rem;
+      }
+    }
+  }
+
+  &:hover .card-front {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.scenarios-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+.scenarios-panel.open ~ .scenarios-overlay {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .scenarios-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+}

@@ -1,0 +1,71 @@
+<!-- Demo Modal Overlay -->
+<div class="demo-modal-overlay" (click)="onCancel()">
+  <div class="demo-modal" (click)="$event.stopPropagation()">
+    <div class="demo-modal-header">
+      <h2>Demo Session Setup</h2>
+      <button class="nova-button circle-button" (click)="onCancel()" [disabled]="isSubmitting">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="demo-modal-content">
+      <div class="demo-info">
+        <p>Welcome to the demo! Please provide the customer name for this session to help us track usage and improve the experience.</p>
+      </div>
+
+      <form (ngSubmit)="onSubmit()" class="demo-form">
+        <div class="form-group">
+          <label for="customerName">Customer Name:</label>
+          <input 
+            type="text" 
+            id="customerName"
+            [(ngModel)]="customerName" 
+            name="customerName"
+            class="form-control" 
+            placeholder="Enter customer name"
+            [disabled]="isSubmitting"
+            required
+            autocomplete="off">
+        </div>
+
+        <!-- Existing Customers Quick Select -->
+        <div class="existing-customers" *ngIf="existingCustomers.length > 0">
+          <label>Recent Customers:</label>
+          <div class="customer-chips">
+            <button 
+              type="button"
+              class="customer-chip"
+              *ngFor="let customer of existingCustomers"
+              (click)="selectExistingCustomer(customer)"
+              [disabled]="isSubmitting">
+              {{customer}}
+            </button>
+          </div>
+        </div>
+
+        <div class="error-message" *ngIf="errorMessage">
+          <span class="material-icons">error</span>
+          {{errorMessage}}
+        </div>
+
+        <div class="demo-modal-actions">
+          <button 
+            type="submit" 
+            class="nova-button primary"
+            [disabled]="isSubmitting || !customerName.trim()">
+            <span class="material-icons" *ngIf="isSubmitting">hourglass_empty</span>
+            <span class="material-icons" *ngIf="!isSubmitting">check</span>
+            {{isSubmitting ? 'Setting up...' : 'Start Demo'}}
+          </button>
+          <button 
+            type="button" 
+            class="nova-button secondary" 
+            (click)="onCancel()"
+            [disabled]="isSubmitting">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

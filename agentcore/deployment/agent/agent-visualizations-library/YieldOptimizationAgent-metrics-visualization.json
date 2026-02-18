@@ -1,0 +1,47 @@
+{
+  "agentName": "YieldOptimizationAgent",
+  "agentId": "YieldOptimizationAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Yield performance metrics, revenue optimization impact",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Yield Optimization Performance",
+    "subtitle": "Revenue metrics and yield enhancement analysis",
+    "collaborativeInsights": {
+      "primaryAgent": "YieldOptimizationAgent",
+      "supportingAgent1": "InventoryOptimizationAgent",
+      "supportingAgent2": "FormatStrategyOptimizerAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Revenue optimization category (e.g., 'Yield Performance', 'Revenue Enhancement')",
+        "secondaryLabel": "Category description (e.g., 'Publisher revenue optimization and yield management')",
+        "items": [
+          {
+            "primaryLabel": "Specific yield metric (e.g., 'Revenue per Visitor', 'Fill Rate', 'Average CPM', 'Yield Index')",
+            "actualValue": "Current yield performance (e.g., '$0.125', '89.2%', '$15.80', '140')",
+            "targetValue": "Yield optimization target (e.g., '$0.150', '95%', '$18.00', '160')",
+            "forecastedValue": "Projected yield after optimization (e.g., '$0.142', '92.5%', '$16.90', '152')",
+            "actualLabel": "Current yield performance description",
+            "targetLabel": "Target yield optimization goal",
+            "forecastedLabel": "Forecasted yield after optimization",
+            "unit": "Measurement unit (e.g., '$', '%', 'index points')",
+            "trend": "Yield trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Optimization confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Boolean - highlight as primary yield metric",
+            "insights": [
+              "Yield optimization insights and revenue enhancement opportunities"
+            ],
+            "risks": [
+              "Revenue risks and yield optimization challenges"
+            ],
+            "recommendations": [
+              "Yield optimization strategies and revenue enhancement tactics"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

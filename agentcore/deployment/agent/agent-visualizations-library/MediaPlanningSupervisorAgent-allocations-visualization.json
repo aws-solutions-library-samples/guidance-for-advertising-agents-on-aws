@@ -1,0 +1,46 @@
+{
+  "agentName": "MediaPlanningSupervisorAgent",
+  "agentId": "media-planning-supervisor-agent",
+  "templateId": "allocations-visualization",
+  "usage": "Strategic budget allocation across channels and audiences (PRIMARY)",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Strategic Media Budget Allocation",
+    "subtitle": "Comprehensive investment strategy across channels and audiences",
+    "totalBudget": "Total campaign budget amount (e.g., '2,500,000')",
+    "currency": "Currency symbol (e.g., 'USD', 'EUR', 'GBP')",
+    "allocations": [
+      {
+        "primaryLabel": "Channel or audience segment name (e.g., 'Digital Video', 'High-Value Prospects')",
+        "secondaryLabel": "Category description (e.g., 'Premium Inventory', 'Core Audience')",
+        "description": "Strategic rationale for allocation (e.g., 'Primary awareness driver with strong engagement metrics')",
+        "allocationPercentage": "Percentage of total budget (e.g., 35)",
+        "budgetAmount": "Amount allocated (e.g., '875,000')",
+        "performanceLevel": "Expected performance tier: 'high', 'medium', 'low'",
+        "statusIndicator": "Allocation confidence: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Strategic confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Investment risk assessment: 'low', 'medium', 'high'",
+        "insights": [
+          "Key strategic insights about this allocation"
+        ],
+        "risks": [
+          "Potential risk factors for this investment"
+        ],
+        "recommendations": [
+          "Strategic optimization suggestions"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last strategy review",
+          "dataSource": "Source of allocation recommendation (e.g., 'Media Mix Model', 'Historical Performance')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of allocation categories",
+      "optimizedAllocations": "Number of allocations marked as optimized",
+      "riskAllocations": "Number of high-risk allocations",
+      "recommendedAdjustment": "Overall strategic recommendation for budget shifts"
+    }
+  }
+}

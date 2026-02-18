@@ -1,0 +1,95 @@
+{
+    "metadataAttributes": {
+        "file_name": "budget_allocation_scenarios.csv",
+        "description": "Strategic budget allocation scenarios showing optimal channel mix recommendations for different campaign objectives, budgets, and target audiences",
+        "data_source": "Synthetic strategic planning scenarios based on media planning best practices and industry case studies",
+        "last_updated": "2024-12-07",
+        "record_count": "20",
+        "data_type": "budget_allocation_scenarios",
+        "budget_range": "$600K - $5M",
+        "campaign_objectives": "Brand Awareness, Performance Conversion, Lead Generation, Brand Building, Market Entry",
+        "channel_allocation": "TV, Digital Video, Social Media, Search, Display, Radio, OOH",
+        "target_demographics": "Mass Market, Digital Natives, Affluent, B2B Decision Makers, Gen Z, Traditional",
+        "industry_categories": "CPG, Retail, Luxury, Tech, B2B, E-commerce, Fashion, Automotive",
+        "performance_projections": "reach, frequency, ROAS, confidence_level, risk_assessment",
+        "implementation_factors": "complexity, timeline, seasonality_factor",
+        "scenario_types": "launch, optimization, defense, expansion, seasonal",
+        "usage_context": "strategic planning, budget optimization, channel mix design, scenario modeling",
+        "related_datasets": "media_mix_modeling_results.csv, channel_performance_benchmarks.csv, campaign_implementation_templates.csv",
+        "optimization_focus": "budget_allocation, channel_mix, performance_forecasting, risk_management"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "scenario_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "total_budget"
+                    },
+                    {
+                        "fieldName": "objective_primary"
+                    },
+                    {
+                        "fieldName": "objective_secondary"
+                    },
+                    {
+                        "fieldName": "tv_allocation_pct"
+                    },
+                    {
+                        "fieldName": "digital_video_pct"
+                    },
+                    {
+                        "fieldName": "social_media_pct"
+                    },
+                    {
+                        "fieldName": "search_pct"
+                    },
+                    {
+                        "fieldName": "display_pct"
+                    },
+                    {
+                        "fieldName": "radio_pct"
+                    },
+                    {
+                        "fieldName": "ooh_pct"
+                    },
+                    {
+                        "fieldName": "expected_reach_millions"
+                    },
+                    {
+                        "fieldName": "expected_frequency"
+                    },
+                    {
+                        "fieldName": "expected_roas"
+                    },
+                    {
+                        "fieldName": "confidence_level"
+                    },
+                    {
+                        "fieldName": "risk_assessment"
+                    },
+                    {
+                        "fieldName": "implementation_complexity"
+                    },
+                    {
+                        "fieldName": "timeline_weeks"
+                    },
+                    {
+                        "fieldName": "category"
+                    },
+                    {
+                        "fieldName": "target_demographic"
+                    },
+                    {
+                        "fieldName": "seasonality_factor"
+                    }
+                ]
+            }
+        }
+    }
+}

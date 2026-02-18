@@ -1,0 +1,55 @@
+{
+    "metadataAttributes": {
+        "data_source": "creative_analytics",
+        "category": "template_performance",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "creative_template_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "template_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "template_name"
+                    },
+                    {
+                        "fieldName": "product_category"
+                    },
+                    {
+                        "fieldName": "audience_segment"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "cpc"
+                    },
+                    {
+                        "fieldName": "performance_score"
+                    }
+                ]
+            }
+        }
+    }
+}

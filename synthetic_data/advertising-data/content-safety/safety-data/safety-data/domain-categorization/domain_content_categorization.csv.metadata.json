@@ -1,0 +1,67 @@
+{
+    "metadataAttributes": {
+        "data_source": "content_classification",
+        "category": "domain_analysis",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "content_categorization_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "domain"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "url_pattern"
+                    },
+                    {
+                        "fieldName": "primary_category"
+                    },
+                    {
+                        "fieldName": "subcategory"
+                    },
+                    {
+                        "fieldName": "category_name"
+                    },
+                    {
+                        "fieldName": "subcategory_name"
+                    },
+                    {
+                        "fieldName": "brand_safety_score"
+                    },
+                    {
+                        "fieldName": "adult_content"
+                    },
+                    {
+                        "fieldName": "violent_content"
+                    },
+                    {
+                        "fieldName": "sensitive_topics"
+                    },
+                    {
+                        "fieldName": "audience_demographics"
+                    },
+                    {
+                        "fieldName": "content_quality"
+                    },
+                    {
+                        "fieldName": "average_time_on_page"
+                    },
+                    {
+                        "fieldName": "bounce_rate"
+                    },
+                    {
+                        "fieldName": "viewability"
+                    },
+                    {
+                        "fieldName": "last_updated"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "ContextualAnalysisAgent",
+  "description": "Evaluates content context and brand safety to ensure appropriate ad placements and protect brand reputation.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/contextualanalysisagent",
+  "skills": [
+    "content_analysis",
+    "brand_safety",
+    "contextual_targeting"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

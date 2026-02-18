@@ -1,0 +1,44 @@
+{
+    "metadataAttributes": {
+        "data_source": "format_allocation",
+        "category": "media_planning",
+        "business_domain": "campaign_intelligence",
+        "analysis_type": "format_optimization",
+        "brand": "LuxeChoco",
+        "industry": "premium_chocolate",
+        "geographic_scope": "european_markets",
+        "content_type": "format_planning"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "format_type"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "budget_allocation_eur"
+                    },
+                    {
+                        "fieldName": "budget_percentage"
+                    },
+                    {
+                        "fieldName": "avg_cpm_eur"
+                    },
+                    {
+                        "fieldName": "expected_impressions"
+                    },
+                    {
+                        "fieldName": "expected_reach_millions"
+                    },
+                    {
+                        "fieldName": "rationale"
+                    }
+                ]
+            }
+        }
+    }
+}

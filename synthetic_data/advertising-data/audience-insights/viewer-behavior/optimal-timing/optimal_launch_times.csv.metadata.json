@@ -1,0 +1,52 @@
+{
+    "metadataAttributes": {
+        "data_source": "launch_optimization",
+        "category": "timing_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "launch_timing_optimization"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "industry_vertical"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "campaign_objective"
+                    },
+                    {
+                        "fieldName": "target_audience"
+                    },
+                    {
+                        "fieldName": "optimal_day_of_week"
+                    },
+                    {
+                        "fieldName": "optimal_hour_utc"
+                    },
+                    {
+                        "fieldName": "confidence_score"
+                    },
+                    {
+                        "fieldName": "historical_ctr_improvement"
+                    },
+                    {
+                        "fieldName": "cost_efficiency_gain"
+                    },
+                    {
+                        "fieldName": "reach_multiplier"
+                    },
+                    {
+                        "fieldName": "competitive_density_score"
+                    },
+                    {
+                        "fieldName": "seasonal_adjustment_factor"
+                    }
+                ]
+            }
+        }
+    }
+}

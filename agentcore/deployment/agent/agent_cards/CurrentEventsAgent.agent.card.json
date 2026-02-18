@@ -1,0 +1,17 @@
+{
+  "name": "CurrentEventsAgent",
+  "description": "Monitors real-time events and trends to identify timely advertising opportunities and risks.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/currenteventsagent",
+  "skills": [
+    "trend_monitoring",
+    "opportunity_identification",
+    "risk_assessment"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

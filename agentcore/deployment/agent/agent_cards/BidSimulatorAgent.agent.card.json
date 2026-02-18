@@ -1,0 +1,17 @@
+{
+  "name": "BidSimulatorAgent",
+  "description": "Simulates bidding scenarios and outcomes to predict campaign performance under various market conditions.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/bidsimulatoragent",
+  "skills": [
+    "scenario_modeling",
+    "outcome_prediction",
+    "performance_forecasting"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

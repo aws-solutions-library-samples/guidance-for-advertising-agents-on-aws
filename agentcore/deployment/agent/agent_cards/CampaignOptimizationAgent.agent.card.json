@@ -1,0 +1,17 @@
+{
+  "name": "CampaignOptimizationAgent",
+  "description": "Orchestrates comprehensive campaign planning from strategy development through execution and measurement.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/campaignoptimizationagent",
+  "skills": [
+    "strategic_planning",
+    "campaign_orchestration",
+    "execution_coordination"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

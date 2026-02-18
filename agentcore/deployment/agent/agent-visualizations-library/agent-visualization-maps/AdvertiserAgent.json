@@ -1,0 +1,18 @@
+{
+  "agentName": "AdvertiserAgent",
+  "agentId": "advertiser-agent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Campaign KPI tracking and performance metrics"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Budget allocation and channel mix"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Campaign timeline and key milestones"
+    }
+  ]
+}

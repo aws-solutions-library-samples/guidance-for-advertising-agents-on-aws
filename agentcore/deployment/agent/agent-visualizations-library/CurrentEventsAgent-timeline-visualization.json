@@ -1,0 +1,54 @@
+{
+  "agentName": "CurrentEventsAgent",
+  "agentId": "current-events-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Event progression tracking and recovery timelines",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Current Events Impact Timeline",
+    "subtitle": "Event progression, audience impact phases, and recovery tracking",
+    "totalDuration": "Total event impact duration (e.g., '3 weeks', '45 days', 'Ongoing')",
+    "startDate": "Event start date (ISO format: '2025-08-01')",
+    "endDate": "Expected event conclusion/recovery date (ISO format: '2025-08-31')",
+    "overallObjective": "Primary response objective (e.g., 'Monitor and adapt to current event impact on audience behavior', 'Maintain engagement during crisis period')",
+    "phases": [
+      {
+        "primaryLabel": "Event phase name (e.g., 'Event Emergence', 'Peak Impact Period', 'Recovery Phase', 'Stabilization')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase-specific audience and performance impact description",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '3 days', '1 week', '2 weeks')",
+        "status": "Phase status: 'upcoming', 'active', 'completed', 'extended'",
+        "priority": "Response priority: 'critical', 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected phase outcomes (e.g., 'Audience behavior shift analysis', 'Content strategy pivot', 'Return to baseline metrics')",
+        "budget": "Phase budget allocation (e.g., '$50K emergency response', 'Reallocated content budget')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Event milestone (e.g., 'Peak Event Impact', 'Audience Recovery Begins', 'Content Strategy Adjusted')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Event milestone description and significance",
+            "successCriteria": [
+              "Success criteria (e.g., 'Engagement returns to 90% of baseline', 'News consumption stabilizes', 'Entertainment content recovers')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Phase dependencies (e.g., 'Event stabilization', 'Audience sentiment analysis', 'Content approval process')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Event response success metrics (e.g., 'Maintain 80% of baseline engagement', 'Audience retention above 85%', 'Crisis communication effectiveness')"
+    ],
+    "riskFactors": [
+      "Event-related risks (e.g., 'Extended event duration', 'Audience fatigue', 'Competitive advantage loss', 'Revenue impact exceeding projections')"
+    ]
+  }
+}

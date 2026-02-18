@@ -1,0 +1,63 @@
+{
+  "metadataAttributes": {
+    "file_name": "streaming_content_social_sentiment.csv",
+    "description": "Social sentiment analysis data for MagicStream Entertainment content across social media platforms",
+    "data_source": "Aggregated social media monitoring across Twitter, Instagram, TikTok, Facebook, YouTube",
+    "last_updated": "2025-01-10",
+    "record_count": "15",
+    "data_type": "streaming_content_social_sentiment",
+    "content_types": "Original Series, Live Sports, Documentary, Kids Series, Reality Competition, Performance Special",
+    "sentiment_range": "1-10 scale with 8.4-9.2 average",
+    "platform_coverage": "Twitter, Instagram, TikTok, Facebook, YouTube",
+    "geographic_scope": "Global with focus on North America, Europe, Australia",
+    "demographic_focus": "Families, Sports Fans, Environmental Conscious, Tech Enthusiasts, Kids/Parents",
+    "engagement_metrics": "mentions, sentiment_score, viral_potential, brand_safety_score, completion_rate",
+    "trending_elements": "hashtags, influencer_mentions, user_generated_content, cross_platform_reach",
+    "business_applications": "content performance optimization, audience sentiment monitoring, brand safety assessment, viral content prediction",
+    "related_datasets": "audience_segmentation_profiles.csv, streaming_family_segments.csv, influencer_partnership_opportunities.csv"
+  },
+  "documentStructureConfiguration": {
+    "type": "RECORD_BASED_STRUCTURE_METADATA",
+    "recordBasedStructureMetadata": {
+      "contentFields": [
+        {
+          "fieldName": "content_id"
+        }
+      ],
+      "metadataFieldsSpecification": {
+        "fieldsToInclude": [
+          {
+            "fieldName": "content_title"
+          },
+          {
+            "fieldName": "content_type"
+          },
+          {
+            "fieldName": "platform_mentions"
+          },
+          {
+            "fieldName": "sentiment_score"
+          },
+          {
+            "fieldName": "audience_demographics"
+          },
+          {
+            "fieldName": "trending_hashtags"
+          },
+          {
+            "fieldName": "brand_safety_score"
+          },
+          {
+            "fieldName": "viral_potential"
+          },
+          {
+            "fieldName": "geographic_hotspots"
+          },
+          {
+            "fieldName": "cross_platform_reach"
+          }
+        ]
+      }
+    }
+  }
+}

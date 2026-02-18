@@ -1,0 +1,54 @@
+{
+  "agentName": "MediaPlanningSupervisorAgent",
+  "agentId": "media-planning-supervisor-agent",
+  "templateId": "timeline-visualization",
+  "usage": "Implementation roadmaps and campaign phases",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Strategic Media Planning Roadmap",
+    "subtitle": "Comprehensive campaign implementation and optimization timeline",
+    "totalDuration": "Total campaign duration (e.g., '16 weeks', '4 months')",
+    "startDate": "Campaign start date (ISO format: '2024-02-01')",
+    "endDate": "Campaign end date (ISO format: '2024-05-31')",
+    "overallObjective": "Strategic campaign objective (e.g., 'Launch integrated media campaign with 25% brand awareness lift')",
+    "phases": [
+      {
+        "primaryLabel": "Strategic phase (e.g., 'Planning & Setup', 'Launch Phase', 'Optimization Phase', 'Scale & Expansion')",
+        "secondaryLabel": "Secondary timeline label",
+        "description": "Phase strategic objectives and key activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration (e.g., '4 weeks', '1 month')",
+        "status": "Phase status: 'upcoming', 'active', 'completed', 'delayed'",
+        "priority": "Strategic priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected strategic outcomes and deliverables",
+        "budget": "Phase budget allocation (e.g., '$1.2M', '30% of total budget')",
+        "resources": "Value for resources",
+        "milestones": [
+          {
+            "milestoneLabel": "Strategic milestone (e.g., 'Campaign Launch', 'First Optimization Complete')",
+            "targetDate": "Milestone date (ISO format)",
+            "description": "Strategic milestone description",
+            "successCriteria": [
+              "Success criteria (e.g., 'All channels activated', 'Performance within 10% of target')"
+            ],
+            "status": "Milestone status: 'upcoming', 'achieved', 'missed', 'at-risk'"
+          }
+        ],
+        "dependencies": [
+          "Strategic dependencies (e.g., 'Budget approval received', 'Creative assets approved')"
+        ],
+        "risks": [
+          "Risk factors for timeline"
+        ]
+      }
+    ],
+    "successMetrics": [
+      "Strategic success metrics (e.g., '25% brand awareness lift', '4.5x ROAS', '85% reach of target audience')"
+    ],
+    "riskFactors": [
+      "Strategic risks (e.g., 'Budget constraints', 'Market volatility', 'Competitive response')"
+    ]
+  }
+}

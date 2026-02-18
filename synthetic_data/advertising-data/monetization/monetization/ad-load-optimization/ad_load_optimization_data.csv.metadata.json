@@ -1,0 +1,58 @@
+{
+    "metadataAttributes": {
+        "data_source": "ad_load_optimization",
+        "category": "user_experience_optimization",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "ad_load_performance_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "content_category"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "session_duration_minutes"
+                    },
+                    {
+                        "fieldName": "initial_ad_load_percent"
+                    },
+                    {
+                        "fieldName": "optimal_ad_load_percent"
+                    },
+                    {
+                        "fieldName": "viewer_retention_rate"
+                    },
+                    {
+                        "fieldName": "revenue_per_session"
+                    },
+                    {
+                        "fieldName": "bounce_rate"
+                    },
+                    {
+                        "fieldName": "engagement_score"
+                    },
+                    {
+                        "fieldName": "content_length_minutes"
+                    },
+                    {
+                        "fieldName": "ad_frequency_per_hour"
+                    },
+                    {
+                        "fieldName": "viewability_rate"
+                    },
+                    {
+                        "fieldName": "completion_rate"
+                    }
+                ]
+            }
+        }
+    }
+}

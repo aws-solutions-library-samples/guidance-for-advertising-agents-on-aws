@@ -1,0 +1,135 @@
+{
+  "audienceSegmentation": {
+    "campaignId": "luxechoco-eu-2024",
+    "brand": "LuxeChoco",
+    "segmentationDate": "2024-01-15",
+    "primarySegments": {
+      "affluent_chocolate_consumers": {
+        "segmentId": "AFF_CHOC_001",
+        "size": "28.5M users across target markets",
+        "demographics": {
+          "age": "25-55 years",
+          "income": "€50,000+ household income",
+          "education": "University educated (78%)",
+          "lifestyle": "Quality-conscious, brand-aware consumers",
+          "location": "Urban and suburban areas"
+        },
+        "psychographics": {
+          "values": ["Quality", "Authenticity", "Craftsmanship", "Heritage"],
+          "interests": ["Gourmet food", "Travel", "Culture", "Luxury goods"],
+          "behaviors": ["Premium brand preference", "Gift-giving occasions", "Social sharing"],
+          "mediaConsumption": ["Premium publishers", "Lifestyle content", "Food programming"]
+        },
+        "purchaseBehavior": {
+          "frequency": "Monthly premium chocolate purchases",
+          "occasions": ["Personal indulgence (45%)", "Gift-giving (35%)", "Special occasions (20%)"],
+          "priceWillingness": "€15-45 per purchase",
+          "brandLoyalty": "Medium-High (willing to try premium alternatives)",
+          "seasonalPatterns": ["Valentine's Day", "Easter", "Christmas", "Birthdays"]
+        },
+        "digitalBehavior": {
+          "platforms": ["Instagram (85%)", "Facebook (72%)", "YouTube (68%)", "Pinterest (45%)"],
+          "contentEngagement": ["Recipe videos", "Behind-the-scenes content", "Brand heritage stories"],
+          "shoppingBehavior": ["Research online, buy offline (60%)", "Online purchase (40%)"],
+          "influencerTrust": "High trust in food and lifestyle influencers"
+        },
+        "marketDistribution": {
+          "germany": "8.5M users (30%)",
+          "uk": "7.1M users (25%)",
+          "france": "5.7M users (20%)",
+          "netherlands": "4.3M users (15%)",
+          "belgium": "2.9M users (10%)"
+        }
+      },
+      "gift_purchasers": {
+        "segmentId": "GIFT_PUR_001",
+        "size": "16.7M users across target markets",
+        "demographics": {
+          "age": "30-65 years",
+          "income": "€40,000+ household income",
+          "relationshipStatus": "Partnered (78%), Parents (65%)",
+          "lifestyle": "Family-oriented, occasion-driven purchasers"
+        },
+        "purchaseBehavior": {
+          "frequency": "Seasonal and occasion-based",
+          "occasions": ["Valentine's Day (85%)", "Mother's Day (72%)", "Christmas (95%)", "Birthdays (68%)"],
+          "priceWillingness": "€20-60 per gift",
+          "giftingPreference": "Premium packaging important",
+          "planningBehavior": "Plan purchases 1-2 weeks in advance"
+        },
+        "digitalBehavior": {
+          "platforms": ["Facebook (88%)", "Instagram (65%)", "Google Search (92%)"],
+          "contentEngagement": ["Gift guides", "Seasonal content", "Product reviews"],
+          "shoppingBehavior": ["Online research and purchase (70%)", "Store pickup (30%)"],
+          "peakActivity": "Evening hours (19:00-22:00)"
+        },
+        "marketDistribution": {
+          "germany": "5.0M users (30%)",
+          "uk": "4.2M users (25%)",
+          "france": "3.3M users (20%)",
+          "netherlands": "2.5M users (15%)",
+          "belgium": "1.7M users (10%)"
+        }
+      }
+    },
+    "secondarySegments": {
+      "health_conscious_indulgers": {
+        "segmentId": "HEALTH_IND_001",
+        "size": "12.3M users",
+        "characteristics": "Seek premium chocolate with health benefits or sustainable sourcing",
+        "opportunities": "Dark chocolate positioning, sustainability messaging"
+      },
+      "young_professionals": {
+        "segmentId": "YOUNG_PRO_001",
+        "size": "9.8M users",
+        "characteristics": "Ages 22-35, disposable income, social media active",
+        "opportunities": "Social sharing campaigns, workplace gifting"
+      },
+      "luxury_lifestyle": {
+        "segmentId": "LUX_LIFE_001",
+        "size": "7.2M users",
+        "characteristics": "High income, luxury brand affinity, premium experiences",
+        "opportunities": "Ultra-premium product lines, exclusive experiences"
+      }
+    },
+    "crossSegmentInsights": {
+      "overlapAnalysis": {
+        "affluent_gift_overlap": "65% overlap between affluent consumers and gift purchasers",
+        "seasonal_behavior": "85% of segments show increased activity during holiday seasons",
+        "platform_preferences": "Instagram and Facebook show highest cross-segment engagement"
+      },
+      "contentPreferences": {
+        "topPerforming": [
+          "Swiss craftsmanship videos (8.7 engagement score)",
+          "Recipe integration content (8.9 engagement score)",
+          "Behind-the-scenes production (8.1 engagement score)",
+          "Sustainability stories (7.8 engagement score)"
+        ],
+        "formatPreferences": {
+          "video": "Preferred by 78% of segments",
+          "native_content": "High engagement across all segments",
+          "interactive": "Strong performance with younger demographics"
+        }
+      }
+    },
+    "targetingRecommendations": {
+      "primary_strategy": {
+        "focus": "Affluent chocolate consumers",
+        "budget_allocation": "60%",
+        "messaging": "Swiss heritage, quality craftsmanship",
+        "channels": ["Premium video", "Native content", "Lifestyle editorial"]
+      },
+      "secondary_strategy": {
+        "focus": "Gift purchasers",
+        "budget_allocation": "40%",
+        "messaging": "Perfect gift, beautiful packaging",
+        "channels": ["Social media", "Search", "Seasonal content"]
+      },
+      "seasonal_adaptations": {
+        "valentine_period": "Shift 70% budget to gift purchaser messaging",
+        "easter_period": "Family-oriented messaging, children's products",
+        "christmas_period": "Premium gifting, corporate gifts, advent calendars"
+      }
+    }
+  }
+}

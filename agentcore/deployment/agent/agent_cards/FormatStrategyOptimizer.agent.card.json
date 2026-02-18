@@ -1,0 +1,17 @@
+{
+  "name": "FormatStrategyOptimizerAgent",
+  "description": "Optimizes ad format selection and configuration across channels for maximum performance and user engagement.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/FormatStrategyOptimizerAgent",
+  "skills": [
+    "format_optimization",
+    "configuration_tuning",
+    "performance_enhancement"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "MediaPlanningAgent",
+  "description": "Creates comprehensive media strategies integrating audience, format, and timing optimization.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/mediaplanningagent",
+  "skills": [
+    "integrated_planning",
+    "multi_channel_strategy",
+    "holistic_optimization"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore"
+  }
+}

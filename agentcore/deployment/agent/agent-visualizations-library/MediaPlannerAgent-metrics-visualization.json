@@ -1,0 +1,48 @@
+{
+  "agentName": "MediaPlannerAgent",
+  "agentId": "media-planner-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Publisher revenue forecasts and performance metrics",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Publisher Media Planning Performance Dashboard",
+    "subtitle": "Revenue optimization and advertiser satisfaction metrics",
+    "collaborativeInsights": {
+      "description": "Multi-agent media planning analysis",
+      "primaryAgent": "MediaPlannerAgent",
+      "supportingAgent1": "TimingStrategyAgent",
+      "supportingAgent2": "FormatStrategyOptimizerAgent"
+    },
+    "metrics": [
+      {
+        "primaryLabel": "Revenue Metrics",
+        "secondaryLabel": "Publisher revenue performance and forecasts",
+        "items": [
+          {
+            "primaryLabel": "Revenue metric name (e.g., 'Total Revenue', 'CPM', 'Fill Rate')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "forecastedValue": "Forecasted metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "forecastedLabel": "Forecast description",
+            "unit": "Metric unit (%, $, etc.)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Forecast confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": [
+              "Key insights about this metric"
+            ],
+            "risks": [
+              "Risk factors affecting this metric"
+            ],
+            "recommendations": [
+              "Recommendations for improvement"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

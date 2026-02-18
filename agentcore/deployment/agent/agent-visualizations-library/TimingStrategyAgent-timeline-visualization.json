@@ -1,0 +1,270 @@
+{
+  "agentName": "TimingStrategyAgent",
+  "agentId": "TimingStrategyAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Campaign execution schedules (PRIMARY), launch strategies, launch windows",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "Cross-Platform Engagement Timeline",
+    "subtitle": "Strategic timing coordination across Connected TV, Mobile/Tablet, and Social Media",
+    "startDate": "2024-12-15",
+    "endDate": "2025-01-26",
+    "totalDuration": "42 days",
+    "overallObjective": "Execute coordinated multi-platform premiere campaign with optimized timing for maximum engagement",
+    "phases": [
+      {
+        "primaryLabel": "Pre-Launch Preparation",
+        "secondaryLabel": "Content & Technical Validation",
+        "description": "Final content delivery and technical validation across all platforms",
+        "startDate": "2024-12-15",
+        "endDate": "2024-12-25",
+        "duration": "10 days",
+        "status": "completed",
+        "priority": "high",
+        "expectedOutcome": "All content validated and ready for campaign launch",
+        "milestones": [
+          {
+            "date": "2024-12-15",
+            "label": "Final content delivery and technical validation",
+            "status": "achieved"
+          }
+        ],
+        "dependencies": [],
+        "risks": [
+          "Holiday season resource constraints"
+        ]
+      },
+      {
+        "primaryLabel": "Teaser Campaign",
+        "secondaryLabel": "Post-Holiday Attention Window",
+        "description": "Launch teaser campaign to capture post-holiday audience attention",
+        "startDate": "2024-12-26",
+        "endDate": "2025-01-04",
+        "duration": "10 days",
+        "status": "completed",
+        "priority": "high",
+        "expectedOutcome": "Build anticipation and awareness across social platforms",
+        "milestones": [
+          {
+            "date": "2024-12-26",
+            "label": "Teaser campaign launch (post-holiday attention)",
+            "status": "achieved"
+          }
+        ],
+        "dependencies": [
+          "Pre-Launch Preparation"
+        ],
+        "risks": [
+          "Post-holiday audience fatigue"
+        ]
+      },
+      {
+        "primaryLabel": "Full Campaign Activation",
+        "secondaryLabel": "Multi-Platform Promotional Push",
+        "description": "Activate full promotional campaign across all channels with daily content",
+        "startDate": "2025-01-05",
+        "endDate": "2025-01-11",
+        "duration": "7 days",
+        "status": "active",
+        "priority": "high",
+        "expectedOutcome": "Maximum reach and engagement across all platforms",
+        "resources": [
+          "Social media content",
+          "Character journey posts",
+          "Mobile companion content"
+        ],
+        "milestones": [
+          {
+            "date": "2025-01-05",
+            "label": "Full promotional campaign activation",
+            "status": "achieved"
+          }
+        ],
+        "dependencies": [
+          "Teaser Campaign"
+        ],
+        "risks": [
+          "Content saturation",
+          "Platform algorithm changes"
+        ]
+      },
+      {
+        "primaryLabel": "Pre-Premiere Countdown",
+        "secondaryLabel": "Final Promotional Push",
+        "description": "One-week countdown event with intensified promotional activities",
+        "startDate": "2025-01-12",
+        "endDate": "2025-01-18",
+        "duration": "7 days",
+        "status": "upcoming",
+        "priority": "high",
+        "expectedOutcome": "Peak awareness and anticipation for premiere event",
+        "resources": [
+          "Countdown content",
+          "Live event preparation",
+          "Mobile pre-launch (Jan 16)"
+        ],
+        "milestones": [
+          {
+            "date": "2025-01-12",
+            "label": "One-week countdown event and final promotional push",
+            "status": "pending"
+          },
+          {
+            "date": "2025-01-16",
+            "label": "Mobile companion content launch (3 days pre-premiere)",
+            "status": "pending"
+          }
+        ],
+        "dependencies": [
+          "Full Campaign Activation"
+        ],
+        "risks": [
+          "Timing conflicts with competing content"
+        ]
+      },
+      {
+        "primaryLabel": "Premiere Event",
+        "secondaryLabel": "Multi-Platform Synchronized Launch",
+        "description": "Execute premiere event at optimal viewing time with synchronized social media activation",
+        "startDate": "2025-01-19",
+        "endDate": "2025-01-19",
+        "duration": "1 day",
+        "status": "upcoming",
+        "priority": "high",
+        "expectedOutcome": "12.5M target viewership with 85% live/same-day viewing",
+        "resources": [
+          "Connected TV broadcast",
+          "Social media live coverage",
+          "Second screen experience"
+        ],
+        "milestones": [
+          {
+            "date": "2025-01-19",
+            "label": "Premiere event execution (7:00 PM ET)",
+            "status": "pending"
+          }
+        ],
+        "dependencies": [
+          "Pre-Premiere Countdown"
+        ],
+        "risks": [
+          "Technical issues",
+          "Competing programming"
+        ]
+      },
+      {
+        "primaryLabel": "Post-Premiere Engagement",
+        "secondaryLabel": "Sustained Audience Interaction",
+        "description": "Maintain engagement through post-episode discussions and extended content",
+        "startDate": "2025-01-20",
+        "endDate": "2025-01-25",
+        "duration": "6 days",
+        "status": "upcoming",
+        "priority": "medium",
+        "expectedOutcome": "80% family co-viewing rate and sustained social engagement",
+        "resources": [
+          "Discussion content",
+          "Extended universe content",
+          "Community engagement"
+        ],
+        "milestones": [
+          {
+            "date": "2025-01-20",
+            "label": "Post-premiere engagement campaign",
+            "status": "pending"
+          }
+        ],
+        "dependencies": [
+          "Premiere Event"
+        ],
+        "risks": [
+          "Declining engagement momentum"
+        ]
+      },
+      {
+        "primaryLabel": "Episode 2 Release",
+        "secondaryLabel": "Weekly Cadence Establishment",
+        "description": "Release second episode to establish weekly viewing pattern",
+        "startDate": "2025-01-26",
+        "endDate": "2025-01-26",
+        "duration": "1 day",
+        "status": "upcoming",
+        "priority": "medium",
+        "expectedOutcome": "Maintain weekly Sunday cadence and viewer retention",
+        "milestones": [
+          {
+            "date": "2025-01-26",
+            "label": "Episode 2 release (maintain weekly Sunday cadence)",
+            "status": "pending"
+          }
+        ],
+        "dependencies": [
+          "Post-Premiere Engagement"
+        ],
+        "risks": [
+          "Viewer drop-off between episodes"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "2024-12-15",
+        "label": "Final content delivery and technical validation",
+        "description": "All content assets validated and ready",
+        "status": "achieved"
+      },
+      {
+        "date": "2024-12-26",
+        "label": "Teaser campaign launch",
+        "description": "Post-holiday attention window activation",
+        "status": "achieved"
+      },
+      {
+        "date": "2025-01-05",
+        "label": "Full promotional campaign activation",
+        "description": "Daily content across all platforms",
+        "status": "achieved"
+      },
+      {
+        "date": "2025-01-12",
+        "label": "One-week countdown event",
+        "description": "Final promotional push begins",
+        "status": "pending"
+      },
+      {
+        "date": "2025-01-16",
+        "label": "Mobile companion content launch",
+        "description": "3 days pre-premiere mobile activation",
+        "status": "pending"
+      },
+      {
+        "date": "2025-01-19",
+        "label": "Premiere event (7:00 PM ET)",
+        "description": "Multi-platform synchronized launch",
+        "status": "pending"
+      },
+      {
+        "date": "2025-01-26",
+        "label": "Episode 2 release",
+        "description": "Weekly Sunday cadence established",
+        "status": "pending"
+      }
+    ],
+    "successMetrics": [
+      "12.5M premiere viewership target (85% live/same-day)",
+      "80% family co-viewing rate for premiere event",
+      "3.5M social interactions during premiere window",
+      "35% second screen activation of viewing households",
+      "92% completion rate for premiere episode",
+      "94% ad completion target for premium inventory"
+    ],
+    "criticalPath": [
+      "Pre-Launch Preparation",
+      "Teaser Campaign",
+      "Full Campaign Activation",
+      "Pre-Premiere Countdown",
+      "Premiere Event"
+    ]
+  }
+}

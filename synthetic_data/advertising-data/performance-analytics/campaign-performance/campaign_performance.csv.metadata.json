@@ -1,0 +1,85 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertising_optimization",
+        "category": "campaign_analytics",
+        "business_domain": "performance_marketing",
+        "analysis_type": "daily_campaign_metrics"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "campaign_id"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "advertiser_name"
+                    },
+                    {
+                        "fieldName": "campaign_name"
+                    },
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "impressions"
+                    },
+                    {
+                        "fieldName": "clicks"
+                    },
+                    {
+                        "fieldName": "conversions"
+                    },
+                    {
+                        "fieldName": "spend"
+                    },
+                    {
+                        "fieldName": "ctr"
+                    },
+                    {
+                        "fieldName": "cvr"
+                    },
+                    {
+                        "fieldName": "cpc"
+                    },
+                    {
+                        "fieldName": "cpa"
+                    },
+                    {
+                        "fieldName": "roas"
+                    },
+                    {
+                        "fieldName": "audience_segment"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "inventory_type"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "geo_region"
+                    },
+                    {
+                        "fieldName": "time_of_day"
+                    },
+                    {
+                        "fieldName": "day_of_week"
+                    },
+                    {
+                        "fieldName": "average_bid_price"
+                    },
+                    {
+                        "fieldName": "win_rate"
+                    }
+                ]
+            }
+        }
+    }
+}

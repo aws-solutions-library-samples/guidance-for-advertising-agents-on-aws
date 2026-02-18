@@ -1,0 +1,46 @@
+{
+  "agentName": "CreativeSelectionAgent",
+  "agentId": "CreativeSelectionAgent",
+  "templateId": "allocations-visualization",
+  "usage": "Creative variation budget distribution",
+  "dataMapping": {
+    "visualizationType": "allocations",
+    "templateId": "allocations-visualization",
+    "title": "Creative Variation Budget Allocation",
+    "subtitle": "Budget distribution across creative assets and testing strategies",
+    "totalBudget": "Total creative budget (e.g., '$800,000')",
+    "currency": "Currency symbol (e.g., '$')",
+    "allocations": [
+      {
+        "primaryLabel": "Creative variation or concept (e.g., 'Hero Brand Message', 'Product-Focused Creative', 'Lifestyle Approach')",
+        "secondaryLabel": "Creative type (e.g., 'Brand Awareness', 'Performance-Driven', 'Engagement-Focused')",
+        "description": "Creative allocation rationale (e.g., 'High-performing hero creative with strong brand recall')",
+        "allocationPercentage": "Budget percentage (e.g., 50)",
+        "budgetAmount": "Dollar allocation (e.g., '$400,000')",
+        "performanceLevel": "Creative performance: 'high', 'medium', 'low'",
+        "statusIndicator": "Creative status: 'verified', 'pending', 'at-risk'",
+        "confidenceLevel": "Creative confidence: 'high', 'medium', 'low'",
+        "riskLevel": "Creative risk: 'low', 'medium', 'high'",
+        "insights": [
+          "Creative performance insights and audience response"
+        ],
+        "risks": [
+          "Creative risks and potential performance issues"
+        ],
+        "recommendations": [
+          "Creative optimization and testing suggestions"
+        ],
+        "metadata": {
+          "lastUpdated": "ISO date of last creative analysis",
+          "dataSource": "Creative data source (e.g., 'A/B Test Results', 'Engagement Analytics')"
+        }
+      }
+    ],
+    "summary": {
+      "totalAllocations": "Number of creative allocations",
+      "optimizedAllocations": "Number of high-performing creatives",
+      "riskAllocations": "Number of underperforming creative allocations",
+      "recommendedAdjustment": "Overall creative allocation recommendation"
+    }
+  }
+}

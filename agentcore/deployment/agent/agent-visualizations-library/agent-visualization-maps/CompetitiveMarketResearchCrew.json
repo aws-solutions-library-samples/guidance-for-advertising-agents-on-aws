@@ -1,0 +1,26 @@
+{
+  "agentName": "competitive-market-research-agents",
+  "agentId": "competitive-market-research-agents",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Market share analysis, competitive performance metrics, and research KPIs (PRIMARY)"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Competitive landscape segmentation and market positioning analysis"
+    },
+    {
+      "templateId": "allocations-visualization",
+      "usage": "Competitive budget allocation insights and market investment strategies"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Competitive campaign timelines and market trend analysis"
+    },
+    {
+      "templateId": "channels-visualization",
+      "usage": "Competitive channel strategy analysis and market presence"
+    }
+  ]
+}

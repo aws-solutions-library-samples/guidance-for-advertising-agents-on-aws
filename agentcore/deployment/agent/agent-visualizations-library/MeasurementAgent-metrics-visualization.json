@@ -1,0 +1,33 @@
+{
+  "agentName": "MeasurementAgent",
+  "agentId": "measurement-agent",
+  "templateId": "metrics-visualization",
+  "usage": "Study results and performance metrics",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "Measurement Study Results",
+    "subtitle": "Brand lift and attribution metrics",
+    "metrics": [
+      {
+        "primaryLabel": "Study Metrics",
+        "secondaryLabel": "Campaign measurement results",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Brand Awareness Lift', 'Ad Recall', 'Purchase Intent')",
+            "actualValue": "Measured lift value",
+            "targetValue": "Target lift value",
+            "actualLabel": "Measured result description",
+            "targetLabel": "Target description",
+            "unit": "Metric unit (%, lift points)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "confidenceLevel": "Statistical confidence: 'high', 'medium', 'low'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "significance": "Statistical significance: 'significant', 'not-significant', 'trending'",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

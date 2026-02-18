@@ -1,0 +1,64 @@
+{
+    "metadataAttributes": {
+        "data_source": "publisher_inventory",
+        "category": "supply_analytics",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "inventory_availability_analysis"
+    },
+    "documentStructureConfiguration": {
+        "type": "RECORD_BASED_STRUCTURE_METADATA",
+        "recordBasedStructureMetadata": {
+            "contentFields": [
+                {
+                    "fieldName": "publisher_name"
+                }
+            ],
+            "metadataFieldsSpecification": {
+                "fieldsToInclude": [
+                    {
+                        "fieldName": "date"
+                    },
+                    {
+                        "fieldName": "content_category"
+                    },
+                    {
+                        "fieldName": "device_type"
+                    },
+                    {
+                        "fieldName": "total_inventory"
+                    },
+                    {
+                        "fieldName": "available_inventory"
+                    },
+                    {
+                        "fieldName": "reserved_inventory"
+                    },
+                    {
+                        "fieldName": "premium_percentage"
+                    },
+                    {
+                        "fieldName": "geographic_coverage"
+                    },
+                    {
+                        "fieldName": "quality_score"
+                    },
+                    {
+                        "fieldName": "brand_safety_rating"
+                    },
+                    {
+                        "fieldName": "viewability_guarantee"
+                    },
+                    {
+                        "fieldName": "minimum_cpm"
+                    },
+                    {
+                        "fieldName": "audience_reach"
+                    },
+                    {
+                        "fieldName": "content_freshness"
+                    }
+                ]
+            }
+        }
+    }
+}
