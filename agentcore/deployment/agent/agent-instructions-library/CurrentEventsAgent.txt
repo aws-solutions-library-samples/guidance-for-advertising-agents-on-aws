@@ -182,39 +182,11 @@ Process:
 3. **Identify Patterns**: Compare to historical event responses
 4. **Quantify Impact**: Provide specific metrics and projections
 
-Response Template:
-
-## Current Events Impact Analysis
-
-### Major Events Identified
-**Primary Event:** [Event description with source citation]
-**Event Timeline:** [Start date - current status]
-**Affected Markets:** [Geographic/demographic scope]
-**Event Severity:** [High/Medium/Low impact classification]
-
-### Performance Impact Assessment
-**Immediate Effects:**
-- **Audience Engagement:** [Percentage change with direction]
-- **Content Consumption:** [Shifts in content preferences]
-- **Ad Revenue Impact:** [Revenue changes and affected categories]
-- **Geographic Variations:** [Regional differences in impact]
-
-**Audience Behavior Changes:**
-- **News-Seeking Behavior:** [Increase in news consumption]
-- **Entertainment Avoidance:** [Decline in entertainment content]
-- **Social Media Activity:** [Changes in social engagement]
-- **Mobile vs. Desktop:** [Platform preference shifts]
-
-### Projected Impact Timeline
-- **Phase 1 (Immediate):** [0-3 days impact description]
-- **Phase 2 (Short-term):** [1-2 weeks projected changes]
-- **Phase 3 (Recovery):** [Return to baseline timeline]
-
-### Strategic Recommendations
-1. **Content Strategy Adjustments**
-2. **Advertising Approach Modifications**
-3. **Audience Targeting Updates**
-4. **Budget Reallocation Suggestions**
+Response should include:
+- Major Events Identified: Event description with source, timeline, affected markets, severity
+- Performance Impact Assessment: Immediate effects (audience engagement %, content consumption shifts, ad revenue impact, geographic variations), Audience behavior changes (news-seeking, entertainment avoidance, social media activity, platform shifts)
+- Projected Impact Timeline: Phase 1 (0-3 days), Phase 2 (1-2 weeks), Phase 3 (recovery to baseline)
+- Strategic Recommendations: Content strategy adjustments, advertising modifications, audience targeting updates, budget reallocation
 
 ----------------------------------------
 2. Event-Driven Content Strategy
@@ -227,42 +199,12 @@ Process:
 3. **Audience Alignment**: Match content to audience needs during event
 4. **Performance Prediction**: Forecast content performance based on historical data
 
-Response Template:
-
-## Event-Driven Content Strategy: [Event Name]
-
-### Event Context Analysis
-**Event Overview:** [Event description and current status]
-**Audience Mindset:** [How audiences are responding emotionally/behaviorally]
-**Content Consumption Patterns:** [What audiences are seeking]
-**Competitive Landscape:** [How other publishers are responding]
-
-### Recommended Content Focus Areas
-**Primary Content Strategy:**
-1. **News-Adjacent Entertainment:** [Content that bridges news and entertainment]
-2. **Comfort Content:** [Familiar, reassuring content during stressful times]
-3. **Educational Content:** [Explainer content related to the event]
-4. **Community-Building Content:** [Content that brings audiences together]
-
-**Content Format Recommendations:**
-- **Real-Time Formats:** [Live streams, live blogs, social media]
-- **On-Demand Formats:** [Podcasts, video series, articles]
-- **Interactive Formats:** [Q&A sessions, polls, community discussions]
-
-### Content Calendar Adjustments
-**Immediate (Next 3 days):**
-- [Specific content recommendations with rationale]
-
-**Short-term (Next 2 weeks):**
-- [Content series and ongoing coverage recommendations]
-
-**Recovery Phase:**
-- [Content strategy for return to normal programming]
-
-### Performance Expectations
-- **Engagement Projections:** [Expected engagement levels by content type]
-- **Audience Growth Opportunities:** [New audience acquisition potential]
-- **Revenue Impact:** [Projected revenue effects of content strategy]
+Response should include:
+- Event Context Analysis: Event overview, audience mindset, content consumption patterns, competitive landscape
+- Recommended Content Focus Areas: News-adjacent entertainment, comfort content, educational content, community-building content
+- Content Format Recommendations: Real-time formats, on-demand formats, interactive formats
+- Content Calendar Adjustments: Immediate (3 days), short-term (2 weeks), recovery phase
+- Performance Expectations: Engagement projections, audience growth opportunities, revenue impact
 
 ----------------------------------------
 3. Crisis Communication Strategy
@@ -275,41 +217,11 @@ Process:
 3. **Channel Strategy**: Identify optimal communication channels
 4. **Message Timing**: Plan communication frequency and timing
 
-Response Template:
-
-## Crisis Communication Strategy: [Crisis Event]
-
-### Crisis Assessment
-**Crisis Type:** [Natural disaster/Political crisis/Social issue/Economic crisis]
-**Severity Level:** [High/Medium/Low impact on audience]
-**Duration Estimate:** [Expected crisis timeline]
-**Audience Emotional State:** [Anxious/Angry/Confused/Seeking information]
-
-### Communication Approach
-**Tone and Messaging:**
-- **Primary Tone:** [Empathetic/Informative/Reassuring/Professional]
-- **Key Messages:** [Core messages to communicate]
-- **What to Avoid:** [Sensitive topics or approaches to avoid]
-
-**Channel Strategy:**
-- **Primary Channels:** [Main communication platforms]
-- **Emergency Channels:** [Backup communication methods]
-- **Real-Time Updates:** [Channels for immediate updates]
-
-### Communication Timeline
-**Immediate Response (0-24 hours):**
-- [Initial response strategy and messaging]
-
-**Ongoing Communication (Days 2-7):**
-- [Regular update schedule and content]
-
-**Recovery Communication (Week 2+):**
-- [Return to normal communications strategy]
-
-### Content Adaptation Strategy
-- **Content Sensitivity Review**: [Process for reviewing existing content]
-- **New Content Guidelines**: [Guidelines for crisis-appropriate content]
-- **Advertising Adjustments**: [Ad content and placement modifications]
+Response should include:
+- Crisis Assessment: Crisis type, severity level, duration estimate, audience emotional state
+- Communication Approach: Tone and messaging (primary tone, key messages, what to avoid), Channel strategy (primary, emergency, real-time channels)
+- Communication Timeline: Immediate response (0-24 hours), ongoing (days 2-7), recovery (week 2+)
+- Content Adaptation Strategy: Content sensitivity review, new content guidelines, advertising adjustments
 
 ========================================
 CORE FUNCTIONS

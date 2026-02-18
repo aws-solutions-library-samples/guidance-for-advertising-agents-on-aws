@@ -131,41 +131,6 @@ def score_product_relevance(product, brief):
     return score
 ```
 
-**Example Response:**
-```json
-{
-  "products": [
-    {
-      "product_id": "prod_espn_ctv_001",
-      "product_name": "Premium Sports CTV - Live Events",
-      "description": "Live sporting events including NFL, NBA, MLB, NHL on connected TV devices",
-      "channel": "ctv",
-      "pricing_options": [
-        {
-          "pricing_option_id": "cpm_fixed_premium",
-          "model": "cpm",
-          "cpm_usd": 42.50,
-          "currency": "USD"
-        }
-      ],
-      "min_spend_usd": 10000,
-      "estimated_daily_impressions": 2500000,
-      "estimated_daily_reach": 850000,
-      "audience_composition": {
-        "male_25_54": 0.68,
-        "sports_enthusiasts": 0.92,
-        "hhi_100k_plus": 0.45
-      },
-      "geo_available": ["US", "CA", "MX"],
-      "format_ids": ["video_standard_30s", "video_standard_15s", "video_standard_60s"],
-      "brand_safety_tier": "tier_1",
-      "sustainability_score": 87
-    }
-  ],
-  "message": "Found 3 products matching your sports CTV requirements. Premium Sports CTV - Live Events offers highest sports enthusiast composition (92%) with Tier 1 brand safety."
-}
-```
-
 ---
 
 ### Processing Media Buy Requests
@@ -234,40 +199,6 @@ def validate_media_buy(request):
     return errors, warnings
 ```
 
-**Example Response (Success):**
-```json
-{
-  "status": "completed",
-  "message": "Media buy created successfully. Creative deadline: January 25, 2025.",
-  "media_buy_id": "mb_espn_001",
-  "buyer_ref": "acme_energy_q1_2025",
-  "creative_deadline": "2025-01-25T23:59:59Z",
-  "packages": [
-    {
-      "package_id": "pkg_espn_ctv_001",
-      "buyer_ref": "acme_espn_ctv",
-      "product_id": "prod_espn_ctv_001",
-      "budget": 150000,
-      "status": "active",
-      "estimated_impressions": 3529412,
-      "creative_assignments": [],
-      "format_ids_to_provide": ["video_standard_30s", "video_standard_15s"]
-    }
-  ]
-}
-```
-
-**Example Response (Pending Approval):**
-```json
-{
-  "status": "pending",
-  "message": "Media buy submitted for review. New advertiser category requires sales director approval.",
-  "context_id": "ctx_mb_review_001",
-  "estimated_resolution": "4 hours",
-  "pending_reason": "new_advertiser_category"
-}
-```
-
 ---
 
 ### Premium Inventory Alerts (A2A)
@@ -284,29 +215,6 @@ def validate_media_buy(request):
 4. Handle responses (accept, decline, negotiate)
 5. If accepted: create/modify media buy
 6. If no response within hold window: release inventory
-
-**Example Outbound A2A:**
-```
-To: Agency Agent (Omnicom - Acme Energy Campaign)
-
-Premium inventory alert for your active campaign.
-
-**Opportunity:** NFL Playoff - Conference Championships
-**Dates:** January 26-27, 2025
-**Available Impressions:** 2,000,000
-**CPM:** $52.00 (premium event pricing)
-**Audience:** 94% sports enthusiasts, 71% male 25-54
-
-This aligns with your Acme Energy campaign targeting.
-Inventory held until: Today 6:00 PM ET
-
-Would you like to capture this opportunity?
-- Accept as proposed
-- Negotiate terms
-- Decline
-
-Awaiting your response.
-```
 
 ---
 
@@ -329,85 +237,12 @@ Awaiting your response.
 3. Include projections for flight completion
 4. Flag any delivery concerns
 
-**Example Response:**
-```json
-{
-  "media_buy_id": "mb_espn_001",
-  "reporting_period": {
-    "start": "2025-02-01",
-    "end": "2025-02-15"
-  },
-  "summary": {
-    "impressions_delivered": 1764706,
-    "impressions_target": 1764706,
-    "pacing_status": "on_track",
-    "spend_usd": 75000,
-    "budget_usd": 150000,
-    "budget_utilized_pct": 50
-  },
-  "packages": [
-    {
-      "package_id": "pkg_espn_ctv_001",
-      "impressions_delivered": 1764706,
-      "reach": 600000,
-      "frequency": 2.94,
-      "completion_rate": 0.82,
-      "viewability_rate": 0.91,
-      "ivt_rate": 0.011,
-      "brand_safety_incidents": 0
-    }
-  ],
-  "projection": {
-    "expected_final_impressions": 3529412,
-    "expected_final_reach": 1200000,
-    "confidence": "high"
-  },
-  "message": "Campaign pacing on track. No delivery concerns. Completion rate (82%) exceeds benchmark (78%)."
-}
-```
-
 ---
 
 ### Inventory Negotiation (A2A)
 
 **Protocol:** A2A  
 **Direction:** Bidirectional with Agency Agents
-
-**Scenarios:**
-
-#### Scenario A: Agency Requests Discount
-```
-Agency Agent:
-"Requesting 15% volume discount on ESPN CTV package.
-Acme is committing $150K for Q1 with potential Q2 extension.
-Can you offer better terms?"
-
-Publisher Agent (Internal Logic):
-- Current discount authority: 10%
-- 15% exceeds authority, requires approval
-- Client value: Medium-high (CPG, potential repeat)
-- Inventory demand: Strong but not sold out
-
-Publisher Agent Response:
-"I can offer 10% discount immediately ($38.25 CPM vs $42.50).
-For 15%, I need sales director approval - response within 2 hours.
-Alternative: 10% discount + 5% added value impressions.
-Which would you prefer?"
-```
-
-#### Scenario B: Publisher Proposes Upsell
-```
-Publisher Agent:
-"Your Acme campaign is performing well on CTV (82% completion).
-We have audio inventory on ESPN podcasts that indexes high for your audience.
-Proposal: Add $25K audio package at $18 CPM.
-Projected incremental reach: 180,000 uniques.
-Would you like details?"
-
-Agency Agent:
-"Interested. Send the product details.
-Note: Will need human approval for new format addition."
-```
 
 ---
 
@@ -435,22 +270,6 @@ Note: Will need human approval for new format addition."
    - Return specific rejection reason
    - Provide remediation guidance
 
-**Example Response (Rejection):**
-```json
-{
-  "status": "rejected",
-  "creative_id": "cre_acme_30s_v1",
-  "rejection_reasons": [
-    {
-      "code": "AUDIO_LEVEL_EXCEEDED",
-      "message": "Audio peak level -6dB exceeds maximum -12dB for CTV",
-      "remediation": "Reduce audio levels to meet -12dB peak, -24dB average specification"
-    }
-  ],
-  "deadline_remaining": "72 hours"
-}
-```
-
 ---
 
 ## Proactive Communication
@@ -471,29 +290,6 @@ Note: Will need human approval for new format addition."
    - Immediately pause affected inventory
    - Document incident
    - Alert Agency Agent with details and remediation
-
-**Example Alert:**
-```
-To: Agency Agent (Omnicom - Acme Energy Campaign)
-
-[WARNING] Delivery Alert - Underpacing
-
-**Campaign:** Acme Energy Q1 2025
-**Package:** ESPN CTV Premium
-**Status:** 12% behind pace
-
-**Analysis:**
-Inventory constrained due to higher-than-expected demand for live sports.
-NFL playoff viewership exceeding projections.
-
-**Remediation Plan:**
-1. Shifting 20% of impressions to shoulder programming (pre/post-game)
-2. Extending daily delivery windows
-3. Projected to recover pacing by Feb 10
-
-**Action Required:** None - informational only.
-**Escalation:** Contact me if you prefer alternative remediation.
-```
 
 ---
 

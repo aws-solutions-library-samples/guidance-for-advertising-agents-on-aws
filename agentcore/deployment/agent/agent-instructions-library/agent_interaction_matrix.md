@@ -64,23 +64,6 @@ MEASUREMENT            —        MCP        —         —        —         
 | Agency → Advertiser | Budget reallocation requests |
 | Agency → Advertiser | Incident alerts (escalated) |
 
-**Example Flow:**
-```
-Advertiser Agent                          Agency Agent
-      │                                        │
-      │──── Campaign Brief ────────────────────>│
-      │                                        │
-      │<─── Clarifying Questions ──────────────│
-      │                                        │
-      │──── Answers + Clarifications ──────────>│
-      │                                        │
-      │<─── Media Plan for Approval ───────────│
-      │                                        │
-      │──── Approval (or Rejection) ───────────>│
-      │                                        │
-      │<─── Weekly Performance Report ─────────│
-      │                                        │
-```
 
 ---
 
@@ -105,23 +88,6 @@ Advertiser Agent                          Agency Agent
 | Agency ↔ Publisher | A2A | Rate negotiations |
 | Agency ↔ Publisher | A2A | Delivery issue resolution |
 
-**Example Flow:**
-```
-Agency Agent                              Publisher Agent
-      │                                        │
-      │──── get_products (AdCP) ───────────────>│
-      │                                        │
-      │<─── Product Catalog (AdCP) ────────────│
-      │                                        │
-      │──── create_media_buy (AdCP) ───────────>│
-      │                                        │
-      │<─── Confirmation (AdCP) ───────────────│
-      │                                        │
-      │<─── "NFL Playoff inventory" (A2A) ─────│
-      │                                        │
-      │──── "Interested, need approval" (A2A) ─>│
-      │                                        │
-```
 
 ---
 
@@ -138,23 +104,6 @@ Agency Agent                              Publisher Agent
 | Agency → Signal | AdCP Signals | `activate_signal` |
 | Signal → Agency | AdCP Signals | Activation status, segment IDs |
 
-**Example Flow:**
-```
-Agency Agent                              Signal Agent
-      │                                        │
-      │──── get_signals (AdCP) ────────────────>│
-      │     "sports enthusiasts"               │
-      │                                        │
-      │<─── Signal Catalog (AdCP) ─────────────│
-      │     5 matching segments                │
-      │                                        │
-      │──── activate_signal (AdCP) ────────────>│
-      │     sig_lr_004 → TTD                   │
-      │                                        │
-      │<─── Activation Confirmed (AdCP) ───────│
-      │     segment_id: lr_exp_sports_active   │
-      │                                        │
-```
 
 ---
 
@@ -173,17 +122,6 @@ Agency Agent                              Signal Agent
 | Agency → Identity | MCP | Frequency cap query |
 | Identity → Agency | MCP | Frequency status |
 
-**Example Flow:**
-```
-Agency Agent                              Identity Agent
-      │                                        │
-      │──── estimate_reach (MCP) ──────────────>│
-      │     segments, channels, geo            │
-      │                                        │
-      │<─── Reach Projections (MCP) ───────────│
-      │     2.1M households, 78% match rate    │
-      │                                        │
-```
 
 ---
 
@@ -205,24 +143,6 @@ Agency Agent                              Identity Agent
 | Agency → Verification | A2A | Investigation requests |
 | Verification → Agency | A2A | Investigation reports |
 
-**Example Flow:**
-```
-Agency Agent                              Verification Agent
-      │                                        │
-      │──── verify_brand_safety (MCP) ─────────>│
-      │     [list of publisher URLs]           │
-      │                                        │
-      │<─── Verification Results (MCP) ────────│
-      │     ESPN: 96, YouTube: 89 w/ flag      │
-      │                                        │
-      ~~~~~~~~~~~~~~~~ Later ~~~~~~~~~~~~~~~~~~
-      │                                        │
-      │<─── 🚨 Brand Safety Alert (A2A) ───────│
-      │     Incident on YouTube placement      │
-      │                                        │
-      │──── "Acknowledged, details?" (A2A) ────>│
-      │                                        │
-```
 
 ---
 
@@ -243,26 +163,6 @@ Agency Agent                              Verification Agent
 | Measurement → Agency | A2A | Data quality alerts |
 | Agency → Measurement | A2A | Questions, follow-ups |
 
-**Example Flow:**
-```
-Agency Agent                              Measurement Agent
-      │                                        │
-      │──── configure_study (MCP) ─────────────>│
-      │     brand_lift, Lucid                  │
-      │                                        │
-      │<─── Study Confirmed (MCP) ─────────────│
-      │     study_id, $8,000 cost              │
-      │                                        │
-      ~~~~~~~~~~~~~~~~ Week 2 ~~~~~~~~~~~~~~~~~~
-      │                                        │
-      │<─── Interim Report (A2A) ──────────────│
-      │     +28% awareness lift (interim)      │
-      │                                        │
-      │──── "Great! Creative insights?" (A2A) ─>│
-      │                                        │
-      │<─── ":30 spots 2x lift of :15" (A2A) ──│
-      │                                        │
-```
 
 ---
 

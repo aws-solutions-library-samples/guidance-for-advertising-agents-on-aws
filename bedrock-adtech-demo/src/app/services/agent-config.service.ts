@@ -304,7 +304,7 @@ export class AgentConfigService implements OnInit {
           }
         }
 
-        // Update existing agents with team info and ensure they have runtime ARN
+        // Update existing agents with team info, color, and ensure they have runtime ARN
         const mainAgent = enrichedAgents.find(agent =>
           agent.key === agentKey ||
           agent.agentType === agentKey ||
@@ -313,6 +313,19 @@ export class AgentConfigService implements OnInit {
         if (mainAgent) {
           if (config.team_name) {
             (mainAgent as any).teamName = config.team_name;
+          }
+          // Apply color from agent_configs or configured_colors (agent config takes priority)
+          const configColor = config.color || this.global_config?.configured_colors?.[agentKey];
+          if (configColor) {
+            mainAgent.color = configColor;
+          }
+          // Apply display name from agent config if available
+          if (config.agent_display_name) {
+            mainAgent.displayName = config.agent_display_name;
+          }
+          // Apply description from agent config if available
+          if (config.agent_description) {
+            mainAgent.description = config.agent_description;
           }
           // Ensure agent has runtime ARN (use default if not set)
           if (!mainAgent.runtimeArn && defaultRuntimeArn) {
@@ -603,11 +616,20 @@ export class AgentConfigService implements OnInit {
     }
 
     // Try to get from global config synchronously
-    if (this.global_config && this.global_config.configured_colors) {
-      const color = this.global_config.configured_colors[agentKey];
-      if (color) {
-        this.agentColorCache.set(agentKey, color);
-        return color;
+    if (this.global_config) {
+      // Check configured_colors first
+      if (this.global_config.configured_colors) {
+        const color = this.global_config.configured_colors[agentKey];
+        if (color) {
+          this.agentColorCache.set(agentKey, color);
+          return color;
+        }
+      }
+      // Fallback: check agent_configs color property
+      const agentConfig = this.global_config.agent_configs?.[agentKey];
+      if (agentConfig?.color) {
+        this.agentColorCache.set(agentKey, agentConfig.color);
+        return agentConfig.color;
       }
     }
 
