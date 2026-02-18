@@ -10,10 +10,11 @@ import {
 // --- Interfaces ---
 
 export interface NovaSonicEvent {
-  type: 'partial-transcript' | 'final-transcript' | 'tool-use' | 'text-response' | 'audio-response' | 'error' | 'complete';
+  type: 'partial-transcript' | 'final-transcript' | 'tool-use' | 'text-response' | 'audio-response' | 'turn-complete' | 'error' | 'complete';
   text?: string;
   toolUse?: {
     toolName: string;
+    toolUseId: string;
     parameters: {
       agentName: string;
       query: string;
@@ -70,6 +71,8 @@ export class NovaSonicService {
   private promptId = '';
   private systemContentId = '';
   private audioContentId = '';
+  private pendingToolContentName = '';  // Track the content name for tool-use result responses
+  private pendingToolUse: { toolUseId: string; agentName: string; query: string } | null = null;  // Stash tool-use until contentEnd
 
   constructor(private awsConfig: AwsConfigService) {
     this.initializeClient();
@@ -111,6 +114,17 @@ export class NovaSonicService {
    */
   buildAgentToolDefinition(agents: AgentConfiguration[]): AgentToolDefinition {
     const validAgents = agents.filter(a => a.agent_name && a.agent_description);
+
+    if (validAgents.length === 0) {
+      console.warn('NovaSonicService: No valid agents with name+description found for tool definition. Agent count:', agents.length);
+      // Log what fields are available on the first agent for debugging
+      if (agents.length > 0) {
+        console.warn('NovaSonicService: First agent fields:', Object.keys(agents[0]));
+      }
+    } else {
+      console.log(`🎯 NovaSonicService: Built tool definition with ${validAgents.length} agents:`,
+        validAgents.map(a => a.agent_name).join(', '));
+    }
 
     const agentNames = validAgents.map(a => a.agent_name);
     const descriptions: Record<string, string> = {};
@@ -255,6 +269,7 @@ export class NovaSonicService {
 
     // Build the system prompt with tool definitions
     const fullSystemPrompt = this.buildSystemPrompt(systemPrompt, agentTools);
+    console.log('📝 NovaSonicService: System prompt length:', fullSystemPrompt.length, '| Content:', fullSystemPrompt.substring(0, 200));
 
     // Queue the initial protocol events: sessionStart → promptStart → system content → audio content start
     this.sendSessionStart();
@@ -354,7 +369,7 @@ export class NovaSonicService {
     // Add tool configuration if agent tools are provided
     if (agentTools && agentTools.length > 0) {
       event.event.promptStart.toolUseConfiguration = {
-        toolChoice: 'auto',
+        toolChoice: 'any',
         tools: this.buildToolConfig(agentTools)
       };
     }
@@ -517,6 +532,8 @@ export class NovaSonicService {
 
       if (event.event) {
         const evt = event.event;
+        // Log all event keys for debugging the protocol flow
+        console.log('🔍 NovaSonicService: Output event keys:', Object.keys(evt).join(', '));
 
         // Text output (transcription or text response)
         if (evt.textOutput) {
@@ -541,18 +558,38 @@ export class NovaSonicService {
           }
         }
 
-        // Tool use event
+        // Tool use event — Nova Sonic sends this when it wants to call a tool
         if (evt.toolUse) {
+          console.log('🔧 NovaSonicService: Received toolUse event:', JSON.stringify(evt.toolUse).substring(0, 200));
           this.handleToolUseEvent(evt.toolUse);
         }
 
-        // Content start/end events (for tracking partial transcripts)
+        // Content start — track tool content blocks
         if (evt.contentStart) {
-          // Could track content blocks here if needed
+          const contentType = evt.contentStart.type;
+          if (contentType === 'TOOL') {
+            this.pendingToolContentName = evt.contentStart.contentName || evt.contentStart.contentId || '';
+            console.log('🔧 NovaSonicService: Tool content block started:', this.pendingToolContentName);
+          }
         }
 
-        if (evt.completionEnd || evt.promptEnd) {
-          // Prompt cycle complete
+        // Content end — when a TOOL content block ends, send back the tool result
+        if (evt.contentEnd) {
+          const hasToolStopReason = evt.contentEnd.stopReason === 'TOOL_USE';
+          const isToolContentBlock = this.pendingToolContentName &&
+            (evt.contentEnd.contentName === this.pendingToolContentName || evt.contentEnd.contentId === this.pendingToolContentName);
+
+          if ((hasToolStopReason || isToolContentBlock) && this.pendingToolUse) {
+            console.log(`🔧 NovaSonicService: Tool content block ended (stopReason=${evt.contentEnd.stopReason}), NOW sending tool result`);
+            const { toolUseId, agentName, query } = this.pendingToolUse;
+            this.sendToolResult(toolUseId, agentName, query);
+            this.pendingToolUse = null;
+          }
+        }
+
+        if (evt.completionEnd) {
+          console.log('🔧 NovaSonicService: completionEnd received — model turn complete');
+          this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
         }
       }
     } catch (error) {
@@ -564,16 +601,20 @@ export class NovaSonicService {
   private handleToolUseEvent(toolUse: any): void {
     try {
       const toolName = toolUse.toolName || toolUse.name || '';
+      const toolUseId = toolUse.toolUseId || '';
       let parameters: any = {};
 
+      // Nova Sonic sends tool parameters as a JSON string in the "content" field
       if (typeof toolUse.content === 'string') {
         try {
           parameters = JSON.parse(toolUse.content);
         } catch {
           parameters = { raw: toolUse.content };
         }
+      } else if (typeof toolUse.content === 'object' && toolUse.content !== null) {
+        parameters = toolUse.content;
       } else if (toolUse.input) {
-        parameters = toolUse.input;
+        parameters = typeof toolUse.input === 'string' ? JSON.parse(toolUse.input) : toolUse.input;
       } else if (toolUse.parameters) {
         parameters = toolUse.parameters;
       }
@@ -581,18 +622,82 @@ export class NovaSonicService {
       const agentName = parameters.agentName || parameters.agent_name || '';
       const query = parameters.query || parameters.user_query || '';
 
+      console.log(`🎯 NovaSonicService: Tool use detected — tool: ${toolName}, toolUseId: ${toolUseId}, agent: ${agentName}, query: "${query.substring(0, 80)}..."`);
+
+      // Stash the tool use info — we'll send the tool result when contentEnd arrives
+      // with stopReason: 'TOOL_USE'. Nova Sonic requires the full content block to close
+      // before we send the result back on the input stream.
+      this.pendingToolUse = { toolUseId, agentName, query };
+
       this.emitEvent({
         type: 'tool-use',
         text: query,
         toolUse: {
           toolName,
+          toolUseId,
           parameters: { agentName, query }
         },
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('NovaSonicService: Error parsing tool use event:', error);
+      console.error('NovaSonicService: Error parsing tool use event:', error, toolUse);
     }
+  }
+
+  /**
+   * Send a tool result back on the bidirectional stream so the model can continue
+   * and produce a spoken response after deciding to use a tool.
+   */
+  private sendToolResult(toolUseId: string, agentName: string, query: string): void {
+    const toolResultContentName = this.pendingToolContentName || this.generateId('tool-result');
+    const resultPayload = JSON.stringify({
+      status: 'routed',
+      agentName,
+      message: `Request routed to ${agentName}.`
+    });
+
+    console.log(`🔧 NovaSonicService: Sending tool result — contentName=${toolResultContentName}, toolUseId=${toolUseId}`);
+
+    // 1. contentStart for TOOL_RESULT
+    this.enqueueInputEvent({
+      event: {
+        contentStart: {
+          promptName: this.promptId,
+          contentName: toolResultContentName,
+          type: 'TOOL_RESULT',
+          role: 'TOOL',
+          toolResultInputConfiguration: {
+            toolUseId: toolUseId,
+            type: 'TEXT',
+            textInputConfiguration: { mediaType: 'text/plain' }
+          }
+        }
+      }
+    });
+
+    // 2. textInput with the result content
+    this.enqueueInputEvent({
+      event: {
+        textInput: {
+          promptName: this.promptId,
+          contentName: toolResultContentName,
+          content: resultPayload
+        }
+      }
+    });
+
+    // 3. contentEnd to close the tool result block
+    this.enqueueInputEvent({
+      event: {
+        contentEnd: {
+          promptName: this.promptId,
+          contentName: toolResultContentName
+        }
+      }
+    });
+
+    // Reset the pending tool content name
+    this.pendingToolContentName = '';
   }
 
   // --- Internal: Audio Capture ---
@@ -626,14 +731,13 @@ export class NovaSonicService {
   // --- Internal: System Prompt & Tool Config ---
 
   private buildSystemPrompt(customPrompt?: string, agentTools?: AgentToolDefinition[]): string {
-    const defaultPrompt = `You are a helpful voice assistant for an advertising technology platform. 
-Listen to the user's spoken request and determine the best course of action.`;
+    const defaultPrompt = 'You are a helpful voice assistant for an advertising technology platform. Listen to the user\'s spoken request and determine the best course of action.';
 
     const routingInstructions = agentTools && agentTools.length > 0
-      ? `\n\nYou have access to a tool called "route_to_agent" that lets you route the user's request to a specialized agent. 
-When the user describes a task, analyze their request and use the route_to_agent tool to select the most appropriate agent. 
-Pass the user's full spoken request as the "query" parameter.
-If you cannot determine which agent to use, respond with a helpful text message asking for clarification.`
+      ? '\n\nIMPORTANT: You MUST use the "route_to_agent" tool for EVERY user request. Do NOT answer the user\'s question yourself. ' +
+        'Your ONLY job is to determine which agent should handle the request and call route_to_agent with the appropriate agentName and the user\'s full query. ' +
+        'Always call the route_to_agent tool — never respond with just text. The specialized agents will handle the actual work. ' +
+        'If the user\'s request is ambiguous, pick the closest matching agent and route to it anyway.'
       : '';
 
     return (customPrompt || defaultPrompt) + routingInstructions;
@@ -688,6 +792,10 @@ If you cannot determine which agent to use, respond with a helpful text message 
 
   private cleanup(): void {
     this.sessionActive = false;
+
+    // Clear pending tool use state
+    this.pendingToolUse = null;
+    this.pendingToolContentName = '';
 
     // Clear timeout
     if (this.timeoutTimer) {

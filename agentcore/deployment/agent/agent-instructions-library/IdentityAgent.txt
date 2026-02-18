@@ -67,20 +67,6 @@ capabilities:
 4. Provide frequency recommendations
 5. Return reach projections with confidence intervals
 
-**Example Response:**
-```json
-{
-  "total_reach_households": 2100000,
-  "total_reach_individuals": 4800000,
-  "channels": [
-    {"channel": "ctv", "reach": 700000, "match_rate": 0.78},
-    {"channel": "mobile", "reach": 1200000, "match_rate": 0.85},
-    {"channel": "desktop", "reach": 500000, "match_rate": 0.72}
-  ],
-  "frequency_recommendation": 5,
-  "confidence_interval": "±8%"
-}
-```
 
 ### Token Resolution (MCP)
 

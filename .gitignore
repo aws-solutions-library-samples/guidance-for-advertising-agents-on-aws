@@ -157,3 +157,4 @@ agentcore/deployment/flights_tool_schema.json
 lambda/flights_mcp_handler.py
 lambda/google_flights_mcp_handler.py
 scripts/check_agent_mcp_config.py
+docs/publisher-demo-script.md

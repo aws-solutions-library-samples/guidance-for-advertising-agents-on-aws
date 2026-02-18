@@ -2,242 +2,383 @@
   "tabConfigurations": {
     "generic-tab-1": {
       "id": "generic-tab-1",
-      "title": "Media Planning",
-      "description": "Revenue Optimization Journey",
-      "icon": "monetization_on",
-      "defaultAgent": "mediaplanner",
-      "contextButtonLabel": "... publisher data",
+      "title": "Campaign Management Portal",
+      "description": "Agentic Advertising Ecosystem Dashboard",
+      "icon": "campaign",
+      "defaultAgent": "AgencyAgent",
       "availableAgents": [
-        "mediaplanner",
-        "audiencestrategy",
-        "bidoptimization",
-        "inventoryoptimization",
-        "adformatselector",
-        "adloadoptimization",
-        "campaignexecutiontiming"
+        "AgencyAgent",
+        "AdvertiserAgent",
+        "PublisherAgent",
+        "SignalAgent",
+        "IdentityAgent",
+        "VerificationAgent",
+        "MeasurementAgent"
       ],
       "scenarios": [
         {
-          "id": "stage1-campaign-setup-automation",
-          "title": "Stage 1: AI-Powered Campaign Setup & Schema Creation",
-          "description": "Q: Set up a new FinTech app campaign with automated schema creation, placement optimization, and creative asset generation. Configure real-time bidding parameters and audience segmentation for maximum efficiency.",
-          "stage": 1,
-          "query": "Set up a new FinTech app campaign with automated schema creation, placement optimization, and creative asset generation. Configure real-time bidding parameters and audience segmentation for maximum efficiency.",
-          "category": "Campaign Setup & Architecture",
-          "agentType": "media-planner-analyzer"
+          "id": "advertiser-campaign-brief",
+          "title": "Advertiser Campaign Brief Submission",
+          "description": "Submit a campaign brief from Advertiser Agent to Agency Agent for reasoning and negotiation.",
+          "query": "I need to submit a campaign brief for Acme Energy's new sustainable solar panel product launch. Our objectives are: build brand awareness among environmentally conscious homeowners aged 35-55, drive consideration for residential solar solutions, and establish thought leadership in clean energy. Budget is $2M for Q1 2025, targeting CTV and online video channels. We require tier_1 brand safety and want a brand lift measurement study. Please coordinate with the Agency Agent to develop a comprehensive media plan.",
+          "category": "Media Buy Automation",
+          "agentType": "AdvertiserAgent"
         },
         {
-          "id": "stage2-creative-generation-optimization",
-          "title": "Stage 2: AI Creative Generation & Dynamic Asset Management",
-          "description": "Q: Generate and optimize creative assets for our fashion e-commerce campaign. Create multiple variants using AI tools, implement real-time creative updates, and establish brand safety protocols.",
-          "stage": 2,
-          "query": "Generate and optimize creative assets for our fashion e-commerce campaign. Create multiple variants using AI tools, implement real-time creative updates, and establish brand safety protocols.",
-          "category": "Creative Management & AI Generation",
-          "agentType": "campaignplanning"
+          "id": "agency-orchestration-discovery",
+          "title": "Agency Agent Orchestration & AdCP Discovery",
+          "description": "Agency Agent coordinates multi-agent workflow using AdCP Media Buy Protocol for inventory discovery.",
+          "query": "As the Agency Agent for Acme Energy's $2M sustainable energy campaign, I need to orchestrate the complete campaign workflow. First, use AdCP get_products to discover premium CTV inventory from ESPN, Fox Sports, and YouTube that aligns with environmental content. Target sports enthusiasts interested in sustainability. Then coordinate with Signal Agent for audience targeting, Identity Agent for reach estimation, and Verification Agent for brand safety verification before presenting the media plan to the Advertiser Agent for approval.",
+          "category": "Media Buy Automation",
+          "agentType": "AgencyAgent"
         },
         {
-          "id": "stage3-bidding-optimization-analysis",
-          "title": "Stage 3: Real-Time Bidding Engine Optimization",
-          "description": "Q: Analyze and optimize our real-time bidding performance across multiple pricing models (CPC, CPM, CPA). Implement machine learning algorithms to improve bid win rates and cost efficiency.",
-          "stage": 3,
-          "query": "Analyze and optimize our real-time bidding performance across multiple pricing models (CPC, CPM, CPA). Implement machine learning algorithms to improve bid win rates and cost efficiency.",
-          "category": "Bidding & Pricing Optimization",
-          "agentType": "measurement-agent"
+          "id": "signal-discovery-activation",
+          "title": "Signal Agent Discovery & Activation via AdCP",
+          "description": "Signal Agent discovers and activates audience segments using AdCP Signals Protocol.",
+          "query": "Use AdCP Signals Protocol to discover audience segments for environmentally conscious homeowners interested in sustainable technology. Search for segments from LiveRamp, Oracle Data Cloud, and Experian that match our target: household income $75k+, ages 35-55, interest in clean energy and home improvement. Once identified, activate the best-matching segments on The Trade Desk platform for our Acme Energy campaign. Return the DSP segment IDs for targeting.",
+          "category": "Media Buy Automation",
+          "agentType": "SignalAgent"
         },
         {
-          "id": "stage4-sku-level-tracking-implementation",
-          "title": "Stage 4: SKU-Level Data Integration & Attribution",
-          "description": "Q: Implement comprehensive SKU-level tracking across our e-commerce campaigns. Set up pixel integration, deduplication logic, and cross-device attribution for complete transaction visibility.",
-          "stage": 4,
-          "query": "Implement comprehensive SKU-level tracking across our e-commerce campaigns. Set up pixel integration, deduplication logic, and cross-device attribution for complete transaction visibility.",
-          "category": "Data Foundation & Tracking",
-          "agentType": "measurement"
+          "id": "identity-reach-estimation",
+          "title": "Identity Agent Cross-Device Reach Estimation (MCP)",
+          "description": "Identity Agent provides deterministic reach estimation using MCP protocol.",
+          "query": "Using MCP protocol, estimate the deduplicated cross-device reach for our Acme Energy campaign. We're targeting the 'environmentally conscious homeowners' segment across CTV, mobile, and desktop channels. Calculate household-level reach using UID2 and RampID identity graphs. Provide frequency cap recommendations and privacy-compliant token resolution for our $2M budget allocation across 45 days.",
+          "category": "Media Buy Automation",
+          "agentType": "IdentityAgent"
         },
         {
-          "id": "stage5-audience-segmentation-optimization",
-          "title": "Stage 5: Dynamic Audience Building & Segmentation",
-          "description": "Q: Build and optimize dynamic audience segments using browse/intent data and transaction patterns. Implement real-time segmentation updates and privacy-compliant data processing.",
-          "stage": 5,
-          "query": "Build and optimize dynamic audience segments using browse/intent data and transaction patterns. Implement real-time segmentation updates and privacy-compliant data processing.",
-          "category": "Audience Intelligence & Segmentation",
-          "agentType": "measurement"
+          "id": "verification-brand-safety",
+          "title": "Verification Agent Brand Safety & Quality Assurance (MCP)",
+          "description": "Verification Agent performs brand safety verification using MCP and alerts.",
+          "query": "Verify brand safety for our Acme Energy campaign placements using MCP protocol. Check the following publisher properties: ESPN.com, FoxSports.com, YouTube environmental documentaries, and streaming fitness content. Apply tier_1 brand safety standards. Flag any properties with brand safety scores below 90 or fraud risk above 5%. If any incidents are detected, prepare an A2A alert for the Agency Agent with investigation details and recommended actions.",
+          "category": "Media Buy Automation",
+          "agentType": "VerificationAgent"
         },
         {
-          "id": "stage6-campaign-performance-analysis",
-          "title": "Stage 6: Comprehensive Campaign Performance & ROI Analysis",
-          "description": "Q: Analyze end-to-end campaign performance across all touchpoints. Provide strategic recommendations for budget allocation, creative optimization, and bidding strategy improvements.",
-          "stage": 6,
-          "query": "Analyze end-to-end campaign performance across all touchpoints. Provide strategic recommendations for budget allocation, creative optimization, and bidding strategy improvements.",
-          "category": "Performance Analytics & Strategy",
-          "agentType": "measurement"
+          "id": "measurement-brand-lift",
+          "title": "Measurement Agent Brand Lift Study Configuration (MCP)",
+          "description": "Measurement Agent configures brand lift study using MCP and reports results.",
+          "query": "Configure a brand lift study for Acme Energy's Q1 2025 campaign using MCP protocol. Study parameters: measure brand awareness, ad recall, and purchase intent among environmentally conscious homeowners. Use Lucid as the measurement provider with a control/exposed methodology. Budget $8,000 for the study. Once configured, prepare interim and final reports to be delivered to the Agency Agent via A2A protocol with actionable insights on creative performance.",
+          "category": "Measurement",
+          "agentType": "MeasurementAgent"
+        },
+        {
+          "id": "publisher-media-buy",
+          "title": "Publisher Agent Media Buy Creation & Delivery (AdCP)",
+          "description": "Publisher Agent creates media buy packages and tracks delivery using AdCP Media Buy Protocol.",
+          "query": "As Publisher Agent for ESPN Premium CTV inventory, process the incoming media buy request from Agency Agent using AdCP Media Buy Protocol. Create a media buy package for Acme Energy with: $500,000 budget allocation, premium sports documentary placements, 30-second video format, tier_1 brand safety, and environmental content alignment. Confirm creative deadlines, provide delivery projections, and set up real-time delivery tracking. Return the media_buy_id and package confirmation.",
+          "category": "Media Buy Automation",
+          "agentType": "PublisherAgent"
+        },
+        {
+          "id": "complete-campaign-flow",
+          "title": "Complete Agentic Campaign Flow Integration",
+          "description": "End-to-end demonstration of all seven agents coordinating, AdCP, and MCP protocols.",
+          "query": "Execute the complete agentic advertising workflow for Acme Energy's $2M sustainable energy campaign: 1) Receive campaign brief from Advertiser Agent (A2A), 2) Discover inventory via Publisher Agent (AdCP Media Buy), 3) Find audience segments via Signal Agent (AdCP Signals), 4) Estimate reach via Identity Agent (MCP), 5) Verify brand safety via Verification Agent (MCP), 6) Configure measurement via Measurement Agent (MCP), 7) Present media plan to Advertiser Agent for approval (A2A), 8) Execute campaign via Publisher Agent (AdCP). Coordinate all agents and report status at each step.",
+          "category": "Media Buy Automation",
+          "agentType": "AgencyAgent"
+        },
+        {
+          "id": "agency-publisher-negotiation",
+          "title": "Agency-Publisher Rate Negotiation",
+          "description": "Agency and Publisher Agents negotiate premium inventory rates using.",
+          "query": "Initiate A2A negotiation with Publisher Agent for premium NFL Playoff inventory. Our Acme Energy campaign needs 50M impressions during the playoff window, but current CPMs of $48.90 exceed our $42 target. Propose a volume commitment deal: guaranteed $1.2M spend in exchange for $42 CPM floor and first-look rights on environmental documentary inventory. Include brand safety guarantees and delivery commitments in the negotiation.",
+          "category": "Media Buy Automation",
+          "agentType": "AgencyAgent"
+        },
+        {
+          "id": "verification-incident-alert",
+          "title": "Verification Agent Incident Alert & Investigation",
+          "description": "Verification Agent detects brand safety incident and escalates via.",
+          "query": "ALERT: Brand safety incident detected on YouTube placement for Acme Energy campaign. A video in our environmental documentary targeting was flagged for controversial climate content that conflicts with brand guidelines. Current brand safety score dropped from 96 to 78. Prepare A2A incident report for Agency Agent including: incident details, affected impressions (estimated 125,000), recommended immediate actions (pause placement, exclude content category), and investigation timeline. Request acknowledgment and escalation decision.",
+          "category": "Campaign Optimization",
+          "agentType": "VerificationAgent"
+        },
+        {
+          "id": "measurement-interim-report",
+          "title": "Measurement Agent Interim Results Report",
+          "description": "Measurement Agent delivers interim brand lift results.",
+          "query": "Deliver Week 2 interim brand lift report for Acme Energy campaign to Agency Agent. Results show: +28% brand awareness lift (target: 25%), +18% ad recall (target: 20%), +12% purchase intent (target: 15%). Key insight: 30-second creative format showing 2x lift compared to 15-second spots. Environmental documentary placements outperforming sports content by 34%. Recommend budget reallocation from sports to documentary inventory. Request Agency Agent feedback on optimization recommendations.",
+          "category": "Measurement",
+          "agentType": "MeasurementAgent"
+        },
+        {
+          "id": "artf-bid-enrichment",
+          "title": "ARTF Container Bid Enrichment Flow",
+          "description": "Identity and Verification Agents enrich bid requests via ARTF containers in exchange infrastructure.",
+          "query": "Explain the ARTF (Ad Request Transform Framework) container flow for real-time bid enrichment. When a bid request enters the exchange: 1) Identity Container adds UID2 tokens, RampID, household_id, and device_count for cross-device targeting, 2) Verification Container adds brand_safety_score, ivt_risk (fraud detection), and viewability_prediction. Show how these enriched signals flow to DSPs for better targeting and brand safety decisions. This is infrastructure-level processing, not direct agent communication.",
+          "category": "Bid Enrichment",
+          "agentType": "IdentityAgent"
+        },
+        {
+          "id": "advertiser-approval-workflow",
+          "title": "Advertiser Agent Media Plan Approval",
+          "description": "Advertiser Agent reviews and approves media plan from Agency Agent",
+          "query": "Review the media plan submitted by Agency Agent for Acme Energy Q1 2025 campaign. Plan includes: $2M total budget, 60% CTV ($1.2M), 40% online video ($800K), targeting environmentally conscious homeowners 35-55, tier_1 brand safety, brand lift study included. Projected reach: 2.1M households, 78% match rate, estimated +25% brand awareness lift. Evaluate against our objectives and brand guidelines. Provide approval decision with any modifications or clarifying questions via A2A response.",
+          "category": "Media Buy Automation",
+          "agentType": "AdvertiserAgent"
+        },
+        {
+          "id": "signal-segment-performance",
+          "title": "Signal Agent Segment Performance Analysis (UCP, MCP)",
+          "description": "Signal Agent analyzes activated segment performance and recommends optimizations.",
+          "query": "Analyze performance of activated audience segments for Acme Energy campaign after Week 1. Segments activated: lr_exp_homeowners_eco (LiveRamp), oracle_green_tech_intenders, experian_solar_considerers. Compare conversion rates, CPAs, and brand lift contribution across segments. Identify top-performing segment for budget reallocation. Recommend new lookalike segments to test based on converter profiles. Prepare optimization recommendations for Agency Agent.",
+          "category": "Measurement",
+          "agentType": "SignalAgent"
+        },
+        {
+          "id": "publisher-delivery-tracking",
+          "title": "Publisher Agent Delivery Tracking & Optimization",
+          "description": "Publisher Agent tracks media buy delivery and provides pacing recommendations.",
+          "query": "Provide delivery status for Acme Energy media buy (media_buy_id: mb_acme_q1_2025) using AdCP get_media_buy_delivery. Current status after Day 15 of 45-day campaign: Check impressions delivered vs. target, pacing status, completion rates by placement, and brand safety compliance. If under-pacing, recommend inventory reallocation. If over-pacing, suggest budget optimization. Include viewability metrics and any delivery issues requiring Agency Agent attention.",
+          "category": "Agentic Advertising - AdCP Delivery",
+          "agentType": "PublisherAgent"
+        },
+        {
+          "id": "agency-budget-reallocation",
+          "title": "Agency Agent Budget Reallocation Request",
+          "description": "Agency Agent requests budget reallocation approval from Advertiser Agent.",
+          "query": "Based on Week 2 performance data, I'm requesting budget reallocation approval from Advertiser Agent. Recommendation: shift $200K from sports content (underperforming at 0.8% CVR) to environmental documentaries (outperforming at 1.4% CVR). This reallocation is projected to improve overall campaign CPA by 18% and increase brand lift by 6 percentage points. Measurement Agent data supports this recommendation. Requesting approval within 24 hours to optimize remaining campaign flight.",
+          "category": "Campaign Optimization",
+          "agentType": "AgencyAgent"
+        }
+      ],
+      "availableCampaigns": [
+        {
+          "id": "camp-acme-energy-q1",
+          "advertiser": "Acme Energy Solutions",
+          "campaign": "Sustainable Solar Q1 2025",
+          "budget": 2000000,
+          "duration": 45,
+          "targetAudience": "environmentally_conscious_homeowners",
+          "protocols": [
+            "A2A",
+            "AdCP",
+            "MCP"
+          ],
+          "expectedMetrics": {
+            "roas": 3.2,
+            "ctr": 0.015,
+            "cvr": 0.014,
+            "impressions": 85000000,
+            "brandLift": 0.25
+          }
+        },
+        {
+          "id": "camp-greentech-awareness",
+          "advertiser": "GreenTech Industries",
+          "campaign": "Clean Energy Awareness",
+          "budget": 1250000,
+          "duration": 30,
+          "targetAudience": "sustainability_millennials",
+          "protocols": [
+            "A2A",
+            "AdCP",
+            "MCP"
+          ],
+          "expectedMetrics": {
+            "roas": 2.8,
+            "ctr": 0.018,
+            "cvr": 0.012,
+            "impressions": 62000000,
+            "brandLift": 0.22
+          }
+        },
+        {
+          "id": "camp-ecolife-launch",
+          "advertiser": "EcoLife Products",
+          "campaign": "Sustainable Living Launch",
+          "budget": 850000,
+          "duration": 28,
+          "targetAudience": "eco_conscious_families",
+          "protocols": [
+            "A2A",
+            "AdCP Signals",
+            "MCP"
+          ],
+          "expectedMetrics": {
+            "roas": 3.5,
+            "ctr": 0.016,
+            "cvr": 0.015,
+            "impressions": 45000000,
+            "brandLift": 0.2
+          }
         }
       ],
       "visualizations": [
         {
+          "type": "metrics-visualization",
+          "visualizationType": "metrics",
+          "title": "Portfolio Overview",
+          "gridSpan": 2,
+          "data": {
+            "visualizationType": "metrics",
+            "title": "Portfolio Overview",
+            "subtitle": "Key Performance Indicators",
+            "metrics": [
+              {
+                "primaryLabel": "Portfolio Performance",
+                "secondaryLabel": "Core KPIs",
+                "items": [
+                  {
+                    "primaryLabel": "Revenue Forecast",
+                    "actualValue": "dynamic",
+                    "valueKey": "totalRevenueForecast",
+                    "format": "currency",
+                    "icon": "attach_money"
+                  },
+                  {
+                    "primaryLabel": "Portfolio Fill Rate",
+                    "actualValue": "dynamic",
+                    "valueKey": "averageFillRate",
+                    "format": "percentage",
+                    "icon": "donut_small"
+                  },
+                  {
+                    "primaryLabel": "Yield Optimization",
+                    "actualValue": "dynamic",
+                    "valueKey": "averageYieldOptimization",
+                    "format": "percentage",
+                    "icon": "trending_up"
+                  },
+                  {
+                    "primaryLabel": "Avg CPM Floor",
+                    "actualValue": "dynamic",
+                    "valueKey": "averageCPMFloor",
+                    "format": "currency",
+                    "icon": "monetization_on"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "context-selector",
+          "title": "Publisher Selection",
+          "entityType": "publisher",
+          "displayFields": [
+            "name",
+            "tier",
+            "cpmFloor"
+          ],
+          "metricFields": [
+            "brandSafety",
+            "fillRateForecast"
+          ]
+        },
+        {
+          "type": "context-selector",
+          "title": "Campaign Selection",
+          "entityType": "campaign",
+          "displayFields": [
+            "campaign",
+            "advertiser",
+            "budget"
+          ],
+          "metricFields": [
+            "roas",
+            "ctr"
+          ]
+        },
+        {
           "type": "segments-visualization",
           "visualizationType": "segments",
           "gridSpan": 2,
-          "title": "Brand Visibility Analysis",
-          "subtitle": "Lenovo Logo Detection Performance Segments",
+          "title": "Target Audience Segments",
+          "subtitle": "Advertiser Campaign Audience Analysis",
           "segments": [
             {
-              "primaryLabel": "FinTech Campaign Performance",
-              "secondaryLabel": "AI-Powered Creative Optimization",
-              "description": "SecureWallet Pro campaign with dynamic creative generation and real-time bidding optimization",
-              "actualValue": "4.2x ROAS",
-              "targetValue": "3.8x ROAS",
-              "actualLabel": "Achieved ROAS",
-              "targetLabel": "Target ROAS",
+              "primaryLabel": "Environmentally Conscious Homeowners",
+              "secondaryLabel": "Sustainable Technology Adopters",
+              "description": "Affluent homeowners interested in clean energy solutions and sustainable living practices",
+              "actualValue": "4,250,000",
+              "targetValue": "5,000,000",
+              "actualLabel": "Current Reach",
+              "targetLabel": "Target Reach",
               "primaryMetric": {
                 "label": "Conversion Rate",
-                "value": "7.8%"
+                "value": "1.4%"
               },
               "secondaryMetric": {
-                "label": "Cost Per Acquisition",
-                "value": "$42.50"
+                "label": "Average CPA",
+                "value": "$79.83"
               },
-              "budgetAmount": "$2,500,000",
-              "statusIndicator": "optimized",
-              "confidenceLevel": "high",
-              "performanceLevel": "high",
-              "metadata": {
-                "size": "45M impressions",
-                "growth": "156 AI-generated assets",
-                "engagement": "67% bid win rate"
-              }
-            },
-            {
-              "primaryLabel": "Fashion E-commerce Campaign",
-              "secondaryLabel": "Multi-Creative Holiday Strategy",
-              "description": "StyleHub Fashion holiday campaign with dynamic product feeds and contextual targeting",
-              "actualValue": "5.1x ROAS",
-              "targetValue": "4.5x ROAS",
-              "primaryMetric": {
-                "label": "Conversion Rate",
-                "value": "9.2%"
-              },
-              "secondaryMetric": {
-                "label": "Creative Variants",
-                "value": "36 active"
-              },
-              "budgetAmount": "$1,800,000",
+              "revenueAmount": "$285,000",
               "statusIndicator": "active",
               "confidenceLevel": "high",
               "performanceLevel": "high",
               "metadata": {
-                "size": "38.5M impressions",
-                "growth": "248 AI-generated assets",
-                "engagement": "73% bid win rate"
+                "size": "Household income $75k+",
+                "growth": "Ages 35-55, college educated",
+                "engagement": "Environmental documentary viewers"
+              }
+            },
+            {
+              "primaryLabel": "Sustainability-Focused Millennials",
+              "secondaryLabel": "Clean Energy Early Adopters",
+              "description": "Tech-savvy millennials prioritizing environmental impact in purchasing decisions",
+              "actualValue": "3,100,000",
+              "targetValue": "3,800,000",
+              "actualLabel": "Current Reach",
+              "targetLabel": "Target Reach",
+              "primaryMetric": {
+                "label": "Brand Lift",
+                "value": "22%"
+              },
+              "secondaryMetric": {
+                "label": "Engagement Rate",
+                "value": "91%"
+              },
+              "revenueAmount": "$125,000",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "medium",
+              "metadata": {
+                "size": "Ages 28-42, urban/suburban",
+                "growth": "High social media engagement",
+                "engagement": "Sustainability content consumers"
               }
             }
           ],
           "summary": {
             "totalSegments": 2,
             "activeSegments": 2,
-            "topPerformer": "Fashion E-commerce Campaign",
-            "growthOpportunity": "Mobile app network expansion with interactive formats"
-          }
-        },
-        {
-          "type": "channels-visualization",
-          "visualizationType": "channels",
-          "title": "Camera Angle Effectiveness",
-          "gridSpan": 2,
-          "subtitle": "Optimal Placement Analysis Network",
-          "channels": [
-            {
-              "primaryLabel": "Premium Business Publishers",
-              "secondaryLabel": "Professional Content Network",
-              "description": "High-quality business and technology publishers with AI-powered creative optimization",
-              "primaryScore": {
-                "label": "Campaign Performance",
-                "value": "92/100"
-              },
-              "secondaryScore": {
-                "label": "Brand Safety Score",
-                "value": "96.8%"
-              },
-              "qualityScore": "Excellent",
-              "statusIndicator": "verified",
-              "targetValue": "$18.50 CPM",
-              "actualValue": "$17.25 CPM",
-              "targetLabel": "Target CPM",
-              "actualLabel": "Optimized CPM",
-              "confidenceLevel": "high"
-            },
-            {
-              "primaryLabel": "Lifestyle & E-commerce",
-              "secondaryLabel": "Shopping Content Network",
-              "description": "Fashion and lifestyle publishers with dynamic product feeds and contextual targeting",
-              "primaryScore": {
-                "label": "Campaign Performance",
-                "value": "89/100"
-              },
-              "secondaryScore": {
-                "label": "Conversion Rate",
-                "value": "9.2%"
-              },
-              "qualityScore": "Premium",
-              "statusIndicator": "verified",
-              "targetValue": "$14.75 CPM",
-              "actualValue": "$13.90 CPM",
-              "confidenceLevel": "high"
-            },
-            {
-              "primaryLabel": "Mobile App Network",
-              "secondaryLabel": "In-App Advertising",
-              "description": "Premium mobile applications with interactive ad formats and cross-device attribution",
-              "primaryScore": {
-                "label": "Campaign Performance",
-                "value": "94/100"
-              },
-              "secondaryScore": {
-                "label": "Viewability Rate",
-                "value": "87.3%"
-              },
-              "qualityScore": "Premium",
-              "statusIndicator": "active",
-              "targetValue": "$22.00 CPM",
-              "actualValue": "$20.50 CPM",
-              "confidenceLevel": "high"
-            }
-          ],
-          "summary": {
-            "totalChannels": 3,
-            "activeChannels": 3,
-            "topPerformer": "Mobile App Network",
-            "recommendedFocus": "Expand interactive ad formats and cross-device attribution capabilities"
+            "topPerformer": "Environmentally Conscious Homeowners",
+            "growthOpportunity": "Expand reach to younger demographics interested in home ownership"
           }
         },
         {
           "type": "metrics-visualization",
-          "templateId": "metrics-visualization",
-          "title": "Sponsorship ROI Metrics",
+          "visualizationType": "metrics",
+          "title": "Platform Performance Metrics",
           "gridSpan": 2,
-          "subtitle": "Brand Exposure Measurement KPIs",
+          "subtitle": "Campaign Management Platform KPIs",
           "metrics": [
             {
-              "primaryLabel": "Visibility Performance",
-              "secondaryLabel": "Detection Analytics",
+              "primaryLabel": "Campaign Management",
+              "secondaryLabel": "Active Campaigns & Budget",
               "items": [
                 {
-                  "primaryLabel": "Campaign Setup Efficiency",
-                  "actualValue": "2.5",
-                  "targetValue": "3.0",
-                  "actualLabel": "Days Average Setup",
-                  "targetLabel": "Target Setup Time",
-                  "unit": "days",
-                  "trend": "up",
+                  "primaryLabel": "Total Active Campaigns",
+                  "actualValue": "2",
+                  "targetValue": "3",
+                  "actualLabel": "Current Campaigns",
+                  "targetLabel": "Target Campaigns",
+                  "unit": "campaigns",
+                  "trend": "stable",
                   "confidenceLevel": "high",
                   "isPrimary": true
                 },
                 {
-                  "primaryLabel": "AI Creative Generation",
-                  "actualValue": "404",
-                  "targetValue": "350",
-                  "actualLabel": "Generated Assets",
-                  "targetLabel": "Target Assets",
-                  "unit": "assets",
+                  "primaryLabel": "Total Campaign Budget",
+                  "actualValue": "$410,000",
+                  "targetValue": "$500,000",
+                  "actualLabel": "Current Budget",
+                  "targetLabel": "Target Budget",
+                  "unit": "$",
                   "trend": "up",
                   "confidenceLevel": "high",
                   "isPrimary": false
@@ -245,15 +386,716 @@
               ]
             },
             {
-              "primaryLabel": "Bidding Performance",
-              "secondaryLabel": "Real-Time Optimization",
+              "primaryLabel": "Performance Metrics",
+              "secondaryLabel": "Efficiency & Results",
               "items": [
                 {
-                  "primaryLabel": "Average Bid Win Rate",
-                  "actualValue": "70%",
-                  "targetValue": "65%",
-                  "actualLabel": "Win Rate",
-                  "targetLabel": "Target Win Rate",
+                  "primaryLabel": "Average CTR",
+                  "actualValue": "1.5%",
+                  "targetValue": "1.8%",
+                  "actualLabel": "Current CTR",
+                  "targetLabel": "Target CTR",
+                  "unit": "%",
+                  "trend": "up",
+                  "confidenceLevel": "medium",
+                  "isPrimary": false
+                },
+                {
+                  "primaryLabel": "Average Brand Lift",
+                  "actualValue": "20%",
+                  "targetValue": "25%",
+                  "actualLabel": "Current Lift",
+                  "targetLabel": "Target Lift",
+                  "unit": "%",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "segments-visualization",
+          "visualizationType": "segments",
+          "gridSpan": 2,
+          "title": "Active Campaign Performance",
+          "subtitle": "Current Campaign Status & Metrics",
+          "segments": [
+            {
+              "primaryLabel": "SolarMax Pro Launch Campaign",
+              "secondaryLabel": "EcoTech Solutions - Premium Solar Technology",
+              "description": "45-day campaign targeting environmentally conscious homeowners with premium solar panel technology",
+              "actualValue": "$142,500",
+              "targetValue": "$285,000",
+              "actualLabel": "Spent Budget",
+              "targetLabel": "Total Budget",
+              "primaryMetric": {
+                "label": "Days Remaining",
+                "value": "23"
+              },
+              "secondaryMetric": {
+                "label": "Current CPA",
+                "value": "$79.83"
+              },
+              "revenueAmount": "$285,000",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "8.5M impressions delivered",
+                "growth": "1,785 conversions achieved",
+                "engagement": "1.5% CTR, 89% completion rate"
+              }
+            },
+            {
+              "primaryLabel": "Clean Energy Awareness Initiative",
+              "secondaryLabel": "EcoTech Solutions - Brand Awareness Campaign",
+              "description": "30-day awareness campaign targeting sustainability-focused millennials with clean energy messaging",
+              "actualValue": "$89,250",
+              "targetValue": "$125,000",
+              "actualLabel": "Spent Budget",
+              "targetLabel": "Total Budget",
+              "primaryMetric": {
+                "label": "Days Remaining",
+                "value": "8"
+              },
+              "secondaryMetric": {
+                "label": "Brand Lift",
+                "value": "22%"
+              },
+              "revenueAmount": "$125,000",
+              "statusIndicator": "active",
+              "confidenceLevel": "high",
+              "performanceLevel": "medium",
+              "metadata": {
+                "size": "6.2M impressions delivered",
+                "growth": "1,240 conversions achieved",
+                "engagement": "1.5% CTR, 91% completion rate"
+              }
+            }
+          ],
+          "summary": {
+            "totalSegments": 2,
+            "activeSegments": 2,
+            "topPerformer": "SolarMax Pro Launch Campaign",
+            "growthOpportunity": "Expand budget allocation to high-performing environmental documentary placements"
+          }
+        }
+      ],
+      "contextData": {
+        "advertiserProfile": {
+          "name": "Jennifer Park",
+          "role": "Digital Marketing Manager at EcoTech Solutions",
+          "company": "EcoTech Solutions",
+          "industry": "Sustainable Technology",
+          "challenge": "Launch awareness campaign for new solar panel technology on MagicStream's premium content",
+          "campaignObjectives": [
+            "Build brand awareness among environmentally conscious families",
+            "Drive consideration for residential solar solutions",
+            "Establish thought leadership in clean energy space"
+          ]
+        },
+        "availableInventory": [
+          {
+            "id": "inventory-family-originals",
+            "contentType": "Family Original Series",
+            "title": "Enchanted Kingdoms & Nature Documentaries",
+            "availableSlots": 120,
+            "estimatedReach": 8500000,
+            "cpmRange": "$28-35",
+            "brandSafety": 98,
+            "viewability": 96,
+            "completionRate": 94,
+            "audienceAlignment": "Families with environmental values",
+            "contentRating": "G/PG",
+            "peakViewingTimes": "7-9 PM weekdays, 2-8 PM weekends",
+            "seasonalMultiplier": 1.2,
+            "recommendedBudget": "$180,000-220,000"
+          },
+          {
+            "id": "inventory-sports-events",
+            "contentType": "Live Sports Events",
+            "title": "Winter Championship & Outdoor Sports",
+            "availableSlots": 45,
+            "estimatedReach": 12000000,
+            "cpmRange": "$42-55",
+            "brandSafety": 99,
+            "viewability": 98,
+            "completionRate": 97,
+            "audienceAlignment": "Active lifestyle enthusiasts",
+            "contentRating": "G",
+            "peakViewingTimes": "Event-driven, weekend heavy",
+            "seasonalMultiplier": 1.6,
+            "recommendedBudget": "$280,000-350,000"
+          },
+          {
+            "id": "inventory-documentary-programming",
+            "contentType": "Environmental Documentaries",
+            "title": "Climate Solutions & Innovation Series",
+            "availableSlots": 85,
+            "estimatedReach": 4200000,
+            "cpmRange": "$22-28",
+            "brandSafety": 97,
+            "viewability": 95,
+            "completionRate": 92,
+            "audienceAlignment": "Environmentally conscious adults",
+            "contentRating": "PG/PG-13",
+            "peakViewingTimes": "8-10 PM weekdays",
+            "seasonalMultiplier": 1.1,
+            "recommendedBudget": "$120,000-150,000"
+          }
+        ],
+        "activeCampaigns": [
+          {
+            "id": "camp-ecotech-solar-2025",
+            "advertiser": "EcoTech Solutions",
+            "campaign": "SolarMax Pro Launch Campaign",
+            "budget": 285000,
+            "spent": 142500,
+            "duration": 45,
+            "daysRemaining": 23,
+            "status": "Active",
+            "targetAudience": "Environmentally conscious homeowners",
+            "currentMetrics": {
+              "impressions": 8500000,
+              "clicks": 127500,
+              "ctr": 0.015,
+              "conversions": 1785,
+              "cvr": 0.014,
+              "cpa": 79.83,
+              "brandLift": 0.18,
+              "completionRate": 0.89
+            },
+            "targetMetrics": {
+              "impressions": 15000000,
+              "ctr": 0.018,
+              "cvr": 0.016,
+              "cpa": 75,
+              "brandLift": 0.25
+            },
+            "contentPlacements": [
+              "Environmental Documentaries - 45%",
+              "Family Original Series - 35%",
+              "Live Sports Events - 20%"
+            ]
+          },
+          {
+            "id": "camp-greentech-awareness",
+            "advertiser": "EcoTech Solutions",
+            "campaign": "Clean Energy Awareness Initiative",
+            "budget": 125000,
+            "spent": 89250,
+            "duration": 30,
+            "daysRemaining": 8,
+            "status": "Active",
+            "targetAudience": "Sustainability-focused millennials",
+            "currentMetrics": {
+              "impressions": 6200000,
+              "clicks": 93000,
+              "ctr": 0.015,
+              "conversions": 1240,
+              "cvr": 0.013,
+              "cpa": 71.98,
+              "brandLift": 0.22,
+              "completionRate": 0.91
+            },
+            "targetMetrics": {
+              "impressions": 8500000,
+              "ctr": 0.016,
+              "cvr": 0.015,
+              "cpa": 68,
+              "brandLift": 0.28
+            },
+            "contentPlacements": [
+              "Environmental Documentaries - 60%",
+              "Family Original Series - 25%",
+              "Live Sports Events - 15%"
+            ]
+          }
+        ],
+        "campaignInsights": [
+          {
+            "id": "insight-audience-performance",
+            "title": "Audience Segment Performance Analysis",
+            "category": "Audience Intelligence",
+            "insight": "Environmental documentary viewers show 34% higher conversion rates for solar technology ads compared to general family content",
+            "recommendation": "Increase budget allocation to environmental programming by 25%",
+            "impact": "Projected 18% improvement in campaign efficiency",
+            "confidence": "High",
+            "dataPoints": [
+              "Environmental docs: 1.8% CVR, $65 CPA",
+              "Family content: 1.3% CVR, $85 CPA",
+              "Sports events: 1.1% CVR, $95 CPA"
+            ]
+          },
+          {
+            "id": "insight-timing-optimization",
+            "title": "Optimal Viewing Time Analysis",
+            "category": "Temporal Targeting",
+            "insight": "Peak engagement for sustainability content occurs 8-10 PM weekdays, with 28% higher completion rates",
+            "recommendation": "Shift 40% of budget to prime evening slots",
+            "impact": "Estimated 15% increase in brand awareness lift",
+            "confidence": "High",
+            "dataPoints": [
+              "8-10 PM: 94% completion rate",
+              "6-8 PM: 87% completion rate",
+              "Weekend afternoons: 82% completion rate"
+            ]
+          },
+          {
+            "id": "insight-creative-performance",
+            "title": "Creative Asset Performance Tracking",
+            "category": "Creative Optimization",
+            "insight": "30-second educational format outperforms 15-second promotional by 42% in brand recall",
+            "recommendation": "Prioritize longer-form educational creative assets",
+            "impact": "Projected 22% improvement in brand lift metrics",
+            "confidence": "Medium-High",
+            "dataPoints": [
+              "30s educational: 68% brand recall",
+              "15s promotional: 48% brand recall",
+              "Interactive format: 71% engagement rate"
+            ]
+          }
+        ],
+        "campaignMetrics": {
+          "totalActiveCampaigns": 2,
+          "totalBudget": 410000,
+          "totalSpent": 231750,
+          "averageCPM": 18.75,
+          "totalImpressions": 14700000,
+          "totalClicks": 220500,
+          "averageCTR": 0.015,
+          "totalConversions": 3025,
+          "averageCVR": 0.0137,
+          "averageCPA": 76.61,
+          "averageBrandLift": 0.2
+        },
+        "platformMetrics": {
+          "availableInventorySlots": 250,
+          "averageInventoryCPM": 31.5,
+          "totalEstimatedReach": 24700000,
+          "averageBrandSafety": 98,
+          "averageViewability": 96.3,
+          "averageCompletionRate": 93.7,
+          "advertiserSatisfaction": 94
+        },
+        "selfServiceCapabilities": [
+          "Real-time campaign performance monitoring and optimization",
+          "Automated audience targeting and lookalike modeling",
+          "Dynamic creative optimization and A/B testing",
+          "Cross-content attribution and brand lift measurement",
+          "Predictive budget allocation and pacing recommendations",
+          "Contextual content alignment and brand safety monitoring",
+          "Advanced reporting and competitive intelligence insights",
+          "Self-service campaign setup and creative asset management"
+        ]
+      }
+    },
+    "generic-tab-2": {
+      "id": "generic-tab-2",
+      "title": "Streaming Inventory Planning",
+      "description": "Premium Content Monetization Strategy",
+      "icon": "live_tv",
+      "defaultAgent": "inventoryoptimization",
+      "contextButtonLabel": "... streaming inventory data",
+      "availableAgents": [
+        "inventoryoptimization",
+        "adloadoptimization",
+        "revenueformatselector",
+        "campaignexecutiontiming",
+        "mediaplanner",
+        "audiencestrategy",
+        "adformatselector"
+      ],
+      "scenarios": [
+        {
+          "id": "premium-content-inventory-optimization",
+          "title": "Premium Content Inventory Yield Optimization",
+          "description": "Q: Our Enchanted Kingdoms Season 3 premiere is projected to reach 12.5M viewers. How should we optimize ad load and pricing strategy for premium subscriber satisfaction? Consider family-friendly brand alignment and seasonal demand patterns.",
+          "stage": 1,
+          "query": "Our Enchanted Kingdoms Season 3 premiere is projected to reach 12.5M viewers. How should we optimize ad load and pricing strategy for premium subscriber satisfaction? Consider family-friendly brand alignment and seasonal demand patterns.",
+          "category": "Publisher Revenue Operations",
+          "agentType": "MediaPlanningAgent",
+          "agentObject": "[object Object]"
+        },
+        {
+          "id": "live-sports-inventory-planning",
+          "title": "Live Sports Championship Inventory Strategy",
+          "description": "Q: The Winter Championship Series expects 28M viewers across 12 events. Develop inventory allocation strategy balancing premium sponsorship opportunities, standard ad slots, and interactive advertising formats while maintaining broadcast quality.",
+          "stage": 2,
+          "query": "The Winter Championship Series expects 28M viewers across 12 events. Develop inventory allocation strategy balancing premium sponsorship opportunities, standard ad slots, and interactive advertising formats while maintaining broadcast quality.",
+          "category": "Ad Monetization Team",
+          "agentType": "YieldOptimizationAgent",
+          "agentObject": "[object Object]"
+        },
+        {
+          "id": "subscriber-tier-ad-load-balance",
+          "title": "Multi-Tier Subscriber Ad Load Optimization",
+          "description": "Q: Balance ad loads across our three subscription tiers (Premium $14.99 ad-free, Standard $7.99 limited ads, Basic $4.99 standard ads) to maximize revenue per user while minimizing churn to competitors offering ad-free alternatives.",
+          "stage": 3,
+          "query": "Balance ad loads across our three subscription tiers (Premium $14.99 ad-free, Standard $7.99 limited ads, Basic $4.99 standard ads) to maximize revenue per user while minimizing churn to competitors offering ad-free alternatives.",
+          "category": "Publisher Revenue Operations",
+          "agentType": "FormatStrategyOptimizerAgent",
+          "agent": "[object Object]"
+        },
+        {
+          "id": "seasonal-content-demand-forecasting",
+          "title": "Seasonal Content Demand & Pricing Strategy",
+          "description": "Q: Forecast Q1 2025 inventory demand across our content portfolio considering holiday viewing patterns, new content releases, and competitive streaming launches. Recommend dynamic pricing strategies for different content categories.",
+          "stage": 4,
+          "query": "Forecast Q1 2025 inventory demand across our content portfolio considering holiday viewing patterns, new content releases, and competitive streaming launches. Recommend dynamic pricing strategies for different content categories.",
+          "category": "Demand Forecasting & Pricing",
+          "agentType": "AdLoadOptimizationAgent"
+        },
+        {
+          "id": "family-content-brand-safety-optimization",
+          "title": "Family Content Brand Safety & Revenue Balance",
+          "description": "Q: Optimize brand safety standards for our G/PG-rated family content while maximizing advertiser appeal. How can we attract premium family-focused brands while maintaining our 98.5% brand safety score and competitive CPMs?",
+          "stage": 5,
+          "query": "Optimize brand safety standards for our G/PG-rated family content while maximizing advertiser appeal. How can we attract premium family-focused brands while maintaining our 98.5% brand safety score and competitive CPMs?",
+          "category": "Brand Safety & Premium Positioning",
+          "agentType": "MediaPlanningAgent"
+        },
+        {
+          "id": "international-content-localization-strategy",
+          "title": "International Content Localized Advertising Strategy",
+          "description": "Q: Develop advertising strategy for our international content library across different regions. Consider local brand preferences, cultural sensitivities, and regional CPM variations while maintaining global brand safety standards.",
+          "stage": 6,
+          "query": "Develop advertising strategy for our international content library across different regions. Consider local brand preferences, cultural sensitivities, and regional CPM variations while maintaining global brand safety standards.",
+          "category": "International Monetization Strategy",
+          "agentType": "CampaignOptimizationAgent"
+        }
+      ],
+      "visualizations": [
+        {
+          "type": "segments-visualization",
+          "visualizationType": "segments",
+          "gridSpan": 2,
+          "title": "Content Inventory Performance",
+          "subtitle": "Premium Content Monetization Analysis",
+          "segments": [
+            {
+              "primaryLabel": "Original Series Premium Inventory",
+              "secondaryLabel": "Enchanted Kingdoms Season 3 Launch",
+              "description": "High-value family content with selective premium advertising partnerships",
+              "actualValue": "$32.75 CPM",
+              "targetValue": "$28.50 CPM",
+              "actualLabel": "Achieved CPM",
+              "targetLabel": "Target CPM",
+              "primaryMetric": {
+                "label": "Fill Rate",
+                "value": "94.2%"
+              },
+              "secondaryMetric": {
+                "label": "Brand Safety Score",
+                "value": "98.5%"
+              },
+              "revenueAmount": "$4,200,000",
+              "statusIndicator": "premium",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "12.5M projected viewers",
+                "growth": "240 available ad slots",
+                "engagement": "96% viewability rate"
+              }
+            },
+            {
+              "primaryLabel": "Live Sports Championship Events",
+              "secondaryLabel": "Winter Championship Series",
+              "description": "Premium live event inventory with title sponsorship and branded segment opportunities",
+              "actualValue": "$48.90 CPM",
+              "targetValue": "$45.75 CPM",
+              "primaryMetric": {
+                "label": "Live Engagement",
+                "value": "97.8%"
+              },
+              "secondaryMetric": {
+                "label": "Completion Rate",
+                "value": "97%"
+              },
+              "revenueAmount": "$7,800,000",
+              "statusIndicator": "premium",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "28M projected viewers",
+                "growth": "180 available ad slots",
+                "engagement": "98% viewability rate"
+              }
+            }
+          ],
+          "summary": {
+            "totalSegments": 2,
+            "activeSegments": 2,
+            "topPerformer": "Live Sports Championship Events",
+            "growthOpportunity": "International content localization and regional advertising"
+          }
+        },
+        {
+          "type": "channels-visualization",
+          "visualizationType": "channels",
+          "title": "Content Category Performance",
+          "gridSpan": 2,
+          "subtitle": "Streaming Inventory Monetization Analysis",
+          "channels": [
+            {
+              "primaryLabel": "Family Original Series",
+              "secondaryLabel": "Premium Scripted Content",
+              "description": "High-engagement family entertainment with premium brand partnerships and educational value",
+              "primaryScore": {
+                "label": "Advertiser Demand",
+                "value": "94/100"
+              },
+              "secondaryScore": {
+                "label": "Family Co-Viewing",
+                "value": "89%"
+              },
+              "qualityScore": "Premium",
+              "statusIndicator": "verified",
+              "targetValue": "$32.75 CPM",
+              "actualValue": "$35.20 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Achieved CPM",
+              "confidenceLevel": "high"
+            },
+            {
+              "primaryLabel": "Live Sports Events",
+              "secondaryLabel": "Real-Time Premium Content",
+              "description": "High-value live programming with championship events and exclusive sports coverage",
+              "primaryScore": {
+                "label": "Advertiser Demand",
+                "value": "98/100"
+              },
+              "secondaryScore": {
+                "label": "Live Engagement",
+                "value": "97.8%"
+              },
+              "qualityScore": "Premium+",
+              "statusIndicator": "verified",
+              "targetValue": "$45.75 CPM",
+              "actualValue": "$48.90 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Achieved CPM",
+              "confidenceLevel": "high"
+            },
+            {
+              "primaryLabel": "Educational Documentaries",
+              "secondaryLabel": "Brand-Safe Learning Content",
+              "description": "High-quality educational programming with environmental and science focus for conscious consumers",
+              "primaryScore": {
+                "label": "Advertiser Demand",
+                "value": "86/100"
+              },
+              "secondaryScore": {
+                "label": "Brand Safety Score",
+                "value": "98.5%"
+              },
+              "qualityScore": "Premium",
+              "statusIndicator": "verified",
+              "targetValue": "$24.50 CPM",
+              "actualValue": "$26.80 CPM",
+              "targetLabel": "Target CPM",
+              "actualLabel": "Achieved CPM",
+              "confidenceLevel": "high"
+            }
+          ],
+          "summary": {
+            "totalChannels": 3,
+            "activeChannels": 3,
+            "topPerformer": "Live Sports Events",
+            "recommendedFocus": "Expand international content localization and cultural programming"
+          }
+        },
+        {
+          "type": "metrics-visualization",
+          "templateId": "metrics-visualization",
+          "title": "Streaming Inventory KPIs",
+          "gridSpan": 2,
+          "subtitle": "Premium Content Monetization Metrics",
+          "metrics": [
+            {
+              "primaryLabel": "Inventory Performance",
+              "secondaryLabel": "Revenue Optimization",
+              "items": [
+                {
+                  "primaryLabel": "Average Fill Rate",
+                  "actualValue": "94.2%",
+                  "targetValue": "90.0%",
+                  "actualLabel": "Current Fill Rate",
+                  "targetLabel": "Target Fill Rate",
+                  "unit": "%",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": true
+                },
+                {
+                  "primaryLabel": "Premium Inventory Share",
+                  "actualValue": "85%",
+                  "targetValue": "80%",
+                  "actualLabel": "Premium Content",
+                  "targetLabel": "Target Premium",
+                  "unit": "%",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            },
+            {
+              "primaryLabel": "Subscriber Experience",
+              "secondaryLabel": "Retention & Satisfaction",
+              "items": [
+                {
+                  "primaryLabel": "Ad Completion Rate",
+                  "actualValue": "96.8%",
+                  "targetValue": "95.0%",
+                  "actualLabel": "Completion Rate",
+                  "targetLabel": "Target Rate",
+                  "unit": "%",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                },
+                {
+                  "primaryLabel": "Brand Safety Score",
+                  "actualValue": "98.5%",
+                  "targetValue": "97.0%",
+                  "actualLabel": "Safety Score",
+                  "targetLabel": "Target Score",
+                  "unit": "%",
+                  "trend": "stable",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "segments-visualization",
+          "visualizationType": "segments",
+          "gridSpan": 2,
+          "title": "Audience Segments Performance",
+          "subtitle": "Viewer Demographics & Engagement Analysis",
+          "segments": [
+            {
+              "primaryLabel": "Premium Family Subscribers",
+              "secondaryLabel": "High-Value Multi-Generational Households",
+              "description": "Affluent families with children who consume premium streaming content across multiple devices",
+              "actualValue": "2,850,000",
+              "targetValue": "3,200,000",
+              "actualLabel": "Monthly Active Viewers",
+              "targetLabel": "Target Reach",
+              "primaryMetric": {
+                "label": "Ad Completion Rate",
+                "value": "94.2%"
+              },
+              "secondaryMetric": {
+                "label": "Average CPM",
+                "value": "$32.75"
+              },
+              "revenueAmount": "$4,200,000",
+              "statusIndicator": "premium",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "8.2M households across core markets",
+                "growth": "Parents 32-48, Children 6-16",
+                "engagement": "$85,000+ household income"
+              }
+            },
+            {
+              "primaryLabel": "Live Sports Premium Viewers",
+              "secondaryLabel": "High-Engagement Sports Fans",
+              "description": "Dedicated sports fans who pay premium for live events and exclusive sports content",
+              "actualValue": "5,200,000",
+              "targetValue": "5,800,000",
+              "actualLabel": "Active Sports Viewers",
+              "targetLabel": "Target Reach",
+              "primaryMetric": {
+                "label": "Live Event Engagement",
+                "value": "97.8%"
+              },
+              "secondaryMetric": {
+                "label": "Premium CPM",
+                "value": "$48.90"
+              },
+              "revenueAmount": "$7,800,000",
+              "statusIndicator": "premium",
+              "confidenceLevel": "high",
+              "performanceLevel": "high",
+              "metadata": {
+                "size": "15.4M active sports viewers",
+                "growth": "25-54 years (core 28-45)",
+                "engagement": "$65,000+ household income"
+              }
+            }
+          ],
+          "summary": {
+            "totalSegments": 2,
+            "activeSegments": 2,
+            "topPerformer": "Live Sports Premium Viewers",
+            "growthOpportunity": "International content localization and regional advertising"
+          }
+        },
+        {
+          "type": "metrics-visualization",
+          "visualizationType": "metrics",
+          "title": "Platform Performance Metrics",
+          "gridSpan": 2,
+          "subtitle": "Streaming Platform Operational KPIs",
+          "metrics": [
+            {
+              "primaryLabel": "Inventory Management",
+              "secondaryLabel": "Available Slots & Reach",
+              "items": [
+                {
+                  "primaryLabel": "Available Inventory Slots",
+                  "actualValue": "250",
+                  "targetValue": "280",
+                  "actualLabel": "Current Slots",
+                  "targetLabel": "Target Slots",
+                  "unit": "slots",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": true
+                },
+                {
+                  "primaryLabel": "Total Estimated Reach",
+                  "actualValue": "24.7M",
+                  "targetValue": "28.0M",
+                  "actualLabel": "Current Reach",
+                  "targetLabel": "Target Reach",
+                  "unit": "viewers",
+                  "trend": "up",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                }
+              ]
+            },
+            {
+              "primaryLabel": "Quality & Performance",
+              "secondaryLabel": "Brand Safety & Satisfaction",
+              "items": [
+                {
+                  "primaryLabel": "Average Brand Safety",
+                  "actualValue": "98%",
+                  "targetValue": "97%",
+                  "actualLabel": "Safety Score",
+                  "targetLabel": "Target Score",
+                  "unit": "%",
+                  "trend": "stable",
+                  "confidenceLevel": "high",
+                  "isPrimary": false
+                },
+                {
+                  "primaryLabel": "Advertiser Satisfaction",
+                  "actualValue": "94%",
+                  "targetValue": "92%",
+                  "actualLabel": "Satisfaction Rate",
+                  "targetLabel": "Target Rate",
                   "unit": "%",
                   "trend": "up",
                   "confidenceLevel": "high",
@@ -266,187 +1108,179 @@
       ],
       "contextData": {
         "userProfile": {
-          "name": "Sarah Chen",
-          "role": "Campaign Management Director at TechFlow Advertising",
-          "challenge": "Launch and optimize multi-channel campaigns with AI-powered creative generation and real-time bidding",
-          "timeline": "Q4 2024 campaign launches across 15+ brands"
+          "name": "Marcus Rodriguez",
+          "role": "VP of Ad Operations at MagicStream Entertainment",
+          "challenge": "Optimize streaming inventory yield across premium content while maintaining subscriber experience",
+          "timeline": "Q1 2025 inventory planning for major content releases and seasonal programming"
         },
-        "brandProfile": {
-          "name": "TechFlow Advertising",
-          "category": "Digital Advertising Platform",
-          "positioning": "AI-powered campaign optimization and creative automation",
-          "brandValues": [
-            "Innovation",
-            "Efficiency",
-            "Data-Driven Results",
-            "Creative Excellence"
+        "streamingPlatform": {
+          "name": "MagicStream Entertainment",
+          "category": "Premium Streaming Platform",
+          "positioning": "Family-friendly entertainment with premium original content",
+          "contentLibrary": [
+            "Original Series & Movies",
+            "Live Sports Events",
+            "Documentary Programming",
+            "Kids & Family Content",
+            "International Content"
           ],
-          "pricePoint": {
-            "category": "Premium AdTech Platform",
-            "positioning": "Enterprise and mid-market advertisers"
+          "subscriberTiers": {
+            "premium": "Ad-free experience - $14.99/month",
+            "standard": "Limited ads - $7.99/month",
+            "basic": "Standard ad load - $4.99/month"
           },
-          "brandSafetyRequirements": {
-            "level": "Enterprise",
-            "restrictions": [
-              "Brand safety verification required",
-              "Contextual targeting compliance",
-              "Privacy regulation adherence (GDPR, CCPA)",
-              "Fraud prevention protocols",
-              "Quality inventory standards"
+          "inventoryStrategy": {
+            "premiumPlacements": "High-value content with selective advertising",
+            "standardInventory": "Broad content catalog with optimized ad load",
+            "liveEvents": "Premium sports and event-based advertising",
+            "internationalContent": "Localized advertising opportunities"
+          },
+          "brandSafetyStandards": {
+            "level": "Family-Safe Premium",
+            "contentRatings": [
+              "G - General Audiences",
+              "PG - Parental Guidance",
+              "PG-13 - Parents Strongly Cautioned",
+              "TV-Y - Children's Programming",
+              "TV-G - General Audience Television"
             ],
-            "preferredContexts": [
-              "Premium publisher networks",
-              "Verified content environments",
-              "High-engagement platforms",
-              "Professional content categories",
-              "Technology and business publications"
+            "advertisingGuidelines": [
+              "Family-friendly brand alignment required",
+              "No adult content or mature themes",
+              "Educational and aspirational messaging preferred",
+              "Premium brand partnerships prioritized",
+              "Contextual content matching enforced"
             ]
           }
         },
-        "campaigns": [
+        "contentInventory": [
           {
-            "id": "fintech-app-launch-2024",
-            "client": "SecureWallet Pro",
-            "campaign": "AI-Powered Campaign Launch with Dynamic Creative",
-            "clientBudget": 2500000,
-            "campaignSetupCost": 150000,
-            "creativeDevelopmentCost": 200000,
-            "mediaBudget": 2000000,
-            "optimizationCost": 150000,
-            "duration": 60,
-            "publisherNetwork": "Premium Digital Publishers",
-            "markets": [
-              "North America",
-              "Europe",
-              "Australia",
-              "Singapore"
+            "id": "original-series-q1-2025",
+            "contentType": "Original Series",
+            "title": "Enchanted Kingdoms: Season 3 Premiere",
+            "inventoryValue": 8500000,
+            "adSlots": 240,
+            "expectedViewership": 12500000,
+            "duration": 8,
+            "contentRating": "PG",
+            "targetDemographics": [
+              "Families with children 8-16",
+              "Fantasy entertainment enthusiasts",
+              "Premium subscribers"
             ],
-            "campaignMetrics": {
-              "totalImpressions": 45000000,
-              "clickThroughRate": 0.034,
-              "conversionRate": 0.078,
-              "costPerAcquisition": 42.5,
-              "returnOnAdSpend": 4.2,
-              "brandSafetyScore": 96.8,
-              "creativeVariants": 24,
-              "aiGeneratedAssets": 156,
-              "realTimeBidWinRate": 0.67
+            "inventoryMetrics": {
+              "projectedCPM": 28.5,
+              "completionRate": 0.94,
+              "brandSafetyScore": 98.5,
+              "viewabilityRate": 0.96,
+              "audienceEngagement": 0.89,
+              "premiumInventoryShare": 0.85
             },
-            "campaignSchema": {
-              "setupTime": "3.2 days",
-              "creativeApprovalCycle": "18 hours",
-              "placementOptimization": "Real-time",
-              "bidStrategyType": "Dynamic CPA optimization",
-              "audienceSegments": 12,
-              "geoTargeting": "City-level precision"
+            "monetizationStrategy": {
+              "adLoadOptimization": "Premium placement strategy",
+              "formatMix": "30s video + interactive overlays",
+              "seasonalPricing": "Q1 premiere premium +40%",
+              "brandPartnerships": "Integrated sponsorship opportunities"
             }
           },
           {
-            "id": "ecommerce-holiday-2024",
-            "client": "StyleHub Fashion",
-            "campaign": "Holiday Season Multi-Creative Campaign",
-            "clientBudget": 1800000,
-            "campaignSetupCost": 120000,
-            "creativeDevelopmentCost": 180000,
-            "mediaBudget": 1350000,
-            "optimizationCost": 150000,
-            "duration": 45,
-            "publisherNetwork": "Fashion & Lifestyle Publishers",
-            "markets": [
-              "United States",
-              "Canada",
-              "United Kingdom",
-              "Germany"
+            "id": "live-sports-championship-2025",
+            "contentType": "Live Sports",
+            "title": "Winter Championship Series",
+            "inventoryValue": 15200000,
+            "adSlots": 180,
+            "expectedViewership": 28000000,
+            "duration": 12,
+            "contentRating": "G",
+            "targetDemographics": [
+              "Sports enthusiasts 18-54",
+              "Premium live event viewers",
+              "Multi-generational families"
             ],
-            "campaignMetrics": {
-              "totalImpressions": 38500000,
-              "clickThroughRate": 0.041,
-              "conversionRate": 0.092,
-              "costPerAcquisition": 28.75,
-              "returnOnAdSpend": 5.1,
-              "brandSafetyScore": 98.2,
-              "creativeVariants": 36,
-              "aiGeneratedAssets": 248,
-              "realTimeBidWinRate": 0.73
+            "inventoryMetrics": {
+              "projectedCPM": 45.75,
+              "completionRate": 0.97,
+              "brandSafetyScore": 99.2,
+              "viewabilityRate": 0.98,
+              "audienceEngagement": 0.95,
+              "premiumInventoryShare": 0.95
             },
-            "campaignSchema": {
-              "setupTime": "2.8 days",
-              "creativeApprovalCycle": "12 hours",
-              "placementOptimization": "Hourly optimization",
-              "bidStrategyType": "Revenue maximization",
-              "audienceSegments": 18,
-              "geoTargeting": "ZIP code level"
+            "monetizationStrategy": {
+              "adLoadOptimization": "Live event premium pricing",
+              "formatMix": "15s/30s video + real-time graphics",
+              "seasonalPricing": "Championship premium +65%",
+              "brandPartnerships": "Title sponsorship + branded segments"
             }
           }
         ],
-        "audienceSegments": [
+        "viewerSegments": [
           {
-            "segmentId": "fintech_professionals",
-            "primaryLabel": "FinTech Professionals",
-            "secondaryLabel": "Financial Technology Adopters",
-            "description": "Business professionals and entrepreneurs actively using financial technology solutions",
-            "size": "12.8M professionals across target markets",
+            "segmentId": "premium_family_viewers",
+            "primaryLabel": "Premium Family Subscribers",
+            "secondaryLabel": "High-Value Multi-Generational Households",
+            "description": "Affluent families with children who consume premium streaming content across multiple devices",
+            "size": "8.2M households across core markets",
             "demographics": {
-              "age": "28-45 years (core 32-42)",
-              "income": "$75,000+ household income",
-              "education": "College-educated, tech-forward",
-              "lifestyle": "Digital-first financial management, mobile banking users",
-              "location": "Urban centers in North America, Europe, Asia-Pacific"
+              "age": "Parents 32-48, Children 6-16",
+              "income": "$85,000+ household income",
+              "education": "College-educated, tech-savvy families",
+              "lifestyle": "Premium entertainment consumers, brand-conscious",
+              "location": "Suburban and urban centers in North America"
             },
-            "actualValue": "4,250,000",
-            "targetValue": "4,500,000",
-            "actualLabel": "Qualified Impressions",
-            "targetLabel": "Target Impressions",
+            "actualValue": "2,850,000",
+            "targetValue": "3,200,000",
+            "actualLabel": "Monthly Active Viewers",
+            "targetLabel": "Target Reach",
             "primaryMetric": {
-              "label": "Conversion Rate",
-              "value": "7.8%"
+              "label": "Ad Completion Rate",
+              "value": "94.2%"
             },
             "secondaryMetric": {
-              "label": "Cost Per Acquisition",
-              "value": "$42.50"
+              "label": "Average CPM",
+              "value": "$32.75"
             },
-            "budgetAmount": "$1,200,000",
-            "statusIndicator": "optimized",
+            "revenueContribution": "$4,200,000",
+            "statusIndicator": "premium",
             "confidenceLevel": "high",
             "performanceLevel": "high",
-            "campaignSchema": {
-              "skuLevelTracking": "Enabled",
-              "realTimeBidding": "Active",
-              "creativePersonalization": "AI-powered",
-              "placementOptimization": "Dynamic"
+            "viewingBehavior": {
+              "contentPreferences": "Original series, family movies, educational content",
+              "peakViewingTimes": "7-9 PM weekdays, 2-8 PM weekends",
+              "deviceUsage": "Smart TV primary, tablet secondary",
+              "adTolerance": "High for relevant, family-friendly brands"
             }
           },
           {
-            "segmentId": "fashion_shoppers",
-            "primaryLabel": "Fashion E-commerce Shoppers",
-            "secondaryLabel": "Style-Conscious Online Buyers",
-            "description": "Fashion-forward consumers with high online shopping frequency and brand engagement",
-            "size": "18.6M active shoppers in target demographics",
+            "segmentId": "sports_enthusiasts",
+            "primaryLabel": "Live Sports Premium Viewers",
+            "secondaryLabel": "High-Engagement Sports Fans",
+            "description": "Dedicated sports fans who pay premium for live events and exclusive sports content",
+            "size": "15.4M active sports viewers",
             "demographics": {
-              "age": "22-38 years (core 25-35)",
-              "income": "$45,000+ household income",
-              "relationshipStatus": "Diverse, trend-conscious consumers",
-              "lifestyle": "Social media active, brand-conscious, mobile shoppers"
+              "age": "25-54 years (core 28-45)",
+              "income": "$65,000+ household income",
+              "lifestyle": "Sports-focused, social viewing, brand loyal",
+              "location": "National coverage with regional preferences"
             },
-            "actualValue": "6,800,000",
-            "targetValue": "7,200,000",
+            "actualValue": "5,200,000",
+            "targetValue": "5,800,000",
             "primaryMetric": {
-              "label": "Conversion Rate",
-              "value": "9.2%"
+              "label": "Live Event Engagement",
+              "value": "97.8%"
             },
             "secondaryMetric": {
-              "label": "Return on Ad Spend",
-              "value": "5.1x"
+              "label": "Premium CPM",
+              "value": "$48.90"
             },
-            "budgetAmount": "$950,000",
-            "statusIndicator": "active",
+            "revenueContribution": "$7,800,000",
+            "statusIndicator": "premium",
             "confidenceLevel": "high",
             "performanceLevel": "high",
-            "campaignSchema": {
-              "skuLevelTracking": "Advanced",
-              "realTimeBidding": "Revenue-optimized",
-              "creativePersonalization": "Dynamic product feeds",
-              "placementOptimization": "Contextual + behavioral"
+            "viewingBehavior": {
+              "contentPreferences": "Live sports, sports documentaries, athlete profiles",
+              "peakViewingTimes": "Event-driven, weekend heavy",
+              "deviceUsage": "Large screen TV, mobile for stats",
+              "adTolerance": "Very high during natural breaks"
             }
           }
         ],
@@ -567,569 +1401,656 @@
         }
       }
     },
-    "generic-tab-5": {
-      "id": "generic-tab-5",
-      "title": "Inventory & Optimization",
-      "description": "Inventory management & yield optimization",
-      "icon": "analytics",
-      "defaultAgent": "adLoadoptimization",
+    "generic-tab-1771430998541": {
+      "id": "generic-tab-1771430998541",
+      "title": "Publisher Yield Optimization",
+      "description": "Floor Price Management, ad stack optimization, segmentation, ad placement and layout strategy",
+      "icon": "tab",
+      "defaultAgent": "",
       "availableAgents": [
-        "campaignexecutiontiming",
-        "inventoryforecasting",
-        "revenueformatselector",
-        "adLoadoptimization",
-        "contextualanalysis"
+        {
+          "name": "WeatherImpactAgent",
+          "agentType": "WeatherImpactAgent",
+          "status": "active",
+          "id": "WeatherImpactAgent",
+          "aliasId": "WeatherImpactAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "WeatherImpactAgent",
+          "color": "#804294FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "A specialized agent that analyzes how weather conditions affect advertising campaign performance and audience behaviors. You provide strategic insights on weather-driven consumer patterns to optimize campaign timing, messaging, and targeting. You use your http capabilities to retrieve the weather conditions of a given location as part of your analysis.",
+          "key": "WeatherImpactAgent",
+          "sessionId": "",
+          "teamName": "Publisher Revenue Operations"
+        },
+        {
+          "name": "MediaPlanningAgent",
+          "agentType": "MediaPlanningAgent",
+          "status": "active",
+          "id": "MediaPlanningAgent",
+          "aliasId": "MediaPlanningAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "MediaPlanningAgent",
+          "color": "#41205BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Strategic orchestrator of comprehensive media planning from the publisher's perspective, maximizing revenue and inventory utilization through intelligent collaboration",
+          "key": "MediaPlanningAgent",
+          "sessionId": "",
+          "teamName": "Publisher Revenue Operations"
+        },
+        {
+          "name": "YieldOptimizationAgent",
+          "agentType": "YieldOptimizationAgent",
+          "status": "active",
+          "id": "YieldOptimizationAgent",
+          "aliasId": "YieldOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Yield Optimization Agent",
+          "color": "#AE427BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "A revenue optimization and yield management specialist focused on maximizing publisher revenue through strategic pricing, inventory optimization, and performance analytics. Helps publishers optimize their advertising revenue through data-driven yield management strategies.",
+          "key": "YieldOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Ad Monetization Team"
+        },
+        {
+          "name": "CampaignOptimizationAgent",
+          "agentType": "CampaignOptimizationAgent",
+          "status": "active",
+          "id": "CampaignOptimizationAgent",
+          "aliasId": "CampaignOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Campaign Optimization Agent",
+          "color": "#AB5209FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Comprehensive campaign planning specialist for agencies and advertisers, orchestrating end-to-end campaign development from strategy to execution",
+          "key": "CampaignOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Media Strategy & Planning"
+        },
+        {
+          "name": "InventoryOptimizationAgent",
+          "agentType": "InventoryOptimizationAgent",
+          "status": "active",
+          "id": "InventoryOptimizationAgent",
+          "aliasId": "InventoryOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Inventory Optimization Agent",
+          "color": "#E63387FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Strategic orchestrator of comprehensive inventory planning and yield optimization, maximizing revenue through intelligent forecasting and dynamic pricing strategies",
+          "key": "InventoryOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Supply & Demand Planning"
+        },
+        {
+          "name": "AudienceIntelligenceAgent",
+          "agentType": "AudienceIntelligenceAgent",
+          "status": "active",
+          "id": "AudienceIntelligenceAgent",
+          "aliasId": "AudienceIntelligenceAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Audience Intelligence Agent",
+          "color": "#804294FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Consumer behavior analysis, audience segmentation, and privacy-compliant targeting strategies, developing data-driven audience insights and targeting recommendations.",
+          "key": "AudienceIntelligenceAgent",
+          "sessionId": "",
+          "teamName": "Consumer Insights & Analytics"
+        },
+        {
+          "name": "AdLoadOptimizationAgent",
+          "agentType": "AdLoadOptimizationAgent",
+          "status": "active",
+          "id": "AdLoadOptimizationAgent",
+          "aliasId": "AdLoadOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Ad Load Optimization Agent",
+          "color": "#E63387FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Balancing viewer retention with revenue optimization",
+          "key": "AdLoadOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Consumer Insights & Analytics"
+        },
+        {
+          "name": "AdFormatSelectorAgent",
+          "agentType": "AdFormatSelectorAgent",
+          "status": "active",
+          "id": "AdFormatSelectorAgent",
+          "aliasId": "AdFormatSelectorAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Ad Format Selector Agent",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for selecting optimal ad formats based on campaign objectives and audience preferences",
+          "key": "AdFormatSelectorAgent",
+          "sessionId": "",
+          "teamName": "Creative Strategy"
+        },
+        {
+          "name": "BidOptimizationAgent",
+          "agentType": "BidOptimizationAgent",
+          "status": "active",
+          "id": "BidOptimizationAgent",
+          "aliasId": "BidOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Bid Optimization Agent",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for optimizing bidding strategies in programmatic advertising",
+          "key": "BidOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Programmatic Trading"
+        },
+        {
+          "name": "BidSimulatorAgent",
+          "agentType": "BidSimulatorAgent",
+          "status": "active",
+          "id": "BidSimulatorAgent",
+          "aliasId": "BidSimulatorAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Bid Simulator Agent",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for simulating bidding scenarios and outcomes",
+          "key": "BidSimulatorAgent",
+          "sessionId": "",
+          "teamName": "Programmatic Trading"
+        },
+        {
+          "name": "ContextualAnalysisAgent",
+          "agentType": "ContextualAnalysisAgent",
+          "status": "active",
+          "id": "ContextualAnalysisAgent",
+          "aliasId": "ContextualAnalysisAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Contextual Analysis Agent",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for analyzing content context and relevance for ad placement",
+          "key": "ContextualAnalysisAgent",
+          "sessionId": "",
+          "teamName": "Content Intelligence"
+        },
+        {
+          "name": "EventsAgent",
+          "agentType": "EventsAgent",
+          "status": "active",
+          "id": "EventsAgent",
+          "aliasId": "EventsAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Events Agent",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for event-based advertising and sponsorship strategies",
+          "key": "EventsAgent",
+          "sessionId": "",
+          "teamName": "Event Marketing"
+        },
+        {
+          "name": "MediaPlanCompiler",
+          "agentType": "MediaPlanCompiler",
+          "status": "active",
+          "id": "MediaPlanCompiler",
+          "aliasId": "MediaPlanCompiler",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Media Plan Compiler",
+          "color": "#9C1453FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for compiling and synthesizing comprehensive media plans",
+          "key": "MediaPlanCompiler",
+          "sessionId": "",
+          "teamName": "Media Planning"
+        },
+        {
+          "name": "AudienceStrategyAgent",
+          "agentType": "AudienceStrategyAgent",
+          "status": "active",
+          "id": "AudienceStrategyAgent",
+          "aliasId": "AudienceStrategyAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Audience Strategy Agent",
+          "color": "#41205BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for developing audience targeting and segmentation strategies",
+          "key": "AudienceStrategyAgent",
+          "sessionId": "",
+          "teamName": "Audience Planning"
+        },
+        {
+          "name": "ChannelMixOptimizationAgent",
+          "agentType": "ChannelMixOptimizationAgent",
+          "status": "active",
+          "id": "ChannelMixOptimizationAgent",
+          "aliasId": "ChannelMixOptimizationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Channel Mix Optimization Agent",
+          "color": "#804294FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for optimizing channel mix and budget allocation across media channels",
+          "key": "ChannelMixOptimizationAgent",
+          "sessionId": "",
+          "teamName": "Media Strategy"
+        },
+        {
+          "name": "CampaignArchitectureAgent",
+          "agentType": "CampaignArchitectureAgent",
+          "status": "active",
+          "id": "CampaignArchitectureAgent",
+          "aliasId": "CampaignArchitectureAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Campaign Architecture Agent",
+          "color": "#845195FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for designing campaign structure and execution frameworks",
+          "key": "CampaignArchitectureAgent",
+          "sessionId": "",
+          "teamName": "Campaign Planning"
+        },
+        {
+          "name": "CreativeSelectionAgent",
+          "agentType": "CreativeSelectionAgent",
+          "status": "active",
+          "id": "CreativeSelectionAgent",
+          "aliasId": "CreativeSelectionAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Creative Selection Agent",
+          "color": "#AE427BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for selecting and optimizing creative assets for campaigns",
+          "key": "CreativeSelectionAgent",
+          "sessionId": "",
+          "teamName": "Creative Strategy"
+        },
+        {
+          "name": "TimingStrategyAgent",
+          "agentType": "TimingStrategyAgent",
+          "status": "active",
+          "id": "TimingStrategyAgent",
+          "aliasId": "TimingStrategyAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Timing Strategy Agent",
+          "color": "#E63387FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for optimizing campaign timing and scheduling strategies",
+          "key": "TimingStrategyAgent",
+          "sessionId": "",
+          "teamName": "Campaign Execution"
+        },
+        {
+          "name": "FormatStrategyOptimizerAgent",
+          "agentType": "FormatStrategyOptimizerAgent",
+          "status": "active",
+          "id": "FormatStrategyOptimizerAgent",
+          "aliasId": "FormatStrategyOptimizerAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Format Strategy Optimizer Agent",
+          "color": "#F56F02FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Specialized agent for optimizing ad format selection and performance",
+          "key": "FormatStrategyOptimizerAgent",
+          "sessionId": "",
+          "teamName": "Creative Strategy"
+        },
+        {
+          "name": "AgencyAgent",
+          "agentType": "AgencyAgent",
+          "status": "active",
+          "id": "AgencyAgent",
+          "aliasId": "AgencyAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Agency Agent",
+          "color": "#804294FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Orchestrator agent managing advertising campaigns, coordinating between advertisers, publishers, signal providers, identity services, verification vendors, and measurement partners",
+          "key": "AgencyAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "AdvertiserAgent",
+          "agentType": "AdvertiserAgent",
+          "status": "active",
+          "id": "AdvertiserAgent",
+          "aliasId": "AdvertiserAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Advertiser Agent",
+          "color": "#41205BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Principal agent representing advertiser interests, initiating campaigns, approving strategies, and ensuring brand standards",
+          "key": "AdvertiserAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "PublisherAgent",
+          "agentType": "PublisherAgent",
+          "status": "active",
+          "id": "PublisherAgent",
+          "aliasId": "PublisherAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Publisher Agent",
+          "color": "#C62828FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Sales agent representing publisher inventory, responding to discovery requests, negotiating media buys, and managing campaign delivery",
+          "key": "PublisherAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "SignalAgent",
+          "agentType": "SignalAgent",
+          "status": "active",
+          "id": "SignalAgent",
+          "aliasId": "SignalAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Signal Agent",
+          "color": "#6A1B9AFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Data provider agent offering audience signals, contextual signals, and data segments for campaign targeting",
+          "key": "SignalAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "VerificationAgent",
+          "agentType": "VerificationAgent",
+          "status": "active",
+          "id": "VerificationAgent",
+          "aliasId": "VerificationAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Verification Agent",
+          "color": "#AE427BFF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Quality assurance agent providing brand safety verification, fraud detection, viewability measurement, and attention metrics",
+          "key": "VerificationAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "MeasurementAgent",
+          "agentType": "MeasurementAgent",
+          "status": "active",
+          "id": "MeasurementAgent",
+          "aliasId": "MeasurementAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Measurement Agent",
+          "color": "#EF6C00FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Measurement partner agent providing brand lift studies, attribution analysis, foot traffic measurement, and sales lift studies",
+          "key": "MeasurementAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "IdentityAgent",
+          "agentType": "IdentityAgent",
+          "status": "active",
+          "id": "IdentityAgent",
+          "aliasId": "IdentityAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Identity Agent",
+          "color": "#5E35B1FF",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "Identity infrastructure agent providing cross-device resolution, privacy-compliant tokens, and reach estimation",
+          "key": "IdentityAgent",
+          "sessionId": "",
+          "teamName": "Agentic Advertising Ecosystem"
+        },
+        {
+          "name": "TravelAgent",
+          "agentType": "TravelAgent",
+          "status": "active",
+          "id": "TravelAgent",
+          "aliasId": "TravelAgent",
+          "deploymentType": "agentcore",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "displayName": "Travel Agent",
+          "color": "#f59e0b",
+          "icon": "smart_toy",
+          "alternativeNames": [],
+          "description": "This agent searches multiple sources for flights and hotels based on user preferences like budget, rating. It requires a datetime range and location for input. It also asks Advertiser Agent if there are advertised flights and hotels to include in the list.",
+          "key": "TravelAgent",
+          "sessionId": "",
+          "teamName": "events-planning-team"
+        },
+        {
+          "name": "AdFabricAgent",
+          "agentType": "AdFabricAgent",
+          "status": "active",
+          "id": "AdFabricAgent",
+          "aliasId": "latest",
+          "deploymentType": "agentcore",
+          "displayName": "AdFabricAgent",
+          "color": "#9C1453FF",
+          "icon": "psychology",
+          "alternativeNames": [],
+          "description": "Determines intent of a prompt and direct the prompt to the appropriate agent.",
+          "key": "AdFabricAgent",
+          "sessionId": "",
+          "teamName": "AdFabricAgent",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x"
+        },
+        {
+          "name": "CampaignPlanningAgent",
+          "agentType": "CampaignPlanningAgent",
+          "status": "active",
+          "id": "CampaignPlanningAgent",
+          "aliasId": "CampaignPlanningAgent",
+          "deploymentType": "agentcore",
+          "displayName": "CampaignPlanningAgent",
+          "color": "#9C1453FF",
+          "icon": "campaign",
+          "alternativeNames": [],
+          "description": "Specialized campaign planning agent for advertising optimization",
+          "key": "CampaignPlanningAgent",
+          "sessionId": "",
+          "teamName": "AdFabricAgent",
+          "orchestratorAgent": "AdFabricAgent",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x"
+        },
+        {
+          "name": "InventoryPlanningAgent",
+          "agentType": "InventoryPlanningAgent",
+          "status": "active",
+          "id": "InventoryPlanningAgent",
+          "aliasId": "InventoryPlanningAgent",
+          "deploymentType": "agentcore",
+          "displayName": "InventoryPlanningAgent",
+          "color": "#9C1453FF",
+          "icon": "inventory",
+          "alternativeNames": [],
+          "description": "Specialized inventory planning agent for advertising optimization",
+          "key": "InventoryPlanningAgent",
+          "sessionId": "",
+          "teamName": "AdFabricAgent",
+          "orchestratorAgent": "AdFabricAgent",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x"
+        },
+        {
+          "name": "CurrentEventsAgent",
+          "agentType": "CurrentEventsAgent",
+          "status": "active",
+          "id": "CurrentEventsAgent",
+          "aliasId": "latest",
+          "deploymentType": "agentcore",
+          "displayName": "Current Events Agent",
+          "color": "#F56F02FF",
+          "icon": "psychology",
+          "alternativeNames": [],
+          "description": "Specialized agent for analyzing current events and their impact on advertising strategies",
+          "key": "CurrentEventsAgent",
+          "sessionId": "",
+          "teamName": "Market Intelligence",
+          "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:658586621771:runtime/nah_adfabricagent_o6i3v6-lbVezm2H4x",
+          "runtimeId": "nah_adfabricagent_o6i3v6-lbVezm2H4x"
+        }
       ],
       "scenarios": [
         {
-          "title": "Premium Streaming Fitness Content Partnership",
-          "description": "Secure premium inventory alignment with streaming platform fitness and wellness programming.",
-          "query": "BrandX ProductY needs strategic placement around StreamingPlatform's fitness content ecosystem including \"Survival Challenge,\" wellness documentaries, and athletic competition series. With our $2M budget targeting urban professionals 25-40, analyze inventory opportunities that reach cord-cutters during peak viewing (7-11 PM). How can we secure premium placements that align with sustainable lifestyle content while competing against MajorBrand's $50M streaming budget?",
-          "category": "Premium Streaming Inventory",
+          "title": "Ad Stack Waterfall Performance Analysis",
+          "description": "Analyzing ad stack performance to optimize demand partner sequence and timeout settings",
+          "query": "Our current ad stack has Google Ad Manager as primary, followed by Amazon Publisher Services, then Prebid with 8 demand partners. We're seeing 2.3 second average response times and 78% fill rate. Google fills 45% at $8.50 average CPM, Amazon fills 25% at $6.20 CPM, and Prebid fills remaining 30% at $4.80 CPM. Should we reorder our waterfall or adjust timeout settings? Our page load speed target is under 2 seconds and we need to maintain revenue above $35,000 monthly.",
+          "category": "Ad Stack Optimization",
           "applicableCampaigns": [
-            "camp-35791",
-            "camp-12345"
+            "camp-stack-opt",
+            "camp-speed-rev"
           ],
-          "agentType": "InventoryOptimizationAgent"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Connected TV Inventory Competition Strategy",
-          "description": "Navigate inventory scarcity against major athletic brands on streaming platforms.",
-          "query": "Major competitors BrandA, BrandB, and BrandC dominate 70% of athletic footwear ad spend on streaming platforms. During our September launch window, these brands increase CTV spending 3.2x around fall fitness campaigns. With limited premium inventory on platforms like StreamingPlatformA, StreamingPlatformB, and StreamingPlatformC, how can BrandX secure quality placements for ProductY while maintaining efficient $8-12 CPMs against $25-40 competitor bids?",
-          "category": "Competitive Streaming Strategy",
+          "title": "Audience Segmentation Revenue Impact",
+          "description": "Evaluating revenue impact of implementing granular audience segmentation for floor pricing",
+          "query": "We want to implement audience-based floor pricing across our 500K monthly users. Current data shows: returning users (60% of traffic) have 12% higher CTR, mobile users (70% of traffic) have $2 lower average CPM, users from tier-1 cities (40% of traffic) generate 35% more revenue per session. How should we segment our audience for dynamic floor pricing? What floor price adjustments would you recommend for each segment to maximize overall yield while maintaining 80%+ fill rates?",
+          "category": "Audience Segmentation",
           "applicableCampaigns": [
-            "camp-12345",
-            "camp-67890"
+            "camp-audience-seg",
+            "camp-dynamic-pricing"
           ],
-          "agentType": "inventoryoptimization"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Urban Professional Streaming Patterns",
-          "description": "Optimize inventory timing around urban professional viewing behaviors on streaming platforms.",
-          "query": "Our ProductY target audience (urban professionals 25-40) shows distinct streaming patterns: 65% watch fitness/wellness content on weekends, 40% engage with sustainability documentaries during weekday evenings, and 55% stream workout content at 6-7 AM and 8-10 PM. With StreamingPlatformA, StreamingPlatformB, and StreamingPlatformC inventory, recommend optimal daypart strategies and content category alignment for our $140 premium running shoe launch.",
-          "category": "Audience Behavioral Targeting",
+          "title": "Ad Placement Layout Revenue Optimization",
+          "description": "Optimizing ad placement positions and sizes to maximize viewability and revenue",
+          "query": "Our current layout has: header banner (728x90) with 95% viewability earning $15 CPM, sidebar banner (300x250) with 60% viewability earning $8 CPM, in-content native ads with 85% viewability earning $12 CPM, and footer banner with 25% viewability earning $4 CPM. We're considering adding a sticky sidebar ad and moving the footer banner higher up. Based on industry benchmarks and our traffic patterns of 2M monthly pageviews, what layout changes would optimize our revenue per visitor?",
+          "category": "Ad Placement Strategy",
           "applicableCampaigns": [
-            "camp-35791",
-            "camp-15937"
+            "camp-layout-opt",
+            "camp-viewability"
           ],
-          "agentType": "campaignexecutiontiming"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Sustainable Brand Content Alignment",
-          "description": "Align ProductY's sustainable materials messaging with eco-conscious programming inventory.",
-          "query": "ProductY features sustainable materials and eco-friendly manufacturing, key differentiators in the premium running market. StreamingPlatform offers extensive environmental documentary inventory (\"Nature Series,\" \"Ocean Documentary,\" climate content), while competitors avoid these placements due to greenwashing concerns. How can BrandX leverage this white space opportunity to establish authentic sustainability credentials while securing 25% cost-efficient inventory that major brands won't bid on?",
-          "category": "Sustainable Content Strategy",
+          "title": "Header Bidding Timeout Optimization",
+          "description": "Balancing header bidding timeout settings to optimize revenue vs page performance",
+          "query": "Our header bidding setup includes 12 demand partners with current 1500ms timeout. We're seeing: 85% partners respond within 1000ms averaging $7.20 CPM, 10% respond between 1000-1500ms averaging $9.80 CPM, 5% timeout completely. Our site speed decreased by 0.8 seconds affecting user experience. Should we reduce timeout to 1000ms to improve performance, and what would be the estimated revenue impact on our $50K monthly programmatic revenue?",
+          "category": "Ad Stack Optimization",
           "applicableCampaigns": [
-            "camp-35791",
-            "camp-13579"
+            "camp-header-bid",
+            "camp-performance"
           ],
-          "agentType": "audiencestrategy"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Smart Connectivity Technology Showcase",
-          "description": "Leverage ProductY's smart tracking features with tech-focused streaming inventory.",
-          "query": "ProductY's smart connectivity and performance tracking technology aligns with StreamingPlatform's tech documentary programming (\"Digital Impact,\" innovation series, future-tech content). Our target audience over-indexes 2.3x on technology adoption content consumption. With StreamingPlatformB and StreamingPlatformC also offering tech-focused inventory, design a portfolio strategy that showcases our adaptive cushioning technology within premium tech programming at competitive CPMs.",
-          "category": "Technology Innovation Positioning",
+          "title": "Seasonal Floor Price Strategy",
+          "description": "Developing dynamic floor pricing strategy for seasonal traffic and advertiser demand fluctuations",
+          "query": "Historical data shows our Q4 CPMs increase 40% while Q1 drops 25% compared to baseline. Our current static floor prices are: display $8, video $25, native $12. Last Q4 we had 92% fill rate but may have left money on table. This year we expect 30% traffic increase during holiday season. How should we adjust floor prices monthly from October through February to maximize revenue? Include recommendations for different content categories and device types.",
+          "category": "Floor Price Management",
           "applicableCampaigns": [
-            "camp-67890",
-            "camp-86420"
+            "camp-seasonal",
+            "camp-q4-strategy"
           ],
-          "agentType": "adformatselector"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Post-Pandemic Fitness Boom Inventory",
-          "description": "Capitalize on continued fitness content growth across streaming platforms.",
-          "query": "The post-pandemic fitness boom drives 1.8x growth in health/wellness streaming content consumption. StreamingPlatformA, FitnessStreamingService, and FitnessApp create premium inventory around workout content, meditation series, and athlete documentaries. With ProductY's September launch targeting recreational runners, forecast inventory availability during peak fitness season (August-November) and recommend reservation strategies against increased demand from wellness brands.",
-          "category": "Fitness Content Ecosystem",
+          "title": "Mobile vs Desktop Yield Gap Analysis",
+          "description": "Analyzing and addressing revenue per visitor gap between mobile and desktop traffic",
+          "query": "Our desktop traffic (30% of total) generates $2.50 RPM while mobile (70% of total) only generates $1.20 RPM. Desktop users view 3.2 pages per session vs 1.8 for mobile. Mobile ad viewability is 15% lower and CPMs are $3 lower on average. We're considering implementing AMP, adding more mobile-optimized ad formats, or adjusting mobile floor prices. What strategy would most effectively close this $0.90 RPM gap and increase our overall monthly revenue from current $28,000?",
+          "category": "Device Segmentation",
           "applicableCampaigns": [
-            "camp-35791",
-            "camp-12345"
+            "camp-mobile-opt",
+            "camp-device-gap"
           ],
-          "agentType": "inventoryoptimization"
+          "agentType": "YieldOptimizationAgent"
         },
         {
-          "title": "Premium Price Point Justification Strategy",
-          "description": "Position $140 ProductY against inflation concerns through premium content placement.",
-          "query": "Rising inflation affects consumer spending on premium products, challenging our $140 price point against $80-120 competitor shoes. StreamingPlatform's premium subscriber base (household income $75k+) aligns with our target but shows 15% price sensitivity increase. Design inventory strategy that positions ProductY's proprietary cushioning technology and sustainability as value propositions within luxury lifestyle and premium documentary content that justifies premium pricing.",
-          "category": "Premium Positioning Strategy",
+          "title": "Video Ad Placement Yield Optimization",
+          "description": "Optimizing video ad placement strategy to maximize completion rates and CPMs",
+          "query": "Our video content gets 100K monthly views with current pre-roll ads at $35 CPM but only 65% completion rate. We're considering: mid-roll ads (estimated $28 CPM, 80% completion), post-roll ads ($15 CPM, 45% completion), or outstream video in articles ($22 CPM, 70% completion). Our video content averages 4 minutes length. What combination of video ad placements would maximize revenue while maintaining user experience? Include impact analysis on our current $42K monthly video revenue.",
+          "category": "Video Ad Strategy",
           "applicableCampaigns": [
-            "camp-24680",
-            "camp-97531"
+            "camp-video-yield",
+            "camp-completion-opt"
           ],
-          "agentType": "mediaplanner"
-        },
-        {
-          "title": "Brand Trust Building for New Company",
-          "description": "Establish BrandX credibility through strategic influencer and authentic content partnerships.",
-          "query": "As a new brand, BrandX faces trust barriers in competing against established MajorBrandA/MajorBrandB. StreamingPlatform offers authentic storytelling opportunities through sports documentaries, runner profiles, and behind-the-scenes athletic content. How can we secure inventory placement that builds brand credibility through association with authentic athletic narratives while maintaining cost efficiency for a startup budget against enterprise competitor spending?",
-          "category": "Brand Authority Building",
-          "applicableCampaigns": [
-            "camp-12345",
-            "camp-35791"
-          ],
-          "agentType": "inventoryoptimization"
-        },
-        {
-          "title": "Six Colorway Campaign Personalization",
-          "description": "Leverage ProductY's six colorways for personalized streaming ad experiences.",
-          "query": "ProductY launches in 6 colorways targeting different style preferences within our urban professional audience. StreamingPlatform's personalization engine and viewing data can inform colorway targeting: minimalist professionals prefer black/white options, creative professionals engage with bold colors, sustainability-focused users prefer earth tones. Design dynamic creative strategy across streaming inventory that personalizes colorway presentation based on content consumption patterns.",
-          "category": "Dynamic Creative Optimization",
-          "applicableCampaigns": [
-            "camp-15937",
-            "camp-24680"
-          ],
-          "agentType": "adformatselector"
-        },
-        {
-          "title": "10,000 Pre-Order Inventory Optimization",
-          "description": "Drive pre-order conversions through performance-optimized streaming inventory.",
-          "query": "BrandX needs 10,000 pre-orders before September 15 launch to establish market credibility. Streaming platforms offer different conversion environments: StreamingPlatformA builds awareness but requires external conversion, while StreamingPlatformB enables direct shopping integration. With 45 days to launch, allocate inventory budget across awareness-building (StreamingPlatformA, StreamingPlatformB) versus conversion-driving (CommerceStreamingPlatform, connected retail) platforms to achieve pre-order targets efficiently.",
-          "category": "Conversion Funnel Optimization",
-          "applicableCampaigns": [
-            "camp-12345",
-            "camp-67890"
-          ],
-          "agentType": "inventoryoptimization"
-        },
-        {
-          "title": "Recreational Runner Community Targeting",
-          "description": "Reach recreational runners through community-focused streaming content.",
-          "query": "ProductY targets recreational runners (not elite athletes), requiring different content alignment than competitor campaigns. StreamingPlatform's community running content, local marathon documentaries, and \"everyday athlete\" programming offers authentic targeting opportunities. Unlike MajorBrand's elite athlete focus, position ProductY within accessible fitness content that resonates with weekend warriors and fitness enthusiasts rather than professional sports programming.",
-          "category": "Community Lifestyle Targeting",
-          "applicableCampaigns": [
-            "camp-35791",
-            "camp-12345"
-          ],
-          "agentType": "audiencestrategy"
-        },
-        {
-          "title": "2% Market Share Streaming Strategy",
-          "description": "Build systematic streaming presence to achieve premium segment market share goals.",
-          "query": "BrandX aims for 2% market share in premium running segment within first year, requiring sustained visibility against entrenched competitors. StreamingPlatformA, StreamingPlatformB, and StreamingPlatformC offer different audience reach and engagement patterns for athletic footwear. Design 12-month inventory strategy that builds from awareness (StreamingPlatform originals) to consideration (performance content) to purchase intent (shopping-enabled platforms) while maintaining competitive presence against major brand budgets.",
-          "category": "Market Share Strategy",
-          "applicableCampaigns": [
-            "camp-12345",
-            "camp-35791",
-            "camp-67890"
-          ],
-          "agentType": "inventoryoptimization"
-        },
-        {
-          "title": "Innovative Ad Format Testing",
-          "description": "Test ProductY's smart connectivity through innovative streaming ad experiences.",
-          "query": "ProductY's adaptive cushioning and smart tracking technology enables unique advertising experiences beyond traditional video ads. StreamingPlatformA and StreamingPlatformB support interactive ads, QR code integration, and second-screen experiences. Test innovative formats that demonstrate shoe technology: virtual try-on experiences, cushioning demonstrations, or connectivity showcases that differentiate from static competitor video ads and justify premium pricing through technology innovation.",
-          "category": "Innovation Showcase Formats",
-          "applicableCampaigns": [
-            "camp-67890",
-            "camp-86420"
-          ],
-          "agentType": "adformatselector"
-        },
-        {
-          "title": "Multi-Platform Attribution Strategy",
-          "description": "Track ProductY campaign performance across fragmented streaming ecosystem.",
-          "query": "Streaming audiences consume content across StreamingPlatformA, StreamingPlatformB, StreamingPlatformC, StreamingPlatformD, and StreamingPlatformE, creating attribution challenges for ProductY campaign measurement. Each platform offers different tracking capabilities and audience overlap varies 25-65% depending on demographics. Design measurement strategy that accurately attributes pre-orders, brand awareness lift, and market share progress across multi-platform streaming inventory while optimizing budget allocation based on true incremental performance.",
-          "category": "Cross-Platform Attribution",
-          "applicableCampaigns": [
-            "camp-12345",
-            "camp-35791",
-            "camp-67890"
-          ],
-          "agentType": "adloadoptimization"
-        },
-        {
-          "title": "Competitive Launch Window Defense",
-          "description": "Protect ProductY September launch against competitive interference.",
-          "query": "MajorBrandA and MajorBrandB historically launch counter-campaigns during competitor product releases, increasing bid pressure 2.5x and reducing available premium inventory by 40%. With ProductY's September 15 launch approaching, forecast competitive response scenarios across streaming platforms. Recommend inventory reservation strategies, alternative content categories, and budget flexibility approaches to maintain campaign visibility despite anticipated competitive interference from established brands.",
-          "category": "Competitive Defense Strategy",
-          "applicableCampaigns": [
-            "camp-12345",
-            "camp-67890"
-          ],
-          "agentType": "inventoryoptimization"
-        },
-        {
-          "title": "Premium Streaming Ad Load Balance",
-          "description": "Optimize ad frequency for premium streaming content without driving subscribers away.",
-          "query": "Our premium streaming platform faces increasing competition from ad-free services like StreamingPlatformA Premium and StreamingPlatformB. Current ad load is 4 ads per hour with 78% viewer retention, but we need to increase revenue per viewer by 25% to meet Q4 targets. ProductY's fitness content attracts high-value viewers (HHI $75k+) who are sensitive to ad interruptions. How can we optimize ad frequency and placement to increase revenue while maintaining premium viewer experience and preventing churn to ad-free competitors?",
-          "category": "Premium Ad Load Optimization",
-          "applicableCampaigns": [
-            "camp-35791",
-            "camp-24680"
-          ],
-          "agentType": "adloadoptimization"
-        },
-        {
-          "title": "Binge-Watching Ad Tolerance",
-          "description": "Dynamic ad load adjustment for marathon viewing sessions.",
-          "query": "Fitness content viewers often binge-watch workout series and wellness documentaries, with 45% watching 3+ episodes consecutively. During ProductY campaign periods, we observe viewer fatigue: Episode 1 (95% completion), Episode 2 (87% completion), Episode 3 (71% completion). Current uniform ad load of 3.2 ads per episode drives away marathon viewers. How can we dynamically adjust ad frequency and format during binge sessions to maintain engagement while maximizing revenue from extended viewing periods?",
-          "category": "Binge Session Optimization",
-          "applicableCampaigns": [
-            "camp-35791",
-            "camp-12345"
-          ],
-          "agentType": "adloadoptimization"
-        },
-        {
-          "title": "Content-Specific Ad Optimization",
-          "description": "Optimize ad placement based on content genre and viewer engagement patterns.",
-          "query": "ProductY's target content spans multiple genres with different ad tolerance levels: High-intensity workouts (2.1 ads/hour optimal), mindfulness content (4.2 ads/hour acceptable), documentaries (3.8 ads/hour), and product reviews (5.1 ads/hour tolerance). Our current one-size-fits-all approach uses 3.5 ads/hour across all content, leaving revenue on the table for some genres while over-loading others. How can we optimize ad placement and frequency based on content type, viewer state, and engagement patterns to maximize both revenue and viewer satisfaction?",
-          "category": "Content-Adaptive Ad Load",
-          "applicableCampaigns": [
-            "camp-67890",
-            "camp-86420"
-          ],
-          "agentType": "adloadoptimization"
+          "agentType": "YieldOptimizationAgent"
         }
       ],
-      "availableCampaigns": [
-        {
-          "id": "camp-12345",
-          "advertiser": "SportingGear Inc.",
-          "campaign": "Summer Sale 2025",
-          "budget": 50000,
-          "duration": 30,
-          "targetAudience": "sports_enthusiast",
-          "expectedMetrics": {
-            "roas": 3.5,
-            "ctr": 0.03,
-            "cvr": 0.04,
-            "impressions": 3750000
-          }
-        },
-        {
-          "id": "camp-67890",
-          "advertiser": "TechGadgets Pro",
-          "campaign": "Innovation Launch",
-          "budget": 45000,
-          "duration": 28,
-          "targetAudience": "tech_enthusiast",
-          "expectedMetrics": {
-            "roas": 2.8,
-            "ctr": 0.03,
-            "cvr": 0.04,
-            "impressions": 2750000
-          }
-        },
-        {
-          "id": "camp-35791",
-          "advertiser": "HealthyLiving",
-          "campaign": "Wellness Challenge",
-          "budget": 42000,
-          "duration": 32,
-          "targetAudience": "health_enthusiast",
-          "expectedMetrics": {
-            "roas": 3.8,
-            "ctr": 0.03,
-            "cvr": 0.05,
-            "impressions": 3650000
-          }
-        }
-      ],
-      "visualizations": [
-        {
-          "type": "metrics-visualization",
-          "visualizationType": "metrics",
-          "title": "Portfolio Overview",
-          "gridSpan": 2,
-          "data": {
-            "visualizationType": "metrics",
-            "title": "Portfolio Overview",
-            "subtitle": "Key Performance Indicators",
-            "metrics": [
-              {
-                "primaryLabel": "Portfolio Performance",
-                "secondaryLabel": "Core KPIs",
-                "items": [
-                  {
-                    "primaryLabel": "Revenue Forecast",
-                    "actualValue": "dynamic",
-                    "valueKey": "totalRevenueForecast",
-                    "format": "currency",
-                    "icon": "attach_money"
-                  },
-                  {
-                    "primaryLabel": "Portfolio Fill Rate",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageFillRate",
-                    "format": "percentage",
-                    "icon": "donut_small"
-                  },
-                  {
-                    "primaryLabel": "Yield Optimization",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageYieldOptimization",
-                    "format": "percentage",
-                    "icon": "trending_up"
-                  },
-                  {
-                    "primaryLabel": "Avg CPM Floor",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageCPMFloor",
-                    "format": "currency",
-                    "icon": "monetization_on"
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "type": "context-selector",
-          "title": "Publisher Selection",
-          "entityType": "publisher",
-          "displayFields": [
-            "name",
-            "tier",
-            "cpmFloor"
-          ],
-          "metricFields": [
-            "brandSafety",
-            "fillRateForecast"
-          ]
-        },
-        {
-          "type": "context-selector",
-          "title": "Campaign Selection",
-          "entityType": "campaign",
-          "displayFields": [
-            "campaign",
-            "advertiser",
-            "budget"
-          ],
-          "metricFields": [
-            "roas",
-            "ctr"
-          ]
-        }
-      ],
-      "contextData": {
-        "publishers": [
-          {
-            "id": "pub-streaming-001",
-            "name": "StreamVision Premium",
-            "tier": "Premium",
-            "cpmFloor": 18,
-            "brandSafety": 98,
-            "viewability": 95,
-            "availableInventory": 850000,
-            "demandPressure": 25,
-            "fillRateForecast": 92,
-            "seasonalMultiplier": 1.4,
-            "inventoryGrowth": 18,
-            "peakDemandPeriods": [
-              "7-11 PM",
-              "Weekends",
-              "Holiday Seasons"
-            ],
-            "yieldOptimization": 96,
-            "revenuePrediction": 250000,
-            "competitivePressure": 90,
-            "premiumInventoryShare": 45,
-            "dynamicPricingEnabled": true,
-            "revenueGrowthTarget": 30
-          },
-          {
-            "id": "pub-premium-001",
-            "name": "Premium News Network",
-            "tier": "Premium",
-            "cpmFloor": 8.5,
-            "brandSafety": 95,
-            "viewability": 88,
-            "availableInventory": 2300000,
-            "demandPressure": 15,
-            "fillRateForecast": 85,
-            "seasonalMultiplier": 1.2,
-            "inventoryGrowth": 10,
-            "peakDemandPeriods": [
-              "7-11 PM",
-              "Weekends"
-            ],
-            "yieldOptimization": 92,
-            "revenuePrediction": 120000,
-            "competitivePressure": 80,
-            "premiumInventoryShare": 30,
-            "dynamicPricingEnabled": true,
-            "revenueGrowthTarget": 20
-          },
-          {
-            "id": "pub-fitness-streaming",
-            "name": "FitStream Network",
-            "tier": "Standard",
-            "cpmFloor": 12.5,
-            "brandSafety": 92,
-            "viewability": 89,
-            "availableInventory": 1200000,
-            "demandPressure": 18,
-            "fillRateForecast": 88,
-            "seasonalMultiplier": 1.6,
-            "inventoryGrowth": 25,
-            "peakDemandPeriods": [
-              "6-8 AM",
-              "7-9 PM",
-              "Weekends"
-            ],
-            "yieldOptimization": 89,
-            "revenuePrediction": 180000,
-            "competitivePressure": 65,
-            "premiumInventoryShare": 25,
-            "dynamicPricingEnabled": true,
-            "revenueGrowthTarget": 35
-          }
-        ],
-        "campaigns": [
-          {
-            "id": "camp-12345",
-            "advertiser": "SportingGear Inc.",
-            "campaign": "Summer Sale 2025",
-            "budget": 50000,
-            "duration": 30,
-            "targetAudience": "sports_enthusiast",
-            "expectedMetrics": {
-              "roas": 3.5,
-              "ctr": 0.03,
-              "cvr": 0.04,
-              "impressions": 3750000
-            }
-          },
-          {
-            "id": "camp-67890",
-            "advertiser": "TechGadgets Pro",
-            "campaign": "Innovation Launch",
-            "budget": 45000,
-            "duration": 28,
-            "targetAudience": "tech_enthusiast",
-            "expectedMetrics": {
-              "roas": 2.8,
-              "ctr": 0.03,
-              "cvr": 0.04,
-              "impressions": 2750000
-            }
-          },
-          {
-            "id": "camp-35791",
-            "advertiser": "HealthyLiving",
-            "campaign": "Wellness Challenge",
-            "budget": 42000,
-            "duration": 32,
-            "targetAudience": "health_enthusiast",
-            "expectedMetrics": {
-              "roas": 3.8,
-              "ctr": 0.03,
-              "cvr": 0.05,
-              "impressions": 3650000
-            }
-          }
-        ],
-        "content": [
-          {
-            "id": "content-fitness-docs",
-            "title": "Premium Fitness Documentaries",
-            "category": "Health & Fitness",
-            "audience_size": 1800000,
-            "engagement_rate": 89,
-            "brand_safety_score": 95,
-            "demographics": "Health-conscious professionals, 25-45",
-            "cpm_potential": 16.5,
-            "completion_rate": 92,
-            "seasonal_multiplier": 1.3,
-            "content_themes": [
-              "Wellness",
-              "Athletic Performance",
-              "Nutrition"
-            ],
-            "advertiser_alignment": [
-              "Sports Brands",
-              "Health Products",
-              "Fitness Equipment"
-            ],
-            "optimal_formats": [
-              "Pre-roll Video",
-              "Native Content",
-              "Interactive Ads"
-            ]
-          },
-          {
-            "id": "content-tech-reviews",
-            "title": "Technology Product Reviews",
-            "category": "Technology",
-            "audience_size": 2200000,
-            "engagement_rate": 85,
-            "brand_safety_score": 88,
-            "demographics": "Tech enthusiasts, 22-40",
-            "cpm_potential": 14.25,
-            "completion_rate": 87,
-            "seasonal_multiplier": 1.1,
-            "content_themes": [
-              "Innovation",
-              "Product Testing",
-              "Tech Trends"
-            ],
-            "advertiser_alignment": [
-              "Tech Companies",
-              "Electronics",
-              "Software"
-            ],
-            "optimal_formats": [
-              "Display Ads",
-              "Video Reviews",
-              "Sponsored Content"
-            ]
-          },
-          {
-            "id": "content-streaming-originals",
-            "title": "Premium Streaming Originals",
-            "category": "Entertainment",
-            "audience_size": 3500000,
-            "engagement_rate": 94,
-            "brand_safety_score": 97,
-            "demographics": "Premium subscribers, 28-55",
-            "cpm_potential": 22.75,
-            "completion_rate": 96,
-            "seasonal_multiplier": 1.2,
-            "content_themes": [
-              "Original Series",
-              "Exclusive Content",
-              "Premium Entertainment"
-            ],
-            "advertiser_alignment": [
-              "Luxury Brands",
-              "Premium Products",
-              "High-End Services"
-            ],
-            "optimal_formats": [
-              "Mid-roll Video",
-              "Branded Content",
-              "Premium Placements"
-            ]
-          }
-        ],
-        "inventoryMetrics": {
-          "totalInventory": 5350000,
-          "averageCPMFloor": 13,
-          "averageFillRate": 88.3,
-          "averageYieldOptimization": 92.3,
-          "totalRevenueForecast": 550000
-        },
-        "mediaMetrics": {
-          "totalBudget": 137000,
-          "activeChannels": 3,
-          "averageCPM": 15.25,
-          "totalReach": 9700000,
-          "inventoryUtilization": 91,
-          "advertiserSatisfaction": 89
-        },
-        "agentCapabilities": [
-          "Streaming inventory forecasting and demand prediction",
-          "Connected TV and premium video yield optimization",
-          "Cross-platform attribution and measurement",
-          "Dynamic pricing and floor optimization",
-          "Competitive intelligence for streaming marketplace",
-          "Seasonal demand pattern analysis",
-          "Premium content monetization strategy",
-          "Brand safety and viewability optimization for video content"
-        ]
-      }
+      "availableCampaigns": [],
+      "visualizations": [],
+      "contextData": {}
     }
   }
 }

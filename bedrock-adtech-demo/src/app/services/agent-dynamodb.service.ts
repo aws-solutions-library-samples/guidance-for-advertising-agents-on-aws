@@ -70,6 +70,8 @@ export interface AgentConfiguration {
   mcp_servers?: MCPServerConfig[];
   /** Optional runtime ARN override for this agent (if different from the default shared ARN) */
   runtime_arn?: string;
+  /** Knowledge base name this agent uses for RAG (maps to knowledge_bases in global config) */
+  knowledge_base?: string;
 }
 
 /**
@@ -428,6 +430,25 @@ export class AgentDynamoDBService {
       
       // Update agent in global config
       globalConfig.agent_configs[agent.agent_name] = agent;
+      
+      // Sync color to configured_colors so it's picked up by agent-config.service
+      if (agent.color) {
+        if (!globalConfig.configured_colors) {
+          globalConfig.configured_colors = {};
+        }
+        globalConfig.configured_colors[agent.agent_name] = agent.color;
+      }
+      
+      // Sync knowledge_base to knowledge_bases map
+      if (!globalConfig.knowledge_bases) {
+        globalConfig.knowledge_bases = {};
+      }
+      if (agent.knowledge_base) {
+        globalConfig.knowledge_bases[agent.agent_name] = agent.knowledge_base;
+      } else {
+        // Remove entry if knowledge_base was cleared
+        delete globalConfig.knowledge_bases[agent.agent_name];
+      }
       
       // Save updated global config
       const saved = await this.saveGlobalConfig(globalConfig);

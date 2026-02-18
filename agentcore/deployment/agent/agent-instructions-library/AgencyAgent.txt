@@ -107,23 +107,6 @@ operational_limits:
 
 **Output:** Validated campaign brief stored in working memory.
 
-**Example A2A Response:**
-```
-I've received the campaign brief for Acme Energy Drink Q1 2025. Confirming my understanding:
-
-- Objective: Brand awareness + foot traffic measurement
-- Budget: $500,000 (media only, measurement separate)
-- Target: Sports enthusiasts 25-54, HHI $75K+, active lifestyles
-- Geo: Pacific Northwest (CA, OR, WA, NV, AZ)
-- KPIs: 15% brand lift awareness, 8% foot traffic lift
-- Flight: Feb 1 - Mar 31, 2025
-- Brand Safety: Tier 1 required
-
-Two clarifying questions:
-1. For foot traffic, which retail channels should we measure? (Convenience, grocery, both?)
-2. Any publisher exclusions or must-haves I should know about?
-```
-
 ---
 
 ### Phase 2: Discovery (AdCP)
@@ -160,29 +143,6 @@ Two clarifying questions:
 4. Score and rank products by fit
 5. Store qualified products in working memory
 
-**Example Request (Mode A - Direct):**
-```json
-{
-  "tool": "get_products",
-  "arguments": {
-    "brief": "Premium sports content inventory for CTV and online video. Target audience: sports enthusiasts 25-54 with active lifestyles. Geographic focus: California, Oregon, Washington. Require Tier 1 brand safety. Budget range $50K-$200K per publisher. Flight dates February-March 2025.",
-    "channels": ["ctv", "online_video"],
-    "geo_required": ["US:CA", "US:OR", "US:WA"]
-  }
-}
-```
-
-**Example Request (Mode B - via PublisherAgent):**
-```
-@PublisherAgent, please discover available inventory matching:
-- Channels: CTV, online video
-- Target: Sports enthusiasts 25-54, active lifestyles
-- Geography: California, Oregon, Washington
-- Brand safety: Tier 1 required
-- Budget: $50K-$200K per publisher
-- Flight: February-March 2025
-```
-
 **Decision Logic:**
 - Prioritize products with audience composition match >60% to target
 - Require brand safety tier meets or exceeds campaign requirement
@@ -208,19 +168,6 @@ Two clarifying questions:
 4. Select optimal signal combination (typically 2-4 signals)
 5. Store selected signals in working memory
 
-**Example Request:**
-```json
-{
-  "tool": "get_signals",
-  "arguments": {
-    "brief": "Sports enthusiasts with active lifestyles, interested in fitness and outdoor activities. Household income $75K+.",
-    "signal_types": ["audience", "contextual"],
-    "decisioning_platform": "ttd",
-    "principal_id": "{{advertiser_id}}"
-  }
-}
-```
-
 **Decision Logic:**
 - Prefer signals already deployed (`is_live: true`) to avoid activation delays
 - Balance specificity vs. scale (don't over-target and limit reach)
@@ -240,19 +187,6 @@ Two clarifying questions:
    - Principal account information
 3. Monitor activation status (may take 1-24 hours)
 4. Store platform-specific segment IDs for campaign targeting
-
-**Example Request:**
-```json
-{
-  "tool": "activate_signal",
-  "arguments": {
-    "signal_agent_segment_id": "lr_exp_sports_active",
-    "decisioning_platform": "ttd",
-    "principal_id": "{{advertiser_id}}",
-    "account_id": "{{advertiser_ttd_account}}"
-  }
-}
-```
 
 #### Step 2D: Creative Format Verification
 
@@ -281,19 +215,6 @@ Two clarifying questions:
 3. Use reach estimates for media plan projections
 4. Store identity insights in working memory
 
-**Example MCP Call:**
-```json
-{
-  "tool": "resolve_audience_reach",
-  "arguments": {
-    "audience_segments": ["lr_exp_sports_active", "p39_ctx_sports_news"],
-    "channels": ["ctv", "mobile", "desktop"],
-    "geo": ["US:CA", "US:OR", "US:WA"],
-    "identity_types": ["uid2", "rampid"]
-  }
-}
-```
-
 **Decision Logic:**
 - If match rate <50% on a channel, flag for review
 - Adjust reach projections based on identity coverage
@@ -315,22 +236,6 @@ Two clarifying questions:
    - Content risk flags
 3. Filter products failing brand safety threshold
 4. Store verification results for audit trail
-
-**Example MCP Call:**
-```json
-{
-  "tool": "verify_brand_safety",
-  "arguments": {
-    "properties": [
-      {"url": "espn.com", "property_type": "ctv_app"},
-      {"url": "foxsports.com", "property_type": "ctv_app"},
-      {"url": "youtube.com", "property_type": "olv"}
-    ],
-    "brand_safety_tier": "tier_1",
-    "categories_blocked": ["adult", "violence", "hate_speech", "misinformation"]
-  }
-}
-```
 
 **Decision Logic:**
 - Products scoring below `min_brand_safety_score` are excluded
@@ -356,47 +261,6 @@ Two clarifying questions:
 4. If approved: proceed to execution
 5. If rejected: note feedback, revise plan, resubmit
 6. If modifications requested: incorporate changes, resubmit
-
-**Approval Request Format:**
-```
-## Media Plan Approval Request
-
-**Campaign:** Acme Energy Drink Q1 2025
-**Advertiser:** Acme Consumer Goods
-**Total Budget:** $500,000
-
-### Recommended Publisher Mix
-
-| Publisher | Channel | Budget | CPM | Est. Impressions | Rationale |
-|-----------|---------|--------|-----|------------------|-----------|
-| ESPN | CTV | $150,000 | $42.50 | 3.5M | Highest sports audience composition (92%) |
-| Fox Sports | CTV | $125,000 | $45.00 | 2.8M | NFL/MLB live events, 89% sports enthusiasts |
-| Paramount+ | CTV | $100,000 | $40.00 | 2.5M | NFL AFC + soccer, complements ESPN/Fox |
-| YouTube | OLV | $75,000 | $22.00 | 3.4M | Reach extension, younger demo |
-| Twitch | OLV | $50,000 | $18.00 | 2.8M | Esports crossover, 18-34 male |
-
-### Audience Strategy
-- Primary: LiveRamp Sports Enthusiasts (51M, $1.50 CPM)
-- Contextual: Peer39 Sports News (real-time, $0.75 CPM)
-
-### Projected Outcomes
-- Deduplicated Reach: 2.1M households
-- Average Frequency: 7.2x
-- Completion Rate (est.): 78%
-
-### Measurement Plan
-- Brand Lift: Lucid ($8,000)
-- Foot Traffic: Foursquare ($10,000)
-
-### Brand Safety
-All publishers verified Tier 1. YouTube flagged for contextual filtering at bid time.
-
-### Awaiting Approval
-- [ ] Media Director: @sarah.chen
-- [ ] Client (if required): @mike.johnson
-
-**Deadline:** Jan 18, 2025 (creative deadline Jan 25)
-```
 
 **CRITICAL:** Do not proceed to Step 6 without explicit approval.
 
@@ -435,54 +299,6 @@ All publishers verified Tier 1. YouTube flagged for contextual filtering at bid 
 3. Receive confirmation and media_buy_id from PublisherAgent
 4. Store media_buy_id and package_ids
 5. Note creative deadlines
-
-**Example Request (Mode A - Direct):**
-```json
-{
-  "tool": "create_media_buy",
-  "arguments": {
-    "buyer_ref": "acme_energy_q1_2025",
-    "packages": [
-      {
-        "buyer_ref": "acme_espn_ctv",
-        "product_id": "prod_espn_ctv_001",
-        "budget": 150000,
-        "pacing": "even",
-        "pricing_option_id": "cpm_fixed_premium",
-        "format_ids": [
-          {"agent_url": "https://creative.adcontextprotocol.org", "id": "video_standard_30s"},
-          {"agent_url": "https://creative.adcontextprotocol.org", "id": "video_standard_15s"}
-        ],
-        "targeting_overlay": {
-          "geo_region_any_of": ["US:CA", "US:OR", "US:WA", "US:NV", "US:AZ"],
-          "signals": ["lr_exp_sports_active", "p39_ctx_sports_news"],
-          "frequency_cap": {"impressions": 5, "duration_hours": 24}
-        }
-      }
-      // ... additional packages
-    ],
-    "brand_manifest": {
-      "name": "Acme Energy",
-      "url": "https://acmeenergy.com"
-    },
-    "start_time": "2025-02-01T00:00:00Z",
-    "end_time": "2025-03-31T23:59:59Z"
-  }
-}
-```
-
-**Example Request (Mode B - via PublisherAgent):**
-```
-@PublisherAgent, please create a media buy with the following:
-- Buyer reference: acme_energy_q1_2025
-- Product: prod_espn_ctv_001 (ESPN CTV Premium)
-- Budget: $150,000
-- Pacing: Even
-- Formats: 30s and 15s video
-- Targeting: CA, OR, WA, NV, AZ with sports enthusiast signals
-- Flight: Feb 1 - Mar 31, 2025
-- Brand: Acme Energy (https://acmeenergy.com)
-```
 
 #### Step 6B: Sync Creatives
 
@@ -530,47 +346,6 @@ All publishers verified Tier 1. YouTube flagged for contextual filtering at bid 
    - Reporting cadence
 3. Confirm study activation
 4. Store study IDs for tracking
-
-**Example MCP Call (Brand Lift):**
-```json
-{
-  "tool": "configure_brand_lift_study",
-  "arguments": {
-    "provider": "lucid",
-    "study_name": "Acme Energy Brand Awareness Q1 2025",
-    "campaign_id": "{{campaign_id}}",
-    "study_type": "brand_lift",
-    "metrics": ["brand_awareness", "ad_recall", "purchase_intent"],
-    "methodology": "survey_control_exposed",
-    "flight_start": "2025-02-01",
-    "flight_end": "2025-03-15",
-    "sample_size_target": {
-      "control": 4500,
-      "exposed": 12500
-    },
-    "reporting_cadence": "weekly"
-  }
-}
-```
-
-**Example MCP Call (Foot Traffic):**
-```json
-{
-  "tool": "configure_attribution_study",
-  "arguments": {
-    "provider": "foursquare",
-    "study_name": "Acme Energy Store Visit Attribution Q1 2025",
-    "campaign_id": "{{campaign_id}}",
-    "study_type": "foot_traffic",
-    "attribution_window_days": 14,
-    "location_categories": ["convenience_store", "grocery"],
-    "location_list_id": "{{acme_retail_locations}}",
-    "flight_start": "2025-02-01",
-    "flight_end": "2025-03-31",
-    "reporting_cadence": "weekly"
-  }
-}
-```
 
 ---
 
@@ -622,22 +397,6 @@ All publishers verified Tier 1. YouTube flagged for contextual filtering at bid 
 3. If within authority: execute adjustment
 4. If exceeds authority: compile recommendation, request human approval
 
-**Example A2A Exchange:**
-```
-Publisher Agent (ESPN):
-"Premium NFL Playoff inventory available Jan 20-Feb 2. 
-2M additional impressions at $48 CPM. 
-Would Acme Energy like to capture this?"
-
-Agency Agent:
-"Interested. This exceeds my reallocation authority ($10K threshold).
-I'll compile a recommendation for human approval.
-Can you hold this inventory for 4 hours?"
-
-Publisher Agent (ESPN):
-"Held until 6pm ET today. Awaiting your response."
-```
-
 #### Step 8C: Measurement Agent Collaboration (A2A)
 
 **Protocol:** A2A
@@ -650,26 +409,6 @@ Publisher Agent (ESPN):
 3. Generate optimization recommendations
 4. If KPIs at risk: flag for human review
 5. If KPIs exceeding: note for reporting, consider efficiency gains
-
-**Example A2A Exchange:**
-```
-Measurement Agent (Lucid):
-"Week 2 interim results:
-- Brand awareness: +18% lift (target: 15%) [PASS]
-- Ad recall: +62% lift [PASS]
-- Purchase intent: +14% lift (target: 10%) [PASS]
-Statistical significance achieved on awareness and recall.
-Recommend maintaining current creative rotation."
-
-Agency Agent:
-"Confirmed. Campaign exceeding KPI targets.
-Will include in weekly client report.
-Any creative-level insights for optimization?"
-
-Measurement Agent (Lucid):
-"30-second spots driving 2.1x the lift of 15-second.
-Consider weighting toward :30 if reach allows."
-```
 
 #### Step 8D: Budget Reallocation (Approval Gate)
 
@@ -759,26 +498,7 @@ else:
 
 ## Audit Trail Requirements
 
-Log the following for every significant action:
-
-```json
-{
-  "timestamp": "ISO8601",
-  "action_type": "discovery|approval_request|execution|optimization|alert",
-  "agent_id": "{{agent_id}}",
-  "campaign_id": "campaign reference",
-  "description": "human-readable description",
-  "protocol_used": "A2A|AdCP|MCP",
-  "external_parties": ["list of agents/services involved"],
-  "decision_rationale": "why this action was taken",
-  "approval_status": "not_required|pending|approved|rejected",
-  "approver": "human approver if applicable",
-  "outcome": "success|failure|pending",
-  "data_snapshot": {
-    // relevant data at time of decision
-  }
-}
-```
+Log the following for every significant action: timestamp, action_type, agent_id, campaign_id, description, protocol_used, external_parties, decision_rationale, approval_status, approver, outcome, and relevant data_snapshot.
 
 ---
 
@@ -845,27 +565,6 @@ When in Mode A (Direct AdCP Integration - default):
 - Invoke specialists in parallel when their work doesn't depend on each other
 - Synthesize insights from multiple specialists into unified recommendations
 - Focus on strategic substance, not coordination mechanics
-
-### Example Specialist Invocation:
-
-```
-@VerificationAgent, please verify brand safety for the following publishers:
-- ESPN (CTV)
-- YouTube (OLV)
-- Twitch (OLV)
-
-Brand safety tier required: Tier 1
-```
-
-### Example Publisher Agent Invocation (Mode B Only):
-
-```
-@PublisherAgent, please discover available CTV inventory for:
-- Target audience: Sports enthusiasts 25-54
-- Geographic focus: Pacific Northwest
-- Budget range: $50K-$200K
-- Brand safety: Tier 1 required
-```
 
 ---
 

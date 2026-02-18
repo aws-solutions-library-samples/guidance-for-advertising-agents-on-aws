@@ -183,6 +183,8 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   private sonicAudioQueue: Uint8Array[] = [];
   private sonicIsPlaying = false;
   private sonicResponseText = ''; // Accumulate text-response chunks
+  private pendingVoiceRouting: { agentName: string; query: string } | null = null;
+  private lastVoiceQuery = ''; // Track the user's last voice query for fallback routing
 
   // Sources modal support
   showSourcesModal = false;
@@ -6353,6 +6355,7 @@ ${formattedJson}
       let agentCards: any[] = [];
       try {
         agentCards = await this.agentDynamoDBService.getAllAgents();
+        console.log(`🎤 Voice: Loaded ${agentCards.length} agent cards for tool-use routing`);
       } catch (err) {
         console.warn('Could not load agent cards for voice routing, falling back to text-only mode:', err);
       }
@@ -6399,6 +6402,7 @@ ${formattedJson}
       case 'final-transcript':
         // Final user transcript — add as a user message in the chat
         if (event.text && event.text.trim()) {
+          this.lastVoiceQuery = event.text.trim(); // Save for fallback routing
           const userVoiceMessage: Message = {
             id: `voice-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             text: event.text.trim(),
@@ -6419,15 +6423,24 @@ ${formattedJson}
         break;
 
       case 'tool-use':
-        // Agent routing via tool use — extract agentName and query, invoke the agent
+        // Agent routing via tool use — the Nova Sonic service already sent the
+        // tool result back on the stream, so the model will produce a spoken
+        // acknowledgement. We store the pending routing info and let the
+        // text-response / audio-response handlers pick it up. After the model
+        // finishes speaking, we route to the agent.
         if (event.toolUse && event.toolUse.toolName === 'route_to_agent') {
           const { agentName, query } = event.toolUse.parameters;
-          this.handleVoiceAgentRouting(agentName, query);
+          // Stash the pending voice routing so we can invoke the agent after
+          // the model's spoken response completes
+          this.pendingVoiceRouting = { agentName, query };
+          console.log(`🎤 Voice tool-use: will route to "${agentName}" after model responds`);
         }
         break;
 
       case 'text-response':
-        // Assistant text response — create a message in the chat messages area
+        // Accumulate streamed text chunks — do NOT stop the session here.
+        // Nova Sonic streams text incrementally; stopping on the first chunk
+        // would kill the session before tool-use events can arrive.
         if (event.text) {
           this.sonicResponseText += event.text;
           const agentForMessage = this.lastAgent || this.selectedAgentForMessage;
@@ -6444,7 +6457,6 @@ ${formattedJson}
           // Replace existing sonic message or add new one
           const existingSonicIdx = this.messages.findIndex(m => m.id.startsWith('voice-agent-'));
           if (existingSonicIdx >= 0 && this.messages[existingSonicIdx].id.startsWith('voice-agent-')) {
-            // Update the last voice-agent message in place
             const updated = [...this.messages];
             updated[existingSonicIdx] = sonicMessage;
             this.messages = updated;
@@ -6455,14 +6467,40 @@ ${formattedJson}
           this.bedrockService.updateChatMessages(this.messages);
           this.shouldScrollToBottom = true;
           this.changeDetectorRef.detectChanges();
-
-          // If no audio data comes through, use browser TTS as fallback
-          if (this.sonicAudioQueue.length === 0) {
-            this.speakWithBrowserTTS(this.sonicResponseText);
-          }
         }
-        // Stop the session after receiving the text response
+        break;
+
+      case 'turn-complete':
+        // Model finished its turn (completionEnd received). Now it's safe to
+        // stop the session and route to an agent if tool-use was triggered.
+        console.log('🎤 Voice turn complete — stopping session and routing');
+
+        // Use browser TTS as fallback if no audio was received
+        if (this.sonicResponseText && this.sonicAudioQueue.length === 0) {
+          this.speakWithBrowserTTS(this.sonicResponseText);
+        }
+
         this.stopVoiceRecording();
+
+        // If there's a pending voice routing (from a tool-use event), invoke the agent now
+        if (this.pendingVoiceRouting) {
+          const { agentName, query } = this.pendingVoiceRouting;
+          this.pendingVoiceRouting = null;
+          this.handleVoiceAgentRouting(agentName, query);
+        } else if (this.lastVoiceQuery) {
+          // Fallback: model didn't use the tool, try to match an agent from the response text
+          console.log('🎤 Voice fallback: no tool-use event, attempting agent match from response text');
+          const matchedAgent = this.tryMatchAgentFromText(this.sonicResponseText);
+          if (matchedAgent) {
+            console.log(`🎤 Voice fallback: matched agent "${matchedAgent}" from response text`);
+            this.handleVoiceAgentRouting(matchedAgent, this.lastVoiceQuery);
+          } else {
+            console.log('🎤 Voice fallback: no agent matched, placing query in input');
+            this.currentMessage = this.lastVoiceQuery;
+            this.changeDetectorRef.detectChanges();
+          }
+          this.lastVoiceQuery = '';
+        }
         break;
 
       case 'audio-response':
@@ -6479,7 +6517,31 @@ ${formattedJson}
         break;
 
       case 'complete':
-        this.stopVoiceRecording();
+        // Stream ended — if we haven't already routed via turn-complete, do it now
+        if (this.pendingVoiceRouting) {
+          const { agentName, query } = this.pendingVoiceRouting;
+          this.pendingVoiceRouting = null;
+          this.stopVoiceRecording();
+          this.handleVoiceAgentRouting(agentName, query);
+        } else if (this.lastVoiceQuery) {
+          // Fallback: model didn't use the tool, try to match an agent from the response text
+          console.log('🎤 Voice complete fallback: no tool-use event, attempting agent match from response text');
+          const matchedAgent = this.tryMatchAgentFromText(this.sonicResponseText);
+          if (matchedAgent) {
+            console.log(`🎤 Voice complete fallback: matched agent "${matchedAgent}" from response text`);
+            this.stopVoiceRecording();
+            this.handleVoiceAgentRouting(matchedAgent, this.lastVoiceQuery);
+          } else {
+            // No agent matched — put the query in the input and let the user pick
+            console.log('🎤 Voice complete fallback: no agent matched, placing query in input');
+            this.stopVoiceRecording();
+            this.currentMessage = this.lastVoiceQuery;
+            this.changeDetectorRef.detectChanges();
+          }
+          this.lastVoiceQuery = '';
+        } else {
+          this.stopVoiceRecording();
+        }
         break;
     }
   }
@@ -6550,6 +6612,8 @@ ${formattedJson}
    * Resolves the EnrichedAgent by name and invokes it with the transcribed query.
    */
   private handleVoiceAgentRouting(agentName: string, query: string): void {
+    console.log(`🎤 Voice routing: agent="${agentName}", query="${query.substring(0, 80)}..."`);
+
     // Stop the voice session first
     this.stopVoiceRecording();
 
@@ -6562,10 +6626,46 @@ ${formattedJson}
       return;
     }
 
-    // Set the message and invoke via the existing sendMessage flow
-    this.currentMessage = query;
+    console.log(`🎤 Voice routing: Resolved to "${resolvedAgent.name}" (display: "${resolvedAgent.displayName}")`);
+
+    // Prepend @[AgentName] to the query so the existing sendMessage flow
+    // picks up the agent mention via parseAgentMentions and sets
+    // directMentionTarget correctly in invokeAgentWithStreaming.
+    // This mirrors how a user types "@[AgentName] ..." or how scenarios invoke agents.
+    const agentMentionName = resolvedAgent.name || agentName;
+    this.currentMessage = `@[${agentMentionName}] ${query}`;
     this.changeDetectorRef.detectChanges();
     this.sendMessage(resolvedAgent);
+  }
+
+  /**
+   * Fallback: try to match an agent name from Nova Sonic's text response.
+   * When the model doesn't use the route_to_agent tool but mentions an agent
+   * by name in its spoken response, we can still route to that agent.
+   */
+  private tryMatchAgentFromText(responseText: string): string | null {
+    if (!responseText) return null;
+
+    const textLower = responseText.toLowerCase();
+    const agents = this.agentConfig.getEnrichedAgents();
+
+    // Try to match agent names (longest match first to avoid partial matches)
+    const sortedAgents = [...agents].sort((a, b) =>
+      (b.displayName?.length || 0) - (a.displayName?.length || 0)
+    );
+
+    for (const agent of sortedAgents) {
+      // Check display name (e.g. "Creative Selection Agent")
+      if (agent.displayName && textLower.includes(agent.displayName.toLowerCase())) {
+        return agent.name;
+      }
+      // Check agent name/key (e.g. "CreativeSelectionAgent")
+      if (agent.name && textLower.includes(agent.name.toLowerCase())) {
+        return agent.name;
+      }
+    }
+
+    return null;
   }
 
   private stopVoiceRecording(): void {
@@ -6590,6 +6690,7 @@ ${formattedJson}
     this.sonicAudioQueue = [];
     this.sonicIsPlaying = false;
     this.sonicResponseText = '';
+    // Don't clear pendingVoiceRouting here — it's consumed after stopVoiceRecording in text-response handler
 
     // Also clean up legacy transcribe subscription if present
     if (this.transcriptionSubscription) {

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ViewChild, ChangeDetectorRef, NgZone } from '@angular/core';
 import { AgentDynamoDBService } from '../../services/agent-dynamodb.service';
 import { AgentConfigService } from '../../services/agent-config.service';
 import { BedrockService } from '../../services/bedrock.service';
@@ -70,6 +70,8 @@ export interface AgentConfiguration {
   mcp_servers?: MCPServerConfig[];
   /** Optional runtime ARN override for this agent (if different from the default shared ARN) */
   runtime_arn?: string;
+  /** Knowledge base name this agent uses for RAG (maps to knowledge_bases in global config) */
+  knowledge_base?: string;
 }
 
 /**
@@ -115,10 +117,13 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   private configuredColors: Record<string, string> = {};
 
   constructor(
-    private agentDynamoDBService: AgentDynamoDBService,
-    private agentConfigService: AgentConfigService,
-    private bedrockService: BedrockService
-  ) {}
+      private agentDynamoDBService: AgentDynamoDBService,
+      private agentConfigService: AgentConfigService,
+      private bedrockService: BedrockService,
+      private cdr: ChangeDetectorRef,
+      private ngZone: NgZone
+    ) {}
+
 
   ngOnInit(): void {}
 
@@ -171,10 +176,21 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
         // Get agents from global config
         this.agents = Object.values(globalConfig.agent_configs || {});
         
-        // Enrich agents with colors from configured_colors if not already set
+        // Enrich agents with safe defaults for all fields that the template accesses
+        // Agents from DynamoDB may be missing optional fields which can crash Angular rendering
+        const knowledgeBases = globalConfig.knowledge_bases || {};
         this.agents = this.agents.map(agent => ({
           ...agent,
-          color: agent.color || this.configuredColors[agent.agent_name] || '#6842ff'
+          agent_id: agent.agent_id || '',
+          agent_name: agent.agent_name || '',
+          agent_display_name: agent.agent_display_name || '',
+          team_name: agent.team_name || '',
+          agent_description: agent.agent_description || '',
+          tool_agent_names: agent.tool_agent_names || [],
+          external_agents: agent.external_agents || [],
+          agent_tools: agent.agent_tools || [],
+          color: agent.color || this.configuredColors[agent.agent_name] || '#6842ff',
+          knowledge_base: agent.knowledge_base || knowledgeBases[agent.agent_name] || ''
         }));
       } else {
         // Fallback to getAllAgents if global config not available
@@ -203,29 +219,68 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
    * Validates: Requirements 3.1, 7.2 - Pre-populate fields and load instructions from DynamoDB
    */
   async editAgent(agent: AgentConfiguration): Promise<void> {
-    this.isLoading = true;
-    this.errorMessage = null;
-    
-    try {
-      // Deep clone the agent to avoid mutating the original
-      this.selectedAgent = JSON.parse(JSON.stringify(agent));
-      
-      // Load instructions from DynamoDB
-      // Validates: Requirement 7.2 - Fetch instructions from DynamoDB (pk: INSTRUCTION#{agent_name})
-      const instructions = await this.agentDynamoDBService.getAgentInstructions(agent.agent_name);
-      if (instructions && this.selectedAgent) {
-        this.selectedAgent.instructions = instructions;
+      this.isLoading = true;
+      this.errorMessage = null;
+
+      try {
+        // Deep clone the agent to avoid mutating the original
+        this.selectedAgent = JSON.parse(JSON.stringify(agent));
+
+        // Ensure safe defaults on the cloned agent before passing to editor
+        if (this.selectedAgent) {
+          this.selectedAgent.agent_id = this.selectedAgent.agent_id || '';
+          this.selectedAgent.agent_name = this.selectedAgent.agent_name || '';
+          this.selectedAgent.agent_display_name = this.selectedAgent.agent_display_name || '';
+          this.selectedAgent.team_name = this.selectedAgent.team_name || '';
+          this.selectedAgent.agent_description = this.selectedAgent.agent_description || '';
+          this.selectedAgent.tool_agent_names = this.selectedAgent.tool_agent_names || [];
+          this.selectedAgent.external_agents = this.selectedAgent.external_agents || [];
+          this.selectedAgent.agent_tools = this.selectedAgent.agent_tools || [];
+          // Start with empty instructions — loaded asynchronously after editor renders
+          this.selectedAgent.instructions = '';
+          this.selectedAgent.color = this.selectedAgent.color || '#6842ff';
+          this.selectedAgent.injectable_values = this.selectedAgent.injectable_values || {};
+          this.selectedAgent.mcp_servers = this.selectedAgent.mcp_servers || [];
+          this.selectedAgent.runtime_arn = this.selectedAgent.runtime_arn || '';
+        }
+
+        // Show editor immediately with empty instructions
+        this.isEditing = true;
+        this.isAddingNew = false;
+        this.isLoading = false;
+        this.cdr.detectChanges(); // Force render the editor with empty instructions
+
+        // Load instructions from DynamoDB AFTER the editor has rendered.
+        // Large instructions (20KB+) were crashing the browser when loaded synchronously
+        // because Angular's change detection + textarea binding would OOM the renderer.
+        // We defer the fetch and use NgZone.run to ensure Angular picks up the change.
+        setTimeout(() => {
+          this.ngZone.run(async () => {
+            try {
+              const instructions = await this.agentDynamoDBService.getAgentInstructions(agent.agent_name);
+              if (instructions && this.selectedAgent && this.isEditing && this.editorPanel) {
+                // Push instructions directly into the editor's textarea model
+                // instead of reassigning selectedAgent (which re-triggers initializeForm)
+                this.editorPanel.editingAgent.instructions = instructions;
+                this.selectedAgent.instructions = instructions;
+                this.cdr.detectChanges();
+              }
+            } catch (instrError) {
+              console.error('Error loading agent instructions:', instrError);
+              // Non-fatal: editor still works, just without instructions
+            }
+          });
+        }, 100);
+
+      } catch (error) {
+        console.error('Error loading agent for editing:', error);
+        this.errorMessage = 'Failed to load agent details. Please try again.';
+        this.isLoading = false;
       }
-      
-      this.isEditing = true;
-      this.isAddingNew = false;
-    } catch (error) {
-      console.error('Error loading agent for editing:', error);
-      this.errorMessage = 'Failed to load agent details. Please try again.';
-    } finally {
-      this.isLoading = false;
     }
-  }
+
+
+
 
   /**
    * Opens the editor for creating a new agent
