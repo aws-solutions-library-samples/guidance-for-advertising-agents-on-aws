@@ -1,5 +1,7 @@
 # Guidance for Advertising Agents
 
+> **📋 v2 Architecture Update:** This version introduces significant architectural changes including DynamoDB-backed agent configuration, a Nova Sonic voice interface, a full CRUD agent management UI, and UI-generated visualizations. If you are upgrading from v1, please review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for a detailed breakdown of all changes.
+
 This guidance demonstrates how to deploy a comprehensive agentic application for advertising workflows using Amazon Bedrock AgentCore. The solution showcases advanced multi-agent collaboration across the entire advertising value chain - from strategic media planning and audience targeting to real-time bid optimization and publisher revenue management.
 
 ## Table of Contents 
@@ -37,9 +39,11 @@ Modern advertising requires intelligent coordination across multiple specialized
 This guidance provides an agentic solution that delivers:
 - **Multi-Agent Application**: 21+ specialized AI agents with intelligent orchestration across 4 orchestrator agents and 17+ specialist agents
 - **AgentCore Container Runtime**: All agents deployed using Amazon Bedrock AgentCore for enhanced capabilities including persistent memory, multi-agent coordination, and external API integration
-- **Interactive Demo Interface**: Angular-based UI with real-time agent collaboration visualization
+- **Interactive Demo Interface**: Angular-based UI with real-time agent collaboration visualization, auto-generated charts and metrics, and a Nova Sonic voice interface
+- **DynamoDB-Backed Agent Configuration**: Full CRUD management of agent configs (instructions, cards, visualization maps) through a dedicated UI, with DynamoDB-first storage and S3 fallback
 - **Cost-Optimized Model Assignment**: Intelligent foundation model selection based on task complexity
 - **Real-Time Creative Generation**: Amazon Nova Canvas integration for dynamic image creation
+- **UI-Generated Visualizations**: Automatic detection and rendering of visualization-worthy data from agent responses (allocations, timelines, metrics, channels, and more)
 
 ### Architecture
 
@@ -50,6 +54,10 @@ This guidance provides an agentic solution that delivers:
 - **17+ Specialist Agents**: Audience Intelligence, Audience Strategy, Timing Strategy, Format Strategy, Channel Mix, Campaign Architecture, Creative Selection, Ad Load Optimization, Media Plan Compiler, Weather Impact, Current Events, Contextual Analysis, Bid Optimization, Bid Simulator, Ad Format Selector, Events, and more
 - **1 Knowledge Base**: With 1 data source covering campaign intelligence, audience strategy, brand and content safety, performance analytics, and inventory & yield optimization across multiple subdirectories
 - **Shared Memory System**: Unified context across all agents enabling sophisticated cross-domain decision making
+- **DynamoDB Agent Configuration**: Centralized agent config management (instructions, cards, visualization maps, global config) stored in DynamoDB with S3 fallback, enabling runtime CRUD operations from the UI
+- **Agent Management UI**: Full create, edit, and delete interface for agent configurations — including model selection, instructions, visualization mappings, MCP server configs, and team assignments
+- **Visualization Analyzer**: Automatic detection of visualization-worthy data in agent responses, rendering charts, allocations, timelines, and metrics in the UI
+- **Nova Sonic Voice Interface**: Real-time speech-to-speech agent interaction using Amazon Nova Sonic with bidirectional streaming, tool-use routing, and turn management
 - **External API Integration**: Real-time data from weather services, social media platforms, and competitive intelligence feeds
 
 ### Cost 
@@ -75,7 +83,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | Amazon S3 | Knowledge base data storage (5GB), generated content, static hosting | $2.50 |
 | Amazon OpenSearch Serverless | Knowledge base, vector search operations | $219.00 |
 | AWS Lambda | image generation | $1.50 |
-| Amazon DynamoDB | Generated content details | $70.31 |
+| Amazon DynamoDB | Agent configuration storage (instructions, cards, visualization maps, global config), generated content details, session management | $70.31 |
 | AWS CloudFront | Global content delivery for demo interface | $0.50 |
 | **Total** | | **~$329.86** |
 
@@ -248,16 +256,19 @@ This Guidance is optimized for regions with full Amazon Bedrock AgentCore suppor
 
 ## Deployment Steps 
 
-The deployment process uses a single comprehensive script that handles all infrastructure, AgentCore containers, knowledge bases, and UI configuration automatically in 8 phases:
+The deployment process uses a single comprehensive script that handles all infrastructure, AgentCore containers, knowledge bases, and UI configuration automatically in 11 phases:
 
-1. **Phase 1**: Environment checks and validation
-2. **Phase 2**: Infrastructure setup (S3, Demo User, OpenSearch Collection)
-3. **Phase 3**: Lambda deployment for image processing and user management
-4. **Phase 4**: Knowledge base & OpenSearch Index creation with synthetic data
-5. **Phase 5**: Knowledge base data source ingestion (sync)
-6. **Phase 6**: AdCP MCP Gateway deployment for agent collaboration
-7. **Phase 7**: AgentCore container deployment
-8. **Phase 8**: UI configuration generation and deployment
+1. **Phase 1**: Check and adjust AWS service quotas
+2. **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
+3. **Phase 3**: Deploy Lambda functions and migrate visualization data
+4. **Phase 4**: Deploy knowledge bases with organized data sources
+5. **Phase 5**: Sync data sources (start ingestion jobs)
+6. **Phase 6**: Deploy AdCP MCP Gateway for agent collaboration
+7. **Phase 7**: Upload agent configurations to S3
+8. **Phase 8**: Upload agent configurations to DynamoDB
+9. **Phase 9**: Deploy AgentCore agents
+10. **Phase 10**: Generate UI configuration
+11. **Phase 11**: Warm up agent runtimes
 
 ### Prerequisites Setup
 
@@ -343,28 +354,33 @@ Execute the following command with the appropriate variables:
 ```
 
 The deployment script automatically handles:
-- **Phase 1**: Environment checks
-- **Phase 2**: Infrastructure setup (S3, Demo User, OpenSearch Collection)
-- **Phase 3**: Lambda deployment
-- **Phase 4**: Knowledge base & Opensearch Index creation with synthetic data
-- **Phase 5**: Knowledge base data source ingestion (sync)
-- **Phase 6**: AdCP MCP Gateway deployment for agent 
-- **Phase 7**: AgentCore container deployment
-collaboration
-- **Phase 8**: UI configuration generation and deployment
+- **Phase 1**: Check and adjust AWS service quotas
+- **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
+- **Phase 3**: Deploy Lambda functions and migrate visualization data
+- **Phase 4**: Deploy knowledge bases with organized data sources
+- **Phase 5**: Sync data sources (start ingestion jobs)
+- **Phase 6**: Deploy AdCP MCP Gateway for agent collaboration
+- **Phase 7**: Upload agent configurations to S3
+- **Phase 8**: Upload agent configurations to DynamoDB
+- **Phase 9**: Deploy AgentCore agents
+- **Phase 10**: Generate UI configuration
+- **Phase 11**: Warm up agent runtimes
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-agnt4ad-us-east-1`. The name of the file depends on stack-prefix and region.
 
 ```bash
 # ReDeploy with required configurations. REVIEW and UPDATE the variables as needed. Refer to list below for resume-at phase description
-# Phase 1: Environment checks
-# Phase 2: Infrastructure setup (S3, Demo User, OpenSearch Collection)
-# Phase 3: Lambda deployment
-# Phase 4: Knowledge base & Opensearch Index creation with synthetic data
-# Phase 5: Knowledge base data source ingestion (sync)
-# Phase 6: AdCP MCP Gateway deployment for agent collaboration
-# Phase 7: AgentCore container deployment
-# Phase 8: UI configuration generation and deployment
+# Phase 1: Check and adjust AWS service quotas
+# Phase 2: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
+# Phase 3: Deploy Lambda functions and migrate visualization data
+# Phase 4: Deploy knowledge bases with organized data sources
+# Phase 5: Sync data sources (start ingestion jobs)
+# Phase 6: Deploy AdCP MCP Gateway for agent collaboration
+# Phase 7: Upload agent configurations to S3
+# Phase 8: Upload agent configurations to DynamoDB
+# Phase 9: Deploy AgentCore agents
+# Phase 10: Generate UI configuration
+# Phase 11: Warm up agent runtimes
 
 ./scripts/deploy-ecosystem.sh \
   --stack-prefix agnt4ad \
@@ -521,7 +537,9 @@ Navigate to the user interface deployed to CloudFront, and type in "@MediaPlanne
   - **Real-time Creative Generation**: Nova Canvas integration for dynamic image creation
   - **External API Integration**: Weather and social media data incorporated into responses
   - **Custom Business Logic**: Advanced algorithms for media mix modeling and yield optimization
-  - **Visualization Generation**: Charts, allocations, timelines, and metrics automatically generated
+  - **Visualization Generation**: The Visualization Analyzer automatically detects visualization-worthy data in agent responses and renders charts, allocations, timelines, channel breakdowns, and metrics dashboards in the UI
+  - **Nova Sonic Voice Interface**: Real-time speech-to-speech interaction — speak to agents and hear responses via Amazon Nova Sonic with bidirectional streaming and intelligent agent routing
+  - **Agent Management UI**: Create, edit, and delete agent configurations directly from the browser — changes persist to DynamoDB immediately
 
 #### 5. Monitor Performance
 
@@ -638,24 +656,39 @@ aws cognito-idp admin-create-user \
   - **Orchestrator Agents**: MediaPlanningAgent, CampaignOptimizationAgent, YieldOptimizationAgent, InventoryOptimizationAgent
   - **Specialist Agents**: AudienceIntelligenceAgent, TimingStrategyAgent, FormatStrategyOptimizerAgent, ChannelMixOptimizationAgent, CampaignArchitectureAgent, CreativeSelectionAgent, and more
 
+  **Agent Management UI:**
+  The demo includes a full CRUD interface for managing agent configurations directly from the browser. Access it via the user menu in the top-right corner. From the UI you can:
+  - Create new agents with custom instructions, model configs, and visualization mappings
+  - Edit existing agent properties: display name, team, description, tool agents, model config, instructions, color, MCP servers
+  - Delete agents
+  - Changes are persisted to DynamoDB and take effect on the next agent invocation
+
   **Modify Agent Instructions:**
-  Agent behavior is controlled by instruction files located in `agentcore/deployment/agent/agent-instructions-library/`. Each agent has a corresponding `.txt` file that defines its role, capabilities, and response patterns.
+  Agent behavior is controlled by instruction files. These can be edited in two ways:
+  
+  1. **Via the Agent Management UI** (recommended): Edit instructions directly in the browser with live preview
+  2. **Via files**: Edit instruction files in `agentcore/deployment/agent/agent-instructions-library/` and upload to DynamoDB:
 
   ```bash
-  # Example: Edit the MediaPlanningAgent instructions
-  nano agentcore/deployment/agent/agent-instructions-library/MediaPlanningAgent.txt
+  # Upload local agent configs to DynamoDB
+  python scripts/upload_agent_configs_to_dynamodb.py \
+    --stack-prefix agnt4ad \
+    --region us-east-1 \
+    --profile agnts4ad
 
-  # After making changes, redeploy the agent
+  # After making file-based changes, redeploy the agent
   cd agentcore/deployment
   ./build_and_deploy.sh AdFabricAgent
   ```
 
   **Configure Agents:**
-  Agent configurations are managed in `agentcore/deployment/agent/global_configuration.json`. This file controls:
-  - Model assignments for each agent
-  - Knowledge base associations
-  - Display colors and team assignments
-  - Injectable values, such as API keys
+  Agent configurations are managed in DynamoDB (table: `{stack-prefix}-AgentConfig-{unique-id}`) with the following schema:
+  - `INSTRUCTION#AgentName` — Agent prompt text
+  - `CARD#AgentName` — Agent card JSON (display name, team, description, color)
+  - `VIZ_MAP#AgentName` — Visualization map JSON
+  - `GLOBAL_CONFIG` — Global configuration (model inputs, knowledge bases, colors)
+
+  The local file `agentcore/deployment/agent/global_configuration.json` serves as the seed configuration. At runtime, the agent handler loads config from DynamoDB first, falling back to S3 and then local files.
 
 ### 2. External API Integration
 
@@ -823,13 +856,20 @@ aws cognito-idp admin-create-user \
 
   **Modify Tab Configurations:**
   
-  **Configuration File Locations:**
-  - **Primary Configuration (S3)**: `synthetic_data/configs/tab-configurations.json` - This is the official configuration file deployed to S3. After initial deployment, any edits to this file will create versioned backups in S3.
-  - **Fallback Configuration**: `bedrock-adtech-demo/src/assets/tab-configurations.json` - This file only loads if there's an issue loading the S3 configuration. It serves as a backup.
+  **Configuration Storage:**
+  - **Primary Configuration (DynamoDB)**: Tab configurations are stored in the `AgentConfig` DynamoDB table under the `TAB_CONFIG` partition key. The Agent Management UI and deployment scripts write here.
+  - **Seed Configuration (S3)**: `synthetic_data/configs/tab-configurations.json` is uploaded to S3 during deployment and seeded into DynamoDB. After initial deployment, edits should be made via the UI or DynamoDB directly.
+  - **Fallback Configuration**: `bedrock-adtech-demo/src/assets/tab-configurations.json` loads only if both DynamoDB and S3 configurations are unavailable.
   
   **To customize the UI tabs:**
-  - Edit `synthetic_data/configs/tab-configurations.json` for production changes
-  - After deployment, configuration updates are versioned in S3, not in the local directory structure
+  - Use the Agent Management UI to edit tab configurations directly in the browser (recommended)
+  - Or edit `synthetic_data/configs/tab-configurations.json` and re-run the DynamoDB upload script:
+  ```bash
+  python scripts/upload_configs_to_dynamodb.py \
+    --stack-prefix agnt4ad \
+    --region us-east-1 \
+    --profile agnts4ad
+  ```
   
   You can:
   - Add new agent tabs
@@ -858,7 +898,7 @@ aws cognito-idp admin-create-user \
       --stack-prefix agnt4ad \
       --region us-east-1 \
       --profile agnts4ad \
-      --resume-at 8
+      --resume-at 10
   ```
 
 ### 5. Add Custom Visualizations
@@ -915,8 +955,8 @@ aws cognito-idp admin-create-user \
 ### 1. Customize Agent Behavior
 
 **Modify Agent Instructions:**
-- Edit files in `agentcore/deployment/agent/agent-instructions-library/` to customize agent responses
-- Update agent-specific configuration and collaboration configurations in `agentcore/deployment/agent/global-configuration.json`
+- Edit agent configurations via the Agent Management UI, or edit files in `agentcore/deployment/agent/agent-instructions-library/` and upload to DynamoDB
+- Update agent-specific configuration and collaboration configurations via the UI or in `agentcore/deployment/agent/global_configuration.json` (seed file)
 
 **Add Custom Knowledge:**
 - Upload your own data to the synthetic_data directories

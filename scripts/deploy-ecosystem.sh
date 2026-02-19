@@ -4867,10 +4867,11 @@ main() {
     # Phase 4: Deploy knowledge bases with organized data sources
     # Phase 5: Sync data sources (start ingestion jobs)
     # Phase 6: Deploy AdCP MCP Gateway for agent collaboration (BEFORE agents!)
-    # Phase 7: Detect and deploy AgentCore agents (uses gateway URL from step 6)
-    # Phase 8: Upload agent configuration folders to S3
-    # Phase 9: Generate UI configuration
-    # Phase 10: Warm up agent runtimes with test prompts
+    # Phase 7: Upload agent configurations to S3
+    # Phase 8: Upload agent configurations to DynamoDB
+    # Phase 9: Deploy AgentCore agents (uses gateway URL from step 6)
+    # Phase 10: Generate UI configuration
+    # Phase 11: Warm up agent runtimes with test prompts
     
     # Pre-deployment validation
     if [ "$RESUME_AT_STEP" -le 1 ]; then
