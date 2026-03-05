@@ -10,7 +10,8 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 // AWS SDK imports for AppConfig
 import { AppConfigClient, CreateHostedConfigurationVersionCommand, StartDeploymentCommand, ListDeploymentsCommand, GetDeploymentCommand, GetApplicationCommand, GetEnvironmentCommand, GetConfigurationProfileCommand } from '@aws-sdk/client-appconfig';
 import { AppConfigDataClient, StartConfigurationSessionCommand, GetLatestConfigurationCommand } from '@aws-sdk/client-appconfigdata';
-import { AgentsConfiguration, AwsConfig, CacheEntry, AgentConfig, AppConfigSettings } from '../models/application-models';
+import { BedrockAgentClient, ListKnowledgeBasesCommand } from '@aws-sdk/client-bedrock-agent';
+import { AgentsConfiguration, AwsConfig, CacheEntry, AgentConfig, AppConfigSettings, KnowledgeBaseInfo } from '../models/application-models';
 
 @Injectable({
   providedIn: 'root'
@@ -1669,6 +1670,52 @@ export class AwsConfigService implements OnInit {
   /*getAssignedColors(): Map<string, string> {
     return new Map(AwsConfigService.colorMap);
   }*/
+
+  /**
+   * Fetch all Bedrock Knowledge Bases in the account.
+   * Returns KnowledgeBaseInfo[] sorted alphabetically by name.
+   * No caching — fresh API call every time.
+   */
+  public async listKnowledgeBases(): Promise<KnowledgeBaseInfo[]> {
+    try {
+      const session = await this.getCachedAuthSession();
+      const region = this.getRegion();
+      const client = new BedrockAgentClient({
+        region,
+        credentials: session.credentials
+      });
+
+      const allKbs: KnowledgeBaseInfo[] = [];
+      let nextToken: string | undefined;
+
+      do {
+        const command = new ListKnowledgeBasesCommand({
+          maxResults: 100,
+          ...(nextToken ? { nextToken } : {})
+        });
+        const response = await client.send(command);
+
+        if (response.knowledgeBaseSummaries) {
+          for (const summary of response.knowledgeBaseSummaries) {
+            if (summary.name && summary.knowledgeBaseId) {
+              allKbs.push({
+                name: summary.name,
+                knowledgeBaseId: summary.knowledgeBaseId
+              });
+            }
+          }
+        }
+
+        nextToken = response.nextToken;
+      } while (nextToken);
+
+      allKbs.sort((a, b) => a.name.localeCompare(b.name));
+      return allKbs;
+    } catch (error) {
+      console.error('Failed to list knowledge bases:', error);
+      return [];
+    }
+  }
 
   /**
    * Debug method to test AppConfig from browser console

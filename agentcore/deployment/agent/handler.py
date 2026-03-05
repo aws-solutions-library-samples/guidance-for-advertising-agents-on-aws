@@ -871,23 +871,19 @@ from shared.knowledge_base_helper import (
 )
 
 
-def load_all_stack_knowledgebase_ids() -> Optional[str]:
+def load_all_stack_knowledgebase_ids() -> Optional[dict]:
     """
-    Get knowledge base ID by name pattern (case-insensitive partial match)
-    Args:
-        name_pattern: Pattern to match against knowledge base names
-    Returns:
-        str: Knowledge base ID if found, None otherwise
+    Load ALL Bedrock Knowledge Bases in the account.
+    Returns a dict mapping KB name -> KB ID for all discovered KBs.
+    No stack prefix filtering — all account KBs are included so that
+    direct name lookups work for any KB selected from the UI dropdown.
     """
     knowledgebase_ids = {}
-    # Discover knowledge bases from AWS
     helper = KnowledgeBaseHelper(logger, os.environ.get("AWS_REGION", "us-east-1"))
     kb_mapping = helper._discover_knowledge_bases_from_aws()
     if not kb_mapping:
-        return None
+        return knowledgebase_ids
     for kb_name, kb_id in kb_mapping.items():
-        if f'{os.environ.get("STACK_PREFIX","XXX")}-' not in kb_name:
-            continue
         knowledgebase_ids[kb_name] = kb_id
     return knowledgebase_ids
 
@@ -896,10 +892,26 @@ KNOWLEDGEBASE_IDS = load_all_stack_knowledgebase_ids()
 
 
 def get_matching_kb_id(name: str) -> Optional[str]:
-    return KNOWLEDGEBASE_IDS.get(
-        f'{os.environ.get("STACK_PREFIX", "XXX")}-{name}-{os.environ.get("UNIQUE_ID", "XXX")}',
-        None,
-    )
+    """
+    Resolve a KB name to its ID using a fallback strategy:
+    1. Direct lookup (handles full KB names from the new dropdown)
+    2. If name already has stack prefix, return None (don't double-add)
+    3. Legacy fallback: construct {STACK_PREFIX}-{name}-{UNIQUE_ID}
+    """
+    # 1. Direct lookup first
+    if name in KNOWLEDGEBASE_IDS:
+        return KNOWLEDGEBASE_IDS[name]
+
+    stack_prefix = os.environ.get("STACK_PREFIX", "XXX")
+    unique_id = os.environ.get("UNIQUE_ID", "XXX")
+
+    # 2. Skip prefix construction if name already contains the stack prefix
+    if name.startswith(f"{stack_prefix}-"):
+        return None
+
+    # 3. Legacy fallback: construct {prefix}-{name}-{uniqueId}
+    constructed_key = f"{stack_prefix}-{name}-{unique_id}"
+    return KNOWLEDGEBASE_IDS.get(constructed_key, None)
 
 
 def preload_all_agent_instructions():

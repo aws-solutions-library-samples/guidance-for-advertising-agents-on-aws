@@ -282,4 +282,12 @@ export interface VisualizationAnalysisResult {
     data: any;                 // Structured JSON matching template schema
   }[];
   originalText: string;       // The raw agent response text
+  questions?: string[];        // Detected user-directed questions
+}
+
+export interface KnowledgeBaseInfo {
+  /** KB name as returned by the API */
+  name: string;
+  /** AWS Knowledge Base ID */
+  knowledgeBaseId: string;
 }

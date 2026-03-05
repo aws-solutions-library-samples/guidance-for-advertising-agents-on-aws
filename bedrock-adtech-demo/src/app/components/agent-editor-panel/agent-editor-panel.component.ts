@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { AgentConfiguration, MCPServerConfig } from '../agent-management-modal/agent-management-modal.component';
+import { AgentConfiguration, MCPServerConfig, ExternalAgentConfig } from '../agent-management-modal/agent-management-modal.component';
+import { KnowledgeBaseInfo } from '../../models/application-models';
 import { AgentDynamoDBService, VisualizationMapping } from '../../services/agent-dynamodb.service';
 import { BedrockService } from '../../services/bedrock.service';
 import { AwsConfigService } from '../../services/aws-config.service';
@@ -18,7 +19,8 @@ import {
   listMcpServerTools as listMcpServerToolsHelper
 } from './agent-editor-mcp.helpers';
 import {
-  generateInstructionsText, generateVisualizationMappingsText
+  generateInstructionsText, generateVisualizationMappingsText,
+  AttachedDocument
 } from './agent-editor-ai.helpers';
 
 // Re-export interfaces for consumers
@@ -37,9 +39,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   @Input() isLoading: boolean = false;
   @Input() currentUser: string = '';
   @Input() availableRuntimeArns: string[] = [];
+  @Input() defaultRuntimeArn: string = '';
 
   @Output() onSave = new EventEmitter<AgentConfiguration>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onDelete = new EventEmitter<AgentConfiguration>();
   @Output() mcpEditorOpened = new EventEmitter<{ server: MCPServerConfig; index: number }>();
   @Output() mcpEditorClosed = new EventEmitter<void>();
   @Output() mcpEditorSaved = new EventEmitter<{ server: MCPServerConfig; index: number }>();
@@ -68,6 +72,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   instructionsPromptText: string = '';
   mappingsPromptText: string = '';
 
+  // Document attachment state for AI generation
+  instructionsAttachedDocs: AttachedDocument[] = [];
+  mappingsAttachedDocs: AttachedDocument[] = [];
+
   // Visualization preview state
   showVisualizationPreview: boolean = false;
   previewTemplateId: string | null = null;
@@ -84,10 +92,22 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // Injectable values state
   newInjectableKey: string = '';
   newInjectableValue: string = '';
+  injectableValuesCache: { key: string; value: string }[] = [];
+
+  // Delete confirmation state
+  showDeleteConfirm: boolean = false;
 
   // Runtime ARN combobox state
   runtimeArnDropdownOpen: boolean = false;
   runtimeArnFilter: string = '';
+
+  // Knowledge Base typeahead state
+  knowledgeBases: KnowledgeBaseInfo[] = [];
+  filteredKnowledgeBases: KnowledgeBaseInfo[] = [];
+  isLoadingKnowledgeBases: boolean = false;
+  kbDropdownOpen: boolean = false;
+  kbFilterText: string = '';
+  kbNotFound: boolean = false;
 
   // Visualization JSON editor state
   showVisualizationJsonEditor: boolean = false;
@@ -101,6 +121,44 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   mcpServerJsonText: string = '';
   mcpServerJsonError: string | null = null;
   mcpToolListResults: Map<string, MCPToolListResult> = new Map();
+
+  // OAuth token input state (never persisted — only used during editing)
+  mcpBearerTokenValue: string = '';
+  mcpBearerTokenSaving: boolean = false;
+  mcpBearerTokenPending: boolean = false;
+  mcpBearerTokenEditing: boolean = false;
+  mcpBearerTokenVisible: boolean = false;
+
+  // A2A External Agent editor state
+  showA2aAgentEditor: boolean = false;
+  editingA2aAgent: ExternalAgentConfig | null = null;
+  editingA2aAgentIndex: number = -1;
+  a2aEditorError: string | null = null;
+  a2aBearerTokenValue: string = '';
+  a2aBearerTokenSaving: boolean = false;
+  a2aBearerTokenPending: boolean = false;
+  a2aBearerTokenEditing: boolean = false;
+  a2aBearerTokenVisible: boolean = false;
+
+  // A2A OAuth credentials state (username/password)
+  a2aOAuthUsername: string = '';
+  a2aOAuthPassword: string = '';
+  a2aOAuthPasswordVisible: boolean = false;
+  a2aOAuthCredentialsSaving: boolean = false;
+  a2aOAuthCredentialsPending: boolean = false;
+  a2aOAuthCredentialsEditing: boolean = false;
+
+  // MCP OAuth credentials state (username/password)
+  mcpOAuthUsername: string = '';
+  mcpOAuthPassword: string = '';
+  mcpOAuthPasswordVisible: boolean = false;
+  mcpOAuthCredentialsSaving: boolean = false;
+  mcpOAuthCredentialsPending: boolean = false;
+  mcpOAuthCredentialsEditing: boolean = false;
+
+  @Output() a2aEditorOpened = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
+  @Output() a2aEditorClosed = new EventEmitter<void>();
+  @Output() a2aEditorSaved = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
 
   constructor(
     private agentDynamoDBService: AgentDynamoDBService,
@@ -138,6 +196,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.editingAgent.color = this.editingAgent.color || '#6842ff';
       this.editingAgent.injectable_values = this.editingAgent.injectable_values || {};
       this.editingAgent.mcp_servers = this.editingAgent.mcp_servers || [];
+      this.editingAgent.external_agent_configs = this.editingAgent.external_agent_configs || [];
       this.editingAgent.runtime_arn = this.editingAgent.runtime_arn || '';
       this.editingAgent.knowledge_base = this.editingAgent.knowledge_base || '';
       this.editingAgent.instructions = this.editingAgent.instructions || '';
@@ -168,6 +227,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.newToolName = '';
     this.newInjectableKey = '';
     this.newInjectableValue = '';
+    this.refreshInjectableValuesCache();
     this.showVisualizationJsonEditor = false;
     this.visualizationJsonText = '';
     this.visualizationJsonError = null;
@@ -176,8 +236,15 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.editingMcpServerIndex = -1;
     this.mcpServerJsonText = '';
     this.mcpServerJsonError = null;
+    this.showA2aAgentEditor = false;
+    this.editingA2aAgent = null;
+    this.editingA2aAgentIndex = -1;
+    this.a2aEditorError = null;
     this.runtimeArnDropdownOpen = false;
     this.runtimeArnFilter = '';
+    this.kbDropdownOpen = false;
+    this.kbFilterText = '';
+    this.loadKnowledgeBases();
     this.cdr.markForCheck();
   }
 
@@ -207,7 +274,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         default: { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }
       },
       agent_tools: [], injectable_values: {}, instructions: '', color: '#6842ff',
-      mcp_servers: [], runtime_arn: '', knowledge_base: ''
+      mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: ''
     };
   }
 
@@ -311,6 +378,18 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // ============================================
 
   handleCancel(): void { this.onCancel.emit(); }
+  requestDelete(): void {
+    this.showDeleteConfirm = true;
+  }
+
+  confirmDeleteAgent(): void {
+    this.showDeleteConfirm = false;
+    this.onDelete.emit(this.editingAgent);
+  }
+
+  cancelDeleteAgent(): void {
+    this.showDeleteConfirm = false;
+  }
 
   getDefaultModelInputs(): { model_id: string; max_tokens: number; temperature: number; top_p?: number } | null {
     if (!this.editingAgent.model_inputs) return null;
@@ -413,10 +492,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.editingAgent.injectable_values[key] = value;
     this.newInjectableKey = '';
     this.newInjectableValue = '';
+    this.refreshInjectableValuesCache();
   }
 
   removeInjectableValue(key: string): void {
     if (this.editingAgent.injectable_values) delete this.editingAgent.injectable_values[key];
+    this.refreshInjectableValuesCache();
   }
 
   updateInjectableValue(key: string, value: string): void {
@@ -424,8 +505,16 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   getInjectableValuesArray(): { key: string; value: string }[] {
-    if (!this.editingAgent.injectable_values) return [];
-    return Object.entries(this.editingAgent.injectable_values).map(([key, value]) => ({ key, value }));
+    return this.injectableValuesCache;
+  }
+
+  /** Rebuild the cached array from the injectable_values map. Call after any mutation. */
+  refreshInjectableValuesCache(): void {
+    if (!this.editingAgent.injectable_values) {
+      this.injectableValuesCache = [];
+      return;
+    }
+    this.injectableValuesCache = Object.entries(this.editingAgent.injectable_values).map(([key, value]) => ({ key, value }));
   }
 
   // ============================================
@@ -523,7 +612,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     if (!this.editingAgent.mcp_servers) this.editingAgent.mcp_servers = [];
     const newServer: MCPServerConfig = {
       id: generateMcpServerId(),
-      name: preset?.name || 'New MCP Server',
+      name: 'New MCP Server',
       transport: preset?.config?.transport || 'stdio',
       command: preset?.config?.command || '',
       args: preset?.config?.args || [],
@@ -557,6 +646,17 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.mcpServerJsonText = JSON.stringify(this.editingMcpServer, null, 2);
     this.mcpServerJsonError = null;
     this.showMcpServerEditor = true;
+    this.mcpBearerTokenValue = '';
+    this.mcpBearerTokenSaving = false;
+    this.mcpBearerTokenPending = false;
+    this.mcpBearerTokenEditing = false;
+    this.mcpBearerTokenVisible = false;
+    this.mcpOAuthUsername = '';
+    this.mcpOAuthPassword = '';
+    this.mcpOAuthPasswordVisible = false;
+    this.mcpOAuthCredentialsSaving = false;
+    this.mcpOAuthCredentialsPending = false;
+    this.mcpOAuthCredentialsEditing = false;
     this.mcpEditorOpened.emit({ server: this.editingMcpServer!, index });
   }
 
@@ -566,6 +666,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.editingMcpServerIndex = -1;
     this.mcpServerJsonText = '';
     this.mcpServerJsonError = null;
+    this.mcpBearerTokenValue = '';
+    this.mcpBearerTokenSaving = false;
+    this.mcpBearerTokenPending = false;
+    this.mcpBearerTokenEditing = false;
+    this.mcpBearerTokenVisible = false;
     this.mcpEditorClosed.emit();
   }
 
@@ -578,6 +683,37 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     if ((this.editingMcpServer.transport === 'http' || this.editingMcpServer.transport === 'sse') && !this.editingMcpServer.url?.trim()) {
       this.mcpServerJsonError = 'URL is required for HTTP/SSE transport'; return;
     }
+
+    // If OAuth credentials were entered, store them in SSM before saving
+    if (this.mcpOAuthUsername.trim() && this.mcpOAuthPassword.trim() && this.editingAgent.agent_name) {
+      this.mcpOAuthCredentialsSaving = true;
+      this.cdr.markForCheck();
+
+      const credentialsJson = JSON.stringify({ username: this.mcpOAuthUsername.trim(), password: this.mcpOAuthPassword.trim() });
+      this.agentDynamoDBService.storeMcpOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingMcpServer.id,
+        credentialsJson
+      ).then(ssmPath => {
+        if (ssmPath && this.editingMcpServer) {
+          this.editingMcpServer.oauthToken = { hasToken: true, ssmPath };
+        }
+        this.finalizeMcpServerSave();
+      }).catch(err => {
+        console.error('Error storing OAuth credentials:', err);
+        this.mcpServerJsonError = 'Failed to store credentials. Server saved without credentials.';
+        this.finalizeMcpServerSave();
+      }).finally(() => {
+        this.mcpOAuthCredentialsSaving = false;
+        this.cdr.markForCheck();
+      });
+    } else {
+      this.finalizeMcpServerSave();
+    }
+  }
+
+  private finalizeMcpServerSave(): void {
+    if (!this.editingMcpServer || this.editingMcpServerIndex < 0) return;
     if (!this.editingAgent.mcp_servers) this.editingAgent.mcp_servers = [];
     this.editingAgent.mcp_servers[this.editingMcpServerIndex] = this.editingMcpServer;
     this.closeMcpServerEditor();
@@ -668,7 +804,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     if (event) event.stopPropagation();
     this.mcpToolListResults.set(server.id, { serverId: server.id, tools: [], loading: true, expanded: true });
     this.cdr.markForCheck();
-    const result = await listMcpServerToolsHelper(server, this.awsConfigService);
+    const result = await listMcpServerToolsHelper(
+      server,
+      this.awsConfigService,
+      this.agentDynamoDBService,
+      this.editingAgent.agent_name
+    );
     this.mcpToolListResults.set(server.id, result);
     this.cdr.markForCheck();
   }
@@ -679,18 +820,467 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   // ============================================
+  // A2A External Agent Configuration Methods
+  // ============================================
+
+  /** Generate a unique ID for a new external agent config */
+  private generateA2aAgentId(): string {
+    return 'a2a_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+  }
+
+  addA2aAgent(): void {
+    if (!this.editingAgent.external_agent_configs) this.editingAgent.external_agent_configs = [];
+    const newAgent: ExternalAgentConfig = {
+      id: this.generateA2aAgentId(),
+      name: '',
+      arn: '',
+      isA2A: true,
+      description: '',
+      enabled: true
+    };
+    this.editingAgent.external_agent_configs.push(newAgent);
+    this.openA2aAgentEditor(this.editingAgent.external_agent_configs.length - 1);
+  }
+
+  removeA2aAgent(index: number): void {
+    if (this.editingAgent.external_agent_configs) {
+      const agent = this.editingAgent.external_agent_configs[index];
+      // Clean up SSM token if it exists
+      if (agent?.oauthToken?.hasToken && this.editingAgent.agent_name) {
+        this.agentDynamoDBService.deleteA2AOAuthToken(this.editingAgent.agent_name, agent.id).catch(err => {
+          console.error('Error cleaning up A2A token on remove:', err);
+        });
+      }
+      this.editingAgent.external_agent_configs.splice(index, 1);
+    }
+  }
+
+  toggleA2aAgentEnabled(index: number): void {
+    if (this.editingAgent.external_agent_configs?.[index]) {
+      this.editingAgent.external_agent_configs[index].enabled = !this.editingAgent.external_agent_configs[index].enabled;
+    }
+  }
+
+  openA2aAgentEditor(index: number): void {
+    if (!this.editingAgent.external_agent_configs?.[index]) return;
+    this.editingA2aAgentIndex = index;
+    this.editingA2aAgent = JSON.parse(JSON.stringify(this.editingAgent.external_agent_configs[index]));
+    this.a2aEditorError = null;
+    this.showA2aAgentEditor = true;
+    this.a2aBearerTokenValue = '';
+    this.a2aBearerTokenSaving = false;
+    this.a2aBearerTokenPending = false;
+    this.a2aBearerTokenEditing = false;
+    this.a2aBearerTokenVisible = false;
+    this.a2aOAuthUsername = '';
+    this.a2aOAuthPassword = '';
+    this.a2aOAuthPasswordVisible = false;
+    this.a2aOAuthCredentialsSaving = false;
+    this.a2aOAuthCredentialsPending = false;
+    this.a2aOAuthCredentialsEditing = false;
+    this.a2aEditorOpened.emit({ agent: this.editingA2aAgent!, index });
+  }
+
+  closeA2aAgentEditor(): void {
+    this.showA2aAgentEditor = false;
+    this.editingA2aAgent = null;
+    this.editingA2aAgentIndex = -1;
+    this.a2aEditorError = null;
+    this.a2aBearerTokenValue = '';
+    this.a2aBearerTokenSaving = false;
+    this.a2aBearerTokenPending = false;
+    this.a2aBearerTokenEditing = false;
+    this.a2aBearerTokenVisible = false;
+    this.a2aEditorClosed.emit();
+  }
+
+  saveA2aAgentChanges(): void {
+    if (!this.editingA2aAgent || this.editingA2aAgentIndex < 0) return;
+    if (!this.editingA2aAgent.name?.trim()) { this.a2aEditorError = 'Agent name is required'; return; }
+    if (!this.editingA2aAgent.arn?.trim()) { this.a2aEditorError = 'Agent ARN is required'; return; }
+
+    // If OAuth credentials were entered, store them in SSM before saving
+    if (this.a2aOAuthUsername.trim() && this.a2aOAuthPassword.trim() && this.editingAgent.agent_name) {
+      this.a2aOAuthCredentialsSaving = true;
+      this.cdr.markForCheck();
+
+      const credentialsJson = JSON.stringify({ username: this.a2aOAuthUsername.trim(), password: this.a2aOAuthPassword.trim() });
+      this.agentDynamoDBService.storeA2AOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingA2aAgent.id,
+        credentialsJson
+      ).then(ssmPath => {
+        if (ssmPath && this.editingA2aAgent) {
+          this.editingA2aAgent.oauthCredentials = { hasCredentials: true, ssmPath };
+          this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath };
+        }
+        this.finalizeA2aAgentSave();
+      }).catch(err => {
+        console.error('Error storing A2A OAuth credentials:', err);
+        this.a2aEditorError = 'Failed to store credentials. Agent saved without credentials.';
+        this.finalizeA2aAgentSave();
+      }).finally(() => {
+        this.a2aOAuthCredentialsSaving = false;
+        this.cdr.markForCheck();
+      });
+    } else {
+      this.finalizeA2aAgentSave();
+    }
+  }
+
+  private finalizeA2aAgentSave(): void {
+    if (!this.editingA2aAgent || this.editingA2aAgentIndex < 0) return;
+    if (!this.editingAgent.external_agent_configs) this.editingAgent.external_agent_configs = [];
+    this.editingAgent.external_agent_configs[this.editingA2aAgentIndex] = this.editingA2aAgent;
+    this.a2aEditorSaved.emit({ agent: this.editingA2aAgent, index: this.editingA2aAgentIndex });
+    this.closeA2aAgentEditor();
+  }
+
+  /** Save a bearer token to SSM independently for an A2A agent (update/new token flow) */
+  async saveA2aBearerToken(): Promise<void> {
+    if (!this.editingA2aAgent || !this.a2aBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
+
+    this.a2aBearerTokenSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const ssmPath = await this.agentDynamoDBService.storeA2AOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingA2aAgent.id,
+        this.a2aBearerTokenValue.trim()
+      );
+
+      this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.a2aBearerTokenValue = '';
+      this.a2aBearerTokenEditing = false;
+      this.a2aBearerTokenPending = false;
+    } catch (error: any) {
+      console.error('Error saving A2A bearer token:', error);
+      this.a2aEditorError = error.message || 'Failed to store token.';
+    } finally {
+      this.a2aBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove the OAuth bearer token from SSM for an A2A agent */
+  async removeA2aBearerToken(): Promise<void> {
+    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+
+    this.a2aBearerTokenSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingA2aAgent.id
+      );
+      this.editingA2aAgent.oauthToken = undefined;
+      this.a2aBearerTokenPending = false;
+      this.a2aBearerTokenEditing = false;
+      this.a2aBearerTokenValue = '';
+    } catch (error: any) {
+      console.error('Error removing A2A OAuth token:', error);
+      this.a2aEditorError = error.message || 'Failed to remove token.';
+    } finally {
+      this.a2aBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Generate a unique ID for an external agent config */
+  private generateExternalAgentId(): string {
+    return this.generateA2aAgentId();
+  }
+
+  /** Save A2A OAuth credentials (username/password) to SSM as JSON */
+  async saveA2aOAuthCredentials(): Promise<void> {
+    if (!this.editingA2aAgent || !this.a2aOAuthUsername.trim() || !this.a2aOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+
+    this.a2aOAuthCredentialsSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const credentialsJson = JSON.stringify({ username: this.a2aOAuthUsername.trim(), password: this.a2aOAuthPassword.trim() });
+      const ssmPath = await this.agentDynamoDBService.storeA2AOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingA2aAgent.id,
+        credentialsJson
+      );
+
+      this.editingA2aAgent.oauthCredentials = { hasCredentials: true, ssmPath: ssmPath || undefined };
+      this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.a2aOAuthUsername = '';
+      this.a2aOAuthPassword = '';
+      this.a2aOAuthCredentialsEditing = false;
+      this.a2aOAuthCredentialsPending = false;
+    } catch (error: any) {
+      console.error('Error saving A2A OAuth credentials:', error);
+      this.a2aEditorError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.a2aOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove A2A OAuth credentials from SSM */
+  async removeA2aOAuthCredentials(): Promise<void> {
+    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+
+    this.a2aOAuthCredentialsSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingA2aAgent.id
+      );
+      this.editingA2aAgent.oauthCredentials = undefined;
+      this.editingA2aAgent.oauthToken = undefined;
+      this.a2aOAuthCredentialsPending = false;
+      this.a2aOAuthCredentialsEditing = false;
+      this.a2aOAuthUsername = '';
+      this.a2aOAuthPassword = '';
+    } catch (error: any) {
+      console.error('Error removing A2A OAuth credentials:', error);
+      this.a2aEditorError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.a2aOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Save MCP OAuth credentials (username/password) to SSM as JSON */
+  async saveMcpOAuthCredentials(): Promise<void> {
+    if (!this.editingMcpServer || !this.mcpOAuthUsername.trim() || !this.mcpOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+
+    this.mcpOAuthCredentialsSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const credentialsJson = JSON.stringify({ username: this.mcpOAuthUsername.trim(), password: this.mcpOAuthPassword.trim() });
+      const ssmPath = await this.agentDynamoDBService.storeMcpOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingMcpServer.id,
+        credentialsJson
+      );
+
+      this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.mcpOAuthUsername = '';
+      this.mcpOAuthPassword = '';
+      this.mcpOAuthCredentialsEditing = false;
+      this.mcpOAuthCredentialsPending = false;
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error saving MCP OAuth credentials:', error);
+      this.mcpServerJsonError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.mcpOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove MCP OAuth credentials from SSM */
+  async removeMcpOAuthCredentials(server: MCPServerConfig): Promise<void> {
+    if (!server || !this.editingAgent.agent_name) return;
+
+    this.mcpOAuthCredentialsSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteMcpOAuthToken(
+        this.editingAgent.agent_name,
+        server.id
+      );
+      server.oauthToken = undefined;
+      this.mcpOAuthCredentialsPending = false;
+      this.mcpOAuthCredentialsEditing = false;
+      this.mcpOAuthUsername = '';
+      this.mcpOAuthPassword = '';
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error removing MCP OAuth credentials:', error);
+      this.mcpServerJsonError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.mcpOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Add a new external A2A agent config (alias) */
+  addExternalAgent(): void {
+    this.addA2aAgent();
+  }
+
+  /** Remove an external agent config by index (alias) */
+  removeExternalAgent(index: number): void {
+    this.removeA2aAgent(index);
+  }
+
+  /** Toggle enabled state of an external agent (alias) */
+  toggleExternalAgentEnabled(index: number): void {
+    this.toggleA2aAgentEnabled(index);
+  }
+
+  /** Set the A2A auth type (none or bearer) */
+  setA2aAuthType(agent: ExternalAgentConfig, type: 'none' | 'oauth' | 'iam'): void {
+    agent.authType = type;
+    switch (type) {
+      case 'none':
+        agent.awsAuth = undefined;
+        this.a2aBearerTokenPending = false;
+        this.a2aBearerTokenEditing = false;
+        this.a2aBearerTokenValue = '';
+        this.a2aOAuthUsername = '';
+        this.a2aOAuthPassword = '';
+        this.a2aOAuthCredentialsPending = false;
+        this.a2aOAuthCredentialsEditing = false;
+        break;
+      case 'oauth':
+        agent.awsAuth = undefined;
+        if (!agent.oauthCredentials?.hasCredentials) {
+          this.a2aOAuthCredentialsPending = true;
+        }
+        break;
+      case 'iam':
+        agent.awsAuth = { region: 'us-east-1', service: 'bedrock-agentcore' };
+        this.a2aOAuthCredentialsPending = false;
+        this.a2aOAuthCredentialsEditing = false;
+        this.a2aOAuthUsername = '';
+        this.a2aOAuthPassword = '';
+        break;
+    }
+  }
+
+  /** Get the effective A2A auth type from the agent config */
+  getA2aAuthType(agent: ExternalAgentConfig): 'none' | 'oauth' | 'iam' {
+    if (agent.authType) return agent.authType;
+    if (agent.awsAuth) return 'iam';
+    if (agent.oauthToken?.hasToken || agent.oauthCredentials?.hasCredentials) return 'oauth';
+    return 'none';
+  }
+
+  // ============================================
+  // OAuth Token Management
+  // ============================================
+
+  /** Switch authentication type for an MCP server */
+  setMcpAuthType(server: MCPServerConfig, authType: 'none' | 'bearer' | 'aws_iam'): void {
+    switch (authType) {
+      case 'none':
+        server.awsAuth = undefined;
+        this.mcpBearerTokenPending = false;
+        this.mcpBearerTokenEditing = false;
+        this.mcpBearerTokenValue = '';
+        this.mcpOAuthUsername = '';
+        this.mcpOAuthPassword = '';
+        this.mcpOAuthCredentialsPending = false;
+        this.mcpOAuthCredentialsEditing = false;
+        break;
+      case 'bearer':
+        server.awsAuth = undefined;
+        if (!server.oauthToken?.hasToken) {
+          this.mcpOAuthCredentialsPending = true;
+        }
+        break;
+      case 'aws_iam':
+        server.awsAuth = { region: 'us-east-1', service: 'bedrock-agentcore' };
+        this.mcpBearerTokenPending = false;
+        this.mcpBearerTokenEditing = false;
+        this.mcpBearerTokenValue = '';
+        this.mcpOAuthUsername = '';
+        this.mcpOAuthPassword = '';
+        this.mcpOAuthCredentialsPending = false;
+        this.mcpOAuthCredentialsEditing = false;
+        break;
+    }
+    this.updateMcpServerJsonFromForm();
+  }
+
+  /** Remove the OAuth bearer token from SSM and clear the config */
+  async removeMcpBearerToken(server: MCPServerConfig): Promise<void> {
+    if (!this.editingAgent.agent_name) return;
+
+    this.mcpBearerTokenSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteMcpOAuthToken(
+        this.editingAgent.agent_name,
+        server.id
+      );
+      server.oauthToken = undefined;
+      this.mcpBearerTokenPending = false;
+      this.mcpBearerTokenEditing = false;
+      this.mcpBearerTokenValue = '';
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error removing OAuth token:', error);
+      this.mcpServerJsonError = error.message || 'Failed to remove token.';
+    } finally {
+      this.mcpBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Save a bearer token to SSM independently (for update/new token flow) */
+  async saveMcpBearerToken(): Promise<void> {
+    if (!this.editingMcpServer || !this.mcpBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
+
+    this.mcpBearerTokenSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const ssmPath = await this.agentDynamoDBService.storeMcpOAuthToken(
+        this.editingAgent.agent_name,
+        this.editingMcpServer.id,
+        this.mcpBearerTokenValue.trim()
+      );
+
+      this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.mcpBearerTokenValue = '';
+      this.mcpBearerTokenEditing = false;
+      this.mcpBearerTokenPending = false;
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error saving bearer token:', error);
+      this.mcpServerJsonError = error.message || 'Failed to store token.';
+    } finally {
+      this.mcpBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // ============================================
   // AI Generation Methods (delegates to helpers)
   // ============================================
 
+  /** True when the agent uses an external runtime (not blank, not the AdFabricAgent default) */
+  get isExternalRuntime(): boolean {
+    const arn = this.editingAgent.runtime_arn?.trim();
+    return !!arn && !!this.defaultRuntimeArn && arn !== this.defaultRuntimeArn;
+  }
+
   showGenerateInstructionsDialog(): void {
+    if (this.isExternalRuntime) return; // External runtime — instructions managed externally
     this.showInstructionsPrompt = true;
     this.instructionsPromptText = '';
+    this.instructionsAttachedDocs = [];
     this.aiGenerationError = null;
   }
 
   hideGenerateInstructionsDialog(): void {
     this.showInstructionsPrompt = false;
     this.instructionsPromptText = '';
+    this.instructionsAttachedDocs = [];
   }
 
   async generateInstructions(): Promise<void> {
@@ -698,7 +1288,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.aiGenerationError = null;
     try {
       this.editingAgent.instructions = await generateInstructionsText(
-        this.editingAgent, this.instructionsPromptText, this.bedrockService
+        this.editingAgent, this.instructionsPromptText, this.bedrockService,
+        this.instructionsAttachedDocs
       );
       this.hideGenerateInstructionsDialog();
     } catch (error: any) {
@@ -711,48 +1302,104 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   showGenerateMappingsDialog(): void {
-    this.showMappingsPrompt = true;
-    this.mappingsPromptText = '';
-    this.aiGenerationError = null;
-  }
+      this.showMappingsPrompt = true;
+      this.mappingsPromptText = '';
+      this.mappingsAttachedDocs = [];
+      this.aiGenerationError = null;
+    }
 
   hideGenerateMappingsDialog(): void {
-    this.showMappingsPrompt = false;
-    this.mappingsPromptText = '';
-  }
+      this.showMappingsPrompt = false;
+      this.mappingsPromptText = '';
+      this.mappingsAttachedDocs = [];
+    }
 
   async generateVisualizationMappings(): Promise<void> {
-    this.isGeneratingMappings = true;
-    this.aiGenerationError = null;
-    try {
-      const templates = await generateVisualizationMappingsText(
-        this.editingAgent,
-        this.visualizationMappings?.templates,
-        this.availableTemplates,
-        this.mappingsPromptText,
-        this.bedrockService
-      );
-      if (!this.visualizationMappings) {
-        this.visualizationMappings = {
-          agentName: this.editingAgent.agent_name || '',
-          agentId: this.editingAgent.agent_id || '',
-          templates: []
-        };
+      this.isGeneratingMappings = true;
+      this.aiGenerationError = null;
+      try {
+        const templates = await generateVisualizationMappingsText(
+          this.editingAgent,
+          this.visualizationMappings?.templates,
+          this.availableTemplates,
+          this.mappingsPromptText,
+          this.bedrockService,
+          this.mappingsAttachedDocs
+        );
+        if (!this.visualizationMappings) {
+          this.visualizationMappings = {
+            agentName: this.editingAgent.agent_name || '',
+            agentId: this.editingAgent.agent_id || '',
+            templates: []
+          };
+        }
+        this.visualizationMappings.templates = templates;
+        this.hideGenerateMappingsDialog();
+      } catch (error: any) {
+        console.error('Error generating visualization mappings:', error);
+        this.aiGenerationError = error.message || 'Failed to generate visualization mappings. Please try again.';
+      } finally {
+        this.isGeneratingMappings = false;
+        this.cdr.markForCheck();
       }
-      this.visualizationMappings.templates = templates;
-      this.hideGenerateMappingsDialog();
-    } catch (error: any) {
-      console.error('Error generating visualization mappings:', error);
-      this.aiGenerationError = error.message || 'Failed to generate visualization mappings. Please try again.';
-    } finally {
-      this.isGeneratingMappings = false;
-      this.cdr.markForCheck();
     }
-  }
 
   // ============================================
   // Save & Visualization Preview
   // ============================================
+
+  // ============================================
+  // Document Attachment Helpers
+  // ============================================
+
+  /** Handle file input change for instructions document attachment */
+  onInstructionsFileAttach(event: Event): void {
+    this.handleFileAttach(event, this.instructionsAttachedDocs);
+  }
+
+  /** Handle file input change for mappings document attachment */
+  onMappingsFileAttach(event: Event): void {
+    this.handleFileAttach(event, this.mappingsAttachedDocs);
+  }
+
+  /** Remove an attached document by index */
+  removeInstructionsDoc(index: number): void {
+    this.instructionsAttachedDocs.splice(index, 1);
+  }
+
+  /** Remove an attached document by index */
+  removeMappingsDoc(index: number): void {
+    this.mappingsAttachedDocs.splice(index, 1);
+  }
+
+  /** Read files from input and add to the target document array */
+  private handleFileAttach(event: Event, target: AttachedDocument[]): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const allowedTypes = ['.txt', '.md', '.json', '.csv', '.xml', '.yaml', '.yml', '.log'];
+
+    Array.from(input.files).forEach(file => {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!allowedTypes.includes(ext) && !file.type.startsWith('text/')) {
+        console.warn(`Skipping unsupported file type: ${file.name}`);
+        return;
+      }
+      if (file.size > 512 * 1024) { // 512KB limit per file
+        console.warn(`File too large (max 512KB): ${file.name}`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        target.push({ name: file.name, content: reader.result as string });
+        this.cdr.markForCheck();
+      };
+      reader.readAsText(file);
+    });
+
+    // Reset input so the same file can be re-selected
+    input.value = '';
+  }
 
   handleSave(): void {
     if (this.validate()) {
@@ -833,5 +1480,70 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
   closeRuntimeArnDropdown(): void {
     setTimeout(() => { this.runtimeArnDropdownOpen = false; this.cdr.markForCheck(); }, 200);
+  }
+
+  // ============================================
+  // Knowledge Base Typeahead
+  // ============================================
+
+  private async loadKnowledgeBases(): Promise<void> {
+    this.isLoadingKnowledgeBases = true;
+    this.cdr.markForCheck();
+    try {
+      this.knowledgeBases = await this.awsConfigService.listKnowledgeBases();
+      this.filteredKnowledgeBases = [...this.knowledgeBases];
+      // Check if stored knowledge_base matches any discovered KB
+      this.kbNotFound = !!this.editingAgent.knowledge_base &&
+        !this.knowledgeBases.some(kb => kb.name === this.editingAgent.knowledge_base);
+    } catch (error) {
+      console.error('Failed to load knowledge bases:', error);
+      this.knowledgeBases = [];
+      this.filteredKnowledgeBases = [];
+      this.kbNotFound = false;
+    } finally {
+      this.isLoadingKnowledgeBases = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  onKbFilterInput(value: string): void {
+    this.kbFilterText = value;
+    this.filteredKnowledgeBases = this.filterKnowledgeBases(value, this.knowledgeBases);
+    this.kbDropdownOpen = true;
+  }
+
+  selectKnowledgeBase(kb: KnowledgeBaseInfo): void {
+    this.editingAgent.knowledge_base = kb.name;
+    this.kbDropdownOpen = false;
+    this.kbFilterText = '';
+    this.filteredKnowledgeBases = [...this.knowledgeBases];
+    this.kbNotFound = false;
+  }
+
+  clearKnowledgeBase(): void {
+    this.editingAgent.knowledge_base = '';
+    this.kbFilterText = '';
+    this.kbDropdownOpen = false;
+    this.filteredKnowledgeBases = [...this.knowledgeBases];
+    this.kbNotFound = false;
+  }
+
+  toggleKbDropdown(): void {
+    this.kbDropdownOpen = !this.kbDropdownOpen;
+    this.kbFilterText = '';
+    this.filteredKnowledgeBases = [...this.knowledgeBases];
+  }
+
+  closeKbDropdown(): void {
+    setTimeout(() => { this.kbDropdownOpen = false; this.cdr.markForCheck(); }, 200);
+  }
+
+  filterKnowledgeBases(query: string, kbs: KnowledgeBaseInfo[]): KnowledgeBaseInfo[] {
+    const q = query.toLowerCase().trim();
+    if (!q) return kbs;
+    return kbs.filter(kb =>
+      kb.name.toLowerCase().includes(q) ||
+      kb.knowledgeBaseId.toLowerCase().includes(q)
+    );
   }
 }

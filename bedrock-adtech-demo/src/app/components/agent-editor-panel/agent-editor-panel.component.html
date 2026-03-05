@@ -183,14 +183,78 @@
         <span class="material-icons">menu_book</span>
         Knowledge Base
       </h5>
-      <p class="section-description">Knowledge Base ID for RAG retrieval. This maps to a Bedrock Knowledge Base used by retrieve_knowledge_base_results_tool.</p>
+      <p class="section-description">Select a Bedrock Knowledge Base for RAG retrieval, used by retrieve_knowledge_base_results_tool.</p>
       <div class="form-group">
-        <label for="knowledge_base">Knowledge Base ID</label>
-        <input type="text" id="knowledge_base" class="form-control"
+        <label for="knowledge_base">Knowledge Base</label>
+
+        <!-- Typeahead combobox (when KBs are available or loading) -->
+        <div class="kb-typeahead" [class.open]="kbDropdownOpen" *ngIf="isLoadingKnowledgeBases || knowledgeBases.length > 0">
+          <div class="combobox-input-wrapper">
+            <span class="material-icons combobox-icon">menu_book</span>
+            <input type="text" id="knowledge_base" class="form-control combobox-input"
+              [ngModel]="editingAgent.knowledge_base || kbFilterText"
+              (ngModelChange)="onKbFilterInput($event)"
+              (focus)="toggleKbDropdown()"
+              (blur)="closeKbDropdown()"
+              [disabled]="isLoading || isLoadingKnowledgeBases"
+              [placeholder]="isLoadingKnowledgeBases ? 'Loading knowledge bases...' : 'Search by name or ID...'"
+              autocomplete="off">
+            <!-- Loading spinner -->
+            <div class="kb-loading-spinner" *ngIf="isLoadingKnowledgeBases">
+              <span class="material-icons spinning">sync</span>
+            </div>
+            <!-- Clear button -->
+            <button class="combobox-clear-btn" *ngIf="editingAgent.knowledge_base && !isLoadingKnowledgeBases" (click)="clearKnowledgeBase()" [disabled]="isLoading" type="button" title="Clear">
+              <span class="material-icons">close</span>
+            </button>
+            <!-- Toggle button -->
+            <button class="combobox-toggle-btn" (click)="toggleKbDropdown()" [disabled]="isLoading || isLoadingKnowledgeBases" type="button">
+              <span class="material-icons">{{ kbDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+          </div>
+
+          <!-- Dropdown with filtered results -->
+          <div class="combobox-dropdown" *ngIf="kbDropdownOpen && filteredKnowledgeBases.length > 0">
+            <!-- None option -->
+            <div class="combobox-option kb-none-option" (mousedown)="clearKnowledgeBase()">
+              <span class="material-icons option-icon">block</span>
+              <span class="option-kb-name">None</span>
+            </div>
+            <!-- KB options -->
+            <div class="combobox-option" *ngFor="let kb of filteredKnowledgeBases"
+              (mousedown)="selectKnowledgeBase(kb)"
+              [class.selected]="editingAgent.knowledge_base === kb.name">
+              <span class="material-icons option-icon">menu_book</span>
+              <div class="option-kb-details">
+                <span class="option-kb-name">{{ kb.name }}</span>
+                <span class="option-kb-id">({{ kb.knowledgeBaseId }})</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="combobox-dropdown" *ngIf="kbDropdownOpen && filteredKnowledgeBases.length === 0 && !isLoadingKnowledgeBases">
+            <div class="combobox-empty">
+              <span class="material-icons">info_outline</span>
+              No matching knowledge bases found
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback: manual text input when no KBs discovered and not loading -->
+        <input type="text" id="knowledge_base_fallback" class="form-control"
+          *ngIf="!isLoadingKnowledgeBases && knowledgeBases.length === 0"
           [(ngModel)]="editingAgent.knowledge_base"
           [disabled]="isLoading"
-          placeholder="e.g., ABCDEF1234">
-        <span class="field-hint">Optional. The Bedrock Knowledge Base identifier for this agent's RAG capabilities.</span>
+          placeholder="Enter knowledge base name manually">
+
+        <!-- Warning: stored KB not found -->
+        <div class="kb-warning" *ngIf="kbNotFound && !isLoadingKnowledgeBases">
+          <span class="material-icons">warning</span>
+          <span>Knowledge base "{{ editingAgent.knowledge_base }}" was not found in the account.</span>
+        </div>
+
+        <span class="field-hint">Optional. Select a Bedrock Knowledge Base for this agent's RAG capabilities.</span>
       </div>
     </div>
 
@@ -412,6 +476,10 @@
                 <span class="material-icons">security</span>
                 AWS IAM ({{ server.awsAuth.region }})
               </span>
+              <span class="server-detail auth-badge" *ngIf="server.oauthToken?.hasToken">
+                <span class="material-icons">vpn_key</span>
+                Bearer token configured
+              </span>
             </div>
             <div class="server-description" *ngIf="server.description">
               {{ server.description }}
@@ -509,6 +577,70 @@
       </div>
     </div>
 
+    <!-- A2A External Agents Section -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">share</span>
+        External A2A Agents
+        <div class="section-actions">
+          <button class="add-template-button" (click)="addA2aAgent()" [disabled]="isLoading">
+            <span class="material-icons">add</span>
+            Add Agent
+          </button>
+        </div>
+      </h5>
+      <p class="section-description">Connect to external agents via A2A (Agent-to-Agent) protocol with optional OAuth authentication.</p>
+
+      <!-- A2A Agents List -->
+      <div class="a2a-agents-list" *ngIf="editingAgent.external_agent_configs?.length">
+        <div class="a2a-agent-item-wrapper" *ngFor="let extAgent of editingAgent.external_agent_configs; let i = index">
+          <div class="a2a-agent-item" [class.disabled]="!extAgent.enabled">
+            <div class="server-status">
+              <button class="toggle-enabled-btn" (click)="toggleA2aAgentEnabled(i)" [disabled]="isLoading"
+                [title]="extAgent.enabled ? 'Disable agent' : 'Enable agent'">
+                <span class="material-icons">{{ extAgent.enabled ? 'check_circle' : 'cancel' }}</span>
+              </button>
+            </div>
+            <div class="server-info" (click)="openA2aAgentEditor(i)">
+              <div class="server-header">
+                <span class="material-icons transport-icon">share</span>
+                <span class="server-name">{{ extAgent.name || 'Unnamed Agent' }}</span>
+                <span class="server-transport-badge a2a-badge">A2A</span>
+              </div>
+              <div class="server-details">
+                <span class="server-detail" *ngIf="extAgent.arn">
+                  <span class="material-icons">cloud</span>
+                  {{ extAgent.arn }}
+                </span>
+                <span class="server-detail auth-badge" *ngIf="extAgent.oauthToken?.hasToken">
+                  <span class="material-icons">vpn_key</span>
+                  Bearer token configured
+                </span>
+              </div>
+              <div class="server-description" *ngIf="extAgent.description">
+                {{ extAgent.description }}
+              </div>
+            </div>
+            <div class="server-actions">
+              <button class="edit-server-btn" (click)="openA2aAgentEditor(i)" [disabled]="isLoading" title="Edit">
+                <span class="material-icons">edit</span>
+              </button>
+              <button class="remove-server-btn" (click)="removeA2aAgent(i)" [disabled]="isLoading" title="Remove">
+                <span class="material-icons">delete_outline</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="no-mcp-message" *ngIf="!editingAgent.external_agent_configs?.length">
+        <span class="material-icons">info_outline</span>
+        <span>No external A2A agents configured. Add agents to enable cross-agent communication.</span>
+      </div>
+
+      <!-- A2A Agent Editor - Rendered by parent agent-management-modal to avoid overflow clipping -->
+    </div>
+
     <!-- Instructions Section -->
     <div class="form-section">
       <h5 class="section-title">
@@ -516,7 +648,9 @@
         Agent Instructions
         <div class="section-actions">
           <button class="ai-generate-button" (click)="showGenerateInstructionsDialog()"
-            [disabled]="isLoading || isGeneratingInstructions" title="Generate instructions with AI">
+            [disabled]="isLoading || isGeneratingInstructions || isExternalRuntime"
+            [class.hidden-action]="isExternalRuntime"
+            title="{{ isExternalRuntime ? 'Instructions are managed by the external runtime' : 'Generate instructions with AI' }}">
             <span class="material-icons">auto_awesome</span>
             {{ editingAgent.instructions ? 'Enhance' : 'Generate' }}
           </button>
@@ -528,6 +662,11 @@
       </h5>
       <p class="section-description">System prompt that defines the agent's behavior and capabilities.</p>
 
+      <div class="external-runtime-notice" *ngIf="isExternalRuntime">
+        <span class="material-icons">info</span>
+        Instructions are managed by the external runtime and cannot be edited here.
+      </div>
+
       <div class="ai-prompt-dialog" *ngIf="showInstructionsPrompt">
         <div class="ai-prompt-content">
           <h6>{{ editingAgent.instructions ? 'Enhance Instructions' : 'Generate Instructions' }}</h6>
@@ -535,6 +674,27 @@
           <textarea [(ngModel)]="instructionsPromptText"
             placeholder="{{ editingAgent.instructions ? 'e.g., Add more detail about handling edge cases...' : 'e.g., This agent should help with campaign optimization...' }}"
             rows="3" [disabled]="isGeneratingInstructions"></textarea>
+          
+          <!-- Document Attachment -->
+          <div class="doc-attach-section">
+            <label class="doc-attach-label">
+              <span class="material-icons">attach_file</span>
+              Attach reference documents
+              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log" 
+                (change)="onInstructionsFileAttach($event)" hidden>
+            </label>
+            <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, etc.)</span>
+            <div class="attached-docs" *ngIf="instructionsAttachedDocs.length">
+              <div class="attached-doc-chip" *ngFor="let doc of instructionsAttachedDocs; let i = index">
+                <span class="material-icons doc-icon">description</span>
+                <span class="doc-name">{{ doc.name }}</span>
+                <button class="remove-doc-btn" (click)="removeInstructionsDoc(i)" type="button">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="ai-prompt-actions">
             <button class="nova-button secondary" (click)="hideGenerateInstructionsDialog()" [disabled]="isGeneratingInstructions">Cancel</button>
             <button class="nova-button primary" (click)="generateInstructions()" [disabled]="isGeneratingInstructions">
@@ -553,7 +713,8 @@
       <div class="instructions-editor" *ngIf="!isMarkdownPreview">
         <textarea id="instructions" class="form-control instructions-textarea"
           [(ngModel)]="editingAgent.instructions"
-          [disabled]="isLoading || isGeneratingInstructions"
+          [disabled]="isLoading || isGeneratingInstructions || isExternalRuntime"
+          [class.readonly-field]="isExternalRuntime"
           placeholder="Enter agent instructions (supports Markdown)..."
           rows="10"></textarea>
       </div>
@@ -604,6 +765,27 @@
           <textarea [(ngModel)]="mappingsPromptText"
             placeholder="e.g., This agent shows campaign metrics and budget allocations..."
             rows="3" [disabled]="isGeneratingMappings"></textarea>
+          
+          <!-- Document Attachment -->
+          <div class="doc-attach-section">
+            <label class="doc-attach-label">
+              <span class="material-icons">attach_file</span>
+              Attach reference documents
+              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log" 
+                (change)="onMappingsFileAttach($event)" hidden>
+            </label>
+            <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, etc.)</span>
+            <div class="attached-docs" *ngIf="mappingsAttachedDocs.length">
+              <div class="attached-doc-chip" *ngFor="let doc of mappingsAttachedDocs; let i = index">
+                <span class="material-icons doc-icon">description</span>
+                <span class="doc-name">{{ doc.name }}</span>
+                <button class="remove-doc-btn" (click)="removeMappingsDoc(i)" type="button">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="ai-prompt-actions">
             <button class="nova-button secondary" (click)="hideGenerateMappingsDialog()" [disabled]="isGeneratingMappings">Cancel</button>
             <button class="nova-button primary" (click)="generateVisualizationMappings()" [disabled]="isGeneratingMappings">
@@ -656,6 +838,11 @@
 
   <!-- Editor Actions -->
   <div class="editor-actions">
+    <button class="nova-button danger" *ngIf="!isNew" (click)="requestDelete()" [disabled]="isLoading">
+      <span class="material-icons">delete</span>
+      Delete
+    </button>
+    <div class="action-spacer"></div>
     <button class="nova-button secondary" (click)="handleCancel()" [disabled]="isLoading">
       <span class="material-icons">close</span>
       Cancel
@@ -664,6 +851,29 @@
       <span class="material-icons">{{ isLoading ? 'hourglass_empty' : 'save' }}</span>
       {{ isLoading ? 'Saving...' : (isNew ? 'Create Agent' : 'Save Changes') }}
     </button>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="delete-confirm-overlay" *ngIf="showDeleteConfirm" (click)="cancelDeleteAgent()">
+    <div class="delete-confirm-dialog" (click)="$event.stopPropagation()">
+      <div class="delete-confirm-header">
+        <span class="material-icons warning-icon">warning</span>
+        <h4>Delete Agent</h4>
+      </div>
+      <div class="delete-confirm-body">
+        <p>Are you sure you want to delete <strong>{{ editingAgent.agent_display_name }}</strong>?</p>
+        <p class="delete-warning-text">This will permanently remove the agent configuration, instructions, and all visualization mappings. This action cannot be undone.</p>
+      </div>
+      <div class="delete-confirm-actions">
+        <button class="nova-button secondary" (click)="cancelDeleteAgent()">
+          Cancel
+        </button>
+        <button class="nova-button danger" (click)="confirmDeleteAgent()">
+          <span class="material-icons">delete</span>
+          Delete Agent
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Visualization Preview Modal -->
