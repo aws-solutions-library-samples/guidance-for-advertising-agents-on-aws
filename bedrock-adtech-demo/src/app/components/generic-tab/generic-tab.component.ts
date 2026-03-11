@@ -1,4 +1,5 @@
 import { Component, Input, OnInit, OnDestroy, AfterViewInit, ViewChildren, ViewChild, QueryList, ElementRef, Output, EventEmitter } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { BedrockService } from '../../services/bedrock.service';
 import { AwsConfigService } from '../../services/aws-config.service';
 import { AgentConfigService } from '../../services/agent-config.service';
@@ -57,6 +58,9 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
   isLoadingSessionSummary = false;
   private hasCheckedSession = false;
 
+  // Tab config update subscription
+  private tabConfigSub: Subscription | null = null;
+
   // Export state - getter to sync with chat interface
   get isExportingPdf(): boolean {
     return this.chatInterface?.isExportingPdf || false;
@@ -105,11 +109,19 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initializeAgentSelection();
     this.loadTabConfig(this.tabConfig);
 
+    // Subscribe to tab config updates from DynamoDB saves
+    this.tabConfigSub = this.agentConfig.tabConfigUpdated.subscribe(async (updatedConfig) => {
+      if (updatedConfig?.tabConfigurations?.[this.tabId]) {
+        this.loadTabConfig(updatedConfig.tabConfigurations[this.tabId]);
+      }
+    });
+
     // Session check moved to ngAfterViewInit to ensure chatInterface ViewChild is available
   }
 
   ngOnDestroy(): void {
-    // Cleanup if needed
+    // Cleanup subscriptions
+    this.tabConfigSub?.unsubscribe();
     this.removeHoverListeners();
     if (this.hoverTimeout) {
       clearTimeout(this.hoverTimeout);

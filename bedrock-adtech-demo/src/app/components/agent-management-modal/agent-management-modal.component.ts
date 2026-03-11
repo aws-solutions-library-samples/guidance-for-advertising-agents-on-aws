@@ -3,6 +3,8 @@ import { AgentDynamoDBService } from '../../services/agent-dynamodb.service';
 import { AgentConfigService } from '../../services/agent-config.service';
 import { BedrockService } from '../../services/bedrock.service';
 import { AgentEditorPanelComponent } from '../agent-editor-panel/agent-editor-panel.component';
+import { AttachedDocument, generateFullAgentConfig } from '../agent-editor-panel/agent-editor-ai.helpers';
+import { AVAILABLE_TEMPLATES } from '../agent-editor-panel/agent-editor-panel.constants';
 
 /**
  * MCP Server configuration for connecting to external MCP tools
@@ -40,6 +42,53 @@ export interface MCPServerConfig {
     region: string;
     service: string;
   };
+  /** OAuth Bearer Token authentication */
+  oauthToken?: {
+    /** Whether a token has been stored in SSM Parameter Store */
+    hasToken: boolean;
+    /** SSM parameter path (set by backend after token storage) */
+    ssmPath?: string;
+  };
+}
+
+/**
+ * External A2A (Agent-to-Agent) agent configuration
+ * Allows connecting to remote agents via ARN with optional OAuth authentication
+ */
+export interface ExternalAgentConfig {
+  /** Unique identifier for this external agent entry */
+  id: string;
+  /** Display name for the external agent */
+  name: string;
+  /** ARN of the remote agent (e.g., AgentCore runtime ARN or A2A endpoint) */
+  arn: string;
+  /** Whether this agent is an A2A (Agent-to-Agent) protocol agent */
+  isA2A: boolean;
+  /** Optional description of what this external agent provides */
+  description?: string;
+  /** Whether this external agent is enabled */
+  enabled: boolean;
+  /** Authentication type: 'none', 'oauth', or 'iam' */
+  authType?: 'none' | 'oauth' | 'iam';
+  /** OAuth Bearer Token authentication for A2A agents */
+  oauthToken?: {
+    /** Whether a token has been stored in SSM Parameter Store */
+    hasToken: boolean;
+    /** SSM parameter path (set after token storage) */
+    ssmPath?: string;
+  };
+  /** OAuth credentials stored in SSM (username/password for token acquisition) */
+  oauthCredentials?: {
+    /** Whether credentials have been stored in SSM Parameter Store */
+    hasCredentials: boolean;
+    /** SSM parameter path for the credentials */
+    ssmPath?: string;
+  };
+  /** AWS IAM authentication config */
+  awsAuth?: {
+    region: string;
+    service: string;
+  };
 }
 
 /**
@@ -72,6 +121,8 @@ export interface AgentConfiguration {
   runtime_arn?: string;
   /** Knowledge base name this agent uses for RAG (maps to knowledge_bases in global config) */
   knowledge_base?: string;
+  /** Structured external A2A agent configurations */
+  external_agent_configs?: ExternalAgentConfig[];
 }
 
 /**
@@ -98,6 +149,9 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   // MCP editor state (rendered at this level to escape modal overflow clipping)
   showMcpEditorOverlay: boolean = false;
 
+  // A2A editor state (rendered at this level to escape modal overflow clipping)
+  showA2aEditorOverlay: boolean = false;
+
   // State properties from design document
   isLoading: boolean = false;
   agents: AgentConfiguration[] = [];
@@ -111,6 +165,13 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
 
   // Cache refresh state
   isRefreshingCache: boolean = false;
+
+  // Generate Agent modal state
+  showGenerateAgentModal: boolean = false;
+  generateAgentPrompt: string = '';
+  generateAgentDocs: AttachedDocument[] = [];
+  isGeneratingAgent: boolean = false;
+  generateAgentError: string | null = null;
 
   // Store configured colors from global config for agent color lookup
   // Validates: Requirement 2.6 - Apply agent's configured color as accent border
@@ -146,15 +207,17 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
    * Closes the modal and resets state
    */
   close(): void {
-    this.isOpen = false;
-    this.selectedAgent = null;
-    this.isEditing = false;
-    this.isAddingNew = false;
-    this.errorMessage = null;
-    this.successMessage = null;
-    this.showMcpEditorOverlay = false;
-    this.closeModal.emit();
-  }
+      this.isOpen = false;
+      this.selectedAgent = null;
+      this.isEditing = false;
+      this.isAddingNew = false;
+      this.errorMessage = null;
+      this.successMessage = null;
+      this.showMcpEditorOverlay = false;
+      this.showA2aEditorOverlay = false;
+      this.showGenerateAgentModal = false;
+      this.closeModal.emit();
+    }
 
   /**
    * Loads all agents from DynamoDB
@@ -190,7 +253,8 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
           external_agents: agent.external_agents || [],
           agent_tools: agent.agent_tools || [],
           color: agent.color || this.configuredColors[agent.agent_name] || '#6842ff',
-          knowledge_base: agent.knowledge_base || knowledgeBases[agent.agent_name] || ''
+          knowledge_base: agent.knowledge_base || knowledgeBases[agent.agent_name] || '',
+          external_agent_configs: agent.external_agent_configs || []
         }));
       } else {
         // Fallback to getAllAgents if global config not available
@@ -241,6 +305,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
           this.selectedAgent.color = this.selectedAgent.color || '#6842ff';
           this.selectedAgent.injectable_values = this.selectedAgent.injectable_values || {};
           this.selectedAgent.mcp_servers = this.selectedAgent.mcp_servers || [];
+          this.selectedAgent.external_agent_configs = this.selectedAgent.external_agent_configs || [];
           this.selectedAgent.runtime_arn = this.selectedAgent.runtime_arn || '';
         }
 
@@ -517,6 +582,10 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   onEditorCancel(): void {
     this.cancelEdit();
   }
+  onEditorDelete(agent: AgentConfiguration): void {
+    this.cancelEdit();
+    this.deleteAgent(agent);
+  }
 
   /**
    * Cancels editing and returns to list view
@@ -557,6 +626,19 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Returns the AdFabricAgent's runtime ARN (the "default" runtime).
+   * Agents with a different runtime_arn are considered external.
+   */
+  getDefaultRuntimeArn(): string {
+    const enriched = this.agentConfigService.getEnrichedAgents();
+    const adFabric = enriched.find(a => a.agentType?.toLowerCase().includes('adfabricagent'));
+    if (adFabric?.runtimeArn) return adFabric.runtimeArn;
+    // Fallback: use the first enriched agent's runtimeArn (they all default to AdFabricAgent's)
+    const first = enriched.find(a => a.runtimeArn);
+    return first?.runtimeArn || '';
+  }
+
+  /**
    * Creates an empty agent configuration with default values
    * Validates: Requirement 4.3 - Default values for optional fields:
    * - model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0' (default model)
@@ -583,7 +665,8 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       },
       agent_tools: [],           // Validates: Requirement 4.3 - default empty array
       instructions: '',
-      color: '#6842ff'
+      color: '#6842ff',
+      external_agent_configs: []
     };
   }
 
@@ -674,6 +757,109 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
 
   onMcpEditorSaved(): void {
     this.showMcpEditorOverlay = false;
+  }
+
+  onA2aEditorOpened(): void {
+    this.showA2aEditorOverlay = true;
+  }
+
+  onA2aEditorClosed(): void {
+    this.showA2aEditorOverlay = false;
+  }
+
+  onA2aEditorSaved(): void {
+    this.showA2aEditorOverlay = false;
+  }
+
+  // ============================================
+  // Generate Agent from Prompt + Documents
+  // ============================================
+
+  openGenerateAgentModal(): void {
+    this.showGenerateAgentModal = true;
+    this.generateAgentPrompt = '';
+    this.generateAgentDocs = [];
+    this.generateAgentError = null;
+  }
+
+  closeGenerateAgentModal(): void {
+    this.showGenerateAgentModal = false;
+    this.generateAgentPrompt = '';
+    this.generateAgentDocs = [];
+    this.generateAgentError = null;
+  }
+
+  onGenerateAgentFileAttach(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const allowedTypes = ['.txt', '.md', '.json', '.csv', '.xml', '.yaml', '.yml', '.log'];
+    Array.from(input.files).forEach(file => {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!allowedTypes.includes(ext) && !file.type.startsWith('text/')) return;
+      if (file.size > 512 * 1024) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.generateAgentDocs.push({ name: file.name, content: reader.result as string });
+        this.cdr.markForCheck();
+      };
+      reader.readAsText(file);
+    });
+    input.value = '';
+  }
+
+  removeGenerateAgentDoc(index: number): void {
+    this.generateAgentDocs.splice(index, 1);
+  }
+
+  async executeGenerateAgent(): Promise<void> {
+    if (!this.generateAgentPrompt.trim()) {
+      this.generateAgentError = 'Please provide a description of the agent you want to create.';
+      return;
+    }
+
+    this.isGeneratingAgent = true;
+    this.generateAgentError = null;
+
+    try {
+      const result = await generateFullAgentConfig(
+        this.generateAgentPrompt,
+        this.getAvailableAgentNames(),
+        AVAILABLE_TEMPLATES,
+        this.bedrockService,
+        this.generateAgentDocs
+      );
+
+      // Close the generate modal
+      this.showGenerateAgentModal = false;
+
+      // Set the generated agent as the selected agent and open the editor
+      this.selectedAgent = result.agent;
+      this.isEditing = true;
+      this.isAddingNew = true;
+      this.errorMessage = null;
+
+      // After the editor panel initializes, set the visualization mappings
+      setTimeout(() => {
+        if (this.editorPanel && result.visualizationTemplates?.length) {
+          this.editorPanel.visualizationMappings = {
+            agentName: result.agent.agent_name || '',
+            agentId: result.agent.agent_id || '',
+            templates: result.visualizationTemplates
+          };
+          this.cdr.detectChanges();
+        }
+      }, 100);
+
+      this.showSuccess('Agent configuration generated. Review and save when ready.');
+    } catch (error: any) {
+      console.error('Error generating agent:', error);
+      this.generateAgentError = error.message || 'Failed to generate agent configuration. Please try again.';
+    } finally {
+      this.isGeneratingAgent = false;
+      this.generateAgentPrompt = '';
+      this.generateAgentDocs = [];
+      this.cdr.markForCheck();
+    }
   }
 
   /**

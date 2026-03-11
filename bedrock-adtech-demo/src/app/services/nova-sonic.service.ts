@@ -113,23 +113,31 @@ export class NovaSonicService {
    * Constructs a route_to_agent tool with an enum of all agent names and their descriptions.
    */
   buildAgentToolDefinition(agents: AgentConfiguration[]): AgentToolDefinition {
-    const validAgents = agents.filter(a => a.agent_name && a.agent_description);
+    // Agent cards from DynamoDB may use agent_name/agent_description or name/description
+    const validAgents = agents.filter(a => {
+      const name = a.agent_name || (a as any).name || '';
+      const desc = a.agent_description || (a as any).description || '';
+      return name && desc;
+    });
 
     if (validAgents.length === 0) {
       console.warn('NovaSonicService: No valid agents with name+description found for tool definition. Agent count:', agents.length);
       // Log what fields are available on the first agent for debugging
       if (agents.length > 0) {
         console.warn('NovaSonicService: First agent fields:', Object.keys(agents[0]));
+        console.warn('NovaSonicService: First agent sample:', JSON.stringify(agents[0]).substring(0, 300));
       }
     } else {
       console.log(`🎯 NovaSonicService: Built tool definition with ${validAgents.length} agents:`,
-        validAgents.map(a => a.agent_name).join(', '));
+        validAgents.map(a => a.agent_name || (a as any).name).join(', '));
     }
 
-    const agentNames = validAgents.map(a => a.agent_name);
+    const agentNames = validAgents.map(a => a.agent_name || (a as any).name);
     const descriptions: Record<string, string> = {};
     for (const agent of validAgents) {
-      descriptions[agent.agent_name] = agent.agent_description;
+      const name = agent.agent_name || (agent as any).name;
+      const desc = agent.agent_description || (agent as any).description || 'Specialized agent';
+      descriptions[name] = desc;
     }
 
     return {
@@ -361,17 +369,26 @@ export class NovaSonicService {
             sampleSizeBits: 16,
             channelCount: 1,
             voiceId: 'tiffany'
+          },
+          // Required for Nova Sonic to send tool results back as JSON
+          toolUseOutputConfiguration: {
+            mediaType: 'application/json'
           }
         }
       }
     };
 
     // Add tool configuration if agent tools are provided
+    // Nova Sonic expects `toolConfiguration.tools` (not `toolUseConfiguration`)
+    // and inputSchema.json must be a JSON-stringified string, not a raw object.
     if (agentTools && agentTools.length > 0) {
-      event.event.promptStart.toolUseConfiguration = {
-        toolChoice: 'any',
-        tools: this.buildToolConfig(agentTools)
+      const tools = this.buildToolConfig(agentTools);
+      console.log(`🔧 NovaSonicService: Sending ${tools.length} tool(s) in promptStart:`, JSON.stringify(tools.map(t => t.toolSpec?.name)));
+      event.event.promptStart.toolConfiguration = {
+        tools
       };
+    } else {
+      console.warn('🔧 NovaSonicService: No agent tools provided — Nova Sonic will respond with text only (no routing)');
     }
 
     this.enqueueInputEvent(event);
@@ -649,7 +666,7 @@ export class NovaSonicService {
    * and produce a spoken response after deciding to use a tool.
    */
   private sendToolResult(toolUseId: string, agentName: string, query: string): void {
-    const toolResultContentName = this.pendingToolContentName || this.generateId('tool-result');
+    const toolResultContentName = this.generateId('tool-result');
     const resultPayload = JSON.stringify({
       status: 'routed',
       agentName,
@@ -658,13 +675,14 @@ export class NovaSonicService {
 
     console.log(`🔧 NovaSonicService: Sending tool result — contentName=${toolResultContentName}, toolUseId=${toolUseId}`);
 
-    // 1. contentStart for TOOL_RESULT
+    // 1. contentStart for TOOL result (type must be "TOOL", not "TOOL_RESULT")
     this.enqueueInputEvent({
       event: {
         contentStart: {
           promptName: this.promptId,
           contentName: toolResultContentName,
-          type: 'TOOL_RESULT',
+          interactive: false,
+          type: 'TOOL',
           role: 'TOOL',
           toolResultInputConfiguration: {
             toolUseId: toolUseId,
@@ -675,10 +693,10 @@ export class NovaSonicService {
       }
     });
 
-    // 2. textInput with the result content
+    // 2. toolResult event (NOT textInput) with the result content
     this.enqueueInputEvent({
       event: {
-        textInput: {
+        toolResult: {
           promptName: this.promptId,
           contentName: toolResultContentName,
           content: resultPayload
@@ -757,12 +775,14 @@ export class NovaSonicService {
       .map(name => `- ${name}: ${agentDescriptions[name] || 'No description available'}`)
       .join('\n');
 
+    // Nova Sonic requires inputSchema.json to be a JSON-stringified string,
+    // NOT a raw object. This matches the working sonic-client.html pattern.
     return [{
       toolSpec: {
         name: 'route_to_agent',
         description: `Route the user's request to the most appropriate specialized agent. Available agents:\n${agentListDescription}`,
         inputSchema: {
-          json: {
+          json: JSON.stringify({
             type: 'object',
             properties: {
               agentName: {
@@ -776,7 +796,7 @@ export class NovaSonicService {
               }
             },
             required: ['agentName', 'query']
-          }
+          })
         }
       }
     }];

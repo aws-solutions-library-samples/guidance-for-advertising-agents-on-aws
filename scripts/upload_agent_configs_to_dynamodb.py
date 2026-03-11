@@ -56,6 +56,124 @@ def get_dynamodb_table(table_name: str, region: str, profile: str = None):
     return dynamodb.Table(table_name)
 
 
+def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str, 
+                                unique_id: str, region: str, 
+                                profile: str = None) -> Dict[str, Any]:
+    """
+    Resolve knowledge base name references to actual KB IDs using the Bedrock API.
+    
+    For each entry in the knowledge_bases map, the value is a KB name (e.g., "Advertising").
+    The deployed KB has the name pattern: <stack-prefix>-<value>-<unique-id>
+    (e.g., "cbi-Advertising-ibc226"). This function looks up the real KB ID for each.
+    
+    Also resolves knowledge_base references inside agent_configs entries.
+    
+    Args:
+        config: The global configuration dict (will be modified in-place)
+        stack_prefix: The deployment stack prefix (e.g., "cbi")
+        unique_id: The deployment unique ID (e.g., "ibc226")
+        region: AWS region
+        profile: Optional AWS profile name
+        
+    Returns:
+        The modified config dict with resolved KB IDs
+    """
+    if not stack_prefix or not unique_id:
+        print("⚠️  --stack-prefix and --unique-id not provided, skipping KB ID resolution")
+        return config
+    
+    knowledge_bases_map = config.get("knowledge_bases", {})
+    if not knowledge_bases_map:
+        return config
+    
+    print(f"🔍 Resolving knowledge base IDs using pattern: {stack_prefix}-<name>-{unique_id}")
+    
+    # Build a Bedrock client to list knowledge bases
+    try:
+        if profile:
+            session = boto3.Session(profile_name=profile)
+            bedrock_client = session.client("bedrock-agent", region_name=region)
+        else:
+            bedrock_client = boto3.client("bedrock-agent", region_name=region)
+    except Exception as e:
+        print(f"⚠️  Could not create Bedrock client: {e}", file=sys.stderr)
+        print("   KB IDs will not be resolved. Values will be uploaded as-is.", file=sys.stderr)
+        return config
+    
+    # List all knowledge bases and build a name -> ID lookup
+    kb_name_to_id: Dict[str, str] = {}
+    try:
+        next_token = None
+        while True:
+            kwargs = {"maxResults": 50}
+            if next_token:
+                kwargs["nextToken"] = next_token
+            response = bedrock_client.list_knowledge_bases(**kwargs)
+            
+            for kb in response.get("knowledgeBaseSummaries", []):
+                kb_name_to_id[kb["name"]] = kb["knowledgeBaseId"]
+            
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+    except Exception as e:
+        print(f"⚠️  Could not list knowledge bases: {e}", file=sys.stderr)
+        print("   KB IDs will not be resolved. Values will be uploaded as-is.", file=sys.stderr)
+        return config
+    
+    # Resolve each entry in the knowledge_bases map
+    resolved_count = 0
+    for agent_name, kb_value in list(knowledge_bases_map.items()):
+        # Skip if the value already looks like a KB ID (e.g., "ABCDEF1234")
+        if len(kb_value) >= 10 and kb_value.isalnum():
+            continue
+        
+        # Construct the expected deployed KB name
+        expected_kb_name = f"{stack_prefix}-{kb_value}-{unique_id}"
+        
+        if expected_kb_name in kb_name_to_id:
+            real_kb_id = kb_name_to_id[expected_kb_name]
+            print(f"   ✅ {agent_name}: {kb_value} -> {real_kb_id} (via {expected_kb_name})")
+            knowledge_bases_map[agent_name] = real_kb_id
+            resolved_count += 1
+        else:
+            print(f"   ⚠️  {agent_name}: KB '{expected_kb_name}' not found in Bedrock, keeping value '{kb_value}'")
+    
+    config["knowledge_bases"] = knowledge_bases_map
+    
+    # Also resolve knowledge_base references inside agent_configs
+    agent_configs = config.get("agent_configs", {})
+    for agent_name, agent_cfg in agent_configs.items():
+        kb_ref = agent_cfg.get("knowledge_base", "")
+        if not kb_ref:
+            continue
+        
+        # Skip if already looks like a resolved KB ID
+        if len(kb_ref) >= 10 and kb_ref.isalnum():
+            continue
+        
+        # If the value matches a deployed KB name pattern already (e.g., "cbi-Advertising-ibc226"),
+        # look it up directly
+        if kb_ref in kb_name_to_id:
+            agent_cfg["knowledge_base"] = kb_name_to_id[kb_ref]
+            print(f"   ✅ agent_configs.{agent_name}.knowledge_base: {kb_ref} -> {kb_name_to_id[kb_ref]}")
+            resolved_count += 1
+        else:
+            # Try constructing the name from the value
+            expected_name = f"{stack_prefix}-{kb_ref}-{unique_id}"
+            if expected_name in kb_name_to_id:
+                agent_cfg["knowledge_base"] = kb_name_to_id[expected_name]
+                print(f"   ✅ agent_configs.{agent_name}.knowledge_base: {kb_ref} -> {kb_name_to_id[expected_name]}")
+                resolved_count += 1
+    
+    if resolved_count > 0:
+        print(f"   📊 Resolved {resolved_count} knowledge base reference(s)")
+    else:
+        print(f"   ℹ️  No knowledge base references needed resolution")
+    
+    return config
+
+
 def put_item(table, pk: str, sk: str, config_type: str, content: str, 
              agent_name: str = None, template_id: str = None) -> bool:
     """Put a single item to DynamoDB."""
@@ -400,111 +518,28 @@ def offer_local_config_update(existing_config: Dict[str, Any],
     print()
     print("-" * 60)
 
-def offer_local_config_sync(existing_config: Dict[str, Any], config_path: str) -> None:
-    """
-    Offer to save the current DynamoDB configuration to the local file.
-
-    This gives the user a chance to snapshot the live environment config
-    before it gets overwritten or merged, keeping the local file in sync
-    with what's actually running.
-
-    Args:
-        existing_config: The current configuration from DynamoDB
-        config_path: Path to the local global_configuration.json file
-    """
-    existing_agents = sorted(existing_config.get("agent_configs", {}).keys())
-
-    # Compare with local file to show what's different
-    local_config = {}
-    local_agents = []
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                local_config = json.load(f)
-            local_agents = sorted(local_config.get("agent_configs", {}).keys())
-        except (json.JSONDecodeError, Exception):
-            pass
-
-    only_in_ddb = sorted(set(existing_agents) - set(local_agents))
-    only_in_local = sorted(set(local_agents) - set(existing_agents))
-
-    # Check for agents that exist in both but have different content
-    common_agents = set(existing_agents) & set(local_agents)
-    modified_agents = []
-    for agent_name in sorted(common_agents):
-        ddb_agent = existing_config.get("agent_configs", {}).get(agent_name, {})
-        local_agent = local_config.get("agent_configs", {}).get(agent_name, {})
-        if ddb_agent != local_agent:
-            modified_agents.append(agent_name)
-
-    has_differences = only_in_ddb or only_in_local or modified_agents
-
-    if not has_differences:
-        print("ℹ️  Local config file is already in sync with DynamoDB.")
-        print()
-        return
-
-    print()
-    print("=" * 60)
-    print("📥 LOCAL CONFIG SYNC OPPORTUNITY")
-    print("=" * 60)
-    print()
-    print(f"   The live DynamoDB config differs from your local file:")
-    print(f"   Local file: {config_path}")
-    print()
-
-    if only_in_ddb:
-        print(f"   Agents only in DynamoDB ({len(only_in_ddb)}):")
-        for agent in only_in_ddb:
-            print(f"      + {agent}")
-        print()
-
-    if only_in_local:
-        print(f"   Agents only in local file ({len(only_in_local)}):")
-        for agent in only_in_local:
-            print(f"      - {agent}")
-        print()
-
-    if modified_agents:
-        print(f"   Agents modified in DynamoDB ({len(modified_agents)}):")
-        for agent in modified_agents:
-            print(f"      ~ {agent}")
-        print()
-
-    print("   Would you like to save the current DynamoDB config to your")
-    print("   local file before proceeding with the upload?")
-    print()
-
-    while True:
-        choice = input("   Save DynamoDB config to local file? (Y/N): ").strip().upper()
-        if choice in ('Y', 'YES'):
-            try:
-                with open(config_path, "w", encoding="utf-8") as f:
-                    json.dump(existing_config, f, indent=4, ensure_ascii=False)
-                print(f"   ✅ Saved DynamoDB config to {config_path}")
-                print()
-            except Exception as e:
-                print(f"   ❌ Failed to save: {e}")
-                print()
-            return
-        elif choice in ('N', 'NO'):
-            print("   ⏭️  Skipping local file sync.")
-            print()
-            return
-        else:
-            print("   Please enter 'Y' for yes or 'N' for no.")
 
 
 def upload_global_config(table, config_dir: str, mode: str = 'overwrite', 
-                         existing_config: Optional[Dict[str, Any]] = None) -> Tuple[int, int]:
+                         existing_config: Optional[Dict[str, Any]] = None,
+                         stack_prefix: str = None, unique_id: str = None,
+                         region: str = None, profile: str = None) -> Tuple[int, int]:
     """
     Upload global configuration with merge/overwrite support.
+    
+    When stack_prefix and unique_id are provided, knowledge base name references
+    (e.g., "Advertising") are resolved to real KB IDs by looking up the deployed
+    KB named <stack-prefix>-<value>-<unique-id> via the Bedrock API.
     
     Args:
         table: DynamoDB table resource
         config_dir: Path to agent configuration directory
         mode: 'merge' or 'overwrite'
         existing_config: Existing configuration from DynamoDB (for merge mode)
+        stack_prefix: Deployment stack prefix for KB ID resolution
+        unique_id: Deployment unique ID for KB ID resolution
+        region: AWS region for KB ID resolution
+        profile: AWS profile for KB ID resolution
         
     Returns:
         Tuple of (success_count, failed_count)
@@ -520,9 +555,12 @@ def upload_global_config(table, config_dir: str, mode: str = 'overwrite',
         with open(config_path, "r", encoding="utf-8") as f:
             file_config = json.load(f)
         
-        # Offer to sync local file with DynamoDB before proceeding
-        if existing_config:
-            offer_local_config_sync(existing_config, config_path)
+        # Resolve knowledge base name references to real KB IDs before uploading.
+        # This uses the Bedrock API to look up KBs named <stack-prefix>-<value>-<unique-id>.
+        if stack_prefix and unique_id and region:
+            file_config = resolve_knowledge_base_ids(
+                file_config, stack_prefix, unique_id, region, profile
+            )
         
         if mode == 'merge' and existing_config:
             # Merge configurations
@@ -757,6 +795,20 @@ def main():
         default=None,
         help="AWS profile to use for credentials"
     )
+    parser.add_argument(
+        "--stack-prefix",
+        default=None,
+        help="Deployment stack prefix for KB ID resolution (e.g., 'cbi'). "
+             "When provided with --unique-id, knowledge base name references "
+             "are resolved to real KB IDs via the Bedrock API."
+    )
+    parser.add_argument(
+        "--unique-id",
+        default=None,
+        help="Deployment unique ID for KB ID resolution (e.g., 'ibc226'). "
+             "Used with --stack-prefix to look up KBs named "
+             "<stack-prefix>-<kb-name>-<unique-id>."
+    )
     
     args = parser.parse_args()
     
@@ -799,9 +851,15 @@ def main():
     total_success = 0
     total_failed = 0
     
-    # Upload global config (with merge/overwrite handling)
+    # Upload global config (with merge/overwrite handling and KB ID resolution)
     print("📄 Uploading global configuration...")
-    s, f = upload_global_config(table, args.agent_config_dir, mode, existing_config)
+    if args.stack_prefix and args.unique_id:
+        print(f"   KB ID resolution enabled: {args.stack_prefix}-<name>-{args.unique_id}")
+    s, f = upload_global_config(
+        table, args.agent_config_dir, mode, existing_config,
+        stack_prefix=args.stack_prefix, unique_id=args.unique_id,
+        region=args.region, profile=args.profile
+    )
     total_success += s
     total_failed += f
     

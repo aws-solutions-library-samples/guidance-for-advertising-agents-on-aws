@@ -50,7 +50,7 @@ export class VisualizationAnalyzerService {
         return null;
       }
 
-      // 3. Construct the prompt for Claude Opus 4.5
+      // 3. Construct the prompt for Claude Haiku 4.5
       const prompt = this.buildAnalysisPrompt(responseText, templateSchemas);
 
       // 4. Call Claude Haiku 4.5
@@ -133,7 +133,7 @@ export class VisualizationAnalyzerService {
     \`\`\``;
         }).join('\n\n');
 
-        return `You are a data extraction engine for dashboard visualization cards. Extract ONLY key numbers and short labels from the agent response. This data will render in small UI cards — brevity is critical.
+        return `You are a data extraction engine for dashboard visualization cards. Your ONLY output is a single JSON object. Do NOT include any explanation, commentary, or text outside the JSON. Extract ONLY key numbers and short labels from the agent response. This data will render in small UI cards — brevity is critical.
 
     ## Agent Response Text
     ${responseText}
@@ -142,8 +142,7 @@ export class VisualizationAnalyzerService {
     ${templateDescriptions}
 
     ## Output Format
-    Return a single JSON object — no other text:
-    \`\`\`json
+    Return ONLY a JSON object — absolutely no other text before or after it:
     {
       "summary": "1-2 sentence summary.",
       "visualizations": [
@@ -152,13 +151,25 @@ export class VisualizationAnalyzerService {
           "templateId": "the templateId",
           "data": { ... populated template data ... }
         }
-      ]
+      ],
+      "questions": ["What budget range would you prefer?", "Should we prioritize reach or frequency?"]
     }
-    \`\`\`
+
+    ## Question Detection
+    - Extract questions from the agent response that are directed at the user and require a response.
+    - Exclude rhetorical questions, self-referential questions, and questions the agent answers itself.
+    - Return each question as a standalone string in the "questions" array.
+    - If no user-directed questions exist, return an empty array.
 
     ## ABSOLUTE RULES — VIOLATING ANY OF THESE IS A FAILURE
 
-    ### Brevity (most important)
+    ### Output format (most important)
+    - Your ENTIRE response must be a single valid JSON object.
+    - Do NOT wrap it in markdown code blocks.
+    - Do NOT include any text before or after the JSON.
+    - The first character of your response MUST be { and the last must be }.
+
+    ### Brevity
     - Summary: 1-2 sentences max.
     - Each insight/recommendation/risk: MAX 8 WORDS. Example: "Increase mobile bid by 15%". NOT: "Based on the analysis of current performance metrics, we recommend increasing the mobile channel bid adjustment by approximately 15% to capture additional impression share."
     - Labels and names: 2-4 words max. Example: "CTV Premium". NOT: "Connected TV Premium Streaming Inventory Segment".
@@ -179,12 +190,11 @@ export class VisualizationAnalyzerService {
     ### Content
     - Extract real values from the response text — no placeholders.
     - Only include templates that have enough data to populate.
-    - Empty visualizations array if nothing fits.
-    - Return ONLY the JSON object.`;
+    - Empty visualizations array if nothing fits.`;
       }
 
   /**
-   * Parse Claude Opus 4.5 response into a VisualizationAnalysisResult.
+   * Parse Claude Haiku 4.5 response into a VisualizationAnalysisResult.
    * Returns null if the response cannot be parsed into valid JSON.
    */
   /**
@@ -233,10 +243,16 @@ export class VisualizationAnalyzerService {
         // Enforce the 5-sentence summary constraint
         const summary = this.constrainSummary(parsed.summary);
 
+        // Extract and validate questions array
+        const questions: string[] = Array.isArray(parsed.questions)
+          ? parsed.questions.filter((q: any) => typeof q === 'string' && q.trim().length > 0)
+          : [];
+
         return {
           summary,
           visualizations: validVisualizations,
-          originalText
+          originalText,
+          questions
         };
       } catch (error) {
         console.error('VisualizationAnalyzer: Failed to parse Claude response:', error);
@@ -249,10 +265,16 @@ export class VisualizationAnalyzerService {
    * Handles responses wrapped in markdown code blocks or with surrounding text.
    */
   private extractJsonFromResponse(response: string): string | null {
+    if (!response || response.trim().length === 0) return null;
+
     // Try extracting from ```json ... ``` code block first
     const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (codeBlockMatch) {
-      return codeBlockMatch[1].trim();
+      const candidate = codeBlockMatch[1].trim();
+      // Only return if it actually looks like JSON
+      if (candidate.startsWith('{') || candidate.startsWith('[')) {
+        return candidate;
+      }
     }
 
     // Try to find a top-level JSON object directly
@@ -291,6 +313,18 @@ export class VisualizationAnalyzerService {
 
     /** Max items for insight/risk/recommendation arrays */
     private static readonly MAX_ARRAY_ITEMS = 3;
+
+    /**
+     * Fields that Angular binds to [style.color] or [style.background].
+     * These MUST be strings (or undefined) — never numbers, booleans, or objects —
+     * otherwise Angular's DomSanitizer calls .toLowerCase() and crashes.
+     */
+    private static readonly STYLE_STRING_FIELDS = new Set([
+      'color', 'statusColor', 'trendColor', 'background', 'backgroundColor',
+      'trend', 'confidenceLevel', 'confidence', 'riskLevel', 'impact',
+      'unit', 'label', 'primaryLabel', 'secondaryLabel', 'category',
+      'name', 'segment', 'product_line', 'title', 'subtitle'
+    ]);
 
     /**
      * Recursively walk the visualization data object and fix type mismatches:
@@ -335,6 +369,15 @@ export class VisualizationAnalyzerService {
 
         // Recurse into nested objects/arrays
         normalized[key] = this.normalizeVisualizationData(value);
+
+        // Coerce style-bound fields to string (or undefined) so Angular's
+        // DomSanitizer doesn't crash calling .toLowerCase() on a non-string
+        if (VisualizationAnalyzerService.STYLE_STRING_FIELDS.has(key)) {
+          const v = normalized[key];
+          if (v !== null && v !== undefined && typeof v !== 'string') {
+            normalized[key] = String(v);
+          }
+        }
       }
 
       return normalized;

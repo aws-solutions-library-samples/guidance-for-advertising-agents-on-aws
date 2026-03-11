@@ -139,6 +139,16 @@ export class SegmentsVisualizationComponent implements OnChanges {
   private processedData: any = null;
   private lastInputHash: string = '';
 
+  /** Safely coerce any value to a string */
+  private toStr(val: any): string {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') {
+      try { return JSON.stringify(val); } catch { return String(val); }
+    }
+    return String(val);
+  }
+
   constructor(
     private cdr: ChangeDetectorRef,
     private cacheService: VisualizationCacheService
@@ -206,27 +216,27 @@ export class SegmentsVisualizationComponent implements OnChanges {
     
     // Generic metrics first
     if (segment.actualValue) {
-      metrics.push({label: segment.actualLabel || 'Current', value: segment.actualValue, type: 'actual'});
+      metrics.push({label: segment.actualLabel || 'Current', value: this.toStr(segment.actualValue), type: 'actual'});
     }
     if (segment.targetValue) {
-      metrics.push({label: segment.targetLabel || 'Target', value: segment.targetValue, type: 'target'});
+      metrics.push({label: segment.targetLabel || 'Target', value: this.toStr(segment.targetValue), type: 'target'});
     }
     if (segment.forecastedValue) {
-      metrics.push({label: segment.forecastedLabel || 'Forecast', value: segment.forecastedValue, type: 'forecast'});
+      metrics.push({label: segment.forecastedLabel || 'Forecast', value: this.toStr(segment.forecastedValue), type: 'forecast'});
     }
     
     // Legacy metrics as fallback
     if (segment.win_rate) {
-      metrics.push({label: 'Win Rate', value: segment.win_rate, type: 'win-rate'});
+      metrics.push({label: 'Win Rate', value: this.toStr(segment.win_rate), type: 'win-rate'});
     }
     if (segment.expected_ctr) {
-      metrics.push({label: 'CTR', value: segment.expected_ctr, type: 'ctr'});
+      metrics.push({label: 'CTR', value: this.toStr(segment.expected_ctr), type: 'ctr'});
     }
     if (segment.expected_cvr) {
-      metrics.push({label: 'CVR', value: segment.expected_cvr, type: 'cvr'});
+      metrics.push({label: 'CVR', value: this.toStr(segment.expected_cvr), type: 'cvr'});
     }
     if (segment.expected_roas) {
-      metrics.push({label: 'ROAS', value: segment.expected_roas, type: 'roas'});
+      metrics.push({label: 'ROAS', value: this.toStr(segment.expected_roas), type: 'roas'});
     }
     
     return metrics;
@@ -240,14 +250,14 @@ export class SegmentsVisualizationComponent implements OnChanges {
     if (segment.primaryMetric) {
       properties.push({
         label: segment.primaryMetric.label || 'Primary Metric',
-        value: segment.primaryMetric.value || '',
+        value: this.toStr(segment.primaryMetric.value),
         isPrimary: true
       });
     }
     if (segment.secondaryMetric) {
       properties.push({
         label: segment.secondaryMetric.label || 'Secondary Metric',
-        value: segment.secondaryMetric.value || ''
+        value: this.toStr(segment.secondaryMetric.value)
       });
     }
     if (segment.budgetAmount || segment.allocation) {
@@ -259,55 +269,55 @@ export class SegmentsVisualizationComponent implements OnChanges {
       });
     }
     if (segment.statusIndicator) {
-      properties.push({label: 'Status', value: segment.statusIndicator});
+      properties.push({label: 'Status', value: this.toStr(segment.statusIndicator)});
     }
     if (segment.confidenceLevel) {
-      properties.push({label: 'Confidence Level', value: segment.confidenceLevel});
+      properties.push({label: 'Confidence Level', value: this.toStr(segment.confidenceLevel)});
     }
     
     // Legacy properties as fallback
     if (segment.bid_range || segment.new_bid_range) {
       properties.push({
         label: segment.new_bid_range ? 'New Bid Range' : 'Recommended Bid Range',
-        value: segment.bid_range || segment.new_bid_range,
+        value: this.toStr(segment.bid_range || segment.new_bid_range),
         isPrimary: true
       });
     }
     if (segment.channels?.length) {
-      properties.push({label: 'Channels', value: segment.channels.join(', ')});
+      properties.push({label: 'Channels', value: segment.channels.map((c: any) => this.toStr(c)).join(', ')});
     }
     if (segment.target_win_rate) {
-      properties.push({label: 'Target Win Rate', value: segment.target_win_rate});
+      properties.push({label: 'Target Win Rate', value: this.toStr(segment.target_win_rate)});
     }
     if (segment.required_cvr) {
-      properties.push({label: 'Required CVR', value: segment.required_cvr});
+      properties.push({label: 'Required CVR', value: this.toStr(segment.required_cvr)});
     }
     if (segment.min_roas) {
-      properties.push({label: 'Min ROAS', value: segment.min_roas});
+      properties.push({label: 'Min ROAS', value: this.toStr(segment.min_roas)});
     }
     if (segment.overlap_risk) {
-      properties.push({label: 'Overlap Risk', value: segment.overlap_risk});
+      properties.push({label: 'Overlap Risk', value: this.toStr(segment.overlap_risk)});
     }
     if (segment.monitoring_frequency) {
-      properties.push({label: 'Monitoring Frequency', value: segment.monitoring_frequency});
+      properties.push({label: 'Monitoring Frequency', value: this.toStr(segment.monitoring_frequency)});
     }
     if (segment.adjustment_threshold) {
-      properties.push({label: 'Adjustment Threshold', value: segment.adjustment_threshold});
+      properties.push({label: 'Adjustment Threshold', value: this.toStr(segment.adjustment_threshold)});
     }
     if (segment.expected_performance) {
-      properties.push({label: 'Expected Performance', value: segment.expected_performance});
+      properties.push({label: 'Expected Performance', value: this.toStr(segment.expected_performance)});
     }
     if (segment.confidence) {
-      properties.push({label: 'Confidence Level', value: segment.confidence});
+      properties.push({label: 'Confidence Level', value: this.toStr(segment.confidence)});
     }
     if (segment.audience_size) {
-      properties.push({label: 'Audience Size', value: segment.audience_size});
+      properties.push({label: 'Audience Size', value: this.toStr(segment.audience_size)});
     }
     if (segment.competitive_position) {
-      properties.push({label: 'Competitive Position', value: segment.competitive_position});
+      properties.push({label: 'Competitive Position', value: this.toStr(segment.competitive_position)});
     }
     if (segment.seasonal_trend) {
-      properties.push({label: 'Seasonal Trend', value: segment.seasonal_trend});
+      properties.push({label: 'Seasonal Trend', value: this.toStr(segment.seasonal_trend)});
     }
     
     return properties;
@@ -320,7 +330,8 @@ export class SegmentsVisualizationComponent implements OnChanges {
 
   // Helper method to get risks (generic or specific)
   getRisks(segment: any): string[] {
-    return segment.risks || segment.risk_factors || [];
+    const risks = segment.risks || segment.risk_factors || [];
+    return risks.map((r: any) => typeof r === 'string' ? r : String(r));
   }
 
   // Helper method to get recommendations (generic or specific)

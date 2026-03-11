@@ -7,8 +7,10 @@ ENV UV_SYSTEM_PYTHON=1 \
     UV_NO_PROGRESS=1 \
     PYTHONUNBUFFERED=1 \
     DOCKER_CONTAINER=1 \
-    AWS_REGION=us-east-1 \
-    AWS_DEFAULT_REGION=us-east-1
+    AWS_REGION=us-west-2 \
+    AWS_DEFAULT_REGION=us-west-2 \
+    BEDROCK_AGENTCORE_MEMORY_ID=cbi_adfabricagent_ibc226_mem-ke3dRl7f9t \
+    BEDROCK_AGENTCORE_MEMORY_NAME=cbi_adfabricagent_ibc226_mem
 
 
 
@@ -24,8 +26,8 @@ RUN uv pip install aws-opentelemetry-distro>=0.10.1
 
 # Set AWS region environment variable
 
-ENV AWS_REGION=us-east-1
-ENV AWS_DEFAULT_REGION=us-east-1
+ENV AWS_REGION=us-west-2
+ENV AWS_DEFAULT_REGION=us-west-2
 
 
 # Signal that this is running in Docker for host binding logic

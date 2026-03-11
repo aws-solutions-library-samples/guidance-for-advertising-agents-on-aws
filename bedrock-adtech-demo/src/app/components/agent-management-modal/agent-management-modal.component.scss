@@ -1474,8 +1474,1493 @@ max-width: 85vw;  }
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
+
+  // ============================================
+  // Authentication Section Styles
+  // ============================================
+
+  .auth-section {
+    border: 1px solid rgba($purple-accent, 0.15);
+    background: rgba($purple-accent, 0.02);
+  }
+
+  .auth-type-options {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+
+    .auth-type-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: $font-family-ember;
+
+      .material-icons {
+        font-size: 18px;
+      }
+
+      &:hover {
+        background: #f9fafb;
+        border-color: rgba($purple-accent, 0.3);
+        color: $purple-accent;
+        transform: translateY(-1px);
+      }
+
+      &.selected {
+        background: rgba($purple-accent, 0.1);
+        border-color: rgba($purple-accent, 0.4);
+        color: $purple-dark;
+        box-shadow: 0 0 0 2px rgba($purple-accent, 0.15);
+
+        .material-icons {
+          color: $purple-accent;
+        }
+      }
+    }
+  }
+
+  .bearer-token-config {
+    margin-top: 12px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba($purple-accent, 0.15);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+  }
+
+  .token-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .token-configured-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(#22c55e, 0.1);
+    border: 1px solid rgba(#22c55e, 0.25);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #16a34a;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 18px;
+      color: #22c55e;
+    }
+  }
+
+  .token-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .token-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      font-family: $font-family-ember;
+
+      .required {
+        color: #ef4444;
+      }
+    }
+  }
+
+  .token-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .token-input {
+      flex: 1;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .toggle-visibility-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+
+      .material-icons {
+        font-size: 20px;
+      }
+
+      &:hover {
+        background: #f3f4f6;
+        border-color: rgba($purple-accent, 0.3);
+        color: $purple-accent;
+      }
+    }
+  }
+
+  .token-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+  }
+
+  .token-save-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .token-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    color: #dc2626;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 16px;
+    }
+  }
+
+  .nova-button.danger {
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.3);
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+  }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+
+// ============================================
+// OAuth / Authentication Section Styles
+// Inside the MCP editor overlay (.mcp-editor-top-modal)
+// ============================================
+
+.mcp-editor-top-modal {
+
+  .auth-section {
+    margin-top: 16px;
+
+    h6 {
+      margin: 0 0 14px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: $font-family-ember;
+
+      .material-icons {
+        font-size: 18px;
+        color: $purple-accent;
+      }
+    }
+  }
+
+  .auth-type-options {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .auth-type-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 30px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: $font-family-ember;
+    color: #374151;
+    transition: all 0.2s ease;
+
+    .material-icons {
+      font-size: 18px;
+      color: #9ca3af;
+      transition: color 0.2s ease;
+    }
+
+    &:hover {
+      border-color: rgba($purple-accent, 0.3);
+      background: rgba($purple-accent, 0.02);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    &.selected {
+      border-color: $purple-accent;
+      background: rgba($purple-accent, 0.08);
+      color: $purple-accent;
+      font-weight: 600;
+      box-shadow: 0 0 0 3px rgba($purple-accent, 0.1);
+
+      .material-icons {
+        color: $purple-accent;
+      }
+    }
+  }
+
+  .bearer-token-config {
+    padding: 16px;
+    background: rgba(249, 250, 251, 0.8);
+    border: 1px solid rgba(229, 231, 235, 0.5);
+    border-radius: 16px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .token-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .token-configured-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #16a34a;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 18px;
+      color: #22c55e;
+    }
+  }
+
+  .token-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .danger {
+      color: #dc2626;
+      border-color: rgba(239, 68, 68, 0.3);
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #b91c1c;
+      }
+    }
+  }
+
+  .token-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      font-family: $font-family-ember;
+
+      .required {
+        color: #ef4444;
+      }
+    }
+  }
+
+  .token-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .token-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      letter-spacing: 0.5px;
+      box-shadow: 2px 2px 5px rgba(121, 76, 255, 0.05);
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: $purple-accent;
+        box-shadow: 0 0 0 2px rgba($purple-accent, 0.15);
+      }
+
+      &::placeholder {
+        font-family: $font-family-ember;
+        letter-spacing: normal;
+        color: #9ca3af;
+      }
+    }
+  }
+
+  .toggle-visibility-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+
+    .material-icons {
+      font-size: 20px;
+    }
+
+    &:hover {
+      background: #f3f4f6;
+      border-color: rgba($purple-accent, 0.3);
+      color: $purple-accent;
+    }
+  }
+
+  .token-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  }
+
+  .token-save-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .token-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #dc2626;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 16px;
+    }
+  }
+
+  // Auth badge shown in the MCP server list view
+  .auth-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #16a34a;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 14px;
+    }
+  }
+}
+
+// Responsive adjustments for auth section
+@media (max-width: 767px) {
+  .mcp-editor-top-modal {
+    .auth-type-options {
+      flex-direction: column;
+    }
+
+    .auth-type-option {
+      justify-content: center;
+    }
+
+    .token-status {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .token-save-actions {
+      flex-direction: column;
+      width: 100%;
+
+      .nova-button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// ============================================
+// Generate Agent Modal Overlay
+// ============================================
+
+// ============================================
+// Generate Agent Modal
+// ============================================
+
+.generate-agent-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease;
+}
+
+.generate-agent-modal {
+  width: 600px;
+  max-width: 90vw;
+  max-height: 85vh;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 10px 20px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.generate-agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+
+  .generate-agent-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+
+    .generate-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, $purple-gradient-start 0%, $orange-gradient-end 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba($purple-accent, 0.25);
+
+      .material-icons {
+        color: white;
+        font-size: 22px;
+      }
+    }
+
+    h5 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      font-family: $font-family-ember;
+    }
+
+    .generate-subtitle {
+      margin: 0;
+      font-size: 13px;
+      color: #6b7280;
+      font-family: $font-family-ember;
+      line-height: 1.4;
+    }
+  }
+
+  .close-generate-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      color: #374151;
+      background: #f3f4f6;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.generate-agent-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+
+  .generate-form-group {
+    margin-bottom: 16px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      font-family: $font-family-ember;
+    }
+
+    .generate-textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      font-size: 14px;
+      font-family: $font-family-ember;
+      background: white;
+      box-shadow: 2px 2px 5px rgba(121, 76, 255, 0.05);
+      transition: all 0.2s ease;
+      resize: vertical;
+      min-height: 120px;
+      line-height: 1.5;
+
+      &:focus {
+        outline: none;
+        border-color: $purple-accent;
+        box-shadow: 0 0 0 3px rgba($purple-accent, 0.15);
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+
+      &:disabled {
+        background: #f9fafb;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  // Reuse doc-attach styles from editor panel
+  .doc-attach-section {
+    margin-bottom: 16px;
+
+    .doc-attach-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .doc-attach-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba($purple-accent, 0.06);
+      border: 1px dashed rgba($purple-accent, 0.3);
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: $purple-accent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: $font-family-ember;
+
+      .material-icons {
+        font-size: 18px;
+      }
+
+      &:hover {
+        background: rgba($purple-accent, 0.12);
+        border-color: rgba($purple-accent, 0.5);
+        transform: translateY(-1px);
+      }
+
+      &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+
+    .doc-attach-hint {
+      font-size: 11px;
+      color: #9ca3af;
+      font-family: $font-family-ember;
+    }
+
+    .attached-docs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .attached-doc-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba($purple-accent, 0.08);
+      border: 1px solid rgba($purple-accent, 0.2);
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: $font-family-ember;
+      animation: fadeIn 0.2s ease;
+
+      .doc-icon {
+        font-size: 16px;
+        color: $purple-accent;
+      }
+
+      .doc-name {
+        color: #374151;
+        font-weight: 500;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .remove-doc-btn {
+        display: flex;
+        align-items: center;
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+
+        .material-icons {
+          font-size: 14px;
+        }
+
+        &:hover {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+        }
+      }
+    }
+  }
+
+  .generate-progress {
+    margin-top: 16px;
+
+    .generate-progress-bar {
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 12px;
+
+      .generate-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, $purple-gradient-start, $orange-gradient-end, $purple-gradient-start);
+        background-size: 200% 100%;
+        border-radius: 2px;
+        animation: progressShimmer 1.5s ease infinite;
+      }
+    }
+
+    .generate-progress-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
+      font-family: $font-family-ember;
+
+      .material-icons {
+        font-size: 18px;
+        color: $purple-accent;
+      }
+    }
+  }
+
+  .generate-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 12px;
+    font-size: 13px;
+    color: #dc2626;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+  }
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.generate-agent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: rgba(249, 250, 251, 0.5);
+}
+
+// ============================================
+// A2A External Agent Editor Overlay
+// Mirrors the MCP editor overlay pattern
+// ============================================
+
+.a2a-editor-top-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease;
+}
+
+.a2a-editor-top-modal {
+  width: 90%;
+  max-width: 620px;
+  max-height: 85vh;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 20px;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.25),
+    0 10px 20px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: $font-family-ember;
+
+  // Scoped form-control for the A2A modal — rounded per design system
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+    font-family: $font-family-ember;
+    background: white;
+    box-shadow: 2px 2px 5px rgba(121, 76, 255, 0.08);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: $purple-accent;
+      box-shadow: 0 0 0 3px rgba($purple-accent, 0.15);
+    }
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+
+  .field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: $font-family-ember;
+  }
+
+  .a2a-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #ffffff;
+    border-radius: 20px 20px 0 0;
+
+    .a2a-editor-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+
+      > .material-icons {
+        color: $purple-accent;
+        font-size: 28px;
+        background: rgba($purple-accent, 0.08);
+        padding: 8px;
+        border-radius: 12px;
+      }
+
+      h5 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .a2a-editor-subtitle {
+        margin: 3px 0 0 0;
+        font-size: 12px;
+        color: #6b7280;
+      }
+    }
+
+    .close-a2a-button {
+      background: none;
+      border: 1px solid #e5e7eb;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .material-icons {
+        font-size: 20px;
+      }
+
+      &:hover {
+        color: #374151;
+        background: #f3f4f6;
+        border-color: rgba($purple-accent, 0.3);
+      }
+    }
+  }
+
+  .a2a-editor-content {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+
+      &:hover {
+        background: #94a3b8;
+      }
+    }
+  }
+
+  .a2a-form-section {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: rgba(249, 250, 251, 0.6);
+    border-radius: 16px;
+    border: 1px solid rgba(229, 231, 235, 0.5);
+    transition: border-color 0.2s ease;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:hover {
+      border-color: rgba($purple-accent, 0.15);
+    }
+
+    h6 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+
+      .material-icons {
+        font-size: 18px;
+        color: $purple-accent;
+      }
+    }
+
+    .section-description {
+      margin: -8px 0 16px 0;
+      font-size: 13px;
+      color: #6b7280;
+    }
+  }
+
+  .a2a-form-group {
+    margin-bottom: 14px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+
+      .required {
+        color: #ef4444;
+        margin-left: 2px;
+      }
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      padding: 6px 0;
+
+      input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+
+        &:checked {
+          background: $purple-accent;
+          border-color: $purple-accent;
+
+          &::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+          }
+        }
+
+        &:hover {
+          border-color: rgba($purple-accent, 0.5);
+          box-shadow: 0 0 0 3px rgba($purple-accent, 0.1);
+        }
+
+        &:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba($purple-accent, 0.2);
+        }
+      }
+    }
+  }
+
+  // Auth section styles
+  .auth-section {
+    .bearer-token-config {
+      padding: 16px;
+      background: rgba(249, 250, 251, 0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(229, 231, 235, 0.5);
+    }
+
+    .token-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      .token-configured-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #059669;
+        font-size: 14px;
+        font-weight: 500;
+
+        .material-icons {
+          font-size: 20px;
+        }
+      }
+
+      .token-actions {
+        display: flex;
+        gap: 8px;
+      }
+    }
+
+    .token-input-group {
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+
+        .required {
+          color: #ef4444;
+        }
+      }
+
+      .token-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+
+        .token-input {
+          flex: 1;
+          font-family: monospace;
+          font-size: 13px;
+        }
+
+        .toggle-visibility-btn {
+          background: none;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 10px;
+          cursor: pointer;
+          color: #6b7280;
+          transition: all 0.2s ease;
+
+          &:hover {
+            color: $purple-accent;
+            border-color: rgba($purple-accent, 0.3);
+            background: rgba($purple-accent, 0.04);
+          }
+        }
+      }
+
+      .token-hint {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6b7280;
+
+        .material-icons {
+          font-size: 14px;
+        }
+      }
+
+      .token-save-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .token-error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 10px 14px;
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 12px;
+        font-size: 12px;
+        color: #dc2626;
+
+        .material-icons {
+          font-size: 16px;
+        }
+      }
+    }
+
+    .no-token-prompt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      .field-hint {
+        font-size: 12px;
+        color: #6b7280;
+      }
+    }
+  }
+
+  // Nova button overrides scoped to A2A modal
+  .nova-button {
+    font-family: $font-family-ember;
+
+    &.small {
+      padding: 8px 14px;
+      font-size: 13px;
+
+      .material-icons {
+        font-size: 16px;
+      }
+    }
+  }
+
+  .a2a-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    background: rgba(249, 250, 251, 0.5);
+    border-radius: 0 0 20px 20px;
+  }
+}
+
+// A2A badge styling in the editor panel list
+.a2a-badge {
+  background: linear-gradient(135deg, $purple-gradient-start 0%, $fuchsia-accent 100%) !important;
+  color: white !important;
+}
+
+// Responsive adjustments for A2A editor
+
+// Auth type options (shared between A2A and MCP)
+.auth-type-options, .a2a-editor-top-modal .auth-type-options {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  .auth-type-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 30px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 16px;
+    }
+
+    &:hover {
+      border-color: rgba($purple-accent, 0.3);
+      color: $purple-accent;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    &.selected {
+      background: rgba($purple-accent, 0.08);
+      border-color: $purple-accent;
+      color: $purple-accent;
+      box-shadow: 0 0 0 3px rgba($purple-accent, 0.12);
+
+      .material-icons {
+        color: $purple-accent;
+      }
+    }
+  }
+}
+
+// OAuth credentials config (shared between A2A and MCP)
+.oauth-credentials-config, .a2a-editor-top-modal .oauth-credentials-config {
+  padding: 16px;
+  background: rgba(249, 250, 251, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+
+  .token-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .token-configured-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #059669;
+      font-size: 14px;
+      font-weight: 500;
+
+      .material-icons { font-size: 20px; }
+    }
+
+    .token-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .credentials-input-group {
+    .credential-field {
+      margin-bottom: 14px;
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        font-family: $font-family-ember;
+
+        .required { color: #ef4444; }
+      }
+    }
+
+    .token-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .form-control { flex: 1; }
+
+      .toggle-visibility-btn {
+        background: none;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 10px;
+        cursor: pointer;
+        color: #6b7280;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: $purple-accent;
+          border-color: rgba($purple-accent, 0.3);
+          background: rgba($purple-accent, 0.04);
+        }
+      }
+    }
+
+    .token-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #6b7280;
+      font-family: $font-family-ember;
+
+      .material-icons { font-size: 14px; }
+    }
+
+    .token-save-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .token-error {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      font-size: 12px;
+      color: #dc2626;
+      font-family: $font-family-ember;
+
+      .material-icons { font-size: 16px; }
+    }
+  }
+}
+
+// AWS IAM config for A2A
+.aws-iam-config {
+  padding: 16px;
+  background: rgba(249, 250, 251, 0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+// A2A form row (side-by-side fields)
+.a2a-form-row {
+  display: flex;
+  gap: 14px;
+
+  .a2a-form-group {
+    flex: 1;
+  }
+}
+
+// External runtime auth notice
+.external-runtime-auth-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba($purple-accent, 0.06) 0%, rgba(#fda83b, 0.04) 100%);
+  border: 1px solid rgba($purple-accent, 0.2);
+  border-radius: 12px;
+  font-size: 13px;
+  color: #4b5563;
+
+  .material-icons {
+    font-size: 18px;
+    color: $purple-accent;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+@media (max-width: 767px) {
+  .a2a-editor-top-modal {
+    width: 95%;
+    max-height: 90vh;
+
+    .a2a-editor-header {
+      padding: 16px 20px;
+    }
+
+    .a2a-editor-content {
+      padding: 16px;
+    }
+
+    .a2a-form-section {
+      padding: 16px;
+    }
+
+    .auth-type-options {
+      flex-wrap: wrap;
+    }
+
+    .a2a-form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .token-status {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .token-save-actions {
+      flex-direction: column;
+      width: 100%;
+
+      .nova-button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    .a2a-editor-actions {
+      padding: 14px 20px;
+    }
+  }
 }

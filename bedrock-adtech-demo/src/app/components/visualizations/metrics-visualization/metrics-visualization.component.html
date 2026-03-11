@@ -21,7 +21,7 @@
           <div class="metric-subcard" *ngFor="let item of metricItem.genericItems; trackBy: trackByIndex"
                [class.highlight]="item.isHighlight || item.isPrimary">
             <div class="metric-value" 
-                 [style.color]="item.color || item.statusColor"
+                 [style.color]="safeColor(item.color || item.statusColor)"
                  [class.trend-up]="item.trend === 'up' || item.trend === 'increase'"
                  [class.trend-down]="item.trend === 'down' || item.trend === 'decrease'"
                  [class.trend-stable]="item.trend === 'stable' || item.trend === 'unchanged'">
@@ -65,7 +65,7 @@
           <div class="metric-subcard" *ngFor="let subMetric of metricItem.subMetrics; trackBy: trackByIndex"
                [class.highlight]="subMetric.isHighlight">
             <div class="metric-value" 
-                 [style.color]="subMetric.color"
+                 [style.color]="safeColor(subMetric.color)"
                  [class.trend-up]="subMetric.trend === 'up'"
                  [class.trend-down]="subMetric.trend === 'down'"
                  [class.trend-stable]="subMetric.trend === 'stable'">
@@ -97,7 +97,7 @@
              [class.trend-up]="metric.trend === 'up'"
              [class.trend-down]="metric.trend === 'down'"
              [class.trend-stable]="metric.trend === 'stable'"
-             [style.color]="metric.color">
+             [style.color]="safeColor(metric.color)">
           {{metric.value}}<span class="metric-unit" *ngIf="metric.unit">{{metric.unit}}</span>
         </div>
         <div class="metric-label">{{metric.label}}</div>

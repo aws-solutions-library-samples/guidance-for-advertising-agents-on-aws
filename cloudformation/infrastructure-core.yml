@@ -41,6 +41,9 @@ Parameters:
     Description: S3 key for the create demo user Lambda code
     Default: "lambda/create-demo-user.zip"
 
+Conditions:
+  IsUsEast1: !Equals [!Ref "AWS::Region", "us-east-1"]
+
 Resources:
   # S3 Bucket for synthetic data
   SyntheticDataBucket:
@@ -385,6 +388,8 @@ Resources:
               - Effect: Allow
                 Action:
                   - ssm:GetParameter
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
                 Resource:
                   - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/${StackPrefix}/*"
               - Effect: Allow
@@ -681,7 +686,7 @@ Resources:
       - CFWAFACL
     Properties:
       DistributionConfig:
-        WebACLId: !GetAtt CFWAFACL.Arn
+        WebACLId: !If [IsUsEast1, !GetAtt CFWAFACL.Arn, !Ref "AWS::NoValue"]
         Logging:
           Bucket: !GetAtt LogsBucket.RegionalDomainName
           Prefix: cloudfront/ui/
@@ -735,7 +740,7 @@ Resources:
     Type: AWS::WAFv2::WebACL
     Properties:
       Name: !Sub "${StackPrefix}-cf-waf-${UniqueId}"
-      Scope: CLOUDFRONT
+      Scope: !If [IsUsEast1, CLOUDFRONT, REGIONAL]
       DefaultAction:
         Allow: {}
       VisibilityConfig:

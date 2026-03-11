@@ -109,6 +109,16 @@ export class AllocationsVisualizationComponent implements OnChanges {
   private processedData: any = null;
   private lastInputHash: string = '';
 
+  /** Safely coerce any value to a string */
+  private toStr(val: any): string {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') {
+      try { return JSON.stringify(val); } catch { return String(val); }
+    }
+    return String(val);
+  }
+
   constructor(
     private cdr: ChangeDetectorRef,
     private cacheService: VisualizationCacheService
@@ -174,7 +184,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
     if (allocation.performance || allocation.performanceStatus) {
       metrics.push({
         label: 'Performance',
-        value: allocation.performance || allocation.performanceStatus
+        value: this.toStr(allocation.performance || allocation.performanceStatus)
       });
     }
     
@@ -182,7 +192,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
     if (allocation.efficiency) {
       metrics.push({
         label: 'Efficiency',
-        value: allocation.efficiency
+        value: this.toStr(allocation.efficiency)
       });
     }
     
@@ -190,7 +200,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
     if (allocation.roi || allocation.roas) {
       metrics.push({
         label: 'ROI',
-        value: allocation.roi || allocation.roas
+        value: this.toStr(allocation.roi || allocation.roas)
       });
     }
     
@@ -198,7 +208,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
     if (allocation.reach) {
       metrics.push({
         label: 'Reach',
-        value: allocation.reach
+        value: this.toStr(allocation.reach)
       });
     }
     
@@ -206,7 +216,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
     if (allocation.conversions || allocation.conversionRate) {
       metrics.push({
         label: 'Conversions',
-        value: allocation.conversions || allocation.conversionRate
+        value: this.toStr(allocation.conversions || allocation.conversionRate)
       });
     }
     
@@ -287,7 +297,7 @@ export class AllocationsVisualizationComponent implements OnChanges {
 
   // Helper method to get performance level color for allocation cards
   getPerformanceColor(performance: string): string {
-    switch (performance?.toLowerCase()) {
+    switch (String(performance || '').toLowerCase()) {
       case 'high':
       case 'excellent': return '#10b981';
       case 'medium':
@@ -380,29 +390,29 @@ export class AllocationsVisualizationComponent implements OnChanges {
 
     // New data structure fields
     if (allocation.statusIndicator) {
-      metrics.push({ label: 'Status', value: allocation.statusIndicator });
+      metrics.push({ label: 'Status', value: this.toStr(allocation.statusIndicator) });
     }
     if (allocation.riskLevel) {
-      metrics.push({ label: 'Risk Level', value: allocation.riskLevel });
+      metrics.push({ label: 'Risk Level', value: this.toStr(allocation.riskLevel) });
     }
     if (allocation.confidenceLevel) {
-      metrics.push({ label: 'Confidence', value: allocation.confidenceLevel });
+      metrics.push({ label: 'Confidence', value: this.toStr(allocation.confidenceLevel) });
     }
 
     // Generic fields
     if (allocation.primaryMetric) {
-      metrics.push({ label: allocation.primaryMetric.label || 'Primary Metric', value: allocation.primaryMetric.value });
+      metrics.push({ label: allocation.primaryMetric.label || 'Primary Metric', value: this.toStr(allocation.primaryMetric.value) });
     }
     if (allocation.secondaryMetric) {
-      metrics.push({ label: allocation.secondaryMetric.label || 'Secondary Metric', value: allocation.secondaryMetric.value });
+      metrics.push({ label: allocation.secondaryMetric.label || 'Secondary Metric', value: this.toStr(allocation.secondaryMetric.value) });
     }
 
     // Legacy fields as fallback
     if (allocation.efficiency || allocation.cost_efficiency) {
-      metrics.push({ label: allocation.cost_efficiency ? 'Cost Efficiency' : 'Efficiency', value: allocation.efficiency || allocation.cost_efficiency });
+      metrics.push({ label: allocation.cost_efficiency ? 'Cost Efficiency' : 'Efficiency', value: this.toStr(allocation.efficiency || allocation.cost_efficiency) });
     }
     if (allocation.safety) {
-      metrics.push({ label: 'Safety', value: allocation.safety });
+      metrics.push({ label: 'Safety', value: this.toStr(allocation.safety) });
     }
 
     return metrics;

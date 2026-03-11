@@ -158,3 +158,13 @@ lambda/flights_mcp_handler.py
 lambda/google_flights_mcp_handler.py
 scripts/check_agent_mcp_config.py
 docs/publisher-demo-script.md
+
+# Weather MCP Gateway (removed from deploy process)
+.weather-gateway*
+agentcore/deployment/deploy_weather_gateway.py
+agentcore/deployment/test_weather_mcp_connection.py
+agentcore/deployment/test_weather_mcp_gateway.py
+scripts/recreate_agent_v2.py
+scripts/generate_voiceover.py
+docs/DEMO_SCRIPT.md
+docs/demo_voiceover.mp3

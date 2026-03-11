@@ -170,21 +170,27 @@ export class MetricsVisualizationComponent implements OnChanges {
 
   // Helper method to format metric values
   formatMetricValue(key: string, value: any): string {
+    if (value === null || value === undefined) return '';
+    // Guard against objects/arrays — toString() on those produces "[object Object]"
+    if (typeof value === 'object') {
+      try { return JSON.stringify(value); } catch { return ''; }
+    }
+    const strValue = String(value);
     const keyLower = key.toLowerCase();
 
     if (keyLower.includes('roas') || keyLower.includes('ratio')) {
-      return `${value}${value.toString().includes('x') ? '' : 'x'}`;
+      return `${strValue}${strValue.includes('x') ? '' : 'x'}`;
     }
 
     if (keyLower.includes('rate') || keyLower.includes('cvr') || keyLower.includes('ctr') || keyLower.includes('percentage')) {
-      return value.toString().includes('%') ? value : `${value}%`;
+      return strValue.includes('%') ? strValue : `${strValue}%`;
     }
 
     if (keyLower.includes('budget') || keyLower.includes('cost') || keyLower.includes('price') || keyLower.includes('cpa')) {
-      return value.toString().replace(/[$€£]/g, '');
+      return strValue.replace(/[$€£]/g, '');
     }
 
-    return value.toString();
+    return strValue;
   }
 
   // Helper method to format metric labels
@@ -209,6 +215,17 @@ export class MetricsVisualizationComponent implements OnChanges {
 
   getKeys(obj: any): string[] {
     return Object.keys(obj);
+  }
+
+  /**
+   * Safely coerce a value to a CSS color string.
+   * Angular's [style.color] binding calls .toLowerCase() internally;
+   * if the value isn't a string the app crashes.
+   */
+  safeColor(value: any): string | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') return value;
+    return undefined; // discard non-string values rather than crash
   }
 
   private computeMetricsArray(): any[] {

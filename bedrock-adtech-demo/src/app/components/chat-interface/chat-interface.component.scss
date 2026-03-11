@@ -3594,6 +3594,39 @@
     }
 }
 
+.session-refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(104, 66, 255, 0.15);
+    border-radius: 30px;
+    background: rgba(104, 66, 255, 0.08);
+    color: rgba(104, 66, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    margin-top: 25px;
+    flex-shrink: 0;
+
+    .material-icons {
+        font-size: 14px;
+    }
+
+    &:hover {
+        background: rgba(104, 66, 255, 0.15);
+        border-color: rgba(104, 66, 255, 0.3);
+        color: #6842ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(104, 66, 255, 0.2);
+    }
+
+    &:active {
+        transform: scale(0.95);
+    }
+}
+
 // Chat header with clear button
 .chat-header {
     display: flex;
@@ -6704,6 +6737,65 @@ essions Panel Styles - Matching Scenarios Panel Design */
 
     50% {
         opacity: 1;
+    }
+}
+
+// Purple glow effect scoped to visualization toggle buttons (summary-visuals & visuals-only)
+// Only glows on the 2nd and 3rd toggle buttons inside messages that have detected questions
+.message.agent.has-questions {
+    .view-mode-toggles {
+        .view-toggle-btn:nth-child(2),
+        .view-toggle-btn:nth-child(3) {
+            animation: questionGlowPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 0 2px rgba(104, 66, 255, 0.25);
+            border-radius: 8px;
+        }
+    }
+}
+
+@keyframes questionGlowPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 2px rgba(104, 66, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 8px 3px rgba(104, 66, 255, 0.3);
+    }
+}
+
+// Questions Area styles
+.questions-area {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(104, 66, 255, 0.05);
+    border-left: 3px solid #6842ff;
+    border-radius: 0 12px 12px 0;
+
+    .questions-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #6842ff;
+    }
+
+    .questions-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .question-item {
+        font-size: 0.85rem;
+        color: #374151;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 8px;
+        border: 1px solid rgba(104, 66, 255, 0.12);
     }
 }
 

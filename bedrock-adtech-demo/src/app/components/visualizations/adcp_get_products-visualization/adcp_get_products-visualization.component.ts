@@ -263,7 +263,7 @@ export class AdcpInventoryVisualizationComponent extends VisualizationComponent 
       'retail': 'shopping_cart',
       'social': 'share'
     };
-    return icons[channel?.toLowerCase()] || 'campaign';
+    return icons[String(channel || '').toLowerCase()] || 'campaign';
   }
 
   getChannelColor(channel: string): string {
@@ -278,7 +278,7 @@ export class AdcpInventoryVisualizationComponent extends VisualizationComponent 
       'retail': '#f97316',
       'social': '#3b82f6'
     };
-    return colors[channel?.toLowerCase()] || '#6b7280';
+    return colors[String(channel || '').toLowerCase()] || '#6b7280';
   }
 
   getDeliveryTypeColor(deliveryType: string): string {
@@ -300,7 +300,7 @@ export class AdcpInventoryVisualizationComponent extends VisualizationComponent 
       'cpp': 'CPP',
       'flat_rate': 'Flat Rate'
     };
-    return labels[model?.toLowerCase()] || model?.toUpperCase() || '';
+    return labels[String(model || '').toLowerCase()] || String(model || '').toUpperCase() || '';
   }
 
   trackByProductId = (index: number, product: any): string => {

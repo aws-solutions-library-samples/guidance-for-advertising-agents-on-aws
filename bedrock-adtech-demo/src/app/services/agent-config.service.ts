@@ -4,6 +4,7 @@ import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { AwsConfigService } from './aws-config.service';
 import { AgentDynamoDBService } from './agent-dynamodb.service';
+import { TabDynamoDBService } from './tab-dynamodb.service';
 import { TextUtils } from '../utils/text-utils';
 import { AgentConfig, DeployedAgent, EnrichedAgent, TabConfiguration, TabsConfiguration } from '../models/application-models';
 import { SessionManagerService } from './session-manager.service';
@@ -35,7 +36,8 @@ export class AgentConfigService implements OnInit {
     private http: HttpClient,
     private awsConfig: AwsConfigService,
     private sessionManager:SessionManagerService,
-    private agentDynamoDBService: AgentDynamoDBService
+    private agentDynamoDBService: AgentDynamoDBService,
+    private tabDynamoDBService: TabDynamoDBService
   ) {
     this.loadAgentConfig();
     // Load global config first, then setup enriched agents
@@ -456,8 +458,9 @@ export class AgentConfigService implements OnInit {
     // Clear the cached global config to force a fresh load
     this.global_config = null;
     
-    // Clear the DynamoDB cache as well
+    // Clear the DynamoDB caches as well
     this.agentDynamoDBService.clearCache();
+    this.tabDynamoDBService.clearCache();
     
     // Reload the global config
     await this.getGlobalConfig();
@@ -899,22 +902,18 @@ export class AgentConfigService implements OnInit {
    */
   async getTabsConfiguration(): Promise<TabsConfiguration> {
     try {
+      // Try DynamoDB first
+      const dynamoConfig = await this.tabDynamoDBService.getTabConfig();
+      if (dynamoConfig && this.validateTabsConfiguration(dynamoConfig)) {
+        console.log('✅ Loaded tab config from DynamoDB');
+        return dynamoConfig;
+      }
 
-      // Try to get from AppConfig first
-      //const appConfigData = await this.awsConfig.getAppConfigData('tabs');
-
-      /*if (appConfigData && this.validateTabsConfiguration(appConfigData)) {
-        return appConfigData;
-      }*/
-
-      // If AppConfig data is invalid, fall back to static file
-      //console.warn('⚠️ AppConfig tabs data invalid, falling back to static file');
+      // Fall back to S3 → local assets → empty default
       return await this.getStaticTabsConfiguration();
 
     } catch (error) {
-      console.error('❌ Error retrieving tabs configuration from AppConfig:', error);
-
-      // Fall back to static file on error
+      console.error('❌ Error retrieving tabs configuration:', error);
       return await this.getStaticTabsConfiguration();
     }
   }
@@ -1235,13 +1234,18 @@ export class AgentConfigService implements OnInit {
    */
   async updateTabConfiguration(tabConfig: TabsConfiguration): Promise<boolean> {
     try {
-
       // Validate configuration before updating
       if (!this.validateTabsConfiguration(tabConfig)) {
         console.error('❌ Invalid tab configuration provided');
         return false;
       }
-      return true;
+
+      // Save to DynamoDB
+      const saved = await this.tabDynamoDBService.saveTabConfig(tabConfig, 'ui-edit');
+      if (saved) {
+        this.tabConfigUpdated.next(tabConfig);
+      }
+      return saved;
     } catch (error) {
       console.error('❌ Error updating tab configuration:', error);
       return false;

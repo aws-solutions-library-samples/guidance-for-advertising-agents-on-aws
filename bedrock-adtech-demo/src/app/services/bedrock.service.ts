@@ -1589,10 +1589,8 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: 4000,
-          temperature: 0.7,
-          topP: 0.9
-        }
+          maxTokens: 8000,
+          temperature: 0.7        }
       });
 
       const response = await this.bedrockRuntimeClient.send(command);
@@ -1648,7 +1646,7 @@ Example format:
 
       // Use the Converse API for direct model interaction with Claude Haiku
       const command = new ConverseCommand({
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         messages: [
           {
             role: 'user',
@@ -1660,9 +1658,8 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: 2000,
+          maxTokens: 8000,
           temperature: 0.3,
-          topP: 0.9
         }
       });
 
@@ -1732,7 +1729,7 @@ Example format:
 
       // Use the Converse API for Claude Opus 4.5
       const command = new ConverseCommand({
-        modelId: 'us.anthropic.claude-opus-4-20250514-v1:0',
+        modelId: 'global.anthropic.claude-opus-4-6-v1',
         messages: [
           {
             role: 'user',
@@ -1745,15 +1742,13 @@ Example format:
         ],
         inferenceConfig: {
           maxTokens: maxTokens,
-          temperature: 0.7,
-          topP: 0.9
-        }
+          temperature: 0.7        }
       });
 
       const response = await this.bedrockRuntimeClient.send(command);
 
       if (!response.output?.message?.content) {
-        throw new Error('No content received from Claude Opus 4.5');
+        throw new Error('No content received from Claude Opus 4.6');
       }
 
       // Extract the text content from the response
@@ -1765,7 +1760,7 @@ Example format:
       return textContent;
 
     } catch (error) {
-      console.error('Error invoking Claude Opus 4.5:', error);
+      console.error('Error invoking Claude Opus 4.6:', error);
 
       // Check for expired token specifically
       const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
@@ -1783,6 +1778,72 @@ Example format:
       throw error;
     }
   }
+
+  /**
+   * Invoke Claude Opus with optional document attachments.
+   * Documents are included as text content blocks alongside the prompt.
+   * @param prompt The prompt to send
+   * @param documents Array of { name, content } objects to include as context
+   * @param maxTokens Maximum tokens for the response (default: 8000)
+   * @returns The generated text content
+   */
+  async invokeClaudeWithDocuments(
+    prompt: string,
+    documents: { name: string; content: string }[],
+    maxTokens: number = 8000
+  ): Promise<string> {
+    try {
+      if (!this.clientInitialized || !this.bedrockRuntimeClient) {
+        await this.setupBedrockClient();
+      }
+      if (!this.bedrockRuntimeClient) {
+        throw new Error('Bedrock Runtime client not initialized');
+      }
+
+      // Build content blocks: documents first, then the prompt
+      const contentBlocks: any[] = [];
+      for (const doc of documents) {
+        contentBlocks.push({
+          text: `--- Attached Document: ${doc.name} ---\n${doc.content}\n--- End Document ---`
+        });
+      }
+      contentBlocks.push({ text: prompt });
+
+      const command = new ConverseCommand({
+        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        messages: [
+          {
+            role: 'user',
+            content: contentBlocks
+          }
+        ],
+        inferenceConfig: {
+          maxTokens: maxTokens,
+          temperature: 0.7        }
+      });
+
+      const response = await this.bedrockRuntimeClient.send(command);
+      if (!response.output?.message?.content) {
+        throw new Error('No content received from Claude');
+      }
+      return response.output.message.content
+        .filter((item: any) => item.text)
+        .map((item: any) => item.text)
+        .join('\n');
+    } catch (error) {
+      console.error('Error invoking Claude with documents:', error);
+      const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
+      const isExpiredToken = errorMessage.includes('ExpiredTokenException') ||
+        errorMessage.includes('The security token included in the request is expired');
+      if (isExpiredToken) {
+        const expiredTokenError = new Error('Your session has expired. Please refresh the page to sign in again.');
+        (expiredTokenError as any).isExpiredToken = true;
+        throw expiredTokenError;
+      }
+      throw error;
+    }
+  }
+
   /**
    * Invoke Claude Haiku 4.5 for visualization generation and other structured tasks.
    * Uses the cross-region inference profile for optimal availability.

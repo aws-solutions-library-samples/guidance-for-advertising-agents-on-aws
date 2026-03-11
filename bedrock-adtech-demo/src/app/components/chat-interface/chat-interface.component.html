@@ -102,11 +102,14 @@
 
   <!-- Chat Interface -->
   <div class="chat-container">
-
-<span class="session-id-label" [title]="getFullSessionId()" (click)="copySessionId()">
+<div style="display: flex; flex-direction: row; gap:7px;">
+<button class="session-refresh-btn" (click)="refreshSession()" title="Start a new session">
+          <span class="material-icons">refresh</span>
+        </button>
+        <span class="session-id-label" [title]="getFullSessionId()" (click)="copySessionId()">
           <span class="material-icons">fingerprint</span>
           {{getFullSessionId()}}
-        </span>
+        </span></div>
     <!-- Chat Header with Export and Clear Buttons -->
     <!-- <div class="chat-header">
       <div class="chat-info">
@@ -137,6 +140,7 @@
           [class.specialist-pending]="isAwaitingSpecialistResponse(message)"
           [class.specialist-completed]="message.data?.specialistStatus === 'completed'"
           [class.specialist-timeout]="isSpecialistTimeout(message)"
+          [class.has-questions]="message.sender === 'agent' && message.data?.visualizationAnalysis?.questions?.length"
           [attr.data-agent]="message.agentName"
           [attr.data-message-id]="message.id"
           [attr.data-tool-use-id]="message.data?.toolUseId">
@@ -513,6 +517,19 @@
     <!-- For messages WITHOUT visualization data, still render visual-components normally (no view mode gating) -->
     <div *ngIf="formatted.visualData && !hasAnyVisualizationData(formatted.visualData)" class="visual-components">
       <!-- This handles edge cases where visualData exists but has no recognized visualization types -->
+    </div>
+
+    <!-- Questions detected by visualization analyzer -->
+    <div *ngIf="formatted.questions?.length" class="questions-area">
+      <div class="questions-header">
+        <span class="questions-icon">❓</span>
+        <span class="questions-label">Questions for you</span>
+      </div>
+      <ul class="questions-list">
+        <li *ngFor="let question of formatted.questions" class="question-item">
+          {{ question }}
+        </li>
+      </ul>
     </div>
 
   </ng-container>

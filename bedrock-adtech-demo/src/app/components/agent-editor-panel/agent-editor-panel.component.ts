@@ -1492,9 +1492,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     try {
       this.knowledgeBases = await this.awsConfigService.listKnowledgeBases();
       this.filteredKnowledgeBases = [...this.knowledgeBases];
-      // Check if stored knowledge_base matches any discovered KB
+      // Check if stored knowledge_base matches any discovered KB (by ID or legacy name)
       this.kbNotFound = !!this.editingAgent.knowledge_base &&
-        !this.knowledgeBases.some(kb => kb.name === this.editingAgent.knowledge_base);
+        !this.knowledgeBases.some(kb => kb.knowledgeBaseId === this.editingAgent.knowledge_base || kb.name === this.editingAgent.knowledge_base);
     } catch (error) {
       console.error('Failed to load knowledge bases:', error);
       this.knowledgeBases = [];
@@ -1513,7 +1513,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   selectKnowledgeBase(kb: KnowledgeBaseInfo): void {
-    this.editingAgent.knowledge_base = kb.name;
+    console.log('selected knowledgebase',kb)
+    this.editingAgent.knowledge_base = kb.knowledgeBaseId;
     this.kbDropdownOpen = false;
     this.kbFilterText = '';
     this.filteredKnowledgeBases = [...this.knowledgeBases];
@@ -1526,6 +1527,16 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.kbDropdownOpen = false;
     this.filteredKnowledgeBases = [...this.knowledgeBases];
     this.kbNotFound = false;
+  }
+
+  /**
+   * Resolves a KB ID (or legacy name) to its display name for the combobox input.
+   * Returns the name if found by ID or name match, otherwise returns the raw value.
+   */
+  getKbDisplayName(kbId: string | undefined): string {
+    if (!kbId) return '';
+    const match = this.knowledgeBases.find(kb => kb.knowledgeBaseId === kbId || kb.name === kbId);
+    return match ? match.name : kbId;
   }
 
   toggleKbDropdown(): void {

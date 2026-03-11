@@ -1261,12 +1261,42 @@ deploy_infrastructure() {
     
     # Create the Lambda deployment bucket if it doesn't exist
     print_status "Creating Lambda deployment bucket: $lambda_bucket"
-    if ! aws_cmd s3 mb "s3://$lambda_bucket" --region "$AWS_REGION" 2>/dev/null; then
-        # Bucket might already exist, check if we can access it
-        if ! aws_cmd s3 ls "s3://$lambda_bucket" --region "$AWS_REGION" >/dev/null 2>&1; then
-            print_error "Failed to create or access Lambda deployment bucket: $lambda_bucket"
+    if aws_cmd s3api head-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>/dev/null; then
+        print_status "Lambda deployment bucket already exists: $lambda_bucket"
+    else
+        # Bucket doesn't exist (or no access), try to create it
+        local create_err=""
+        local bucket_created=false
+        if [ "$AWS_REGION" = "us-east-1" ]; then
+            create_err=$(aws_cmd s3api create-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>&1) && bucket_created=true
+        else
+            create_err=$(aws_cmd s3api create-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION" 2>&1) && bucket_created=true
+        fi
+
+        # If creation failed (e.g. OperationAborted after recent deletion), try with a suffix
+        if [ "$bucket_created" = false ]; then
+            print_warning "Could not create bucket '$lambda_bucket': $create_err"
+            print_warning "Trying alternate bucket name with timestamp suffix..."
+            local ts_suffix=$(date +%s | tail -c 7)
+            lambda_bucket="${STACK_PREFIX}-lambda-deploy-${UNIQUE_ID}-${ts_suffix}"
+            print_status "Trying alternate bucket: $lambda_bucket"
+
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+                create_err=$(aws_cmd s3api create-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>&1) && bucket_created=true
+            else
+                create_err=$(aws_cmd s3api create-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" \
+                    --create-bucket-configuration LocationConstraint="$AWS_REGION" 2>&1) && bucket_created=true
+            fi
+        fi
+
+        # Final check
+        if [ "$bucket_created" = false ] || ! aws_cmd s3api head-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>/dev/null; then
+            print_error "Failed to create Lambda deployment bucket after retry"
+            print_error "AWS error: $create_err"
             exit 1
         fi
+        print_success "Created Lambda deployment bucket: $lambda_bucket"
     fi
     
     # Package and upload async image processor
@@ -1457,11 +1487,32 @@ deploy_lambda_functions() {
     fi
 }
 
+# Function to verify knowledge base IDs can be resolved at DynamoDB upload time.
+# KB ID resolution now happens in upload_agent_configs_to_dynamodb.py using the
+# naming pattern <stack-prefix>-<value>-<unique-id> to look up real KB IDs via
+# the Bedrock API. This avoids mutating the local global_configuration.json file.
+patch_global_config_kb_ids() {
+    print_status "Knowledge base ID resolution will happen at DynamoDB upload time (Step 9)..."
+    print_status "  KB naming pattern: ${STACK_PREFIX}-<kb-name>-${UNIQUE_ID}"
+    print_status "  The local global_configuration.json will NOT be modified."
+    
+    local kb_ids_file="${PROJECT_ROOT}/.kb-ids-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    
+    if [ -f "$kb_ids_file" ]; then
+        print_status "  KB IDs file found: $kb_ids_file (will be used as fallback)"
+    else
+        print_status "  KB IDs will be resolved via Bedrock API at upload time."
+    fi
+    
+    print_success "✅ KB ID resolution deferred to DynamoDB upload step"
+    return 0
+}
+
 # Function to upload agent configuration folders to S3
 # This is a separate step so it can run independently of knowledge base deployment
 # These configs are needed by AgentCore agents for instructions and visualizations
 upload_agent_configurations() {
-    print_step "Step 7: Uploading agent configuration folders to S3..."
+    print_step "Step 8: Uploading agent configuration folders to S3..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
@@ -1547,7 +1598,7 @@ upload_agent_configurations() {
 # Function to upload agent configurations to DynamoDB for faster agent creation
 # This is called after S3 upload and provides faster access for frequently used configs
 upload_agent_configurations_to_dynamodb() {
-    print_step "Step 8: Uploading agent configurations to DynamoDB (for faster access)..."
+    print_step "Step 9: Uploading agent configurations to DynamoDB (for faster access)..."
     
     local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
     local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
@@ -1574,7 +1625,7 @@ upload_agent_configurations_to_dynamodb() {
         return 0
     fi
     
-    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION --agent-config-dir $agent_config_dir --mode overwrite"
+    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION --agent-config-dir $agent_config_dir --mode overwrite --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID"
     
     # Add AWS profile if specified
     if [ -n "$AWS_PROFILE" ]; then
@@ -1589,6 +1640,44 @@ upload_agent_configurations_to_dynamodb() {
     else
         print_warning "⚠️  Failed to upload configurations to DynamoDB"
         print_warning "   AgentCore agents will load configs from S3 instead"
+    fi
+    
+    return 0
+}
+
+# Function to upload tab configurations to DynamoDB for runtime access
+# Called after agent config upload; preserves existing configs unless --force
+upload_tab_configurations_to_dynamodb() {
+    print_status "Uploading tab configurations to DynamoDB..."
+    
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+    
+    if [ -z "$config_table" ] || [ "$config_table" = "None" ]; then
+        print_warning "⚠️  DynamoDB AgentConfigTable not found - skipping tab config upload"
+        return 0
+    fi
+    
+    # Setup Python environment
+    setup_python_environment
+    
+    local upload_script="${SCRIPT_DIR}/upload_tab_configs_to_dynamodb.py"
+    
+    if [ ! -f "$upload_script" ]; then
+        print_warning "⚠️  Tab config upload script not found: $upload_script"
+        return 0
+    fi
+    
+    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION"
+    
+    if [ -n "$AWS_PROFILE" ]; then
+        upload_cmd="$upload_cmd --profile $AWS_PROFILE"
+    fi
+    
+    if eval "$upload_cmd"; then
+        print_success "✅ Tab configurations uploaded to DynamoDB successfully"
+    else
+        print_warning "⚠️  Failed to upload tab configurations to DynamoDB - continuing deployment"
     fi
     
     return 0
@@ -2823,7 +2912,7 @@ TOOLKIT_TRACKING_EOF
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 8: Deploying AgentCore agents (after MCP Gateway)..."
+    print_step "Step 10: Deploying AgentCore agents (after MCP Gateway)..."
     
     # Ensure ADCP Gateway URL is available (important for resume scenarios)
     ensure_adcp_gateway_url
@@ -3192,7 +3281,7 @@ except:
 
 # Function to generate UI configuration
 generate_ui_config() {
-    print_step "Step 9: Generating UI configuration..."
+    print_step "Step 11: Generating UI configuration..."
     
     # Create assets directory
     ANGULAR_ASSETS_DIR="${PROJECT_ROOT}/bedrock-adtech-demo/src/assets"
@@ -3235,18 +3324,6 @@ generate_ui_config() {
     print_status "UI bucket: $ui_bucket"
     print_status "CloudFront distribution: $cloudfront_id"
     print_status "UI URL: $ui_url"
-    
-    # Ask if user wants to build and deploy the UI
-    if [ "$INTERACTIVE_MODE" = true ]; then
-        printf "Build and deploy the Angular UI application? (y/N): "
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            print_status "Skipping UI build and deployment"
-            print_status "You can manually build and deploy the UI later"
-            print_status "UI configuration has been generated at: $CONFIG_FILE"
-            return 0
-        fi
-    fi
     
     # Define paths
     local ui_path="${PROJECT_ROOT}/bedrock-adtech-demo"
@@ -4447,7 +4524,7 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-11)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4459,8 +4536,8 @@ show_usage() {
     echo "  $0 --unique-id abc123                # Use specific unique ID"
     echo "  $0 --region us-east-1                # Deploy in specific region"
     echo "  $0 --resume-at 5                     # Resume from step 5"
-    echo "  $0 --resume-at 8                     # Resume from step 8 (DynamoDB upload)"
-    echo "  $0 --resume-at 6 --skip-confirmations # Resume from step 6 without update confirmations"
+    echo "  $0 --resume-at 9                     # Resume from step 9 (DynamoDB upload)"
+    echo "  $0 --resume-at 8 --skip-confirmations # Resume from step 8 without update confirmations"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4589,7 +4666,7 @@ confirm_deployment_steps() {
 # Function to warm up agent runtimes by sending test prompts
 # This helps initialize the agent containers and reduces cold start latency
 warmup_agent_runtimes() {
-    print_step "Step 10: Warming up agent runtimes..."
+    print_step "Step 12: Warming up agent runtimes..."
     
     local global_config_file="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
     local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
@@ -4869,7 +4946,7 @@ main() {
     # Phase 6: Deploy AdCP MCP Gateway for agent collaboration (BEFORE agents!)
     # Phase 7: Upload agent configurations to S3
     # Phase 8: Upload agent configurations to DynamoDB
-    # Phase 9: Deploy AgentCore agents (uses gateway URL from step 6)
+    # Phase 9: Deploy AgentCore agents (uses gateway URLs from step 6)
     # Phase 10: Generate UI configuration
     # Phase 11: Warm up agent runtimes with test prompts
     
@@ -4914,6 +4991,9 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 7 ]; then
+        # Patch global_configuration.json with real KB IDs from Step 4
+        patch_global_config_kb_ids
+        
         # Upload agent configurations BEFORE agent deployment
         # This ensures AgentCore agents load the latest instructions and visualizations from S3
         upload_agent_configurations
@@ -4922,6 +5002,9 @@ main() {
     if [ "$RESUME_AT_STEP" -le 8 ]; then
         # Upload to DynamoDB for faster access (S3 remains as fallback)
         upload_agent_configurations_to_dynamodb
+        
+        # Upload tab configurations to DynamoDB (skips if already exists)
+        upload_tab_configurations_to_dynamodb
     fi
     
     if [ "$RESUME_AT_STEP" -le 9 ]; then
@@ -4958,6 +5041,7 @@ main() {
     if [ -f "$gateway_info_file" ]; then
         print_status "  ✅ AdCP MCP Gateway: Deployed for agent collaboration"
     fi
+
     # Check if AgentCore agents were actually deployed by looking at the file
     local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$agentcore_info_file" ]; then

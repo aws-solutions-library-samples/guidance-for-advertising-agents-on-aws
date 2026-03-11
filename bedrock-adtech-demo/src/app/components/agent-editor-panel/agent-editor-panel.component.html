@@ -192,7 +192,7 @@
           <div class="combobox-input-wrapper">
             <span class="material-icons combobox-icon">menu_book</span>
             <input type="text" id="knowledge_base" class="form-control combobox-input"
-              [ngModel]="editingAgent.knowledge_base || kbFilterText"
+              [ngModel]="getKbDisplayName(editingAgent.knowledge_base) || kbFilterText"
               (ngModelChange)="onKbFilterInput($event)"
               (focus)="toggleKbDropdown()"
               (blur)="closeKbDropdown()"
@@ -223,7 +223,7 @@
             <!-- KB options -->
             <div class="combobox-option" *ngFor="let kb of filteredKnowledgeBases"
               (mousedown)="selectKnowledgeBase(kb)"
-              [class.selected]="editingAgent.knowledge_base === kb.name">
+              [class.selected]="editingAgent.knowledge_base === kb.knowledgeBaseId">
               <span class="material-icons option-icon">menu_book</span>
               <div class="option-kb-details">
                 <span class="option-kb-name">{{ kb.name }}</span>

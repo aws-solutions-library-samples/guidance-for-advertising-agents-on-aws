@@ -104,5 +104,13 @@ export const MCP_SERVER_PRESETS: { name: string; config: Partial<MCPServerConfig
       },
       description: 'AWS IAM authenticated MCP gateway'
     }
+  },
+  {
+    name: 'OAuth Bearer Token',
+    config: {
+      transport: 'http',
+      url: '',
+      description: 'MCP server with OAuth bearer token authentication'
+    }
   }
 ];

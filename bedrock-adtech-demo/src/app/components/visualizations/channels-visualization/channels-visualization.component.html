@@ -58,7 +58,7 @@
         <h6>Risk Factors:</h6>
         <ul>
           <li *ngFor="let risk of getRisks(channel)" 
-              [class.no-risk]="risk.toLowerCase().includes('none')">
+              [class.no-risk]="('' + risk).toLowerCase().includes('none')">
             {{risk}}
           </li>
         </ul>

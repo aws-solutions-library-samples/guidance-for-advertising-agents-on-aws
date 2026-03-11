@@ -183,6 +183,7 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   private sonicAudioQueue: Uint8Array[] = [];
   private sonicIsPlaying = false;
   private sonicResponseText = ''; // Accumulate text-response chunks
+  private sonicMessageId = ''; // Stable ID for the current Nova Sonic streaming message
   private pendingVoiceRouting: { agentName: string; query: string } | null = null;
   private lastVoiceQuery = ''; // Track the user's last voice query for fallback routing
 
@@ -3647,7 +3648,25 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           }
 
           // Trigger change detection to re-render the message with visualizations
-          this.changeDetectorRef.detectChanges();
+          try {
+            this.changeDetectorRef.detectChanges();
+          } catch (renderError) {
+            console.warn(`⚠️ Visualization render error for ${agentName}, stripping visualization data:`, renderError);
+            // If rendering crashes, remove the visualization data so the message still shows text
+            existingMessage.data = {
+              ...existingMessage.data,
+              visualizationAnalysis: undefined
+            };
+            // Clear cache again so it re-renders without viz data
+            if (this.messageCache) {
+              for (const key of Array.from(this.messageCache.keys())) {
+                if (key.startsWith(messageId)) {
+                  this.messageCache.delete(key);
+                }
+              }
+            }
+            try { this.changeDetectorRef.detectChanges(); } catch (_) { /* give up gracefully */ }
+          }
         }
       }
     ).catch((error) => {
@@ -4688,7 +4707,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     isThinking: boolean;
     delegationContent?: string | undefined;
     summary?: string;
-    visualData?: any
+    visualData?: any;
+    questions?: string[];
   } {
     const isThinking = message.data?.isThinking || false;
     const thinkingHistory = message.data?.thinkingHistory || [];
@@ -4773,11 +4793,15 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
         };
 
         for (const viz of vizAnalysis.visualizations) {
-          const vizType = viz.visualizationType;
-          const dataKey = vizTypeToDataKey[vizType] || `${vizType}Data`;
-          const templateKey = vizTypeToTemplateKey[vizType] || `${vizType}TemplateId`;
-          visualDataResult[dataKey] = viz.data;
-          visualDataResult[templateKey] = viz.templateId;
+          try {
+            const vizType = viz.visualizationType;
+            const dataKey = vizTypeToDataKey[vizType] || `${vizType}Data`;
+            const templateKey = vizTypeToTemplateKey[vizType] || `${vizType}TemplateId`;
+            visualDataResult[dataKey] = viz.data;
+            visualDataResult[templateKey] = viz.templateId;
+          } catch (vizError) {
+            console.warn(`⚠️ Skipping malformed visualization entry:`, vizError, viz);
+          }
         }
 
         // Refresh tour steps for visualization
@@ -4799,7 +4823,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           finalContent: unescapeNewlines(finalResponse),
           summary: vizAnalysis.summary,
           isThinking: false,
-          visualData: visualDataResult
+          visualData: visualDataResult,
+          questions: vizAnalysis.questions || []
         };
       }
 
@@ -4995,6 +5020,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     isThinking: boolean;
     delegationContent?: string | undefined;
     summary?: string;
+    questions?: string[];
     visualData?: {
       metricData?: any;
       channelAllocations?: any;
@@ -5372,7 +5398,7 @@ ${formattedJson}
 
   // Helper method to get performance level color for allocation cards
   getPerformanceColor(performance: string): string {
-    switch (performance?.toLowerCase()) {
+    switch (String(performance || '').toLowerCase()) {
       case 'high': return '#10b981';
       case 'medium': return '#f59e0b';
       case 'low':
@@ -5493,6 +5519,13 @@ ${formattedJson}
   private parsePartialJson(jsonText: string): { success: boolean; data?: any; error?: string; isPartial?: boolean } {
     if (!jsonText || jsonText.trim().length === 0) {
       return { success: false, error: 'Empty JSON text' };
+    }
+
+    // Quick sanity check: if the trimmed text doesn't start with { or [
+    // it's definitely not JSON — bail out immediately to avoid noisy errors
+    const trimmed = jsonText.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return { success: false, error: 'Not JSON (does not start with { or [)' };
     }
 
     // Try multiple cleaning approaches
@@ -6362,7 +6395,11 @@ ${formattedJson}
 
       // Start Nova Sonic session with agent routing
       const session$ = agentCards.length > 0
-        ? this.novaSonicService.startSessionWithAgents(agentCards)
+        ? (() => {
+            console.log(`🎤 Voice: Starting session with ${agentCards.length} agent cards for tool-use routing`);
+            console.log(`🎤 Voice: Agent names: ${agentCards.map(a => a.agent_name || (a as any).name || 'UNNAMED').join(', ')}`);
+            return this.novaSonicService.startSessionWithAgents(agentCards);
+          })()
         : this.novaSonicService.startSession();
 
       this.novaSonicSubscription = session$.subscribe({
@@ -6412,6 +6449,7 @@ ${formattedJson}
           this.messages = [...this.messages, userVoiceMessage];
           this.messagesUpdated.emit(this.messages);
           this.bedrockService.updateChatMessages(this.messages);
+          this.saveMessagesToStorage();
           this.shouldScrollToBottom = true;
         }
         // Clear the input field
@@ -6419,6 +6457,8 @@ ${formattedJson}
         this.partialTranscript = '';
         // Reset accumulated response text for the upcoming assistant reply
         this.sonicResponseText = '';
+        // Generate a stable message ID for the upcoming Nova Sonic response
+        this.sonicMessageId = `voice-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         this.changeDetectorRef.detectChanges();
         break;
 
@@ -6444,19 +6484,21 @@ ${formattedJson}
         if (event.text) {
           this.sonicResponseText += event.text;
           const agentForMessage = this.lastAgent || this.selectedAgentForMessage;
+          // Use the stable message ID generated when the transcript was finalized
+          const stableId = this.sonicMessageId || `voice-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const sonicMessage: Message = {
-            id: `voice-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: stableId,
             text: this.sonicResponseText,
             sender: 'agent',
             timestamp: new Date(),
-            agentName: agentForMessage?.name || 'Nova Sonic',
-            displayName: agentForMessage?.displayName || 'Nova Sonic',
+            agentName: 'Nova Sonic',
+            displayName: 'Nova Sonic',
             agent: agentForMessage || undefined
           };
 
-          // Replace existing sonic message or add new one
-          const existingSonicIdx = this.messages.findIndex(m => m.id.startsWith('voice-agent-'));
-          if (existingSonicIdx >= 0 && this.messages[existingSonicIdx].id.startsWith('voice-agent-')) {
+          // Replace existing sonic message (by stable ID) or add new one
+          const existingSonicIdx = this.messages.findIndex(m => m.id === stableId);
+          if (existingSonicIdx >= 0) {
             const updated = [...this.messages];
             updated[existingSonicIdx] = sonicMessage;
             this.messages = updated;
@@ -6474,6 +6516,9 @@ ${formattedJson}
         // Model finished its turn (completionEnd received). Now it's safe to
         // stop the session and route to an agent if tool-use was triggered.
         console.log('🎤 Voice turn complete — stopping session and routing');
+
+        // Persist the Nova Sonic message to storage so it survives across renders
+        this.saveMessagesToStorage();
 
         // Use browser TTS as fallback if no audio was received
         if (this.sonicResponseText && this.sonicAudioQueue.length === 0) {
@@ -6690,7 +6735,8 @@ ${formattedJson}
     this.sonicAudioQueue = [];
     this.sonicIsPlaying = false;
     this.sonicResponseText = '';
-    // Don't clear pendingVoiceRouting here — it's consumed after stopVoiceRecording in text-response handler
+    this.sonicMessageId = '';
+    // Don't clear pendingVoiceRouting here — it's consumed after stopVoiceRecording in turn-complete handler
 
     // Also clean up legacy transcribe subscription if present
     if (this.transcriptionSubscription) {
@@ -7324,6 +7370,10 @@ ${formattedJson}
     this.showVisibilitySettings = true;
   }
   getAgentColor(agentType: string = ''): string {
+    // Nova Sonic voice assistant gets a distinct fuchsia/purple color
+    if (agentType === 'Nova Sonic') {
+      return '#7a42a9';
+    }
     // Normalize the agent name to ensure consistent color assignment
     // Use the normalized agent name for color calculation
     const color = this.agentConfig.getEnrichedAgents().find(agent => agent.name == agentType)?.color || "gray";
@@ -8008,6 +8058,45 @@ This analysis shows the impact of weather on audience behavior.`;
 
   // Track if session creation is in progress to prevent duplicate calls
   private isCreatingSession = false;
+
+  /**
+   * Refresh session — forces creation of a new session, bypassing the tab-initialized guard.
+   */
+  refreshSession(): void {
+    this.sessionManager.markTabAsInitialized(this.tabId); // ensure it's marked
+    // Reset the guard so createNewSession doesn't short-circuit
+    this.isCreatingSession = false;
+    // Temporarily un-mark the tab so createNewSession proceeds
+    const loginId = this.currentUser?.signInDetails?.loginId;
+    const customerName = this.demoTrackingService.getCurrentCustomer() || 'default';
+
+    // Clear messages and state directly, then create fresh session
+    this.messages = [{
+      id: '1',
+      text: `This playground shows various applications of Amazon Bedrock AgentCore Agents in the Advertising industry. Select one of the example scenarios or speak or type a question to get started.`,
+      sender: 'agent',
+      timestamp: new Date(),
+      data: { isWelcomeMessage: true }
+    }];
+    this.knowledgeBaseSources.clear();
+    this.traceQueries.clear();
+    this.requestSources.clear();
+    this.requestToMessageMap.clear();
+    this.currentAgentResponses.clear();
+    this.recentMessageHashes.clear();
+    this.referencesExpanded.clear();
+    this.thinkingCollapsed.clear();
+    this.agentParticipants.clear();
+    this.agentFirstMessages.clear();
+    this.agentConfig.clearAgentColorCache();
+    this.shouldScrollToBottom = true;
+
+    const newSession = this.sessionManager.createNewSession(loginId, customerName, this.tabId);
+    this.currentSessionInfo = newSession;
+    this.loadAvailableSessions();
+    this.changeDetectorRef.markForCheck();
+    console.log(`🔄 Refreshed session: ${newSession.sessionId}`);
+  }
 
   createNewSession(): void {
     // Prevent duplicate session creation within the same component instance

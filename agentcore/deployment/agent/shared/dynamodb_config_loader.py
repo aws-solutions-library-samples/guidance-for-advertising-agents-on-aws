@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Module-level caches
 _dynamodb_client = None
 _dynamodb_table = None
+_ssm_client = None
 _config_cache: Dict[str, Any] = {}
 _cache_initialized = False
 
@@ -85,6 +86,17 @@ def get_dynamodb_table():
             )
             _dynamodb_table = dynamodb.Table(table_name)
     return _dynamodb_table
+
+
+def get_ssm_client():
+    """Get or create SSM client for reading OAuth tokens."""
+    global _ssm_client
+    if _ssm_client is None:
+        _ssm_client = boto3.client(
+            "ssm",
+            region_name=os.environ.get("AWS_REGION", "us-east-1")
+        )
+    return _ssm_client
 
 
 def clear_config_cache(key: Optional[str] = None):
@@ -503,6 +515,120 @@ def get_cache_stats() -> Dict[str, Any]:
         "table_name": get_agent_config_table_name(),
         "cache_keys": list(_config_cache.keys())[:20]  # First 20 keys
     }
+
+
+# ============================================
+# MCP Server OAuth Token Resolution
+# ============================================
+
+def resolve_ssm_parameter(ssm_path: str, use_cache: bool = True) -> Optional[str]:
+    """
+    Fetch a single SSM parameter value (SecureString supported).
+
+    Args:
+        ssm_path: Full SSM parameter path
+        use_cache: Whether to use cached value
+
+    Returns:
+        Decrypted parameter value, or None on failure
+    """
+    cache_key = f"ssm:{ssm_path}"
+
+    if use_cache and cache_key in _config_cache:
+        logger.debug(f"📦 DDB_CACHE: Cache HIT for SSM param: {ssm_path}")
+        return _config_cache[cache_key]
+
+    ssm = get_ssm_client()
+    if not ssm:
+        return None
+
+    try:
+        response = ssm.get_parameter(Name=ssm_path, WithDecryption=True)
+        value = response["Parameter"]["Value"]
+        _config_cache[cache_key] = value
+        logger.info(f"✅ SSM_LOADER: Resolved parameter {ssm_path}")
+        return value
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == "ParameterNotFound":
+            logger.warning(f"⚠️ SSM_LOADER: Parameter not found: {ssm_path}")
+        else:
+            logger.error(f"❌ SSM_LOADER: Error fetching {ssm_path}: {e}")
+        _config_cache[cache_key] = None
+        return None
+
+
+def resolve_mcp_server_auth(mcp_servers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Resolve OAuth bearer tokens from SSM for MCP server configurations.
+
+    For each server that has an oauthToken.ssmPath, fetches the token from
+    SSM Parameter Store and injects it as an Authorization header.
+
+    Args:
+        mcp_servers: List of MCP server config dicts from the agent's global config
+
+    Returns:
+        The same list with Authorization headers injected where tokens exist
+    """
+    if not mcp_servers:
+        return mcp_servers
+
+    for server in mcp_servers:
+        oauth_config = server.get("oauthToken")
+        if not oauth_config:
+            continue
+
+        ssm_path = oauth_config.get("ssmPath")
+        has_token = oauth_config.get("hasToken", False)
+
+        if not has_token or not ssm_path:
+            continue
+
+        token = resolve_ssm_parameter(ssm_path)
+        if token:
+            if "headers" not in server:
+                server["headers"] = {}
+            server["headers"]["Authorization"] = f"Bearer {token}"
+            logger.info(f"✅ MCP_AUTH: Injected bearer token for server '{server.get('name', server.get('id', '?'))}'")
+        else:
+            logger.warning(
+                f"⚠️ MCP_AUTH: Could not resolve token for server '{server.get('name', server.get('id', '?'))}' "
+                f"at {ssm_path}"
+            )
+
+    return mcp_servers
+
+
+def load_agent_mcp_servers(agent_name: str, use_cache: bool = True) -> List[Dict[str, Any]]:
+    """
+    Load MCP server configs for an agent from global config and resolve OAuth tokens.
+
+    Args:
+        agent_name: Name of the agent
+        use_cache: Whether to use cached data
+
+    Returns:
+        List of MCP server configs with auth headers injected
+    """
+    global_config = load_global_config(use_cache=use_cache)
+    if not global_config:
+        return []
+
+    agent_configs = global_config.get("agent_configs", {})
+    agent_config = agent_configs.get(agent_name)
+    if not agent_config:
+        return []
+
+    mcp_servers = agent_config.get("mcp_servers", [])
+    if not mcp_servers:
+        return []
+
+    # Deep copy to avoid mutating the cached config
+    import copy
+    servers_copy = copy.deepcopy(mcp_servers)
+
+    return resolve_mcp_server_auth(servers_copy)
 
 
 # ============================================

@@ -127,6 +127,16 @@ export class ChannelsVisualizationComponent implements OnChanges {
   private processedData: any = null;
   private lastInputHash: string = '';
 
+  /** Safely coerce any value to a string */
+  private toStr(val: any): string {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') {
+      try { return JSON.stringify(val); } catch { return String(val); }
+    }
+    return String(val);
+  }
+
   constructor(
     private cdr: ChangeDetectorRef,
     private cacheService: VisualizationCacheService
@@ -196,21 +206,21 @@ export class ChannelsVisualizationComponent implements OnChanges {
     if (channel.primaryScore) {
       scores.push({
         label: channel.primaryScore.label || 'Primary Score',
-        value: channel.primaryScore.value,
+        value: this.toStr(channel.primaryScore.value),
         type: 'primary'
       });
     }
     if (channel.secondaryScore) {
       scores.push({
         label: channel.secondaryScore.label || 'Secondary Score',
-        value: channel.secondaryScore.value,
+        value: this.toStr(channel.secondaryScore.value),
         type: 'secondary'
       });
     }
     if (channel.qualityScore) {
       scores.push({
         label: 'Quality Score',
-        value: channel.qualityScore,
+        value: this.toStr(channel.qualityScore),
         type: 'quality'
       });
     }
@@ -220,19 +230,19 @@ export class ChannelsVisualizationComponent implements OnChanges {
       scores.push({ label: 'Safety', value: `${channel.safety_score}/100`, type: 'safety' });
     }
     if (channel.win_rate) {
-      scores.push({ label: 'Win Rate', value: channel.win_rate, type: 'performance' });
+      scores.push({ label: 'Win Rate', value: this.toStr(channel.win_rate), type: 'performance' });
     }
     if (channel.expected_ctr) {
-      scores.push({ label: 'CTR', value: channel.expected_ctr, type: 'ctr' });
+      scores.push({ label: 'CTR', value: this.toStr(channel.expected_ctr), type: 'ctr' });
     }
     if (channel.expected_cvr) {
-      scores.push({ label: 'CVR', value: channel.expected_cvr, type: 'cvr' });
+      scores.push({ label: 'CVR', value: this.toStr(channel.expected_cvr), type: 'cvr' });
     }
     if (channel.expected_roas) {
-      scores.push({ label: 'ROAS', value: channel.expected_roas, type: 'roas' });
+      scores.push({ label: 'ROAS', value: this.toStr(channel.expected_roas), type: 'roas' });
     }
     if (channel.expected_performance) {
-      scores.push({ label: 'Performance', value: channel.expected_performance, type: 'performance' });
+      scores.push({ label: 'Performance', value: this.toStr(channel.expected_performance), type: 'performance' });
     }
 
     return scores;
@@ -246,73 +256,76 @@ export class ChannelsVisualizationComponent implements OnChanges {
     if (channel.statusIndicator) {
       properties.push({
         label: 'Status',
-        value: channel.statusIndicator,
+        value: this.toStr(channel.statusIndicator),
         isHighlight: true
       });
     }
     if (channel.targetValue) {
       properties.push({
         label: channel.targetLabel || 'Target',
-        value: channel.targetValue,
+        value: this.toStr(channel.targetValue),
         isHighlight: true
       });
     }
     if (channel.actualValue) {
       properties.push({
         label: channel.actualLabel || 'Current',
-        value: channel.actualValue
+        value: this.toStr(channel.actualValue)
       });
     }
     if (channel.forecastedValue) {
       properties.push({
         label: channel.forecastedLabel || 'Forecast',
-        value: channel.forecastedValue
+        value: this.toStr(channel.forecastedValue)
       });
     }
     if (channel.confidenceLevel) {
+      const confStr = this.toStr(channel.confidenceLevel);
       properties.push({
         label: 'Confidence',
-        value: channel.confidenceLevel,
-        isHighlight: channel.confidenceLevel === 'high'
+        value: confStr,
+        isHighlight: confStr === 'high'
       });
     }
 
     // Legacy properties as fallback
     if (channel.brand_fit) {
+      const bfStr = this.toStr(channel.brand_fit);
       properties.push({
         label: 'Brand Fit',
-        value: channel.brand_fit,
-        isHighlight: channel.brand_fit === 'excellent'
+        value: bfStr,
+        isHighlight: bfStr === 'excellent'
       });
     }
     if (channel.category) {
-      properties.push({ label: 'Category', value: channel.category });
+      properties.push({ label: 'Category', value: this.toStr(channel.category) });
     }
     if (channel.audience_size) {
-      properties.push({ label: 'Audience Size', value: channel.audience_size });
+      properties.push({ label: 'Audience Size', value: this.toStr(channel.audience_size) });
     }
     if (channel.audience_match) {
-      properties.push({ label: 'Audience Match', value: channel.audience_match });
+      properties.push({ label: 'Audience Match', value: this.toStr(channel.audience_match) });
     }
     if (channel.recommended_bid || channel.bid_range) {
       properties.push({
         label: 'Recommended Bid',
-        value: channel.recommended_bid || channel.bid_range,
+        value: this.toStr(channel.recommended_bid || channel.bid_range),
         isHighlight: true
       });
     }
     if (channel.device_optimization) {
-      properties.push({ label: 'Device Optimization', value: channel.device_optimization });
+      properties.push({ label: 'Device Optimization', value: this.toStr(channel.device_optimization) });
     }
     if (channel.confidence) {
+      const confStr = this.toStr(channel.confidence);
       properties.push({
         label: 'Confidence',
-        value: channel.confidence,
-        isHighlight: channel.confidence === 'high'
+        value: confStr,
+        isHighlight: confStr === 'high'
       });
     }
     if (channel.competitive_position) {
-      properties.push({ label: 'Competitive Position', value: channel.competitive_position });
+      properties.push({ label: 'Competitive Position', value: this.toStr(channel.competitive_position) });
     }
 
     return properties;
@@ -330,7 +343,8 @@ export class ChannelsVisualizationComponent implements OnChanges {
 
   // Helper method to get risks (generic or specific)
   getRisks(channel: any): string[] {
-    return channel.risks || channel.risk_factors || [];
+    const risks = channel.risks || channel.risk_factors || [];
+    return risks.map((r: any) => typeof r === 'string' ? r : String(r));
   }
 
   // Helper method to get opportunities (generic or specific)

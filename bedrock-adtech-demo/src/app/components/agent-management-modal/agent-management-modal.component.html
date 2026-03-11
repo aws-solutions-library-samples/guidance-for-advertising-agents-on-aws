@@ -9,18 +9,36 @@
         <h3>Agent Management</h3>
       </div>
       <div class="header-actions">
-        <button 
-          class="nova-button secondary" 
-          (click)="triggerBackendCacheRefresh()" 
-          [disabled]="isLoading || isRefreshingCache"
-          title="Refresh backend agent cache to pick up config changes">
-          <span class="material-icons" [class.spinning]="isRefreshingCache">{{ isRefreshingCache ? 'sync' : 'refresh' }}</span>
-          {{ isRefreshingCache ? 'Refreshing...' : 'Sync Backend' }}
-        </button>
-        <button class="nova-button secondary" (click)="addNewAgent()" [disabled]="isLoading">
-          <span class="material-icons">add</span>
-          Add Agent
-        </button>
+        <!-- List view actions -->
+        <ng-container *ngIf="!isEditing">
+          <button 
+            class="nova-button secondary" 
+            (click)="triggerBackendCacheRefresh()" 
+            [disabled]="isLoading || isRefreshingCache"
+            title="Refresh backend agent cache to pick up config changes">
+            <span class="material-icons" [class.spinning]="isRefreshingCache">{{ isRefreshingCache ? 'sync' : 'refresh' }}</span>
+            {{ isRefreshingCache ? 'Refreshing...' : 'Sync Backend' }}
+          </button>
+          <button class="nova-button primary" (click)="openGenerateAgentModal()" [disabled]="isLoading">
+            <span class="material-icons">auto_awesome</span>
+            Generate Agent
+          </button>
+          <button class="nova-button secondary" (click)="addNewAgent()" [disabled]="isLoading">
+            <span class="material-icons">add</span>
+            Add Agent
+          </button>
+        </ng-container>
+        <!-- Edit view actions -->
+        <ng-container *ngIf="isEditing">
+          <button class="nova-button secondary" (click)="cancelEdit()">
+            <span class="material-icons">arrow_back</span>
+            Cancel
+          </button>
+          <button class="nova-button primary" (click)="editorPanel?.handleSave()" [disabled]="isLoading">
+            <span class="material-icons">save</span>
+            {{ isLoading ? 'Saving...' : 'Save Agent' }}
+          </button>
+        </ng-container>
         <button class="close-btn" (click)="close()">
           <span class="material-icons">close</span>
         </button>
@@ -128,13 +146,18 @@
           [isNew]="isAddingNew"
           [availableAgents]="getAvailableAgentNames()"
           [availableRuntimeArns]="getAvailableRuntimeArns()"
+          [defaultRuntimeArn]="getDefaultRuntimeArn()"
           [isLoading]="isLoading"
           [currentUser]="currentUser"
           (onSave)="onEditorSave($event)"
           (onCancel)="onEditorCancel()"
+          (onDelete)="onEditorDelete($event)"
           (mcpEditorOpened)="onMcpEditorOpened()"
           (mcpEditorClosed)="onMcpEditorClosed()"
-          (mcpEditorSaved)="onMcpEditorSaved()">
+          (mcpEditorSaved)="onMcpEditorSaved()"
+          (a2aEditorOpened)="onA2aEditorOpened()"
+          (a2aEditorClosed)="onA2aEditorClosed()"
+          (a2aEditorSaved)="onA2aEditorSaved()">
         </app-agent-editor-panel>
       </div>
 
@@ -295,14 +318,7 @@
                 placeholder="e.g., http://localhost:8000/mcp" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
             </div>
 
-            <!-- AWS IAM Auth -->
-            <div class="mcp-form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" [checked]="!!mcpServer.awsAuth"
-                  (change)="mcpServer.awsAuth = $any($event.target).checked ? { region: 'us-east-1', service: 'bedrock-agentcore' } : undefined; editorPanel.updateMcpServerJsonFromForm()">
-                Use AWS IAM Authentication (SigV4)
-              </label>
-            </div>
+            <!-- AWS IAM Auth (shown when auth type is aws_iam) -->
             <div class="aws-auth-config" *ngIf="mcpServer.awsAuth">
               <div class="mcp-form-row">
                 <div class="mcp-form-group">
@@ -314,6 +330,83 @@
                   <label>Service</label>
                   <input type="text" class="form-control" [(ngModel)]="mcpServer.awsAuth.service"
                     placeholder="bedrock-agentcore" (ngModelChange)="editorPanel.updateMcpServerJsonFromForm()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Authentication Type -->
+            <div class="mcp-form-section auth-section">
+              <h6><span class="material-icons">vpn_key</span> Authentication</h6>
+              <div class="auth-type-options">
+                <div class="auth-type-option" [class.selected]="!mcpServer.oauthToken?.hasToken && !mcpServer.awsAuth && !editorPanel.mcpOAuthCredentialsPending"
+                  (click)="editorPanel.setMcpAuthType(mcpServer, 'none')">
+                  <span class="material-icons">lock_open</span> None
+                </div>
+                <div class="auth-type-option" [class.selected]="mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsPending"
+                  (click)="editorPanel.setMcpAuthType(mcpServer, 'bearer')">
+                  <span class="material-icons">token</span> OAuth
+                </div>
+                <div class="auth-type-option" [class.selected]="!!mcpServer.awsAuth"
+                  (click)="editorPanel.setMcpAuthType(mcpServer, 'aws_iam')">
+                  <span class="material-icons">security</span> AWS IAM
+                </div>
+              </div>
+
+              <!-- OAuth Credentials Config -->
+              <div class="oauth-credentials-config" *ngIf="mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsPending">
+                <!-- Credentials already stored — show status -->
+                <div class="token-status" *ngIf="mcpServer.oauthToken?.hasToken && !editorPanel.mcpOAuthCredentialsEditing">
+                  <div class="token-configured-badge">
+                    <span class="material-icons">check_circle</span>
+                    <span>OAuth credentials configured</span>
+                  </div>
+                  <div class="token-actions">
+                    <button class="nova-button secondary small" (click)="editorPanel.mcpOAuthCredentialsEditing = true">
+                      <span class="material-icons">edit</span> Update
+                    </button>
+                    <button class="nova-button secondary small danger" (click)="editorPanel.removeMcpOAuthCredentials(mcpServer)">
+                      <span class="material-icons">delete_outline</span> Remove
+                    </button>
+                  </div>
+                </div>
+                <!-- Credentials input (new or editing) -->
+                <div class="credentials-input-group" *ngIf="!mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsEditing">
+                  <div class="credential-field">
+                    <label>Username <span class="required">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpOAuthUsername"
+                      placeholder="Enter username..." autocomplete="off">
+                  </div>
+                  <div class="credential-field">
+                    <label>Password <span class="required">*</span></label>
+                    <div class="token-input-row">
+                      <input [type]="editorPanel.mcpOAuthPasswordVisible ? 'text' : 'password'" class="form-control"
+                        [(ngModel)]="editorPanel.mcpOAuthPassword"
+                        placeholder="Enter password..." autocomplete="off" spellcheck="false">
+                      <button class="toggle-visibility-btn" (click)="editorPanel.mcpOAuthPasswordVisible = !editorPanel.mcpOAuthPasswordVisible"
+                        type="button" [title]="editorPanel.mcpOAuthPasswordVisible ? 'Hide' : 'Show'">
+                        <span class="material-icons">{{ editorPanel.mcpOAuthPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <span class="field-hint token-hint">
+                    <span class="material-icons">info_outline</span>
+                    Credentials are stored encrypted in AWS SSM Parameter Store. A bearer token will be obtained automatically at runtime.
+                  </span>
+                  <div class="token-save-actions">
+                    <button class="nova-button primary small" (click)="editorPanel.saveMcpOAuthCredentials()"
+                      [disabled]="editorPanel.mcpOAuthCredentialsSaving || !editorPanel.mcpOAuthUsername.trim() || !editorPanel.mcpOAuthPassword.trim()">
+                      <span class="material-icons">{{ editorPanel.mcpOAuthCredentialsSaving ? 'hourglass_empty' : 'save' }}</span>
+                      {{ editorPanel.mcpOAuthCredentialsSaving ? 'Saving...' : 'Save Credentials' }}
+                    </button>
+                    <button class="nova-button secondary small" *ngIf="editorPanel.mcpOAuthCredentialsEditing"
+                      (click)="editorPanel.mcpOAuthCredentialsEditing = false; editorPanel.mcpOAuthUsername = ''; editorPanel.mcpOAuthPassword = ''">
+                      Cancel
+                    </button>
+                  </div>
+                  <div class="token-error" *ngIf="editorPanel.mcpServerJsonError">
+                    <span class="material-icons">error_outline</span>
+                    {{ editorPanel.mcpServerJsonError }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -399,3 +492,261 @@
     </div>
   </div>
 </ng-container>
+
+<!-- A2A External Agent Editor Overlay - Rendered at modal level to escape overflow clipping -->
+<ng-container *ngIf="showA2aEditorOverlay && editorPanel?.editingA2aAgent as a2aAgent">
+  <div class="a2a-editor-top-overlay" (click)="editorPanel.closeA2aAgentEditor()">
+    <div class="a2a-editor-top-modal" (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="a2a-editor-header">
+        <div class="a2a-editor-title">
+          <span class="material-icons">share</span>
+          <div>
+            <h5>{{ a2aAgent.name || 'External A2A Agent' }}</h5>
+            <p class="a2a-editor-subtitle">Configure A2A agent connection and authentication</p>
+          </div>
+        </div>
+        <button class="close-a2a-button" (click)="editorPanel.closeA2aAgentEditor()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="a2a-editor-content">
+
+        <!-- Basic Info -->
+        <div class="a2a-form-section">
+          <h6><span class="material-icons">info</span> Basic Information</h6>
+          <div class="a2a-form-group">
+            <label>Agent Name <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="a2aAgent.name"
+              placeholder="e.g., RemotePlanningAgent">
+          </div>
+          <div class="a2a-form-group">
+            <label>Description</label>
+            <input type="text" class="form-control" [(ngModel)]="a2aAgent.description"
+              placeholder="What does this external agent do?">
+          </div>
+          <div class="a2a-form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="a2aAgent.enabled">
+              Agent Enabled
+            </label>
+          </div>
+        </div>
+
+        <!-- ARN Configuration -->
+        <div class="a2a-form-section">
+          <h6><span class="material-icons">cloud</span> Agent ARN</h6>
+          <div class="a2a-form-group">
+            <label>Runtime ARN <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="a2aAgent.arn"
+              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/...">
+            <span class="field-hint">The AgentCore runtime ARN or A2A endpoint for this external agent.</span>
+          </div>
+        </div>
+
+        <!-- Authentication -->
+        <div class="a2a-form-section auth-section">
+          <h6><span class="material-icons">vpn_key</span> Authentication</h6>
+
+          <!-- External runtime notice -->
+          <div class="external-runtime-auth-notice" *ngIf="editorPanel.isExternalRuntime">
+            <span class="material-icons">info</span>
+            <span>Only IAM and OAuth authentication are supported for external runtimes at this time.</span>
+          </div>
+
+          <!-- Auth type selector -->
+          <div class="auth-type-options">
+            <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'none'"
+              (click)="editorPanel.setA2aAuthType(a2aAgent, 'none')">
+              <span class="material-icons">lock_open</span> None
+            </div>
+            <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'oauth'"
+              (click)="editorPanel.setA2aAuthType(a2aAgent, 'oauth')">
+              <span class="material-icons">token</span> OAuth
+            </div>
+            <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'iam'"
+              (click)="editorPanel.setA2aAuthType(a2aAgent, 'iam')">
+              <span class="material-icons">security</span> AWS IAM
+            </div>
+          </div>
+
+          <!-- OAuth Credentials Config -->
+          <div class="oauth-credentials-config" *ngIf="editorPanel.getA2aAuthType(a2aAgent) === 'oauth'">
+            <!-- Credentials already stored — show status -->
+            <div class="token-status" *ngIf="(a2aAgent.oauthCredentials?.hasCredentials || a2aAgent.oauthToken?.hasToken) && !editorPanel.a2aOAuthCredentialsEditing">
+              <div class="token-configured-badge">
+                <span class="material-icons">check_circle</span>
+                <span>OAuth credentials configured</span>
+              </div>
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="editorPanel.a2aOAuthCredentialsEditing = true">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="editorPanel.removeA2aOAuthCredentials()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
+            </div>
+            <!-- Credentials input (new or editing) -->
+            <div class="credentials-input-group" *ngIf="(!a2aAgent.oauthCredentials?.hasCredentials && !a2aAgent.oauthToken?.hasToken) || editorPanel.a2aOAuthCredentialsEditing || editorPanel.a2aOAuthCredentialsPending">
+              <div class="credential-field">
+                <label>Username <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aOAuthUsername"
+                  placeholder="Enter username..." autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Password <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="editorPanel.a2aOAuthPasswordVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="editorPanel.a2aOAuthPassword"
+                    placeholder="Enter password..." autocomplete="off" spellcheck="false">
+                  <button class="toggle-visibility-btn" (click)="editorPanel.a2aOAuthPasswordVisible = !editorPanel.a2aOAuthPasswordVisible"
+                    type="button" [title]="editorPanel.a2aOAuthPasswordVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ editorPanel.a2aOAuthPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+              <span class="field-hint token-hint">
+                <span class="material-icons">info_outline</span>
+                Credentials are stored encrypted in AWS SSM Parameter Store. A bearer token will be obtained automatically at runtime.
+              </span>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="editorPanel.saveA2aOAuthCredentials()"
+                  [disabled]="editorPanel.a2aOAuthCredentialsSaving || !editorPanel.a2aOAuthUsername.trim() || !editorPanel.a2aOAuthPassword.trim()">
+                  <span class="material-icons">{{ editorPanel.a2aOAuthCredentialsSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ editorPanel.a2aOAuthCredentialsSaving ? 'Saving...' : 'Save Credentials' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="editorPanel.a2aOAuthCredentialsEditing"
+                  (click)="editorPanel.a2aOAuthCredentialsEditing = false; editorPanel.a2aOAuthUsername = ''; editorPanel.a2aOAuthPassword = ''">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="editorPanel.a2aEditorError">
+                <span class="material-icons">error_outline</span>
+                {{ editorPanel.a2aEditorError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- AWS IAM Config -->
+          <div class="aws-iam-config" *ngIf="editorPanel.getA2aAuthType(a2aAgent) === 'iam'">
+            <div class="a2a-form-row">
+              <div class="a2a-form-group">
+                <label>Region</label>
+                <input type="text" class="form-control" [(ngModel)]="a2aAgent.awsAuth!.region"
+                  placeholder="us-east-1">
+              </div>
+              <div class="a2a-form-group">
+                <label>Service</label>
+                <input type="text" class="form-control" [(ngModel)]="a2aAgent.awsAuth!.service"
+                  placeholder="bedrock-agentcore">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="a2a-editor-actions">
+        <button class="nova-button secondary" (click)="editorPanel.closeA2aAgentEditor()">
+          <span class="material-icons">close</span> Cancel
+        </button>
+        <button class="nova-button primary" (click)="editorPanel.saveA2aAgentChanges()">
+          <span class="material-icons">save</span> Save Agent
+        </button>
+      </div>
+
+    </div>
+  </div>
+</ng-container>
+
+<!-- Generate Agent Modal Overlay -->
+<div class="generate-agent-overlay" *ngIf="showGenerateAgentModal" (click)="closeGenerateAgentModal()">
+  <div class="generate-agent-modal" (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="generate-agent-header">
+      <div class="generate-agent-title">
+        <div class="generate-icon-wrapper">
+          <span class="material-icons">auto_awesome</span>
+        </div>
+        <div>
+          <h5>Generate Agent</h5>
+          <p class="generate-subtitle">Describe your agent and attach reference documents to generate a full configuration</p>
+        </div>
+      </div>
+      <button class="close-generate-btn" (click)="closeGenerateAgentModal()" [disabled]="isGeneratingAgent">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="generate-agent-content">
+      <div class="generate-form-group">
+        <label for="generate-prompt">What kind of agent do you want to create?</label>
+        <textarea id="generate-prompt" class="form-control generate-textarea"
+          [(ngModel)]="generateAgentPrompt"
+          [disabled]="isGeneratingAgent"
+          placeholder="e.g., I need an agent that optimizes ad campaign budgets across channels. It should analyze performance metrics, suggest reallocations, and provide visualization of spend vs. ROI..."
+          rows="5"></textarea>
+      </div>
+
+      <!-- Document Attachment -->
+      <div class="doc-attach-section">
+        <div class="doc-attach-header">
+          <label class="doc-attach-label" [class.disabled]="isGeneratingAgent">
+            <span class="material-icons">attach_file</span>
+            Attach reference documents
+            <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log"
+              (change)="onGenerateAgentFileAttach($event)" [disabled]="isGeneratingAgent" hidden>
+          </label>
+          <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, .yaml)</span>
+        </div>
+        <div class="attached-docs" *ngIf="generateAgentDocs.length">
+          <div class="attached-doc-chip" *ngFor="let doc of generateAgentDocs; let i = index">
+            <span class="material-icons doc-icon">description</span>
+            <span class="doc-name">{{ doc.name }}</span>
+            <button class="remove-doc-btn" (click)="removeGenerateAgentDoc(i)" [disabled]="isGeneratingAgent" type="button">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generation Progress -->
+      <div class="generate-progress" *ngIf="isGeneratingAgent">
+        <div class="generate-progress-bar">
+          <div class="generate-progress-fill"></div>
+        </div>
+        <div class="generate-progress-text">
+          <span class="material-icons spinning">auto_awesome</span>
+          <span>Generating agent configuration, instructions, and visualization mappings...</span>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="generate-error" *ngIf="generateAgentError">
+        <span class="material-icons">error_outline</span>
+        <span>{{ generateAgentError }}</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="generate-agent-actions">
+      <button class="nova-button secondary" (click)="closeGenerateAgentModal()" [disabled]="isGeneratingAgent">
+        Cancel
+      </button>
+      <button class="nova-button primary" (click)="executeGenerateAgent()"
+        [disabled]="isGeneratingAgent || !generateAgentPrompt.trim()">
+        <span class="material-icons" *ngIf="!isGeneratingAgent">auto_awesome</span>
+        <span class="material-icons spinning" *ngIf="isGeneratingAgent">hourglass_empty</span>
+        {{ isGeneratingAgent ? 'Generating...' : 'Generate Agent' }}
+      </button>
+    </div>
+
+  </div>
+</div>

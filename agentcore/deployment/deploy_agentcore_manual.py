@@ -1107,6 +1107,17 @@ class ManualAgentCoreDeployer:
                         "No ADCP_GATEWAY_URL found - agents will use fallback local tools"
                     )
 
+                # Add Weather MCP Gateway URL if available (from deploy-ecosystem.sh)
+                weather_gateway_url = os.environ.get("WEATHER_GATEWAY_URL", "")
+                if weather_gateway_url:
+                    env_vars["WEATHER_GATEWAY_URL"] = weather_gateway_url
+                    logger.info(f"Adding Weather MCP Gateway configuration:")
+                    logger.info(f"  WEATHER_GATEWAY_URL: {weather_gateway_url}")
+                else:
+                    logger.info(
+                        "No WEATHER_GATEWAY_URL found - weather tools will not be available"
+                    )
+
                 # Method B: Manual Deployment with AWS CLI (with 10-minute timeouts)
                 # Validate inputs to prevent command injection
                 validated_runtime_name = self._validate_aws_identifier(runtime_name, "runtime_name")
@@ -1349,6 +1360,17 @@ class ManualAgentCoreDeployer:
                 else:
                     logger.info(
                         "No ADCP_GATEWAY_URL found - agents will use fallback local tools"
+                    )
+
+                # Add Weather MCP Gateway URL if available (from deploy-ecosystem.sh)
+                weather_gateway_url = os.environ.get("WEATHER_GATEWAY_URL", "")
+                if weather_gateway_url:
+                    env_vars["WEATHER_GATEWAY_URL"] = weather_gateway_url
+                    logger.info(f"Adding Weather MCP Gateway configuration:")
+                    logger.info(f"  WEATHER_GATEWAY_URL: {weather_gateway_url}")
+                else:
+                    logger.info(
+                        "No WEATHER_GATEWAY_URL found - weather tools will not be available"
                     )
 
                 # Use AWS CLI with 10-minute timeouts for update operations

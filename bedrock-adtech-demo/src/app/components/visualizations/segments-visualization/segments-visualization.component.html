@@ -60,13 +60,13 @@
           <div *ngFor="let property of getDetailedProperties(segment)" class="detail-row"
             [class.primary]="property.isPrimary">
             <span class="detail-label">{{property.label}}:</span>
-            <span class="detail-value" [class.allocation]="property.label.toLowerCase().includes('allocation')"
-              [class.bid-range]="property.label.toLowerCase().includes('bid')"
-              [class.risk-low]="property.value.toLowerCase() === 'low' && property.label.toLowerCase().includes('risk')"
-              [class.risk-medium]="property.value.toLowerCase() === 'medium' && property.label.toLowerCase().includes('risk')"
-              [class.risk-high]="property.value.toLowerCase() === 'high' && property.label.toLowerCase().includes('risk')"
-              [class.performance-high]="property.value.toLowerCase().includes('high')"
-              [class.performance-excellent]="property.value.toLowerCase().includes('excellent')"
+            <span class="detail-value" [class.allocation]="('' + property.label).toLowerCase().includes('allocation')"
+              [class.bid-range]="('' + property.label).toLowerCase().includes('bid')"
+              [class.risk-low]="('' + property.value).toLowerCase() === 'low' && ('' + property.label).toLowerCase().includes('risk')"
+              [class.risk-medium]="('' + property.value).toLowerCase() === 'medium' && ('' + property.label).toLowerCase().includes('risk')"
+              [class.risk-high]="('' + property.value).toLowerCase() === 'high' && ('' + property.label).toLowerCase().includes('risk')"
+              [class.performance-high]="('' + property.value).toLowerCase().includes('high')"
+              [class.performance-excellent]="('' + property.value).toLowerCase().includes('excellent')"
               [class.confidence-high]="property.value === 'high' || property.value === 'very high'"
               [class.confidence-medium]="property.value === 'medium'" [class.confidence-low]="property.value === 'low'">
               {{property.value}}
@@ -87,7 +87,7 @@
           <h6>Risk Factors:</h6>
           <ul>
             <li *ngFor="let risk of getRisks(segment)"
-              [class.no-risk]="risk.toLowerCase().includes('none') || risk.toLowerCase().includes('low')">
+              [class.no-risk]="('' + risk).toLowerCase().includes('none') || ('' + risk).toLowerCase().includes('low')">
               {{risk}}
             </li>
           </ul>

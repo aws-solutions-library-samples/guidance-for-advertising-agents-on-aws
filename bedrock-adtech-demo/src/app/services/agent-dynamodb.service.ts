@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { AwsConfigService } from './aws-config.service';
 import { DynamoDBClient, GetItemCommand, PutItemCommand, DeleteItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { SSMClient, PutParameterCommand, DeleteParameterCommand, GetParameterCommand } from '@aws-sdk/client-ssm';
 
 /**
  * MCP Server configuration for connecting to external MCP tools
@@ -39,6 +40,53 @@ export interface MCPServerConfig {
     region: string;
     service: string;
   };
+  /** OAuth Bearer Token authentication */
+  oauthToken?: {
+    /** Whether a token has been stored in SSM Parameter Store */
+    hasToken: boolean;
+    /** SSM parameter path (set by backend after token storage) */
+    ssmPath?: string;
+  };
+}
+
+/**
+ * External A2A (Agent-to-Agent) agent configuration
+ * Allows connecting to remote agents via ARN with optional OAuth authentication
+ */
+export interface ExternalAgentConfig {
+  /** Unique identifier for this external agent entry */
+  id: string;
+  /** Display name for the external agent */
+  name: string;
+  /** ARN of the remote agent (e.g., AgentCore runtime ARN or A2A endpoint) */
+  arn: string;
+  /** Whether this agent is an A2A (Agent-to-Agent) protocol agent */
+  isA2A: boolean;
+  /** Optional description of what this external agent provides */
+  description?: string;
+  /** Whether this external agent is enabled */
+  enabled: boolean;
+  /** Authentication type: 'none', 'oauth', or 'iam' */
+  authType?: 'none' | 'oauth' | 'iam';
+  /** OAuth Bearer Token authentication for A2A agents */
+  oauthToken?: {
+    /** Whether a token has been stored in SSM Parameter Store */
+    hasToken: boolean;
+    /** SSM parameter path (set after token storage) */
+    ssmPath?: string;
+  };
+  /** OAuth credentials stored in SSM (username/password for token acquisition) */
+  oauthCredentials?: {
+    /** Whether credentials have been stored in SSM Parameter Store */
+    hasCredentials: boolean;
+    /** SSM parameter path for the credentials */
+    ssmPath?: string;
+  };
+  /** AWS IAM authentication config */
+  awsAuth?: {
+    region: string;
+    service: string;
+  };
 }
 
 /**
@@ -72,6 +120,8 @@ export interface AgentConfiguration {
   runtime_arn?: string;
   /** Knowledge base name this agent uses for RAG (maps to knowledge_bases in global config) */
   knowledge_base?: string;
+  /** Structured external A2A agent configurations */
+  external_agent_configs?: ExternalAgentConfig[];
 }
 
 /**
@@ -121,8 +171,11 @@ export interface OperationResult<T> {
 })
 export class AgentDynamoDBService {
   private dynamoDBClient: DynamoDBClient | null = null;
+  private ssmClient: SSMClient | null = null;
   private tableName: string | null = null;
   private region: string = 'us-east-1';
+  private stackPrefix: string = '';
+  private uniqueId: string = '';
   
   // Cache configuration
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -155,6 +208,10 @@ export class AgentDynamoDBService {
       this.tableName = agentConfigTable.tableName;
       this.region = agentConfigTable.region || config?.aws?.region || 'us-east-1';
       
+      // Capture stack prefix and unique ID for SSM parameter paths
+      this.stackPrefix = (config as any)?.stackPrefix || '';
+      this.uniqueId = (config as any)?.uniqueId || '';
+      
       // Get Cognito credentials using cached auth session
       const session = await this.awsConfigService.getCachedAuthSession();
       
@@ -165,6 +222,13 @@ export class AgentDynamoDBService {
       
       // Initialize DynamoDB client with Cognito credentials
       this.dynamoDBClient = new DynamoDBClient({
+        region: this.region,
+        credentials: session.credentials,
+        maxAttempts: this.MAX_RETRIES
+      });
+      
+      // Initialize SSM client for token management
+      this.ssmClient = new SSMClient({
         region: this.region,
         credentials: session.credentials,
         maxAttempts: this.MAX_RETRIES
@@ -778,6 +842,197 @@ export class AgentDynamoDBService {
       return false;
     }
   }
+
+  // ============================================
+  // MCP OAuth Token Management (SSM SecureString)
+  // ============================================
+
+  /**
+   * Build the SSM parameter path for an MCP server's OAuth token.
+   * Format: /{stackPrefix}/mcp-tokens/{uniqueId}/{agentName}/{serverId}
+   */
+  private getMcpTokenSsmPath(agentName: string, serverId: string): string {
+    return `/${this.stackPrefix}/mcp-tokens/${this.uniqueId}/${agentName}/${serverId}`;
+  }
+
+  /**
+   * Store an OAuth bearer token securely in SSM Parameter Store as SecureString.
+   * The token is encrypted at rest using the default AWS KMS key.
+   * Returns the SSM parameter path on success.
+   */
+  async storeMcpOAuthToken(agentName: string, serverId: string, token: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getMcpTokenSsmPath(agentName, serverId);
+
+    try {
+      await this.ssmClient.send(new PutParameterCommand({
+        Name: ssmPath,
+        Value: token,
+        Type: 'SecureString',
+        Overwrite: true,
+        Description: `OAuth bearer token for MCP server ${serverId} on agent ${agentName}`
+      }));
+
+      console.log(`✅ AgentDynamoDBService: Stored OAuth token at ${ssmPath}`);
+      return ssmPath;
+    } catch (error: any) {
+      const errorMsg = error?.message || error?.name || 'Unknown error';
+      console.error(`❌ AgentDynamoDBService: Failed to store OAuth token at ${ssmPath}:`, error);
+      // Re-throw with a descriptive message so the UI can display it
+      throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission (redeploy infrastructure-core.yml).`);
+    }
+  }
+
+  /**
+   * Delete an OAuth bearer token from SSM Parameter Store.
+   */
+  async deleteMcpOAuthToken(agentName: string, serverId: string): Promise<boolean> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return false;
+    }
+
+    const ssmPath = this.getMcpTokenSsmPath(agentName, serverId);
+
+    try {
+      await this.ssmClient.send(new DeleteParameterCommand({ Name: ssmPath }));
+      console.log(`✅ AgentDynamoDBService: Deleted OAuth token at ${ssmPath}`);
+      return true;
+    } catch (error: any) {
+      // ParameterNotFound is fine — token was already deleted or never existed
+      if (error.name === 'ParameterNotFound') {
+        return true;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to delete OAuth token at ${ssmPath}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Retrieve an OAuth bearer token from SSM Parameter Store.
+   * Returns the decrypted token string, or null if not found.
+   */
+  async getMcpOAuthToken(agentName: string, serverId: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getMcpTokenSsmPath(agentName, serverId);
+
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({
+        Name: ssmPath,
+        WithDecryption: true
+      }));
+
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        console.warn(`⚠️ AgentDynamoDBService: No OAuth token found at ${ssmPath}`);
+        return null;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to retrieve OAuth token at ${ssmPath}:`, error);
+      return null;
+    }
+  }
+
+  // ============================================
+  // A2A External Agent OAuth Token Management (SSM SecureString)
+  // ============================================
+
+  /**
+   * Build the SSM parameter path for an A2A external agent's OAuth token.
+   * Format: /{stackPrefix}/a2a-tokens/{uniqueId}/{agentName}/{externalAgentName}
+   */
+  private getA2ATokenSsmPath(agentName: string, externalAgentName: string): string {
+    return `/${this.stackPrefix}/a2a-tokens/${this.uniqueId}/${agentName}/${externalAgentName}`;
+  }
+
+  /**
+   * Store an OAuth bearer token for an A2A external agent securely in SSM Parameter Store.
+   * Returns the SSM parameter path on success.
+   */
+  async storeA2AOAuthToken(agentName: string, externalAgentName: string, token: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      await this.ssmClient.send(new PutParameterCommand({
+        Name: ssmPath,
+        Value: token,
+        Type: 'SecureString',
+        Overwrite: true,
+        Description: `OAuth bearer token for A2A external agent ${externalAgentName} on agent ${agentName}`
+      }));
+
+      console.log(`✅ AgentDynamoDBService: Stored A2A OAuth token at ${ssmPath}`);
+      return ssmPath;
+    } catch (error: any) {
+      const errorMsg = error?.message || error?.name || 'Unknown error';
+      console.error(`❌ AgentDynamoDBService: Failed to store A2A OAuth token at ${ssmPath}:`, error);
+      throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission.`);
+    }
+  }
+
+  /**
+   * Delete an A2A external agent OAuth token from SSM Parameter Store.
+   */
+  async deleteA2AOAuthToken(agentName: string, externalAgentName: string): Promise<boolean> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return false;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      await this.ssmClient.send(new DeleteParameterCommand({ Name: ssmPath }));
+      console.log(`✅ AgentDynamoDBService: Deleted A2A OAuth token at ${ssmPath}`);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        return true;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to delete A2A OAuth token at ${ssmPath}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Retrieve an A2A external agent OAuth token from SSM Parameter Store.
+   * Returns the decrypted token string, or null if not found.
+   */
+  async getA2AOAuthToken(agentName: string, externalAgentName: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({
+        Name: ssmPath,
+        WithDecryption: true
+      }));
+
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        console.warn(`⚠️ AgentDynamoDBService: No A2A OAuth token found at ${ssmPath}`);
+        return null;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to retrieve A2A OAuth token at ${ssmPath}:`, error);
+      return null;
+    }
+  }
+
+  // ============================================
+  // Visualization Mapping Operations
+  // ============================================
 
   /**
    * Retrieve a single visualization template schema for an agent.

@@ -1116,6 +1116,14 @@ Make sure each scenario has realistic business problems and detailed queries tha
       // Clean up old versions (keep last 10)
       await this.cleanupOldVersions(s3Client, awsConfig.creativesBucket);
 
+      // Sync to DynamoDB so the next load picks up the new config
+      try {
+        await this.agentConfigService.updateTabConfiguration(updatedConfig as any);
+        console.log('✅ Tab config synced to DynamoDB');
+      } catch (dynamoError) {
+        console.warn('⚠️ Failed to sync tab config to DynamoDB (S3 save succeeded):', dynamoError);
+      }
+
       // Refresh available versions
       await this.loadAvailableVersions();
 

@@ -5,6 +5,7 @@
 import { MCPServerConfig } from '../agent-management-modal/agent-management-modal.component';
 import { MCPToolInfo, MCPToolListResult } from './agent-editor-panel.constants';
 import { AwsConfigService } from '../../services/aws-config.service';
+import { AgentDynamoDBService } from '../../services/agent-dynamodb.service';
 
 /** Generate a unique ID for an MCP server */
 export function generateMcpServerId(): string {
@@ -33,11 +34,13 @@ export function getMcpTransportName(transport: string): string {
 
 /**
  * Fetch tools from an MCP server endpoint using the JSON-RPC protocol.
- * Handles both plain HTTP and AWS IAM SigV4 authenticated requests.
+ * Handles plain HTTP, AWS IAM SigV4, and OAuth Bearer Token authenticated requests.
  */
 export async function fetchMcpTools(
   server: MCPServerConfig,
-  awsConfigService: AwsConfigService
+  awsConfigService: AwsConfigService,
+  agentDynamoDBService?: AgentDynamoDBService,
+  agentName?: string
 ): Promise<MCPToolInfo[]> {
   const url = server.url!;
 
@@ -55,6 +58,16 @@ export async function fetchMcpTools(
 
   if (server.headers) {
     Object.assign(headers, server.headers);
+  }
+
+  // Retrieve OAuth bearer token from SSM if configured
+  if (server.oauthToken?.hasToken && agentDynamoDBService && agentName) {
+    const token = await agentDynamoDBService.getMcpOAuthToken(agentName, server.id);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      throw new Error('OAuth bearer token is configured but could not be retrieved from SSM. Please re-enter the token.');
+    }
   }
 
   let response: Response;
@@ -157,7 +170,9 @@ async function fetchWithSigV4(
  */
 export async function listMcpServerTools(
   server: MCPServerConfig,
-  awsConfigService: AwsConfigService
+  awsConfigService: AwsConfigService,
+  agentDynamoDBService?: AgentDynamoDBService,
+  agentName?: string
 ): Promise<MCPToolListResult> {
   if (server.transport === 'stdio') {
     return {
@@ -180,7 +195,7 @@ export async function listMcpServerTools(
   }
 
   try {
-    const tools = await fetchMcpTools(server, awsConfigService);
+    const tools = await fetchMcpTools(server, awsConfigService, agentDynamoDBService, agentName);
     return {
       serverId: server.id,
       tools,

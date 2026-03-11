@@ -862,56 +862,23 @@ def get_collaborator_agent_config(agent_name, orchestrator_name):
 
 # Import shared knowledge base helper
 from shared.knowledge_base_helper import (
-    setup_agent_knowledge_base,
-    get_knowledge_base_tool,
-    format_kb_result_with_sources,
     retrieve_knowledge_base_results,
-    KnowledgeBaseResult,
-    KnowledgeBaseHelper,
 )
 
 
-def load_all_stack_knowledgebase_ids() -> Optional[dict]:
+def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     """
-    Load ALL Bedrock Knowledge Bases in the account.
-    Returns a dict mapping KB name -> KB ID for all discovered KBs.
-    No stack prefix filtering — all account KBs are included so that
-    direct name lookups work for any KB selected from the UI dropdown.
+    Get the knowledge base ID for an agent directly from global config.
+    The config value must be the actual KB ID (e.g. 'ABCDEF1234'), not a name.
     """
-    knowledgebase_ids = {}
-    helper = KnowledgeBaseHelper(logger, os.environ.get("AWS_REGION", "us-east-1"))
-    kb_mapping = helper._discover_knowledge_bases_from_aws()
-    if not kb_mapping:
-        return knowledgebase_ids
-    for kb_name, kb_id in kb_mapping.items():
-        knowledgebase_ids[kb_name] = kb_id
-    return knowledgebase_ids
-
-
-KNOWLEDGEBASE_IDS = load_all_stack_knowledgebase_ids()
-
-
-def get_matching_kb_id(name: str) -> Optional[str]:
-    """
-    Resolve a KB name to its ID using a fallback strategy:
-    1. Direct lookup (handles full KB names from the new dropdown)
-    2. If name already has stack prefix, return None (don't double-add)
-    3. Legacy fallback: construct {STACK_PREFIX}-{name}-{UNIQUE_ID}
-    """
-    # 1. Direct lookup first
-    if name in KNOWLEDGEBASE_IDS:
-        return KNOWLEDGEBASE_IDS[name]
-
-    stack_prefix = os.environ.get("STACK_PREFIX", "XXX")
-    unique_id = os.environ.get("UNIQUE_ID", "XXX")
-
-    # 2. Skip prefix construction if name already contains the stack prefix
-    if name.startswith(f"{stack_prefix}-"):
-        return None
-
-    # 3. Legacy fallback: construct {prefix}-{name}-{uniqueId}
-    constructed_key = f"{stack_prefix}-{name}-{unique_id}"
-    return KNOWLEDGEBASE_IDS.get(constructed_key, None)
+    global GLOBAL_CONFIG
+    if not GLOBAL_CONFIG:
+        GLOBAL_CONFIG = load_configs("global_configuration.json")
+    kb_id = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
+    if kb_id and len(kb_id) < 8:
+        logger.warning(f"⚠️ KB config for {agent_name} looks like a name ('{kb_id}'), not an ID. "
+                       f"Update knowledge_bases in global_configuration.json to use actual KB IDs.")
+    return kb_id
 
 
 def preload_all_agent_instructions():
@@ -1000,7 +967,7 @@ def initialize_handler():
     2. S3 bucket
     3. Local filesystem
     """
-    global _initialization_complete, GLOBAL_CONFIG, CONFIG, KNOWLEDGEBASE_IDS
+    global _initialization_complete, GLOBAL_CONFIG, CONFIG
     
     if _initialization_complete:
         logger.debug("⏭️ INIT: Handler already initialized, skipping")
@@ -1038,12 +1005,6 @@ def initialize_handler():
         logger.info("📥 INIT: Pre-loading remaining agent instructions...")
         preload_all_agent_instructions()
         
-        # Step 5: Refresh knowledge base IDs if needed
-        if not KNOWLEDGEBASE_IDS:
-            logger.info("📥 INIT: Loading knowledge base IDs...")
-            KNOWLEDGEBASE_IDS = load_all_stack_knowledgebase_ids() or {}
-            logger.info(f"✅ INIT: Loaded {len(KNOWLEDGEBASE_IDS)} knowledge base IDs")
-        
         _initialization_complete = True
         
         elapsed = (datetime.now() - init_start).total_seconds()
@@ -1051,7 +1012,6 @@ def initialize_handler():
         logger.info(f"🚀 HANDLER INITIALIZATION COMPLETE in {elapsed:.2f}s")
         logger.info(f"   - Config cache entries: {len(_config_cache)}")
         logger.info(f"   - Instructions cache entries: {len(_instructions_cache)}")
-        logger.info(f"   - Knowledge bases: {len(KNOWLEDGEBASE_IDS)}")
         logger.info("=" * 60)
         
     except Exception as e:
@@ -1288,16 +1248,6 @@ def invoke_specialist_with_RAG(
     global collected_sources
     global GLOBAL_CONFIG
 
-    if GLOBAL_CONFIG is None:
-        GLOBAL_CONFIG = load_configs("global_configuration.json")
-    kb_name = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
-    if kb_name is not None:
-        try:
-            logger.info(f"🔧 TOOL: KB name for {agent_name}: {kb_name}")
-        except Exception as e:
-            print(
-                f"agent KB setup failed - this could just be because the agent is not configured to use a knowledgebase: {e}"
-            )
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id
@@ -1525,24 +1475,15 @@ def retrieve_knowledge_base_results_tool(
     global collected_sources
     global orchestrator_instance
     global response_model_parsed
-    global GLOBAL_CONFIG
     
-    # Use cached GLOBAL_CONFIG if available
-    if not GLOBAL_CONFIG:
-        GLOBAL_CONFIG = load_configs("global_configuration.json")
-    
-    kb_name = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
-    logger.info(f"🔧 TOOL: KB name: {kb_name}")
+    kb_id = get_kb_id_from_config(agent_name)
+    logger.info(f"🔧 TOOL: KB ID for {agent_name}: {kb_id}")
     result_string = "<sources>"
-    kb_id = get_matching_kb_id(kb_name)
     if kb_id is None:
         return ""
-    else:
-        logger.info(f"🔧 TOOL: KB ID: {kb_id}")
 
     if collected_sources is None:
         collected_sources = {}
-    # Pass the full configs dict which contains the knowledge_bases key
     os.environ["STRANDS_KNOWLEDGE_BASE_ID"] = kb_id
     kb_result = retrieve_knowledge_base_results(
         knowledge_base_query,

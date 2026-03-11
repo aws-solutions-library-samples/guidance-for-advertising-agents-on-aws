@@ -276,7 +276,7 @@ export class TimelineVisualizationComponent {
 
   // Get priority color
   getPriorityColor(priority: string): string {
-    switch (priority?.toLowerCase()) {
+    switch (String(priority || '').toLowerCase()) {
       case 'high': return '#ef4444';
       case 'medium': return '#f59e0b';
       case 'low': return '#10b981';

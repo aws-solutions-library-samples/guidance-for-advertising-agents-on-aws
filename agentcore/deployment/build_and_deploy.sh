@@ -643,6 +643,29 @@ else
     ADCP_GATEWAY_URL_VALUE=""
 fi
 
+# Get Weather Gateway URL from SSM or environment variable
+print_status "Checking for Weather MCP Gateway URL..."
+WEATHER_GATEWAY_URL_VALUE="${WEATHER_GATEWAY_URL:-}"
+
+if [ -z "$WEATHER_GATEWAY_URL_VALUE" ]; then
+    # Try to get from SSM
+    SSM_WEATHER_PARAM="/${STACK_PREFIX}/weather_gateway/${UNIQUE_ID}"
+    if [ -n "$AWS_PROFILE" ]; then
+        WEATHER_GATEWAY_URL_VALUE=$(aws ssm get-parameter --name "$SSM_WEATHER_PARAM" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    else
+        WEATHER_GATEWAY_URL_VALUE=$(aws ssm get-parameter --name "$SSM_WEATHER_PARAM" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    fi
+fi
+
+if [ -n "$WEATHER_GATEWAY_URL_VALUE" ] && [ "$WEATHER_GATEWAY_URL_VALUE" != "None" ]; then
+    print_status "✅ Weather Gateway URL found: $WEATHER_GATEWAY_URL_VALUE"
+    print_status "   Agents will have access to weather tools via MCP Gateway"
+else
+    print_warning "⚠️  Weather Gateway URL not found"
+    print_warning "   Weather tools will not be available to agents"
+    WEATHER_GATEWAY_URL_VALUE=""
+fi
+
 docker build \
     --build-arg MEMORY_ID="$MEMORY_ID" \
     --build-arg ACTOR_ID="AdFabricAgent" \
@@ -652,6 +675,7 @@ docker build \
     --build-arg RUNTIMES="$RUNTIMES" \
     --build-arg ADCP_GATEWAY_URL="$ADCP_GATEWAY_URL_VALUE" \
     --build-arg ADCP_USE_MCP="true" \
+    --build-arg WEATHER_GATEWAY_URL="$WEATHER_GATEWAY_URL_VALUE" \
     -t "$ECR_REPO_NAME:latest" .
 
 # # Clean up copied libraries from build context
@@ -1166,6 +1190,12 @@ POLICY_UPDATE_EOF
         print_warning "AdCP Gateway URL not available - agents will use fallback local tools"
     fi
     
+    # Add Weather MCP Gateway URL if available
+    if [ -n "$WEATHER_GATEWAY_URL_VALUE" ] && [ "$WEATHER_GATEWAY_URL_VALUE" != "None" ]; then
+        ENV_VARS="${ENV_VARS},\"WEATHER_GATEWAY_URL\":\"${WEATHER_GATEWAY_URL_VALUE}\""
+        print_status "Adding Weather Gateway URL to runtime environment: $WEATHER_GATEWAY_URL_VALUE"
+    fi
+    
     ENV_VARS="${ENV_VARS}}"
     
     if [ -n "$AWS_PROFILE" ]; then
@@ -1301,6 +1331,12 @@ else
     if [ -n "$ADCP_GATEWAY_URL_VALUE" ] && [ "$ADCP_GATEWAY_URL_VALUE" != "None" ]; then
         export ADCP_GATEWAY_URL="$ADCP_GATEWAY_URL_VALUE"
         print_status "Exporting ADCP_GATEWAY_URL for runtime deployment: $ADCP_GATEWAY_URL_VALUE"
+    fi
+
+    # Export Weather Gateway URL for deploy_agentcore_manual.py to pick up
+    if [ -n "$WEATHER_GATEWAY_URL_VALUE" ] && [ "$WEATHER_GATEWAY_URL_VALUE" != "None" ]; then
+        export WEATHER_GATEWAY_URL="$WEATHER_GATEWAY_URL_VALUE"
+        print_status "Exporting WEATHER_GATEWAY_URL for runtime deployment: $WEATHER_GATEWAY_URL_VALUE"
     fi
 
     # Install deployment requirements if not already installed
