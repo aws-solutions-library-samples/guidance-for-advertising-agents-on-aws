@@ -92,7 +92,7 @@ aws-exports.js
 .runtime*
 .memory*
 .appsync*
-.adcp-gateway*
+.ads-gw*
 
 # CloudFormation and CDK
 *.zip
@@ -169,3 +169,4 @@ scripts/generate_voiceover.py
 docs/DEMO_SCRIPT.md
 docs/demo_voiceover.mp3
 demo-guides
+.adcp-gateway*

@@ -243,7 +243,7 @@ def discover_gateway_tool_prefix(gateway_url: str, region: str) -> Optional[str]
     Discover the tool name prefix used by the gateway.
     
     AgentCore Gateway prefixes tool names with the target name, e.g.:
-    'bbk-adcp-gateway-4208ab-lambda-target___get_products'
+    'bbk-ads-gw-4208ab-lambda-target___get_products'
     
     This function connects to the gateway and discovers the actual prefix.
     """
@@ -307,7 +307,7 @@ def get_gateway_tool_name(base_tool_name: str, gateway_url: str = None, region: 
         region: AWS region (uses env var if not provided)
     
     Returns:
-        Full tool name with gateway prefix (e.g., 'bbk-adcp-gateway-4208ab-lambda-target___get_products')
+        Full tool name with gateway prefix (e.g., 'bbk-ads-gw-4208ab-lambda-target___get_products')
     """
     if gateway_url is None:
         gateway_url = os.environ.get("ADCP_GATEWAY_URL")

@@ -141,7 +141,7 @@ The ecosystem consists of several components that require specific IAM roles:
 
 ## 3. MCP Gateway Role
 
-**Role Name:** `{stack-prefix}-adcp-gateway-role-{unique-id}`
+**Role Name:** `{stack-prefix}-ads-gw-role-{unique-id}`
 
 **Purpose:** Allows the AgentCore MCP Gateway to invoke Lambda functions that implement the Ad Context Protocol (AdCP).
 

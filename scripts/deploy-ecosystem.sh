@@ -2357,7 +2357,7 @@ ensure_adcp_gateway_url() {
     # SSM parameter doesn't exist, try to find the gateway via AWS API
     print_status "  SSM parameter not found, looking up gateway via AWS API..."
     
-    local gateway_name="${STACK_PREFIX}-adcp-gateway-${UNIQUE_ID}"
+    local gateway_name="${STACK_PREFIX}-ads-gw-${UNIQUE_ID}"
     
     # Use AWS CLI to list gateways and find ours
     local gateway_info
@@ -2398,7 +2398,7 @@ except:
     fi
     
     # Check local tracking file as last resort
-    local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$gateway_info_file" ]; then
         gateway_url=$(cat "$gateway_info_file" | $PYTHON_CMD -c "
 import json, sys
@@ -3260,7 +3260,7 @@ except:
         fi
         
         # Save deployment output to file
-        local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
+        local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
         if [ -n "$json_output" ]; then
             echo "$json_output" > "$gateway_info_file"
         else
@@ -3570,8 +3570,8 @@ cleanup_ecosystem() {
 cleanup_adcp_gateway() {
     print_step "2. Cleaning up AdCP MCP Gateway..."
     
-    local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
-    local gateway_name="${STACK_PREFIX}-adcp-gateway-${UNIQUE_ID}"
+    local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gateway_name="${STACK_PREFIX}-ads-gw-${UNIQUE_ID}"
     local lambda_name="${STACK_PREFIX}-adcp-handler-${UNIQUE_ID}"
     local found_gateway=""
     local found_gateway_id=""
@@ -5037,7 +5037,7 @@ main() {
     print_status "  ✅ Agent Runtimes: Warmed up for faster response times"
     
     # Check if AdCP Gateway was deployed
-    local gateway_info_file="${PROJECT_ROOT}/.adcp-gateway-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$gateway_info_file" ]; then
         print_status "  ✅ AdCP MCP Gateway: Deployed for agent collaboration"
     fi
