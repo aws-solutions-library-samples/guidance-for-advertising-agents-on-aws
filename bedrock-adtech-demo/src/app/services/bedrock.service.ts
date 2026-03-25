@@ -685,14 +685,8 @@ Example format:
 
         return;
       }
-      // Use provided session ID or get existing/new session
-      let sessionId: string;
-      if (providedSessionId) {
-        sessionId = providedSessionId;
-      } else {
-        // Use current session ID or get from session manager
-        sessionId = this.currentSessionId || this.sessionManager.getCurrentSessionId();
-      }
+      // Use provided session ID or get from session manager
+      const sessionId = providedSessionId || this.sessionManager.getOrCreateSession().sessionId;
 
       // Store the current session ID (shared across all agents)
       this.currentSessionId = sessionId;
@@ -711,11 +705,9 @@ Example format:
     }
   }
 
-  // Generate session ID based on user and customer information (delegates to session manager)
+  // Generate session ID (delegates to session manager)
   generateCustomSessionId(loginId: string, customerName?: string): string {
-    const sessionInfo = this.sessionManager.initializeSession(loginId, customerName);
-    console.log(`🔑 Generated custom session ID: ${sessionInfo.sessionId} (user: ${loginId}, customer: ${customerName || 'none'})`);
-    return sessionInfo.sessionId;
+    return this.sessionManager.getOrCreateSession().sessionId;
   }
 
   // Set custom session ID (shared across all agents)
@@ -737,13 +729,7 @@ Example format:
       }
 
       // Use custom session ID if provided, otherwise get from session manager
-      let sessionId: string;
-      if (customSessionId) {
-        sessionId = customSessionId;
-      } else {
-        // Get session ID from centralized session manager
-        sessionId = this.sessionManager.getCurrentSessionId();
-      }
+      const sessionId = customSessionId || this.sessionManager.getOrCreateSession().sessionId;
       this.currentSessionId = sessionId;
 
       // Check if this is an AgentCore agent
@@ -759,7 +745,7 @@ Example format:
     }
     return {
       response: `Error invoking agent:`,
-      sessionId: this.sessionManager.getCurrentSessionId(),
+      sessionId: this.sessionManager.getOrCreateSession().sessionId,
       citations: [],
       traceEvents: []
     }
@@ -770,7 +756,7 @@ Example format:
 
   // Clear all sessions when customer changes to force new session IDs
   clearAllSessionsForNewCustomer(): void {
-    this.sessionManager.clearSession();
+    this.sessionManager.updateCustomer();
     this.currentSessionId = null;
     this.recentEvents.clear();
     this.responseAccumulators.clear();
@@ -849,7 +835,7 @@ Example format:
 
       const currentUser = await getCurrentUser();
       const userId = currentUser.signInDetails?.loginId || 'anonymous';
-      const sessionId = this.sessionManager.getCurrentSessionId();
+      const sessionId = this.sessionManager.getOrCreateSession().sessionId;
 
       console.log('🔄 Sending cache refresh request to backend...');
 

@@ -84,7 +84,7 @@ export class DemoTrackingService {
       // Update session when customer changes
       if (previousCustomer !== customerName) {
         console.log(`🏢 Demo Tracking: Customer changed from ${previousCustomer} to ${customerName}`);
-        this.sessionManager.updateCustomer(customerName);
+        this.sessionManager.updateCustomer();
       }
       
       // Log to CloudWatch

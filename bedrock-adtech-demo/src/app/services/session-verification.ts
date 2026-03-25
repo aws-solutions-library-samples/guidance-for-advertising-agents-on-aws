@@ -41,7 +41,7 @@ export class SessionVerification {
     const sessionId1 = this.sessionManager.getCurrentSessionId(userId, customer1);
     
     // Update customer
-    const updatedSession = this.sessionManager.updateCustomer(customer2);
+    const updatedSession = this.sessionManager.updateCustomer();
     
     // Verify session changed
     const sessionChanged = sessionId1 !== updatedSession.sessionId;
