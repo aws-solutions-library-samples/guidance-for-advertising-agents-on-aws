@@ -257,14 +257,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:GetItem
+                  - dynamodb:*
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: !GetAtt GeneratedContentTable.Arn
-
+                Resource: "*"
   # Creative Image Generator Lambda Function
   CreativeImageGeneratorLambda:
     Type: AWS::Lambda::Function
