@@ -59,6 +59,7 @@ class KnowledgeBaseHelper:
         """
         # Discover knowledge bases from AWS
         kb_mapping = self._discover_knowledge_bases_from_aws()
+        logging.info('trying to match kb '+name_pattern)
         if not kb_mapping:
             return None
 
@@ -66,12 +67,12 @@ class KnowledgeBaseHelper:
 
         # Try exact match first
         for kb_name, kb_id in kb_mapping.items():
-            if kb_name.lower() == name_pattern_lower:
+            if kb_name.lower() == name_pattern_lower or kb_id.lower() == name_pattern_lower:
                 return kb_id
 
         # Try partial match
         for kb_name, kb_id in kb_mapping.items():
-            if name_pattern_lower in kb_name.lower():
+            if name_pattern_lower in kb_name.lower() or kb_name.lower() in name_pattern_lower or kb_id in name_pattern_lower:
                 self.logger.info(
                     f"Found knowledge base by pattern '{name_pattern}': {kb_name} -> {kb_id}"
                 )

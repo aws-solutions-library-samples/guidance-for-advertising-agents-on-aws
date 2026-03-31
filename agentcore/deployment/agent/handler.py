@@ -868,16 +868,16 @@ from shared.knowledge_base_helper import (
 
 def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     """
-    Get the knowledge base ID for an agent directly from global config.
+    Get the knowledge base ID for an agent from DynamoDB global config.
     The config value must be the actual KB ID (e.g. 'ABCDEF1234'), not a name.
     """
     global GLOBAL_CONFIG
     if not GLOBAL_CONFIG:
-        GLOBAL_CONFIG = load_configs("global_configuration.json")
+        GLOBAL_CONFIG = ddb_load_global_config() or {}
     kb_id = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
     if kb_id and len(kb_id) < 8:
         logger.warning(f"⚠️ KB config for {agent_name} looks like a name ('{kb_id}'), not an ID. "
-                       f"Update knowledge_bases in global_configuration.json to use actual KB IDs.")
+                       f"Update knowledge_bases in DynamoDB global config to use actual KB IDs.")
     return kb_id
 
 
