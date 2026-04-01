@@ -22,7 +22,7 @@
 
   <!-- Form Content -->
   <div class="editor-form">
-    
+
     <!-- Basic Information Section -->
     <div class="form-section">
       <h5 class="section-title">
@@ -33,13 +33,9 @@
       <!-- Agent ID (only for new agents) -->
       <div class="form-group" *ngIf="isNew">
         <label for="agent_id">Agent ID <span class="required">*</span></label>
-        <input type="text" id="agent_id" class="form-control"
-          [ngModel]="editingAgent.agent_id"
-          (ngModelChange)="onAgentIdChange($event)"
-          [class.error]="hasError('agent_id')"
-          [disabled]="isLoading"
-          placeholder="e.g., MyCustomAgent"
-          maxlength="64">
+        <input type="text" id="agent_id" class="form-control" [ngModel]="editingAgent.agent_id"
+          (ngModelChange)="onAgentIdChange($event)" [class.error]="hasError('agent_id')" [disabled]="isLoading"
+          placeholder="e.g., MyCustomAgent" maxlength="64">
         <span class="error-message" *ngIf="hasError('agent_id')">
           <span class="material-icons">error_outline</span>
           {{ getError('agent_id') }}
@@ -50,11 +46,8 @@
       <!-- Agent Name (only for new agents) -->
       <div class="form-group" *ngIf="isNew">
         <label for="agent_name">Agent Name <span class="required">*</span></label>
-        <input type="text" id="agent_name" class="form-control"
-          [(ngModel)]="editingAgent.agent_name"
-          [class.error]="hasError('agent_name')"
-          [disabled]="isLoading"
-          placeholder="e.g., MyCustomAgent"
+        <input type="text" id="agent_name" class="form-control" [(ngModel)]="editingAgent.agent_name"
+          [class.error]="hasError('agent_name')" [disabled]="isLoading" placeholder="e.g., MyCustomAgent"
           maxlength="64">
         <span class="error-message" *ngIf="hasError('agent_name')">
           <span class="material-icons">error_outline</span>
@@ -65,13 +58,9 @@
       <!-- Display Name -->
       <div class="form-group">
         <label for="agent_display_name">Display Name <span class="required">*</span></label>
-        <input type="text" id="agent_display_name" class="form-control"
-          [ngModel]="editingAgent.agent_display_name"
-          (ngModelChange)="onDisplayNameChange($event)"
-          [class.error]="hasError('agent_display_name')"
-          [disabled]="isLoading"
-          placeholder="e.g., My Custom Agent"
-          maxlength="128">
+        <input type="text" id="agent_display_name" class="form-control" [ngModel]="editingAgent.agent_display_name"
+          (ngModelChange)="onDisplayNameChange($event)" [class.error]="hasError('agent_display_name')"
+          [disabled]="isLoading" placeholder="e.g., My Custom Agent" maxlength="128">
         <span class="error-message" *ngIf="hasError('agent_display_name')">
           <span class="material-icons">error_outline</span>
           {{ getError('agent_display_name') }}
@@ -81,11 +70,8 @@
       <!-- Team Name -->
       <div class="form-group">
         <label for="team_name">Team Name <span class="required">*</span></label>
-        <input type="text" id="team_name" class="form-control"
-          [(ngModel)]="editingAgent.team_name"
-          [class.error]="hasError('team_name')"
-          [disabled]="isLoading"
-          placeholder="e.g., Analytics Team"
+        <input type="text" id="team_name" class="form-control" [(ngModel)]="editingAgent.team_name"
+          [class.error]="hasError('team_name')" [disabled]="isLoading" placeholder="e.g., Analytics Team"
           maxlength="128">
         <span class="error-message" *ngIf="hasError('team_name')">
           <span class="material-icons">error_outline</span>
@@ -96,13 +82,9 @@
       <!-- Description -->
       <div class="form-group">
         <label for="agent_description">Description <span class="required">*</span></label>
-        <textarea id="agent_description" class="form-control textarea"
-          [(ngModel)]="editingAgent.agent_description"
-          [class.error]="hasError('agent_description')"
-          [disabled]="isLoading"
-          placeholder="Describe what this agent does..."
-          rows="3"
-          maxlength="1024"></textarea>
+        <textarea id="agent_description" class="form-control textarea" [(ngModel)]="editingAgent.agent_description"
+          [class.error]="hasError('agent_description')" [disabled]="isLoading"
+          placeholder="Describe what this agent does..." rows="3" maxlength="1024"></textarea>
         <span class="error-message" *ngIf="hasError('agent_description')">
           <span class="material-icons">error_outline</span>
           {{ getError('agent_description') }}
@@ -118,13 +100,12 @@
             Enable A2A Protocol
           </label>
           <label class="toggle-switch">
-            <input type="checkbox" id="is_a2a"
-              [(ngModel)]="editingAgent.is_a2a"
-              [disabled]="isLoading">
+            <input type="checkbox" id="is_a2a" [(ngModel)]="editingAgent.is_a2a" [disabled]="isLoading">
             <span class="toggle-slider"></span>
           </label>
         </div>
-        <span class="field-hint">Expose this agent via the A2A (Agent-to-Agent) JSON-RPC protocol for cross-agent communication.</span>
+        <span class="field-hint">Expose this agent via the A2A (Agent-to-Agent) JSON-RPC protocol for cross-agent
+          communication.</span>
 
         <!-- A2A Server Auth Type (shown when is_a2a is enabled) -->
         <div class="a2a-server-auth-config" *ngIf="editingAgent.is_a2a">
@@ -144,186 +125,114 @@
               <span class="material-icons">security</span> IAM
             </div>
           </div>
-        </div>
-      </div>
 
-    </div>
-
-    <!-- Color Configuration Section -->
-    <div class="form-section">
-      <h5 class="section-title">
-        <span class="material-icons">palette</span>
-        Agent Color
-      </h5>
-      <div class="color-picker">
-        <div class="color-preview" [style.background-color]="editingAgent.color || '#6842ff'">
-          <span class="material-icons">smart_toy</span>
-        </div>
-        <div class="color-palette">
-          <button *ngFor="let color of presetColors" class="color-swatch"
-            [style.background-color]="color"
-            [class.selected]="isColorSelected(color)"
-            (click)="selectColor(color)"
-            [disabled]="isLoading"
-            [title]="color">
-            <span class="material-icons check-icon" *ngIf="isColorSelected(color)">check</span>
-          </button>
-        </div>
-        <div class="custom-color">
-          <label for="custom_color">Custom:</label>
-          <input type="color" id="custom_color" [(ngModel)]="editingAgent.color" [disabled]="isLoading" class="color-input">
-          <input type="text" [(ngModel)]="editingAgent.color" class="color-text-input" [disabled]="isLoading" placeholder="#6842ff" maxlength="7">
-        </div>
-      </div>
-    </div>
-
-    <!-- Model Configuration Section -->
-    <div class="form-section">
-      <h5 class="section-title">
-        <span class="material-icons">psychology</span>
-        Model Configuration
-      </h5>
-      <div class="form-group">
-        <label for="model_id">Model ID</label>
-        <input type="text" id="model_id" class="form-control"
-          [ngModel]="getDefaultModelInputs()?.model_id"
-          (ngModelChange)="updateModelInput('model_id', $event)"
-          [class.error]="hasError('model_id')"
-          [disabled]="isLoading"
-          placeholder="e.g., global.anthropic.claude-sonnet-4-5-20250929-v1:0">
-      </div>
-      <div class="form-row">
-        <div class="form-group half">
-          <label for="max_tokens">Max Tokens</label>
-          <input type="number" id="max_tokens" class="form-control"
-            [ngModel]="getDefaultModelInputs()?.max_tokens"
-            (ngModelChange)="updateModelInput('max_tokens', $event)"
-            [disabled]="isLoading" min="100" max="200000" step="100">
-          <span class="field-hint">100 - 200,000</span>
-        </div>
-        <div class="form-group half">
-          <label for="temperature">Temperature</label>
-          <div class="slider-container">
-            <input type="range" id="temperature" class="slider"
-              [ngModel]="getDefaultModelInputs()?.temperature"
-              (ngModelChange)="updateModelInput('temperature', $event)"
-              [disabled]="isLoading" min="0" max="1" step="0.1">
-            <span class="slider-value">{{ getDefaultModelInputs()?.temperature || 0.3 }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Knowledge Base Section -->
-    <div class="form-section">
-      <h5 class="section-title">
-        <span class="material-icons">menu_book</span>
-        Knowledge Base
-      </h5>
-      <p class="section-description">Select a Bedrock Knowledge Base for RAG retrieval, used by retrieve_knowledge_base_results_tool.</p>
-      <div class="form-group">
-        <label for="knowledge_base">Knowledge Base</label>
-
-        <!-- Typeahead combobox (when KBs are available or loading) -->
-        <div class="kb-typeahead" [class.open]="kbDropdownOpen" *ngIf="isLoadingKnowledgeBases || knowledgeBases.length > 0">
-          <div class="combobox-input-wrapper">
-            <span class="material-icons combobox-icon">menu_book</span>
-            <input type="text" id="knowledge_base" class="form-control combobox-input"
-              [ngModel]="getKbDisplayName(editingAgent.knowledge_base) || kbFilterText"
-              (ngModelChange)="onKbFilterInput($event)"
-              (focus)="toggleKbDropdown()"
-              (blur)="closeKbDropdown()"
-              [disabled]="isLoading || isLoadingKnowledgeBases"
-              [placeholder]="isLoadingKnowledgeBases ? 'Loading knowledge bases...' : 'Search by name or ID...'"
-              autocomplete="off">
-            <!-- Loading spinner -->
-            <div class="kb-loading-spinner" *ngIf="isLoadingKnowledgeBases">
-              <span class="material-icons spinning">sync</span>
+          <!-- Inbound OAuth Credentials (shown when OAuth is selected) -->
+          <div class="oauth-credentials-config" *ngIf="editingAgent.a2a_auth_type === 'oauth'">
+            <!-- Credential status indicator -->
+            <div class="credential-status-indicator" *ngIf="!inboundA2aOAuthEditing">
+              <div class="credential-status stored" *ngIf="editingAgent.a2a_oauth_credentials?.hasCredentials">
+                <span class="material-icons">check_circle</span>
+                <span>Credentials stored in SSM</span>
+              </div>
+              <div class="credential-status not-stored" *ngIf="!editingAgent.a2a_oauth_credentials?.hasCredentials">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>No credentials stored</span>
+              </div>
             </div>
-            <!-- Clear button -->
-            <button class="combobox-clear-btn" *ngIf="editingAgent.knowledge_base && !isLoadingKnowledgeBases" (click)="clearKnowledgeBase()" [disabled]="isLoading" type="button" title="Clear">
-              <span class="material-icons">close</span>
-            </button>
-            <!-- Toggle button -->
-            <button class="combobox-toggle-btn" (click)="toggleKbDropdown()" [disabled]="isLoading || isLoadingKnowledgeBases" type="button">
-              <span class="material-icons">{{ kbDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
-            </button>
-          </div>
-
-          <!-- Dropdown with filtered results -->
-          <div class="combobox-dropdown" *ngIf="kbDropdownOpen && filteredKnowledgeBases.length > 0">
-            <!-- None option -->
-            <div class="combobox-option kb-none-option" (mousedown)="clearKnowledgeBase()">
-              <span class="material-icons option-icon">block</span>
-              <span class="option-kb-name">None</span>
+            <!-- Credentials already stored — show actions -->
+            <div class="token-status"
+              *ngIf="editingAgent.a2a_oauth_credentials?.hasCredentials && !inboundA2aOAuthEditing">
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="inboundA2aOAuthEditing = true">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="removeInboundA2aOAuthCredentials()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
             </div>
-            <!-- KB options -->
-            <div class="combobox-option" *ngFor="let kb of filteredKnowledgeBases"
-              (mousedown)="selectKnowledgeBase(kb)"
-              [class.selected]="editingAgent.knowledge_base === kb.knowledgeBaseId">
-              <span class="material-icons option-icon">menu_book</span>
-              <div class="option-kb-details">
-                <span class="option-kb-name">{{ kb.name }}</span>
-                <span class="option-kb-id">({{ kb.knowledgeBaseId }})</span>
+            <!-- Credentials input (new or editing) -->
+            <div class="credentials-input-group"
+              *ngIf="!editingAgent.a2a_oauth_credentials?.hasCredentials || inboundA2aOAuthEditing">
+              <div class="credential-field">
+                <label>Auth Client ID <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundA2aOAuthTokenEndpoint"
+                  placeholder="Cognito App Client ID" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Username <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundA2aOAuthUsername"
+                  placeholder="Enter username..." autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Password <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="inboundA2aOAuthPasswordVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="inboundA2aOAuthPassword" placeholder="Enter password..." autocomplete="off"
+                    spellcheck="false">
+                  <button class="toggle-visibility-btn"
+                    (click)="inboundA2aOAuthPasswordVisible = !inboundA2aOAuthPasswordVisible" type="button"
+                    [title]="inboundA2aOAuthPasswordVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ inboundA2aOAuthPasswordVisible ? 'visibility_off' : 'visibility'
+                      }}</span>
+                  </button>
+                </div>
+              </div>
+              <span class="field-hint token-hint">
+                <span class="material-icons">info_outline</span>
+                Credentials are stored encrypted in AWS SSM. A bearer token will be acquired via Cognito
+                USER_PASSWORD_AUTH when invoking this agent.
+              </span>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="saveInboundA2aOAuthCredentials()"
+                  [disabled]="inboundA2aOAuthSaving || !inboundA2aOAuthTokenEndpoint.trim() || !inboundA2aOAuthUsername.trim() || !inboundA2aOAuthPassword.trim()">
+                  <span class="material-icons">{{ inboundA2aOAuthSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ inboundA2aOAuthSaving ? 'Saving...' : 'Save Credentials' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="inboundA2aOAuthEditing"
+                  (click)="inboundA2aOAuthEditing = false; inboundA2aOAuthTokenEndpoint = ''; inboundA2aOAuthUsername = ''; inboundA2aOAuthPassword = ''">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="inboundA2aOAuthError">
+                <span class="material-icons">error_outline</span>
+                {{ inboundA2aOAuthError }}
               </div>
             </div>
           </div>
-
-          <!-- Empty state -->
-          <div class="combobox-dropdown" *ngIf="kbDropdownOpen && filteredKnowledgeBases.length === 0 && !isLoadingKnowledgeBases">
-            <div class="combobox-empty">
-              <span class="material-icons">info_outline</span>
-              No matching knowledge bases found
-            </div>
-          </div>
         </div>
-
-        <!-- Fallback: manual text input when no KBs discovered and not loading -->
-        <input type="text" id="knowledge_base_fallback" class="form-control"
-          *ngIf="!isLoadingKnowledgeBases && knowledgeBases.length === 0"
-          [(ngModel)]="editingAgent.knowledge_base"
-          [disabled]="isLoading"
-          placeholder="Enter knowledge base name manually">
-
-        <!-- Warning: stored KB not found -->
-        <div class="kb-warning" *ngIf="kbNotFound && !isLoadingKnowledgeBases">
-          <span class="material-icons">warning</span>
-          <span>Knowledge base "{{ editingAgent.knowledge_base }}" was not found in the account.</span>
-        </div>
-
-        <span class="field-hint">Optional. Select a Bedrock Knowledge Base for this agent's RAG capabilities.</span>
       </div>
-    </div>
 
+    </div>
     <!-- Runtime ARN Section -->
     <div class="form-section">
       <h5 class="section-title">
         <span class="material-icons">cloud</span>
         Runtime ARN
       </h5>
-      <p class="section-description">AgentCore Runtime ARN for this agent. Select an existing ARN or enter a new one.</p>
+      <p class="section-description">AgentCore Runtime ARN for this agent. Select an existing ARN or enter a new one.
+      </p>
       <div class="form-group">
         <label for="runtime_arn">Runtime ARN</label>
         <div class="runtime-arn-combobox" [class.open]="runtimeArnDropdownOpen">
           <div class="combobox-input-wrapper">
             <span class="material-icons combobox-icon">cloud_queue</span>
-            <input type="text" id="runtime_arn" class="form-control combobox-input"
-              [ngModel]="editingAgent.runtime_arn"
-              (ngModelChange)="onRuntimeArnInput($event)"
-              (focus)="toggleRuntimeArnDropdown()"
-              (blur)="closeRuntimeArnDropdown()"
-              [disabled]="isLoading"
-              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/..."
-              autocomplete="off">
-            <button class="combobox-clear-btn" *ngIf="editingAgent.runtime_arn" (click)="clearRuntimeArn()" [disabled]="isLoading" type="button" title="Clear">
+            <input type="text" id="runtime_arn" class="form-control combobox-input" [ngModel]="editingAgent.runtime_arn"
+              (ngModelChange)="onRuntimeArnInput($event)" (focus)="toggleRuntimeArnDropdown()"
+              (blur)="closeRuntimeArnDropdown()" [disabled]="isLoading"
+              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/..." autocomplete="off">
+            <button class="combobox-clear-btn" *ngIf="editingAgent.runtime_arn" (click)="clearRuntimeArn()"
+              [disabled]="isLoading" type="button" title="Clear">
               <span class="material-icons">close</span>
             </button>
-            <button class="combobox-toggle-btn" (click)="toggleRuntimeArnDropdown()" [disabled]="isLoading" type="button">
+            <button class="combobox-toggle-btn" (click)="toggleRuntimeArnDropdown()" [disabled]="isLoading"
+              type="button">
               <span class="material-icons">{{ runtimeArnDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
             </button>
           </div>
           <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length > 0">
-            <div class="combobox-option" *ngFor="let arn of getFilteredRuntimeArns()" (mousedown)="selectRuntimeArn(arn)">
+            <div class="combobox-option" *ngFor="let arn of getFilteredRuntimeArns()"
+              (mousedown)="selectRuntimeArn(arn)">
               <span class="material-icons option-icon">cloud_queue</span>
               <span class="option-arn">{{ arn }}</span>
             </div>
@@ -338,9 +247,152 @@
         <span class="field-hint">Optional. If not set, the agent will use the default shared runtime ARN.</span>
       </div>
     </div>
+    <!-- Color Configuration Section -->
+    <div class="form-section">
+      
+      <div class="color-picker">
+        <h5 class="section-title">
+        <span class="material-icons">palette</span>
+        Agent Color
+      </h5>
+        <div class="color-preview" [style.background-color]="editingAgent.color || '#6842ff'">
+          <span class="material-icons">smart_toy</span>
+        </div>
+        <div class="color-palette">
+          <button *ngFor="let color of presetColors" class="color-swatch" [style.background-color]="color"
+            [class.selected]="isColorSelected(color)" (click)="selectColor(color)" [disabled]="isLoading"
+            [title]="color">
+            <span class="material-icons check-icon" *ngIf="isColorSelected(color)">check</span>
+          </button>
+          
+        </div>
+<div class="custom-color">
+            <label for="custom_color">Custom:</label>
+            <input type="color" id="custom_color" [(ngModel)]="editingAgent.color" [disabled]="isLoading"
+              class="color-input">
+            <input type="text" [(ngModel)]="editingAgent.color" class="color-text-input" [disabled]="isLoading"
+              placeholder="#6842ff" maxlength="7">
+          </div>
+      </div>
+    </div>
+
+    <!-- Model Configuration Section -->
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+      <h5 class="section-title">
+        <span class="material-icons">psychology</span>
+        Model Configuration
+      </h5>
+      <div class="form-group">
+        <label for="model_id">Model ID</label>
+        <input type="text" id="model_id" class="form-control" [ngModel]="getDefaultModelInputs()?.model_id"
+          (ngModelChange)="updateModelInput('model_id', $event)" [class.error]="hasError('model_id')"
+          [disabled]="isLoading" placeholder="e.g., global.anthropic.claude-sonnet-4-5-20250929-v1:0">
+      </div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="max_tokens">Max Tokens</label>
+          <input type="number" id="max_tokens" class="form-control" [ngModel]="getDefaultModelInputs()?.max_tokens"
+            (ngModelChange)="updateModelInput('max_tokens', $event)" [disabled]="isLoading" min="100" max="200000"
+            step="100">
+          <span class="field-hint">100 - 200,000</span>
+        </div>
+        <div class="form-group half">
+          <label for="temperature">Temperature</label>
+          <div class="slider-container">
+            <input type="range" id="temperature" class="slider" [ngModel]="getDefaultModelInputs()?.temperature"
+              (ngModelChange)="updateModelInput('temperature', $event)" [disabled]="isLoading" min="0" max="1"
+              step="0.1">
+            <span class="slider-value">{{ getDefaultModelInputs()?.temperature || 0.3 }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Knowledge Base Section -->
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+      <h5 class="section-title">
+        <span class="material-icons">menu_book</span>
+        Knowledge Base
+      </h5>
+      <p class="section-description">Select a Bedrock Knowledge Base for RAG retrieval, used by
+        retrieve_knowledge_base_results_tool.</p>
+      <div class="form-group">
+        <label for="knowledge_base">Knowledge Base</label>
+
+        <!-- Typeahead combobox (when KBs are available or loading) -->
+        <div class="kb-typeahead" [class.open]="kbDropdownOpen"
+          *ngIf="isLoadingKnowledgeBases || knowledgeBases.length > 0">
+          <div class="combobox-input-wrapper">
+            <span class="material-icons combobox-icon">menu_book</span>
+            <input type="text" id="knowledge_base" class="form-control combobox-input"
+              [ngModel]="getKbDisplayName(editingAgent.knowledge_base) || kbFilterText"
+              (ngModelChange)="onKbFilterInput($event)" (focus)="toggleKbDropdown()" (blur)="closeKbDropdown()"
+              [disabled]="isLoading || isLoadingKnowledgeBases"
+              [placeholder]="isLoadingKnowledgeBases ? 'Loading knowledge bases...' : 'Search by name or ID...'"
+              autocomplete="off">
+            <!-- Loading spinner -->
+            <div class="kb-loading-spinner" *ngIf="isLoadingKnowledgeBases">
+              <span class="material-icons spinning">sync</span>
+            </div>
+            <!-- Clear button -->
+            <button class="combobox-clear-btn" *ngIf="editingAgent.knowledge_base && !isLoadingKnowledgeBases"
+              (click)="clearKnowledgeBase()" [disabled]="isLoading" type="button" title="Clear">
+              <span class="material-icons">close</span>
+            </button>
+            <!-- Toggle button -->
+            <button class="combobox-toggle-btn" (click)="toggleKbDropdown()"
+              [disabled]="isLoading || isLoadingKnowledgeBases" type="button">
+              <span class="material-icons">{{ kbDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+          </div>
+
+          <!-- Dropdown with filtered results -->
+          <div class="combobox-dropdown" *ngIf="kbDropdownOpen && filteredKnowledgeBases.length > 0">
+            <!-- None option -->
+            <div class="combobox-option kb-none-option" (mousedown)="clearKnowledgeBase()">
+              <span class="material-icons option-icon">block</span>
+              <span class="option-kb-name">None</span>
+            </div>
+            <!-- KB options -->
+            <div class="combobox-option" *ngFor="let kb of filteredKnowledgeBases" (mousedown)="selectKnowledgeBase(kb)"
+              [class.selected]="editingAgent.knowledge_base === kb.knowledgeBaseId">
+              <span class="material-icons option-icon">menu_book</span>
+              <div class="option-kb-details">
+                <span class="option-kb-name">{{ kb.name }}</span>
+                <span class="option-kb-id">({{ kb.knowledgeBaseId }})</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="combobox-dropdown"
+            *ngIf="kbDropdownOpen && filteredKnowledgeBases.length === 0 && !isLoadingKnowledgeBases">
+            <div class="combobox-empty">
+              <span class="material-icons">info_outline</span>
+              No matching knowledge bases found
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback: manual text input when no KBs discovered and not loading -->
+        <input type="text" id="knowledge_base_fallback" class="form-control"
+          *ngIf="!isLoadingKnowledgeBases && knowledgeBases.length === 0" [(ngModel)]="editingAgent.knowledge_base"
+          [disabled]="isLoading" placeholder="Enter knowledge base name manually">
+
+        <!-- Warning: stored KB not found -->
+        <div class="kb-warning" *ngIf="kbNotFound && !isLoadingKnowledgeBases">
+          <span class="material-icons">warning</span>
+          <span>Knowledge base "{{ editingAgent.knowledge_base }}" was not found in the account.</span>
+        </div>
+
+        <span class="field-hint">Optional. Select a Bedrock Knowledge Base for this agent's RAG capabilities.</span>
+      </div>
+    </div>
+
+
 
     <!-- Tool Agents Section -->
-    <div class="form-section" *ngIf="availableAgents.length > 0">
+    <div class="form-section" *ngIf="availableAgents.length > 0 &&  !editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">hub</span>
         Tool Agents
@@ -348,27 +400,29 @@
       <p class="section-description">Select agents that this agent can invoke as tools.</p>
       <div class="tool-agents-grid">
         <div *ngFor="let agentName of getFilteredAvailableAgents()" class="tool-agent-chip"
-          [class.selected]="isToolAgentSelected(agentName)"
-          [class.disabled]="isLoading"
+          [class.selected]="isToolAgentSelected(agentName)" [class.disabled]="isLoading"
           (click)="!isLoading && toggleToolAgent(agentName)">
-          <span class="material-icons">{{ isToolAgentSelected(agentName) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+          <span class="material-icons">{{ isToolAgentSelected(agentName) ? 'check_circle' : 'radio_button_unchecked'
+            }}</span>
           <span class="agent-name">{{ agentName }}</span>
         </div>
       </div>
       <div class="selected-count" *ngIf="editingAgent.tool_agent_names?.length">
-        {{ editingAgent.tool_agent_names.length }} agent{{ editingAgent.tool_agent_names.length !== 1 ? 's' : '' }} selected
+        {{ editingAgent.tool_agent_names.length }} agent{{ editingAgent.tool_agent_names.length !== 1 ? 's' : '' }}
+        selected
       </div>
     </div>
 
 
     <!-- Agent Tools Section -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">build</span>
         Agent Tools
       </h5>
-      <p class="section-description">Configure which tools this agent can use (e.g., invoke_specialist, get_products).</p>
-      
+      <p class="section-description">Configure which tools this agent can use (e.g., invoke_specialist, get_products).
+      </p>
+
       <div class="agent-tools-list" *ngIf="editingAgent.agent_tools?.length">
         <div class="tool-tag" *ngFor="let tool of editingAgent.agent_tools; let i = index">
           <span class="tool-name">{{ tool }}</span>
@@ -377,18 +431,18 @@
           </button>
         </div>
       </div>
-      
+
       <div class="no-tools-message" *ngIf="!editingAgent.agent_tools?.length">
         <span class="material-icons">info_outline</span>
         <span>No tools configured. Add tools from the list below or enter a custom tool name.</span>
       </div>
-      
+
       <div class="add-tool-section">
         <div class="quick-add-tools">
           <span class="quick-add-label">Quick add:</span>
           <div class="quick-add-chips">
-            <button *ngFor="let tool of getAvailableTools()" class="quick-add-chip"
-              (click)="addAgentTool(tool)" [disabled]="isLoading" title="Add {{ tool }}">
+            <button *ngFor="let tool of getAvailableTools()" class="quick-add-chip" (click)="addAgentTool(tool)"
+              [disabled]="isLoading" title="Add {{ tool }}">
               <span class="material-icons">add</span>
               {{ tool }}
             </button>
@@ -406,13 +460,14 @@
     </div>
 
     <!-- Injectable Values Section -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">data_object</span>
         Injectable Values
       </h5>
-      <p class="section-description">Key-value pairs injected into the agent's context (e.g., agency_id, agency_name).</p>
-      
+      <p class="section-description">Key-value pairs injected into the agent's context (e.g., agency_id, agency_name).
+      </p>
+
       <div class="injectable-values-list" *ngIf="getInjectableValuesArray().length">
         <div class="injectable-item" *ngFor="let item of getInjectableValuesArray()">
           <div class="injectable-key">
@@ -422,31 +477,35 @@
           <div class="injectable-value">
             <label>Value</label>
             <input type="text" class="form-control" [ngModel]="item.value"
-              (ngModelChange)="updateInjectableValue(item.key, $event)" [disabled]="isLoading" placeholder="Enter value...">
+              (ngModelChange)="updateInjectableValue(item.key, $event)" [disabled]="isLoading"
+              placeholder="Enter value...">
           </div>
-          <button class="remove-injectable-btn" (click)="removeInjectableValue(item.key)" [disabled]="isLoading" title="Remove">
+          <button class="remove-injectable-btn" (click)="removeInjectableValue(item.key)" [disabled]="isLoading"
+            title="Remove">
             <span class="material-icons">delete_outline</span>
           </button>
         </div>
       </div>
-      
+
       <div class="no-injectable-message" *ngIf="!getInjectableValuesArray().length">
         <span class="material-icons">info_outline</span>
         <span>No injectable values configured. Add key-value pairs below.</span>
       </div>
-      
+
       <div class="add-injectable-section">
         <div class="add-injectable-inputs">
           <div class="injectable-key-input">
             <label>New Key</label>
-            <input type="text" class="form-control" [(ngModel)]="newInjectableKey" [disabled]="isLoading" placeholder="e.g., agency_id">
+            <input type="text" class="form-control" [(ngModel)]="newInjectableKey" [disabled]="isLoading"
+              placeholder="e.g., agency_id">
           </div>
           <div class="injectable-value-input">
             <label>Value</label>
             <input type="text" class="form-control" [(ngModel)]="newInjectableValue" [disabled]="isLoading"
               placeholder="e.g., agy_omni_001" (keyup.enter)="addInjectableValue()">
           </div>
-          <button class="add-injectable-btn" (click)="addInjectableValue()" [disabled]="isLoading || !newInjectableKey.trim()">
+          <button class="add-injectable-btn" (click)="addInjectableValue()"
+            [disabled]="isLoading || !newInjectableKey.trim()">
             <span class="material-icons">add</span>
             Add
           </button>
@@ -455,7 +514,7 @@
     </div>
 
     <!-- MCP Servers Section -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">extension</span>
         MCP Tool Servers
@@ -466,14 +525,15 @@
           </button>
         </div>
       </h5>
-      <p class="section-description">Connect to external MCP (Model Context Protocol) servers to extend agent capabilities with additional tools.</p>
+      <p class="section-description">Connect to external MCP (Model Context Protocol) servers to extend agent
+        capabilities with additional tools.</p>
 
       <!-- MCP Server Presets -->
       <div class="mcp-presets" *ngIf="!editingAgent.mcp_servers?.length">
         <span class="presets-label">Quick add from templates:</span>
         <div class="preset-chips">
-          <button *ngFor="let preset of mcpServerPresets" class="preset-chip"
-            (click)="addMcpServer(preset)" [disabled]="isLoading" [title]="preset.config.description || ''">
+          <button *ngFor="let preset of mcpServerPresets" class="preset-chip" (click)="addMcpServer(preset)"
+            [disabled]="isLoading" [title]="preset.config.description || ''">
             <span class="material-icons">{{ getMcpTransportIcon(preset.config.transport || 'stdio') }}</span>
             {{ preset.name }}
           </button>
@@ -484,115 +544,119 @@
       <div class="mcp-servers-list" *ngIf="editingAgent.mcp_servers?.length">
         <div class="mcp-server-item-wrapper" *ngFor="let server of editingAgent.mcp_servers; let i = index">
           <div class="mcp-server-item" [class.disabled]="!server.enabled">
-          <div class="server-status">
-            <button class="toggle-enabled-btn" (click)="toggleMcpServerEnabled(i)" [disabled]="isLoading"
-              [title]="server.enabled ? 'Disable server' : 'Enable server'">
-              <span class="material-icons">{{ server.enabled ? 'check_circle' : 'cancel' }}</span>
-            </button>
-          </div>
-          <div class="server-info" (click)="openMcpServerEditor(i)">
-            <div class="server-header">
-              <span class="material-icons transport-icon">{{ getMcpTransportIcon(server.transport) }}</span>
-              <span class="server-name">{{ server.name }}</span>
-              <span class="server-transport-badge">{{ getMcpTransportName(server.transport) }}</span>
+            <div class="server-status">
+              <button class="toggle-enabled-btn" (click)="toggleMcpServerEnabled(i)" [disabled]="isLoading"
+                [title]="server.enabled ? 'Disable server' : 'Enable server'">
+                <span class="material-icons">{{ server.enabled ? 'check_circle' : 'cancel' }}</span>
+              </button>
             </div>
-            <div class="server-details">
-              <span class="server-detail" *ngIf="server.transport === 'stdio' && server.command">
-                <span class="material-icons">terminal</span>
-                {{ server.command }} {{ server.args?.join(' ') }}
-              </span>
-              <span class="server-detail" *ngIf="(server.transport === 'http' || server.transport === 'sse') && server.url">
-                <span class="material-icons">link</span>
-                {{ server.url }}
-              </span>
-              <span class="server-detail" *ngIf="server.prefix">
-                <span class="material-icons">label</span>
-                Prefix: {{ server.prefix }}
-              </span>
-              <span class="server-detail" *ngIf="server.awsAuth">
-                <span class="material-icons">security</span>
-                AWS IAM ({{ server.awsAuth.region }})
-              </span>
-              <span class="server-detail auth-badge" *ngIf="server.oauthToken?.hasToken">
-                <span class="material-icons">vpn_key</span>
-                Bearer token configured
-              </span>
-            </div>
-            <div class="server-description" *ngIf="server.description">
-              {{ server.description }}
-            </div>
-          </div>
-          <div class="server-actions">
-            <button class="list-tools-btn" (click)="listMcpServerTools(server, $event)"
-              [disabled]="isLoading || getMcpToolListResult(server.id)?.loading"
-              title="List available tools">
-              <span class="material-icons" *ngIf="!getMcpToolListResult(server.id)?.loading">build_circle</span>
-              <span class="material-icons spinning" *ngIf="getMcpToolListResult(server.id)?.loading">sync</span>
-            </button>
-            <button class="edit-server-btn" (click)="openMcpServerEditor(i)" [disabled]="isLoading" title="Edit">
-              <span class="material-icons">edit</span>
-            </button>
-            <button class="remove-server-btn" (click)="removeMcpServer(i)" [disabled]="isLoading" title="Remove">
-              <span class="material-icons">delete_outline</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tool List Results (shown below the server card) -->
-        <div class="mcp-tool-list-results" *ngIf="getMcpToolListResult(server.id) as toolResult"
-          [class.has-error]="toolResult.error" [class.has-tools]="toolResult.tools.length > 0">
-          
-          <!-- Loading state -->
-          <div class="tool-list-loading" *ngIf="toolResult.loading">
-            <div class="loading-spinner small"></div>
-            <span>Connecting to MCP server...</span>
-          </div>
-
-          <!-- Error state -->
-          <div class="tool-list-error" *ngIf="toolResult.error && !toolResult.loading">
-            <div class="tool-list-error-header">
-              <span class="material-icons">error_outline</span>
-              <span>{{ toolResult.error }}</span>
-            </div>
-            <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-
-          <!-- Success state with tools -->
-          <div class="tool-list-success" *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length > 0">
-            <div class="tool-list-header" (click)="toggleMcpToolList(server.id)">
-              <div class="tool-list-summary">
-                <span class="material-icons status-icon connected">check_circle</span>
-                <span class="tool-count">{{ toolResult.tools.length }} tool{{ toolResult.tools.length !== 1 ? 's' : '' }} available</span>
+            <div class="server-info" (click)="openMcpServerEditor(i)">
+              <div class="server-header">
+                <span class="material-icons transport-icon">{{ getMcpTransportIcon(server.transport) }}</span>
+                <span class="server-name">{{ server.name }}</span>
+                <span class="server-transport-badge">{{ getMcpTransportName(server.transport) }}</span>
               </div>
-              <div class="tool-list-actions">
-                <span class="material-icons expand-icon">{{ toolResult.expanded ? 'expand_less' : 'expand_more' }}</span>
-                <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
-                  <span class="material-icons">close</span>
-                </button>
+              <div class="server-details">
+                <span class="server-detail" *ngIf="server.transport === 'stdio' && server.command">
+                  <span class="material-icons">terminal</span>
+                  {{ server.command }} {{ server.args?.join(' ') }}
+                </span>
+                <span class="server-detail"
+                  *ngIf="(server.transport === 'http' || server.transport === 'sse') && server.url">
+                  <span class="material-icons">link</span>
+                  {{ server.url }}
+                </span>
+                <span class="server-detail" *ngIf="server.prefix">
+                  <span class="material-icons">label</span>
+                  Prefix: {{ server.prefix }}
+                </span>
+                <span class="server-detail" *ngIf="server.awsAuth">
+                  <span class="material-icons">security</span>
+                  AWS IAM ({{ server.awsAuth.region }})
+                </span>
+                <span class="server-detail auth-badge" *ngIf="server.oauthToken?.hasToken">
+                  <span class="material-icons">vpn_key</span>
+                  Bearer token configured
+                </span>
+              </div>
+              <div class="server-description" *ngIf="server.description">
+                {{ server.description }}
               </div>
             </div>
-            <div class="tool-list-items" *ngIf="toolResult.expanded">
-              <div class="tool-item" *ngFor="let tool of toolResult.tools">
-                <div class="tool-item-header">
-                  <span class="material-icons tool-icon">handyman</span>
-                  <span class="tool-item-name">{{ tool.name }}</span>
+            <div class="server-actions">
+              <button class="list-tools-btn" (click)="listMcpServerTools(server, $event)"
+                [disabled]="isLoading || getMcpToolListResult(server.id)?.loading" title="List available tools">
+                <span class="material-icons" *ngIf="!getMcpToolListResult(server.id)?.loading">build_circle</span>
+                <span class="material-icons spinning" *ngIf="getMcpToolListResult(server.id)?.loading">sync</span>
+              </button>
+              <button class="edit-server-btn" (click)="openMcpServerEditor(i)" [disabled]="isLoading" title="Edit">
+                <span class="material-icons">edit</span>
+              </button>
+              <button class="remove-server-btn" (click)="removeMcpServer(i)" [disabled]="isLoading" title="Remove">
+                <span class="material-icons">delete_outline</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tool List Results (shown below the server card) -->
+          <div class="mcp-tool-list-results" *ngIf="getMcpToolListResult(server.id) as toolResult"
+            [class.has-error]="toolResult.error" [class.has-tools]="toolResult.tools.length > 0">
+
+            <!-- Loading state -->
+            <div class="tool-list-loading" *ngIf="toolResult.loading">
+              <div class="loading-spinner small"></div>
+              <span>Connecting to MCP server...</span>
+            </div>
+
+            <!-- Error state -->
+            <div class="tool-list-error" *ngIf="toolResult.error && !toolResult.loading">
+              <div class="tool-list-error-header">
+                <span class="material-icons">error_outline</span>
+                <span>{{ toolResult.error }}</span>
+              </div>
+              <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <!-- Success state with tools -->
+            <div class="tool-list-success"
+              *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length > 0">
+              <div class="tool-list-header" (click)="toggleMcpToolList(server.id)">
+                <div class="tool-list-summary">
+                  <span class="material-icons status-icon connected">check_circle</span>
+                  <span class="tool-count">{{ toolResult.tools.length }} tool{{ toolResult.tools.length !== 1 ? 's' : ''
+                    }} available</span>
                 </div>
-                <p class="tool-item-description" *ngIf="tool.description">{{ tool.description }}</p>
+                <div class="tool-list-actions">
+                  <span class="material-icons expand-icon">{{ toolResult.expanded ? 'expand_less' : 'expand_more'
+                    }}</span>
+                  <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+                    <span class="material-icons">close</span>
+                  </button>
+                </div>
+              </div>
+              <div class="tool-list-items" *ngIf="toolResult.expanded">
+                <div class="tool-item" *ngFor="let tool of toolResult.tools">
+                  <div class="tool-item-header">
+                    <span class="material-icons tool-icon">handyman</span>
+                    <span class="tool-item-name">{{ tool.name }}</span>
+                  </div>
+                  <p class="tool-item-description" *ngIf="tool.description">{{ tool.description }}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Empty tools state -->
-          <div class="tool-list-empty" *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length === 0">
-            <span class="material-icons">info_outline</span>
-            <span>Server responded but no tools were found.</span>
-            <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
-              <span class="material-icons">close</span>
-            </button>
+            <!-- Empty tools state -->
+            <div class="tool-list-empty"
+              *ngIf="!toolResult.error && !toolResult.loading && toolResult.tools.length === 0">
+              <span class="material-icons">info_outline</span>
+              <span>Server responded but no tools were found.</span>
+              <button class="dismiss-tool-list-btn" (click)="dismissMcpToolList(server.id, $event)" title="Dismiss">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -605,8 +669,8 @@
       <div class="add-more-servers" *ngIf="editingAgent.mcp_servers?.length">
         <span class="presets-label">Add more:</span>
         <div class="preset-chips compact">
-          <button *ngFor="let preset of mcpServerPresets" class="preset-chip small"
-            (click)="addMcpServer(preset)" [disabled]="isLoading" [title]="preset.config.description || ''">
+          <button *ngFor="let preset of mcpServerPresets" class="preset-chip small" (click)="addMcpServer(preset)"
+            [disabled]="isLoading" [title]="preset.config.description || ''">
             <span class="material-icons">add</span>
             {{ preset.name }}
           </button>
@@ -615,7 +679,7 @@
     </div>
 
     <!-- A2A External Agents Section -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">share</span>
         External A2A Agents
@@ -626,7 +690,8 @@
           </button>
         </div>
       </h5>
-      <p class="section-description">Connect to external agents via A2A (Agent-to-Agent) protocol with optional OAuth authentication.</p>
+      <p class="section-description">Connect to external agents via A2A (Agent-to-Agent) protocol with optional OAuth
+        authentication.</p>
 
       <!-- A2A Agents List -->
       <div class="a2a-agents-list" *ngIf="editingAgent.external_agent_configs?.length">
@@ -643,7 +708,8 @@
                 <span class="material-icons transport-icon">share</span>
                 <span class="server-name">{{ extAgent.name || 'Unnamed Agent' }}</span>
                 <span class="server-transport-badge a2a-badge">A2A</span>
-                <span class="server-transport-badge auth-type-badge" *ngIf="extAgent.authType && extAgent.authType !== 'none'">
+                <span class="server-transport-badge auth-type-badge"
+                  *ngIf="extAgent.authType && extAgent.authType !== 'none'">
                   {{ extAgent.authType === 'oauth' ? 'OAuth' : 'IAM' }}
                 </span>
               </div>
@@ -656,11 +722,13 @@
                   <span class="material-icons" style="color: #ef4444;">error_outline</span>
                   ARN required
                 </span>
-                <span class="server-detail auth-badge credential-stored" *ngIf="extAgent.authType === 'oauth' && extAgent.oauthCredentials?.hasCredentials">
+                <span class="server-detail auth-badge credential-stored"
+                  *ngIf="extAgent.authType === 'oauth' && extAgent.oauthCredentials?.hasCredentials">
                   <span class="material-icons">check_circle</span>
                   Credentials stored
                 </span>
-                <span class="server-detail auth-badge credential-not-stored" *ngIf="extAgent.authType === 'oauth' && !extAgent.oauthCredentials?.hasCredentials">
+                <span class="server-detail auth-badge credential-not-stored"
+                  *ngIf="extAgent.authType === 'oauth' && !extAgent.oauthCredentials?.hasCredentials">
                   <span class="material-icons">radio_button_unchecked</span>
                   Not stored
                 </span>
@@ -700,7 +768,7 @@
     </div>
 
     <!-- Instructions Section -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!editingAgent.is_a2a">
       <h5 class="section-title">
         <span class="material-icons">description</span>
         Agent Instructions
@@ -712,7 +780,8 @@
             <span class="material-icons">auto_awesome</span>
             {{ editingAgent.instructions ? 'Enhance' : 'Generate' }}
           </button>
-          <button class="preview-toggle" (click)="toggleMarkdownPreview()" [class.active]="isMarkdownPreview" [disabled]="isLoading">
+          <button class="preview-toggle" (click)="toggleMarkdownPreview()" [class.active]="isMarkdownPreview"
+            [disabled]="isLoading">
             <span class="material-icons">{{ isMarkdownPreview ? 'edit' : 'visibility' }}</span>
             {{ isMarkdownPreview ? 'Edit' : 'Preview' }}
           </button>
@@ -728,17 +797,18 @@
       <div class="ai-prompt-dialog" *ngIf="showInstructionsPrompt">
         <div class="ai-prompt-content">
           <h6>{{ editingAgent.instructions ? 'Enhance Instructions' : 'Generate Instructions' }}</h6>
-          <p>{{ editingAgent.instructions ? 'Describe what changes you\'d like:' : 'Describe what this agent should do:' }}</p>
+          <p>{{ editingAgent.instructions ? 'Describe what changes you\'d like:' : 'Describe what this agent should do:'
+            }}</p>
           <textarea [(ngModel)]="instructionsPromptText"
             placeholder="{{ editingAgent.instructions ? 'e.g., Add more detail about handling edge cases...' : 'e.g., This agent should help with campaign optimization...' }}"
             rows="3" [disabled]="isGeneratingInstructions"></textarea>
-          
+
           <!-- Document Attachment -->
           <div class="doc-attach-section">
             <label class="doc-attach-label">
               <span class="material-icons">attach_file</span>
               Attach reference documents
-              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log" 
+              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log"
                 (change)="onInstructionsFileAttach($event)" hidden>
             </label>
             <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, etc.)</span>
@@ -754,7 +824,8 @@
           </div>
 
           <div class="ai-prompt-actions">
-            <button class="nova-button secondary" (click)="hideGenerateInstructionsDialog()" [disabled]="isGeneratingInstructions">Cancel</button>
+            <button class="nova-button secondary" (click)="hideGenerateInstructionsDialog()"
+              [disabled]="isGeneratingInstructions">Cancel</button>
             <button class="nova-button primary" (click)="generateInstructions()" [disabled]="isGeneratingInstructions">
               <span class="material-icons" *ngIf="isGeneratingInstructions">hourglass_empty</span>
               <span class="material-icons" *ngIf="!isGeneratingInstructions">auto_awesome</span>
@@ -769,11 +840,9 @@
       </div>
 
       <div class="instructions-editor" *ngIf="!isMarkdownPreview">
-        <textarea id="instructions" class="form-control instructions-textarea"
-          [(ngModel)]="editingAgent.instructions"
+        <textarea id="instructions" class="form-control instructions-textarea" [(ngModel)]="editingAgent.instructions"
           [disabled]="isLoading || isGeneratingInstructions || isExternalRuntime"
-          [class.readonly-field]="isExternalRuntime"
-          placeholder="Enter agent instructions (supports Markdown)..."
+          [class.readonly-field]="isExternalRuntime" placeholder="Enter agent instructions (supports Markdown)..."
           rows="10"></textarea>
       </div>
 
@@ -803,7 +872,8 @@
             <span class="material-icons">auto_awesome</span>
             {{ visualizationMappings?.templates?.length ? 'Enhance' : 'Generate' }}
           </button>
-          <button class="add-template-button" (click)="addVisualizationTemplate()" [disabled]="isLoading || isLoadingMappings">
+          <button class="add-template-button" (click)="addVisualizationTemplate()"
+            [disabled]="isLoading || isLoadingMappings">
             <span class="material-icons">add</span>
             Add
           </button>
@@ -818,18 +888,19 @@
 
       <div class="ai-prompt-dialog" *ngIf="showMappingsPrompt">
         <div class="ai-prompt-content">
-          <h6>{{ visualizationMappings?.templates?.length ? 'Enhance Visualization Mappings' : 'Generate Visualization Mappings' }}</h6>
+          <h6>{{ visualizationMappings?.templates?.length ? 'Enhance Visualization Mappings' : 'Generate Visualization
+            Mappings' }}</h6>
           <p>Describe what types of data this agent will display:</p>
           <textarea [(ngModel)]="mappingsPromptText"
-            placeholder="e.g., This agent shows campaign metrics and budget allocations..."
-            rows="3" [disabled]="isGeneratingMappings"></textarea>
-          
+            placeholder="e.g., This agent shows campaign metrics and budget allocations..." rows="3"
+            [disabled]="isGeneratingMappings"></textarea>
+
           <!-- Document Attachment -->
           <div class="doc-attach-section">
             <label class="doc-attach-label">
               <span class="material-icons">attach_file</span>
               Attach reference documents
-              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log" 
+              <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log"
                 (change)="onMappingsFileAttach($event)" hidden>
             </label>
             <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, etc.)</span>
@@ -845,8 +916,10 @@
           </div>
 
           <div class="ai-prompt-actions">
-            <button class="nova-button secondary" (click)="hideGenerateMappingsDialog()" [disabled]="isGeneratingMappings">Cancel</button>
-            <button class="nova-button primary" (click)="generateVisualizationMappings()" [disabled]="isGeneratingMappings">
+            <button class="nova-button secondary" (click)="hideGenerateMappingsDialog()"
+              [disabled]="isGeneratingMappings">Cancel</button>
+            <button class="nova-button primary" (click)="generateVisualizationMappings()"
+              [disabled]="isGeneratingMappings">
               <span class="material-icons" *ngIf="isGeneratingMappings">hourglass_empty</span>
               <span class="material-icons" *ngIf="!isGeneratingMappings">auto_awesome</span>
               {{ isGeneratingMappings ? 'Generating...' : 'Generate' }}
@@ -864,28 +937,31 @@
           <span class="material-icons">info_outline</span>
           <span>No visualization mappings configured. Add templates or use AI to generate suggestions.</span>
         </div>
-        
+
         <div class="mapping-item" *ngFor="let template of visualizationMappings?.templates; let i = index">
           <div class="mapping-fields">
             <div class="mapping-field template-select">
               <label>Template</label>
-              <select [ngModel]="template.templateId" (ngModelChange)="updateVisualizationTemplate(i, 'templateId', $event)"
-                [disabled]="isLoading" class="form-control">
+              <select [ngModel]="template.templateId"
+                (ngModelChange)="updateVisualizationTemplate(i, 'templateId', $event)" [disabled]="isLoading"
+                class="form-control">
                 <option value="">Select a template...</option>
                 <option *ngFor="let t of availableTemplates" [value]="t">{{ t }}</option>
               </select>
             </div>
             <div class="mapping-field usage-input">
               <label>Usage Description</label>
-              <input type="text" [ngModel]="template.usage" (ngModelChange)="updateVisualizationTemplate(i, 'usage', $event)"
-                [disabled]="isLoading" class="form-control" placeholder="When to use this visualization...">
+              <input type="text" [ngModel]="template.usage"
+                (ngModelChange)="updateVisualizationTemplate(i, 'usage', $event)" [disabled]="isLoading"
+                class="form-control" placeholder="When to use this visualization...">
             </div>
           </div>
           <button class="preview-viz-button" (click)="openVisualizationPreview(template.templateId, template.usage)"
             [disabled]="isLoading || !template.templateId" title="Preview">
             <span class="material-icons">visibility</span>
           </button>
-          <button class="remove-mapping-button" (click)="removeVisualizationTemplate(i)" [disabled]="isLoading" title="Remove">
+          <button class="remove-mapping-button" (click)="removeVisualizationTemplate(i)" [disabled]="isLoading"
+            title="Remove">
             <span class="material-icons">delete_outline</span>
           </button>
         </div>
@@ -920,7 +996,8 @@
       </div>
       <div class="delete-confirm-body">
         <p>Are you sure you want to delete <strong>{{ editingAgent.agent_display_name }}</strong>?</p>
-        <p class="delete-warning-text">This will permanently remove the agent configuration, instructions, and all visualization mappings. This action cannot be undone.</p>
+        <p class="delete-warning-text">This will permanently remove the agent configuration, instructions, and all
+          visualization mappings. This action cannot be undone.</p>
       </div>
       <div class="delete-confirm-actions">
         <button class="nova-button secondary" (click)="cancelDeleteAgent()">
@@ -996,9 +1073,11 @@
       <div class="json-editor-content">
         <div class="json-editor-info">
           <span class="material-icons">info_outline</span>
-          <span>Structure: <code>{{ '{' }} agentName, agentId, templates: [{{ '{' }} templateId, usage {{ '}' }}] {{ '}' }}</code></span>
+          <span>Structure:
+            <code>{{ '{' }} agentName, agentId, templates: [{{ '{' }} templateId, usage {{ '}' }}] {{ '}' }}</code></span>
         </div>
-        <textarea class="json-textarea" [(ngModel)]="visualizationJsonText" placeholder="Enter JSON..." spellcheck="false"></textarea>
+        <textarea class="json-textarea" [(ngModel)]="visualizationJsonText" placeholder="Enter JSON..."
+          spellcheck="false"></textarea>
         <div class="json-error" *ngIf="visualizationJsonError">
           <span class="material-icons">error_outline</span>
           {{ visualizationJsonError }}

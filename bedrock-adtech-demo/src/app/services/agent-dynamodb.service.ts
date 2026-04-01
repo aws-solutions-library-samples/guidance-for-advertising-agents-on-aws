@@ -776,6 +776,98 @@ export class AgentDynamoDBService {
   }
 
   // ============================================
+  // A2A Inbound OAuth Credential Management (SSM SecureString)
+  // ============================================
+
+  /**
+   * Build the SSM parameter path for an agent's inbound A2A OAuth credentials.
+   * Format: /{stackPrefix}/a2a-inbound-tokens/{uniqueId}/{agentName}
+   */
+  private getA2AInboundTokenSsmPath(agentName: string): string {
+    return `/${this.stackPrefix}/a2a-inbound-tokens/${this.uniqueId}/${agentName}`;
+  }
+
+  /**
+   * Store inbound A2A OAuth credentials securely in SSM Parameter Store.
+   * These credentials are used by callers to authenticate to this agent's A2A endpoint.
+   * Returns the SSM parameter path on success.
+   */
+  async storeA2AInboundOAuthCredentials(agentName: string, credentials: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2AInboundTokenSsmPath(agentName);
+
+    try {
+      await this.ssmClient.send(new PutParameterCommand({
+        Name: ssmPath,
+        Value: credentials,
+        Type: 'SecureString',
+        Overwrite: true,
+        Description: `Inbound A2A OAuth credentials for agent ${agentName}`
+      }));
+
+      console.log(`✅ AgentDynamoDBService: Stored inbound A2A OAuth credentials at ${ssmPath}`);
+      return ssmPath;
+    } catch (error: any) {
+      const errorMsg = error?.message || error?.name || 'Unknown error';
+      console.error(`❌ AgentDynamoDBService: Failed to store inbound A2A OAuth credentials at ${ssmPath}:`, error);
+      throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission.`);
+    }
+  }
+
+  /**
+   * Retrieve inbound A2A OAuth credentials from SSM Parameter Store.
+   * Returns the decrypted credentials JSON string, or null if not found.
+   */
+  async getA2AInboundOAuthCredentials(agentName: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2AInboundTokenSsmPath(agentName);
+
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({
+        Name: ssmPath,
+        WithDecryption: true
+      }));
+
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        return null;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to retrieve inbound A2A OAuth credentials at ${ssmPath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete inbound A2A OAuth credentials from SSM Parameter Store.
+   */
+  async deleteA2AInboundOAuthCredentials(agentName: string): Promise<boolean> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return false;
+    }
+
+    const ssmPath = this.getA2AInboundTokenSsmPath(agentName);
+
+    try {
+      await this.ssmClient.send(new DeleteParameterCommand({ Name: ssmPath }));
+      console.log(`✅ AgentDynamoDBService: Deleted inbound A2A OAuth credentials at ${ssmPath}`);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        return true;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to delete inbound A2A OAuth credentials at ${ssmPath}:`, error);
+      return false;
+    }
+  }
+
+  // ============================================
   // Visualization Mapping Operations
   // ============================================
 

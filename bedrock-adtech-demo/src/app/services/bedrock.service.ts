@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, from, BehaviorSubject, Subject } from 'rxjs';
 import { AwsConfigService } from './aws-config.service';
 import { AgentConfigService } from './agent-config.service';
+import { AgentDynamoDBService } from './agent-dynamodb.service';
 import { SessionManagerService } from './session-manager.service';
 import { TextUtils } from '../utils/text-utils';
 import type { NodeJsClient, SdkStream, StreamingBlobPayloadOutputTypes } from "@smithy/types";
@@ -156,6 +157,7 @@ export class BedrockService {
   constructor(
     private awsConfig: AwsConfigService,
     private agentConfig: AgentConfigService,
+    private agentDynamoDBService: AgentDynamoDBService,
     private sessionManager: SessionManagerService
   ) {
     this.initializeClient();
@@ -697,10 +699,47 @@ Example format:
         this.lastSessionId = sessionId;
       }
 
+      // Debug: log agent auth properties for routing decisions
+      console.log(`🔀 Agent routing for ${resolvedAgent.name}: is_a2a=${resolvedAgent.is_a2a}, a2a_auth_type=${resolvedAgent.a2a_auth_type}, runtimeArn=${resolvedAgent.runtimeArn ? 'set' : 'unset'}`);
+
+      // Determine the effective auth type — check the enriched agent first,
+      // then fall back to looking up the agent's config directly from the global config
+      // (the enriched agent may not have a2a_auth_type if the deployed agent name
+      // doesn't match the agent_configs key during enrichment)
+      let effectiveAuthType = resolvedAgent.a2a_auth_type;
+      if (!effectiveAuthType || effectiveAuthType === 'none') {
+        try {
+          const globalConfig = this.agentConfig.global_config;
+          if (globalConfig?.agent_configs) {
+            // Search all agent_configs for one matching this agent's name
+            for (const [key, cfg] of Object.entries(globalConfig.agent_configs)) {
+              const agentCfg = cfg as any;
+              if (key === resolvedAgent.name || key === resolvedAgent.agentType ||
+                  agentCfg.agent_name === resolvedAgent.name || agentCfg.agent_id === resolvedAgent.name) {
+                if (agentCfg.a2a_auth_type && agentCfg.a2a_auth_type !== 'none') {
+                  effectiveAuthType = agentCfg.a2a_auth_type;
+                  console.log(`🔀 Found a2a_auth_type=${effectiveAuthType} from agent_configs[${key}] for ${resolvedAgent.name}`);
+                }
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          // Non-fatal — just use the enriched agent's value
+        }
+      }
+
       // Route to A2A JSON-RPC if agent is configured as A2A
       if (resolvedAgent.is_a2a && resolvedAgent.runtimeArn) {
         console.log(`🔗 A2A agent detected: ${resolvedAgent.name}, routing via JSON-RPC to ${resolvedAgent.runtimeArn}`);
         return this.invokeA2aAgentStreamInternal(resolvedAgent, query, observer, sessionId);
+      }
+
+      // Route OAuth-authenticated agents through direct HTTP with bearer token
+      // The AWS SDK always signs with SigV4, which the runtime rejects when configured for OAuth
+      if (effectiveAuthType === 'oauth' && resolvedAgent.runtimeArn) {
+        console.log(`🔑 OAuth agent detected: ${resolvedAgent.name}, routing via OAuth bearer token to ${resolvedAgent.runtimeArn}`);
+        return this.invokeAgentCoreWithOAuth(resolvedAgent, query, observer, sessionId, attachedFiles);
       }
 
       return this.invokeAgentCoreStreamInternal(resolvedAgent, query, observer, sessionId, attachedFiles, resolvedAgent.agentType);
@@ -1963,6 +2002,209 @@ Example format:
   // ============================================
 
   /**
+   * Invoke an AgentCore agent using OAuth bearer token authentication.
+   * Used when an agent has a2a_auth_type: 'oauth' — the AWS SDK always signs
+   * with SigV4, which the runtime rejects when configured for OAuth.
+   * This method makes a direct HTTP POST with a Cognito bearer token.
+   */
+  private async invokeAgentCoreWithOAuth(
+    resolvedAgent: EnrichedAgent,
+    query: string,
+    observer: any,
+    sessionId: string,
+    attachedFiles?: AttachedFile[]
+  ): Promise<void> {
+    const agentName = resolvedAgent.name || resolvedAgent.agentType;
+    try {
+      observer.next({
+        type: 'trace',
+        data: `Authenticating with OAuth for agent: ${agentName}`,
+        timestamp: new Date(),
+        agentName,
+        messageType: 'reasoning'
+      });
+
+      // Step 1: Acquire OAuth bearer token from stored credentials via token endpoint
+      let bearerToken: string | null = null;
+      const namesToTry = [agentName];
+      if (resolvedAgent.agentType && resolvedAgent.agentType !== agentName) {
+        namesToTry.push(resolvedAgent.agentType);
+      }
+      try {
+        const globalConfig = this.agentConfig.global_config;
+        if (globalConfig?.agent_configs) {
+          for (const [key, cfg] of Object.entries(globalConfig.agent_configs)) {
+            const agentCfg = cfg as any;
+            if (key === agentName || key === resolvedAgent.agentType ||
+                agentCfg.agent_name === agentName || agentCfg.agent_id === agentName) {
+              if (key !== agentName && !namesToTry.includes(key)) namesToTry.push(key);
+              if (agentCfg.agent_name && agentCfg.agent_name !== agentName && !namesToTry.includes(agentCfg.agent_name)) {
+                namesToTry.push(agentCfg.agent_name);
+              }
+              break;
+            }
+          }
+        }
+      } catch {}
+
+      console.log(`🔑 Trying credential lookup for names: ${namesToTry.join(', ')}`);
+
+      for (const tryName of namesToTry) {
+        const credentialsJson = await this.agentDynamoDBService.getA2AInboundOAuthCredentials(tryName);
+        if (credentialsJson) {
+          const creds = JSON.parse(credentialsJson);
+          const clientId = creds.client_id;
+          const username = creds.username;
+          const password = creds.password;
+          if (clientId && username && password) {
+            // Cognito IDP REST API — USER_PASSWORD_AUTH flow via direct HTTP
+            const region = this.awsConfig.getRegion();
+            console.log(`🔑 Requesting bearer token from Cognito IDP for ${tryName} (region: ${region})`);
+            const tokenResponse = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-amz-json-1.1',
+                'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
+              },
+              body: JSON.stringify({
+                AuthFlow: 'USER_PASSWORD_AUTH',
+                ClientId: clientId,
+                AuthParameters: { USERNAME: username, PASSWORD: password }
+              })
+            });
+            if (tokenResponse.ok) {
+              const tokenData = await tokenResponse.json();
+              bearerToken = tokenData?.AuthenticationResult?.AccessToken || null;
+              if (bearerToken) {
+                console.log(`✅ OAuth bearer token acquired using name: ${tryName}`);
+                break;
+              }
+            } else {
+              const errText = (await tokenResponse.text()).slice(0, 300);
+              console.warn(`⚠️ Cognito auth failed (${tokenResponse.status}) for ${tryName}: ${errText}`);
+            }
+          }
+        }
+      }
+
+      if (!bearerToken) {
+        throw new Error(`Failed to acquire OAuth bearer token for ${agentName}. Ensure OAuth credentials (Auth Client ID, Username, Password) are stored in the agent's Inbound Authentication settings.`);
+      }
+
+      console.log(`✅ OAuth bearer token acquired for ${agentName}`);
+
+      // Step 2: Build the AgentCore invocation endpoint URL
+      const region = this.awsConfig.getRegion();
+      const runtimeArn = resolvedAgent.runtimeArn!;
+      const encodedArn = encodeURIComponent(runtimeArn);
+      const endpoint = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
+
+      // Step 3: Build the payload (same format as InvokeAgentRuntimeCommand)
+      let userId = 'anonymous';
+      try { userId = (await getCurrentUser()).username || 'anonymous'; } catch {}
+
+      const payload = JSON.stringify({
+        prompt: query,
+        session_id: sessionId,
+        user_id: userId,
+        memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId(),
+        agent_name: agentName,
+        enableStreaming: true,
+        session_metadata: {
+          agent_name: agentName,
+          agent_type: resolvedAgent.agentType,
+          timestamp: new Date().toISOString(),
+          session_id: sessionId,
+          memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId()
+        },
+        context: attachedFiles ? { attachedFiles } : {},
+      });
+
+      // Step 4: Send the request with Bearer token
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerToken}`
+        },
+        body: payload
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AgentCore OAuth invocation failed (${response.status}): ${errorText}`);
+      }
+
+      // Step 5: Process the streaming response
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            try {
+              const event = JSON.parse(trimmed);
+              // Forward the event to the observer using the same format as the standard path
+              observer.next({
+                type: event.type || 'text',
+                data: event.data || event.text || trimmed,
+                timestamp: new Date(),
+                agentName: event.agentName || agentName,
+                messageType: event.messageType || event.type || 'final-response'
+              });
+            } catch {
+              // Non-JSON line — treat as text output
+              if (trimmed.length > 0) {
+                observer.next({
+                  type: 'text',
+                  data: trimmed,
+                  timestamp: new Date(),
+                  agentName,
+                  messageType: 'final-response'
+                });
+              }
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          observer.next({
+            type: 'text',
+            data: buffer.trim(),
+            timestamp: new Date(),
+            agentName,
+            messageType: 'final-response'
+          });
+        }
+      }
+
+      observer.complete();
+    } catch (error: any) {
+      console.error(`❌ OAuth AgentCore invocation error for ${agentName}:`, error);
+      observer.next({
+        type: 'error',
+        data: error.message || 'OAuth authentication failed',
+        timestamp: new Date(),
+        agentName,
+        messageType: 'error'
+      });
+      observer.complete();
+    }
+  }
+
+  /**
    * Invoke an A2A agent using JSON-RPC 2.0 message/send protocol.
    * Used when an agent has is_a2a: true — sends a JSON-RPC request
    * directly to the agent's runtime_arn endpoint instead of using
@@ -1975,8 +2217,14 @@ Example format:
     sessionId: string
   ): Promise<void> {
     try {
-      const endpoint = resolvedAgent.runtimeArn!;
+      const runtimeArn = resolvedAgent.runtimeArn!;
       const agentName = resolvedAgent.name || resolvedAgent.agentType;
+
+      // Construct proper HTTPS endpoint from the ARN
+      // ARN format: arn:aws:bedrock-agentcore:REGION:ACCOUNT:runtime/RUNTIME_ID
+      const region = this.awsConfig.getRegion();
+      const encodedArn = encodeURIComponent(runtimeArn);
+      const endpoint = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
 
       observer.next({
         type: 'trace',
@@ -1986,7 +2234,7 @@ Example format:
         messageType: 'reasoning'
       });
 
-      // Build JSON-RPC 2.0 message/send request
+      // Build JSON-RPC 2.0 message/send request (A2A protocol requires messageId)
       const jsonRpcRequest = {
         jsonrpc: '2.0',
         id: v4(),
@@ -1994,24 +2242,58 @@ Example format:
         params: {
           message: {
             role: 'user',
-            parts: [{ kind: 'text', text: query }]
-          },
-          sessionId: sessionId
+            parts: [{ kind: 'text', text: query }],
+            messageId: v4()
+          }
         }
       };
 
       // Build headers based on auth type
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId
       };
 
       if (resolvedAgent.a2a_auth_type === 'oauth') {
-        // For OAuth, retrieve bearer token from SSM via the agent config service
-        // The token would be stored during agent configuration
-        console.log(`🔑 A2A OAuth auth for ${agentName} — bearer token required`);
-        // TODO: Implement OAuth token retrieval from SSM for browser-side A2A calls
-        // For now, log a warning
-        console.warn(`⚠️ A2A OAuth token retrieval not yet implemented for browser-side calls`);
+        // For A2A agents with OAuth, acquire bearer token via Cognito IDP REST API
+        console.log(`🔑 A2A OAuth auth for ${agentName} — acquiring bearer token`);
+        try {
+          const credentialsJson = await this.agentDynamoDBService.getA2AInboundOAuthCredentials(agentName);
+          if (credentialsJson) {
+            const creds = JSON.parse(credentialsJson);
+            if (creds.client_id && creds.username && creds.password) {
+              const region = this.awsConfig.getRegion();
+              const tokenResponse = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-amz-json-1.1',
+                  'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
+                },
+                body: JSON.stringify({
+                  AuthFlow: 'USER_PASSWORD_AUTH',
+                  ClientId: creds.client_id,
+                  AuthParameters: { USERNAME: creds.username, PASSWORD: creds.password }
+                })
+              });
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json();
+                const accessToken = tokenData?.AuthenticationResult?.AccessToken;
+                if (accessToken) {
+                  headers['Authorization'] = `Bearer ${accessToken}`;
+                  console.log(`✅ A2A OAuth bearer token acquired for ${agentName}`);
+                }
+              } else {
+                console.warn(`⚠️ Cognito auth failed (${tokenResponse.status}) for ${agentName}`);
+              }
+            } else {
+              console.warn(`⚠️ Stored credentials missing client_id/username/password for ${agentName}`);
+            }
+          } else {
+            console.warn(`⚠️ No OAuth credentials found in SSM for ${agentName}`);
+          }
+        } catch (authErr) {
+          console.warn(`⚠️ Failed to acquire OAuth token for A2A call to ${agentName}:`, authErr);
+        }
       } else if (resolvedAgent.a2a_auth_type === 'iam') {
         // For IAM, sign the request with SigV4
         try {

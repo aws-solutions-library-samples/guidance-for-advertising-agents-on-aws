@@ -127,6 +127,13 @@ export interface AgentConfiguration {
   is_a2a?: boolean;
   /** Authentication type for inbound A2A requests to this agent's endpoint */
   a2a_auth_type?: 'none' | 'oauth' | 'iam';
+  /** OAuth credentials for this agent's A2A endpoint (stored in SSM) */
+  a2a_oauth_credentials?: {
+    /** Whether credentials have been stored in SSM Parameter Store */
+    hasCredentials: boolean;
+    /** SSM parameter path for the credentials */
+    ssmPath?: string;
+  };
 }
 
 /**

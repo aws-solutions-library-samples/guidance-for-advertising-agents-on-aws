@@ -377,6 +377,126 @@ $fuchsia-accent: #c300e0;
       }
     }
   }
+
+  // Inbound OAuth credentials section (inside a2a-server-auth-config)
+  .oauth-credentials-config {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    border: 1px solid rgba(229, 231, 235, 0.5);
+
+    .credential-status-indicator {
+      margin-bottom: 12px;
+
+      .credential-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-family: $font-family-ember;
+
+        &.stored {
+          color: #059669;
+          .material-icons { font-size: 18px; }
+        }
+
+        &.not-stored {
+          color: #9ca3af;
+          .material-icons { font-size: 18px; }
+        }
+      }
+    }
+
+    .token-status {
+      .token-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+    }
+
+    .credentials-input-group {
+      .credential-field {
+        margin-bottom: 14px;
+
+        label {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 6px;
+          font-family: $font-family-ember;
+
+          .required { color: #ef4444; }
+        }
+      }
+
+      .token-input-row {
+        display: flex;
+        gap: 8px;
+
+        .form-control {
+          flex: 1;
+        }
+
+        .toggle-visibility-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: white;
+          color: #6b7280;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+
+          &:hover {
+            border-color: rgba($purple-accent, 0.3);
+            color: $purple-accent;
+          }
+
+          .material-icons { font-size: 20px; }
+        }
+      }
+
+      .token-hint {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 8px;
+        margin-bottom: 14px;
+
+        .material-icons { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+      }
+
+      .token-save-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .token-error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 10px;
+        font-size: 12px;
+        color: #dc2626;
+
+        .material-icons { font-size: 16px; }
+      }
+    }
+  }
 }
 
 // Form Controls - Following frontend-styles.md
@@ -602,7 +722,8 @@ $fuchsia-accent: #c300e0;
   .color-palette {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 9px;
+    align-items: center;
   }
 
   .color-swatch {
@@ -844,6 +965,16 @@ $fuchsia-accent: #c300e0;
       cursor: not-allowed;
     }
   }
+
+  &.small {
+    padding: 6px 14px;
+    font-size: 12px;
+    gap: 5px;
+
+    .material-icons {
+      font-size: 14px;
+    }
+  }
 }
 
 // Responsive Design
@@ -879,6 +1010,7 @@ $fuchsia-accent: #c300e0;
   }
 
   .color-picker {
+
     .color-palette {
       justify-content: flex-start;
     }
