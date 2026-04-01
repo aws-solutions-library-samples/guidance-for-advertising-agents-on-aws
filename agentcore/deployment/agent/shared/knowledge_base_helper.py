@@ -59,6 +59,7 @@ class KnowledgeBaseHelper:
         """
         # Discover knowledge bases from AWS
         kb_mapping = self._discover_knowledge_bases_from_aws()
+        logging.info('trying to match kb '+name_pattern)
         if not kb_mapping:
             return None
 
@@ -66,12 +67,12 @@ class KnowledgeBaseHelper:
 
         # Try exact match first
         for kb_name, kb_id in kb_mapping.items():
-            if kb_name.lower() == name_pattern_lower:
+            if kb_name.lower() == name_pattern_lower or kb_id.lower() == name_pattern_lower:
                 return kb_id
 
         # Try partial match
         for kb_name, kb_id in kb_mapping.items():
-            if name_pattern_lower in kb_name.lower():
+            if name_pattern_lower in kb_name.lower() or kb_name.lower() in name_pattern_lower or kb_id in name_pattern_lower:
                 self.logger.info(
                     f"Found knowledge base by pattern '{name_pattern}': {kb_name} -> {kb_id}"
                 )
@@ -347,10 +348,24 @@ class KnowledgeBaseHelper:
             KnowledgeBaseResult: Structured result with sources and formatted content
         """
         try:
-            # Get the knowledge base ID from environment
-            kb_id = os.environ.get("STRANDS_KNOWLEDGE_BASE_ID")
+            # Look up the knowledge base ID from GLOBAL_CONFIG by agent name,
+            # falling back to the STRANDS_KNOWLEDGE_BASE_ID env var
+            kb_id = None
+            if agent:
+                try:
+                    from shared.dynamodb_config_loader import load_global_config
+                    global_config = load_global_config()
+                    if global_config:
+                        kb_id = global_config.get("knowledge_bases", {}).get(agent)
+                        if kb_id:
+                            self.logger.info(f"📚 Resolved KB ID for {agent} from GLOBAL_CONFIG: {kb_id}")
+                except Exception as cfg_err:
+                    self.logger.warning(f"⚠️ Could not load KB ID from GLOBAL_CONFIG for {agent}: {cfg_err}")
+
             if not kb_id:
-                self.logger.error("STRANDS_KNOWLEDGE_BASE_ID not set in environment")
+                kb_id = os.environ.get("STRANDS_KNOWLEDGE_BASE_ID")
+            if not kb_id:
+                self.logger.error(f"No knowledge base ID found for agent '{agent}' in GLOBAL_CONFIG or STRANDS_KNOWLEDGE_BASE_ID env var")
                 return None
 
             # Get the foundation model ARN for generation
@@ -463,7 +478,7 @@ class KnowledgeBaseHelper:
             self.logger.error(f"Error in retrieve_and_generate: {e}")
             import traceback
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
-            None
+            return None
 
     def _parse_retrieve_and_generate_citations(
         self,

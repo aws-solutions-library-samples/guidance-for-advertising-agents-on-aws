@@ -118,14 +118,32 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
                 break
     except Exception as e:
         print(f"⚠️  Could not list knowledge bases: {e}", file=sys.stderr)
-        print("   KB IDs will not be resolved. Values will be uploaded as-is.", file=sys.stderr)
+        print("   Will try .kb-ids file fallback.", file=sys.stderr)
+    
+    # Fallback: also load KB IDs from the .kb-ids file saved during Step 4
+    # This maps base KB names (e.g., "Advertising") directly to their IDs
+    kb_ids_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               '..', f'.kb-ids-{stack_prefix}-{unique_id}.json')
+    kb_base_name_to_id: Dict[str, str] = {}
+    if os.path.exists(kb_ids_file):
+        try:
+            with open(kb_ids_file, 'r') as f:
+                kb_base_name_to_id = json.load(f)
+            print(f"   📂 Loaded {len(kb_base_name_to_id)} KB ID(s) from {os.path.basename(kb_ids_file)}")
+        except Exception as e:
+            print(f"   ⚠️  Could not read KB IDs file: {e}")
+    
+    if not kb_name_to_id and not kb_base_name_to_id:
+        print("   ⚠️  No KB IDs available from API or file. Values will be uploaded as-is.", file=sys.stderr)
         return config
     
     # Resolve each entry in the knowledge_bases map
     resolved_count = 0
     for agent_name, kb_value in list(knowledge_bases_map.items()):
-        # Skip if the value already looks like a KB ID (e.g., "ABCDEF1234")
-        if len(kb_value) >= 10 and kb_value.isalnum():
+        # Skip if the value already looks like a resolved KB ID.
+        # Real Bedrock KB IDs are 10-char uppercase alphanumeric (e.g., "QUHGJKGV0C").
+        # Human-readable names like "Advertising" contain lowercase letters.
+        if len(kb_value) >= 10 and kb_value.isalnum() and kb_value.isupper():
             continue
         
         # Construct the expected deployed KB name
@@ -133,11 +151,17 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
         
         if expected_kb_name in kb_name_to_id:
             real_kb_id = kb_name_to_id[expected_kb_name]
-            print(f"   ✅ {agent_name}: {kb_value} -> {real_kb_id} (via {expected_kb_name})")
+            print(f"   ✅ {agent_name}: {kb_value} -> {real_kb_id} (via Bedrock API: {expected_kb_name})")
+            knowledge_bases_map[agent_name] = real_kb_id
+            resolved_count += 1
+        elif kb_value in kb_base_name_to_id:
+            # Fallback: use the .kb-ids file from Step 4
+            real_kb_id = kb_base_name_to_id[kb_value]
+            print(f"   ✅ {agent_name}: {kb_value} -> {real_kb_id} (via .kb-ids file)")
             knowledge_bases_map[agent_name] = real_kb_id
             resolved_count += 1
         else:
-            print(f"   ⚠️  {agent_name}: KB '{expected_kb_name}' not found in Bedrock, keeping value '{kb_value}'")
+            print(f"   ⚠️  {agent_name}: KB '{expected_kb_name}' not found in Bedrock or .kb-ids file, keeping value '{kb_value}'")
     
     config["knowledge_bases"] = knowledge_bases_map
     
@@ -148,8 +172,8 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
         if not kb_ref:
             continue
         
-        # Skip if already looks like a resolved KB ID
-        if len(kb_ref) >= 10 and kb_ref.isalnum():
+        # Skip if already looks like a resolved KB ID (uppercase alphanumeric, 10+ chars)
+        if len(kb_ref) >= 10 and kb_ref.isalnum() and kb_ref.isupper():
             continue
         
         # If the value matches a deployed KB name pattern already (e.g., "cbi-Advertising-ibc226"),
@@ -164,6 +188,11 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
             if expected_name in kb_name_to_id:
                 agent_cfg["knowledge_base"] = kb_name_to_id[expected_name]
                 print(f"   ✅ agent_configs.{agent_name}.knowledge_base: {kb_ref} -> {kb_name_to_id[expected_name]}")
+                resolved_count += 1
+            elif kb_ref in kb_base_name_to_id:
+                # Fallback: use the .kb-ids file from Step 4
+                agent_cfg["knowledge_base"] = kb_base_name_to_id[kb_ref]
+                print(f"   ✅ agent_configs.{agent_name}.knowledge_base: {kb_ref} -> {kb_base_name_to_id[kb_ref]} (via .kb-ids file)")
                 resolved_count += 1
     
     if resolved_count > 0:

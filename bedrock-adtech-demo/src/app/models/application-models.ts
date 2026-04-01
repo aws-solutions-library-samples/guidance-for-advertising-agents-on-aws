@@ -230,6 +230,10 @@ export interface EnrichedAgent {
   // Team organization
   teamName?: string; // Team this agent belongs to
   orchestratorAgent?: string; // For collaborators, which agent orchestrates them
+
+  // A2A protocol support
+  is_a2a?: boolean; // Whether this agent uses A2A JSON-RPC protocol
+  a2a_auth_type?: 'none' | 'oauth' | 'iam'; // Auth type for A2A endpoint
 }
 
 export interface TabConfiguration {

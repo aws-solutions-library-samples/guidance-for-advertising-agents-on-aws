@@ -346,7 +346,7 @@ Execute the following command with the appropriate variables:
 ```bash
 # Deploy with required configurations. REVIEW and UPDATE the variables as needed
 ./scripts/deploy-ecosystem.sh \
-  --stack-prefix agnt4ad \
+  --stack-prefix a4a \
   --region us-east-1 \
   --profile agnts4ad \
   --demo-email user@example.com \
@@ -366,7 +366,7 @@ The deployment script automatically handles:
 - **Phase 10**: Generate UI configuration
 - **Phase 11**: Warm up agent runtimes
 
-If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-agnt4ad-us-east-1`. The name of the file depends on stack-prefix and region.
+If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-a4a-us-east-1`. The name of the file depends on stack-prefix and region.
 
 ```bash
 # ReDeploy with required configurations. REVIEW and UPDATE the variables as needed. Refer to list below for resume-at phase description
@@ -383,7 +383,7 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 11: Warm up agent runtimes
 
 ./scripts/deploy-ecosystem.sh \
-  --stack-prefix agnt4ad \
+  --stack-prefix a4a \
   --region us-east-1 \
   --profile agnts4ad \
   --demo-email user@example.com \
@@ -410,7 +410,7 @@ Your script will conclude with details about the URL for the Angular UI, as well
 ```bash
 # Get CloudFront URL
 aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --query 'Stacks[0].Outputs[?OutputKey==`UIUrl`].OutputValue' \
   --output text \
@@ -418,14 +418,14 @@ aws cloudformation describe-stacks \
 
 # Get demo user credentials
 aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --query 'Stacks[0].Outputs[?OutputKey==`DemoUserEmail`].OutputValue' \
   --output text \
   --profile agnts4ad
 
 aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --query 'Stacks[0].Outputs[?OutputKey==`DemoUserPassword`].OutputValue' \
   --output text \
@@ -467,7 +467,7 @@ aws bedrock-agent list-knowledge-bases \
 ```bash
 # Check CloudFront distribution status
 aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --profile agnts4ad \
   --query 'Stacks[0].Outputs[?OutputKey==`UIUrl`].OutputValue' \
@@ -475,7 +475,7 @@ aws cloudformation describe-stacks \
 
 # Verify demo user creation
 aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --profile agnts4ad \
   --query 'Stacks[0].Outputs[?OutputKey==`DemoUserEmail`].OutputValue' \
@@ -610,7 +610,7 @@ aws cloudwatch put-metric-alarm \
 ```bash
 # Get User Pool ID
 USER_POOL_ID=$(aws cloudformation describe-stacks \
-  --stack-name agnt4ad-infrastructure-core \
+  --stack-name a4a-infrastructure-core \
   --region us-east-1 \
   --profile agnts4ad \
   --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
@@ -672,7 +672,7 @@ aws cognito-idp admin-create-user \
   ```bash
   # Upload local agent configs to DynamoDB
   python scripts/upload_agent_configs_to_dynamodb.py \
-    --stack-prefix agnt4ad \
+    --stack-prefix a4a \
     --region us-east-1 \
     --profile agnts4ad
 
@@ -729,14 +729,14 @@ aws cognito-idp admin-create-user \
   ```bash
   # Deploy AdCP Gateway manually
   python agentcore/deployment/deploy_adcp_gateway.py \
-    --stack-prefix agnt4ad \
+    --stack-prefix a4a \
     --unique-id abc123 \
     --region us-east-1 \
     --profile agnts4ad
 
   # Deploy only Lambda target to existing gateway
   python agentcore/deployment/deploy_adcp_gateway.py \
-    --stack-prefix agnt4ad \
+    --stack-prefix a4a \
     --unique-id abc123 \
     --region us-east-1 \
     --profile agnts4ad \
@@ -765,7 +765,7 @@ aws cognito-idp admin-create-user \
   ```bash
   # Test Lambda function directly
   aws lambda invoke \
-    --function-name agnt4ad-adcp-handler-abc123 \
+    --function-name a4a-adcp-handler-abc123 \
     --payload '{"tool_name": "get_products", "arguments": {"channels": ["ctv"]}}' \
     --region us-east-1 \
     --profile agnts4ad \
@@ -845,7 +845,7 @@ aws cognito-idp admin-create-user \
   ```bash
   # Redeploy knowledge bases with new data
   ./scripts/deploy-ecosystem.sh \
-    --stack-prefix agnt4ad \
+    --stack-prefix a4a \
     --region us-east-1 \
     --profile agnts4ad \
     --resume-at 4 \
@@ -866,7 +866,7 @@ aws cognito-idp admin-create-user \
   - Or edit `synthetic_data/configs/tab-configurations.json` and re-run the DynamoDB upload script:
   ```bash
   python scripts/upload_configs_to_dynamodb.py \
-    --stack-prefix agnt4ad \
+    --stack-prefix a4a \
     --region us-east-1 \
     --profile agnts4ad
   ```
@@ -895,7 +895,7 @@ aws cognito-idp admin-create-user \
   ```bash
   cd scripts
   ./scripts/deploy-ecosystem.sh \
-      --stack-prefix agnt4ad \
+      --stack-prefix a4a \
       --region us-east-1 \
       --profile agnts4ad \
       --resume-at 10
@@ -1058,7 +1058,7 @@ The deployment script includes comprehensive cleanup functionality:
 # Cleanup with stack-specific parameters
 ./scripts/deploy-ecosystem.sh \
   --cleanup \
-  --stack-prefix agnt4ad \
+  --stack-prefix a4a \
   --region us-east-1 \
   --profile agnts4ad \ 
   --unique-id 12sek1
@@ -1089,10 +1089,10 @@ aws cloudformation list-stacks \
   --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
   --region us-east-1 \
   --profile agnts4ad \
-  --query 'StackSummaries[?contains(StackName, `agnt4ad`)].StackName'
+  --query 'StackSummaries[?contains(StackName, `a4a`)].StackName'
 
 # Check S3 buckets
-aws s3 ls --profile agnts4ad | grep agnt4ad
+aws s3 ls --profile agnts4ad | grep a4a
 
 # Check ECR repositories
 aws ecr describe-repositories --region us-east-1 --profile agnts4ad | grep agentcore
@@ -1104,7 +1104,7 @@ aws bedrock-agentcore-control list-agent-runtimes --region us-east-1 --profile a
 aws bedrock-agentcore-control list-gateways \
   --region us-east-1 \
   --profile agnts4ad \
-  --query 'items[?contains(name, `agnt4ad`)]'
+  --query 'items[?contains(name, `a4a`)]'
 
 # Check AdCP Lambda functions
 aws lambda list-functions \
@@ -1138,7 +1138,7 @@ aws bedrock-agentcore-control list-gateways \
   --profile agnts4ad
 
 # 2. List and delete gateway targets first
-GATEWAY_ID="agnt4ad-adcp-gateway-abc123-xxxxxxxxxx"
+GATEWAY_ID="a4a-ads-gw-abc123-xxxxxxxxxx"
 aws bedrock-agentcore-control list-gateway-targets \
   --gateway-identifier $GATEWAY_ID \
   --region us-east-1 \
@@ -1159,12 +1159,12 @@ aws bedrock-agentcore-control delete-gateway \
 
 # 4. Delete the Lambda function
 aws lambda delete-function \
-  --function-name agnt4ad-adcp-handler-abc123 \
+  --function-name a4a-adcp-handler-abc123 \
   --region us-east-1 \
   --profile agnts4ad
 
 # 5. Delete the IAM role (detach policies first)
-ROLE_NAME="agnt4ad-adcp-lambda-role-abc123"
+ROLE_NAME="a4a-adcp-lambda-role-abc123"
 aws iam detach-role-policy \
   --role-name $ROLE_NAME \
   --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -1172,7 +1172,7 @@ aws iam delete-role --role-name $ROLE_NAME
 
 # 6. Delete SSM parameter
 aws ssm delete-parameter \
-  --name "/agnt4ad/adcp_gateway/abc123" \
+  --name "/a4a/adcp_gateway/abc123" \
   --region us-east-1 \
   --profile agnts4ad
 ```

@@ -261,9 +261,11 @@ export class AgentConfigService implements OnInit {
             key: agentKey,
             sessionId: '',
             teamName: config.team_name || 'Unknown Team',
-            runtimeArn: defaultRuntimeArn,
+            runtimeArn: config.runtime_arn || defaultRuntimeArn,
             runtimeId: defaultRuntimeId,
-            runtimeName: defaultRuntimeName
+            runtimeName: defaultRuntimeName,
+            is_a2a: config.is_a2a || false,
+            a2a_auth_type: config.a2a_auth_type || 'none'
           };
 
           enrichedAgents.push(existingOrchestrator);
@@ -334,6 +336,15 @@ export class AgentConfigService implements OnInit {
             mainAgent.runtimeArn = defaultRuntimeArn;
             mainAgent.runtimeId = mainAgent.runtimeId || defaultRuntimeId;
             mainAgent.runtimeName = mainAgent.runtimeName || defaultRuntimeName;
+          }
+          // Apply A2A protocol settings from agent config
+          if (config.is_a2a) {
+            mainAgent.is_a2a = true;
+            mainAgent.a2a_auth_type = config.a2a_auth_type || 'none';
+          }
+          // Override runtime_arn from agent config if set (A2A agents may have their own endpoint)
+          if (config.runtime_arn) {
+            mainAgent.runtimeArn = config.runtime_arn;
           }
         }
       }

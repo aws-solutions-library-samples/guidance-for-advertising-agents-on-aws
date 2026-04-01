@@ -96,10 +96,10 @@ class AdCPGatewayDeployer:
                 logger.error("No profile was specified. Pass --profile <profile_name> or set AWS_PROFILE environment variable.")
             raise
         
-        self.gateway_name = f"{stack_prefix}-adcp-gateway-{unique_id}"
+        self.gateway_name = f"{stack_prefix}-ads-gw-{unique_id}"
         self.lambda_name = f"{stack_prefix}-adcp-handler-{unique_id}"
         self.role_name = f"{stack_prefix}-adcp-lambda-role-{unique_id}"
-        self.gateway_role_name = f"{stack_prefix}-adcp-gateway-role-{unique_id}"
+        self.gateway_role_name = f"{stack_prefix}-ads-gw-role-{unique_id}"
         self.invoke_role_name = f"{stack_prefix}-adcp-invoke-role-{unique_id}"
         self._session = session
         

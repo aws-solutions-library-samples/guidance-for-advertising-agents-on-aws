@@ -92,7 +92,7 @@ aws-exports.js
 .runtime*
 .memory*
 .appsync*
-.adcp-gateway*
+.ads-gw*
 
 # CloudFormation and CDK
 *.zip
@@ -168,6 +168,11 @@ scripts/recreate_agent_v2.py
 scripts/generate_voiceover.py
 docs/DEMO_SCRIPT.md
 docs/demo_voiceover.mp3
+demo-guides
+.adcp-gateway*
+docs/agents_for_advertising_demo.mov
+docs/demo.mov
+agentcore/deployment/agent/Dockerfile
 .ads-gw*
 docs/agents_for_advertising_demo.mov
 docs/demo.mov

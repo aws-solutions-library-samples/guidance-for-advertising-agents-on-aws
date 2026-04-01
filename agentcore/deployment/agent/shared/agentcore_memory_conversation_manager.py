@@ -92,7 +92,8 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             
         self.memory_id = memory_id
         self.actor_id = actor_id
-        self.session_id = session_id
+        # AgentCore Memory enforces a 100-char max on sessionId
+        self.session_id = session_id[:100] if session_id else session_id
         self.region_name = region_name or os.environ.get("AWS_REGION", "us-east-1")
         self.max_turns_to_retrieve = max_turns_to_retrieve
         self.auto_persist = auto_persist
@@ -353,6 +354,8 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             actor_id: New actor identifier
             session_id: New session identifier
         """
+        # AgentCore Memory enforces a 100-char max on sessionId
+        session_id = session_id[:100] if session_id else session_id
         if actor_id != self.actor_id or session_id != self.session_id:
             old_actor_id = self.actor_id
             old_session_id = self.session_id

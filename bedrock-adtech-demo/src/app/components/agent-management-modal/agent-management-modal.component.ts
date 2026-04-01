@@ -123,6 +123,10 @@ export interface AgentConfiguration {
   knowledge_base?: string;
   /** Structured external A2A agent configurations */
   external_agent_configs?: ExternalAgentConfig[];
+  /** Whether this agent is exposed via the A2A JSON-RPC protocol (defaults to false) */
+  is_a2a?: boolean;
+  /** Authentication type for inbound A2A requests to this agent's endpoint */
+  a2a_auth_type?: 'none' | 'oauth' | 'iam';
 }
 
 /**
@@ -498,6 +502,26 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
         }
       }
 
+      // Ensure model_inputs is keyed by agent_name (backend looks up model config by agent_name)
+      // The "default" key is not recognized by the runtime — it expects the agent's own name as the key.
+      if (agent.model_inputs && agent.agent_name) {
+        const hasAgentNameKey = agent.model_inputs[agent.agent_name];
+        if (!hasAgentNameKey) {
+          // Move "default" entry (or first available entry) to agent_name key
+          const defaultInputs = agent.model_inputs['default'] || agent.model_inputs[Object.keys(agent.model_inputs)[0]];
+          if (defaultInputs) {
+            agent.model_inputs[agent.agent_name] = defaultInputs;
+            // Keep "default" as well for backward compatibility
+          }
+        }
+      }
+
+      // Ensure team_name is set — an empty team_name prevents collaborator agent resolution
+      // in the chat streaming handler (the lookup is skipped when teamName is falsy)
+      if (!agent.team_name?.trim()) {
+        agent.team_name = agent.agent_display_name || agent.agent_name || 'Default Team';
+      }
+
       // Save agent to DynamoDB
       // Validates: Requirement 4.5 - Save new agent to DynamoDB
       const success = await this.agentDynamoDBService.saveAgent(agent);
@@ -641,7 +665,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   /**
    * Creates an empty agent configuration with default values
    * Validates: Requirement 4.3 - Default values for optional fields:
-   * - model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0' (default model)
+   * - model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0' (default model)
    * - max_tokens: 8000
    * - temperature: 0.3
    * - agent_tools: empty array
@@ -658,7 +682,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       external_agents: [],
       model_inputs: {
         default: {
-          model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+          model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
           max_tokens: 8000,      // Validates: Requirement 4.3 - default max_tokens
           temperature: 0.3       // Validates: Requirement 4.3 - default temperature
         }

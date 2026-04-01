@@ -1267,21 +1267,16 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.hasCheckedSession) return;
     
     // Check if this tab has already been initialized this page load (prevents duplicate calls across component re-renders)
-    if (this.sessionManager.hasTabBeenInitialized(this.tabId)) {
-      console.log(`⚠️ Tab ${this.tabId} already initialized this page load, skipping session check`);
-      this.hasCheckedSession = true;
+    if (this.hasCheckedSession) {
+      console.log(`⚠️ Tab ${this.tabId} already checked this page load, skipping session check`);
       return;
     }
     
     this.hasCheckedSession = true;
-    this.sessionManager.markTabAsInitialized(this.tabId);
 
     try {
-      const loginId = this.currentUser?.signInDetails?.loginId;
-      const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
-      
-      // Get existing sessions for this tab
-      const sessions = this.sessionManager.getTabSessions(loginId, customerName, this.tabId);
+      // Get existing sessions (no tab-specific filtering)
+      const sessions = this.sessionManager.getSessions();
       
       if (sessions.length > 0) {
         // Found existing session(s) - get the most recent one
@@ -1357,10 +1352,7 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   onContinueSession(session: SessionInfo): void {
     // Switch to the existing session
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    const customerName = this.demoTrackingService.getCurrentCustomer() || undefined;
-    
-    this.sessionManager.switchSession(session.sessionId, loginId, customerName, this.tabId);
+    this.sessionManager.switchSession(session.sessionId);
     this.showSessionPrompt = false;
     
     // Notify chat interface to load the session

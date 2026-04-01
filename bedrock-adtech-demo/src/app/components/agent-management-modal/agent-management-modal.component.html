@@ -34,7 +34,7 @@
             <span class="material-icons">arrow_back</span>
             Cancel
           </button>
-          <button class="nova-button primary" (click)="editorPanel?.handleSave()" [disabled]="isLoading">
+          <button class="nova-button primary" (click)="editorPanel.handleSave()" [disabled]="isLoading">
             <span class="material-icons">save</span>
             {{ isLoading ? 'Saving...' : 'Save Agent' }}
           </button>
@@ -98,7 +98,10 @@
                 <span class="material-icons">smart_toy</span>
               </div>
               <div class="agent-info">
-                <span class="agent-name">{{ agent.agent_display_name }}</span>
+                <span class="agent-name">
+                  {{ agent.agent_display_name }}
+                  <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
+                </span>
                 <span class="agent-team">{{ agent.team_name }}</span>
               </div>
               <div class="agent-actions">
@@ -575,12 +578,19 @@
 
           <!-- OAuth Credentials Config -->
           <div class="oauth-credentials-config" *ngIf="editorPanel.getA2aAuthType(a2aAgent) === 'oauth'">
-            <!-- Credentials already stored — show status -->
-            <div class="token-status" *ngIf="(a2aAgent.oauthCredentials?.hasCredentials || a2aAgent.oauthToken?.hasToken) && !editorPanel.a2aOAuthCredentialsEditing">
-              <div class="token-configured-badge">
+            <!-- Credential status indicator -->
+            <div class="credential-status-indicator" *ngIf="!editorPanel.a2aOAuthCredentialsEditing && !editorPanel.a2aOAuthCredentialsPending">
+              <div class="credential-status stored" *ngIf="a2aAgent.oauthCredentials?.hasCredentials || a2aAgent.oauthToken?.hasToken">
                 <span class="material-icons">check_circle</span>
-                <span>OAuth credentials configured</span>
+                <span>Credentials stored</span>
               </div>
+              <div class="credential-status not-stored" *ngIf="!a2aAgent.oauthCredentials?.hasCredentials && !a2aAgent.oauthToken?.hasToken">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>Not stored</span>
+              </div>
+            </div>
+            <!-- Credentials already stored — show actions -->
+            <div class="token-status" *ngIf="(a2aAgent.oauthCredentials?.hasCredentials || a2aAgent.oauthToken?.hasToken) && !editorPanel.a2aOAuthCredentialsEditing">
               <div class="token-actions">
                 <button class="nova-button secondary small" (click)="editorPanel.a2aOAuthCredentialsEditing = true">
                   <span class="material-icons">edit</span> Update

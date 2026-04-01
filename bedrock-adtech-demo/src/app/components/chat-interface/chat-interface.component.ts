@@ -2048,11 +2048,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // Initialize session with user information
   private initializeSession(): void {
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    const customerName = this.demoTrackingService.getCurrentCustomer();
-
-    const sessionInfo = this.sessionManager.initializeSession(loginId, customerName,this.tabId);
-    console.log(`💬 Chat Interface initialized session: ${sessionInfo.sessionId}`);
+    this.currentSessionInfo = this.sessionManager.getOrCreateSession();
+    console.log(`💬 Chat Interface initialized session: ${this.currentSessionInfo.sessionId}`);
   }
 
 
@@ -2400,9 +2397,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // Get current session ID from session manager
   private getCurrentSessionId(): string {
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    const customerName = this.demoTrackingService.getCurrentCustomer();
-    return this.sessionManager.getCurrentSessionId(loginId, customerName);
+    return this.sessionManager.getOrCreateSession().sessionId;
   }
 
   // Helper method to create a hash of message content for duplicate detection
@@ -6654,13 +6649,16 @@ ${formattedJson}
 
   /**
    * Handle agent routing from a Nova Sonic tool-use event.
-   * Resolves the EnrichedAgent by name and invokes it with the transcribed query.
+   * Resolves the EnrichedAgent by name and invokes it directly via getAgentResponse.
+   * The user's voice transcript was already added as a user message in the
+   * final-transcript handler, so we skip sendMessage (which would add a duplicate)
+   * and call getAgentResponse directly — the same path the text chat uses.
+   *
+   * stopVoiceRecording() is already called by the turn-complete handler before
+   * this method is invoked, so we don't call it again here.
    */
   private handleVoiceAgentRouting(agentName: string, query: string): void {
     console.log(`🎤 Voice routing: agent="${agentName}", query="${query.substring(0, 80)}..."`);
-
-    // Stop the voice session first
-    this.stopVoiceRecording();
 
     // Resolve the EnrichedAgent from the available agents list
     const resolvedAgent = this.agentConfig.getAgent(agentName);
@@ -6671,16 +6669,19 @@ ${formattedJson}
       return;
     }
 
-    console.log(`🎤 Voice routing: Resolved to "${resolvedAgent.name}" (display: "${resolvedAgent.displayName}")`);
+    console.log(`🎤 Voice routing: Resolved to "${resolvedAgent.name}" (display: "${resolvedAgent.displayName}"). Invoking agent directly.`);
 
-    // Prepend @[AgentName] to the query so the existing sendMessage flow
-    // picks up the agent mention via parseAgentMentions and sets
-    // directMentionTarget correctly in invokeAgentWithStreaming.
-    // This mirrors how a user types "@[AgentName] ..." or how scenarios invoke agents.
-    const agentMentionName = resolvedAgent.name || agentName;
-    this.currentMessage = `@[${agentMentionName}] ${query}`;
+    // Track the agent for future messages
+    this.lastAgent = resolvedAgent;
+    this.selectedAgentForMessage = resolvedAgent;
+
+    // Clear the input field
+    this.currentMessage = '';
     this.changeDetectorRef.detectChanges();
-    this.sendMessage(resolvedAgent);
+    console.log(query)
+    // Invoke the agent directly — the user message already exists from the
+    // final-transcript handler, so we go straight to getAgentResponse.
+    this.getAgentResponse(query, resolvedAgent);
   }
 
   /**
@@ -8037,10 +8038,7 @@ This analysis shows the impact of weather on audience behavior.`;
 
   // Session management methods
   loadAvailableSessions(): void {
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
-    const tabId = this.contextData?.tabContext?.id || this.contextData?.tabId || this.tabConfig?.id;
-    this.availableSessions = this.sessionManager.getTabSessions(loginId, customerName, tabId);
+    this.availableSessions = this.sessionManager.getSessions();
   }
 
   toggleSessionsPanel(): void {
@@ -8056,20 +8054,10 @@ This analysis shows the impact of weather on audience behavior.`;
     this.showSessionsPanel = false;
   }
 
-  // Track if session creation is in progress to prevent duplicate calls
-  private isCreatingSession = false;
-
   /**
-   * Refresh session — forces creation of a new session, bypassing the tab-initialized guard.
+   * Refresh session — forces creation of a new session and clears all state.
    */
   refreshSession(): void {
-    this.sessionManager.markTabAsInitialized(this.tabId); // ensure it's marked
-    // Reset the guard so createNewSession doesn't short-circuit
-    this.isCreatingSession = false;
-    // Temporarily un-mark the tab so createNewSession proceeds
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    const customerName = this.demoTrackingService.getCurrentCustomer() || 'default';
-
     // Clear messages and state directly, then create fresh session
     this.messages = [{
       id: '1',
@@ -8091,7 +8079,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.agentConfig.clearAgentColorCache();
     this.shouldScrollToBottom = true;
 
-    const newSession = this.sessionManager.createNewSession(loginId, customerName, this.tabId);
+    const newSession = this.sessionManager.forceNewSession();
     this.currentSessionInfo = newSession;
     this.loadAvailableSessions();
     this.changeDetectorRef.markForCheck();
@@ -8099,35 +8087,6 @@ This analysis shows the impact of weather on audience behavior.`;
   }
 
   createNewSession(): void {
-    // Prevent duplicate session creation within the same component instance
-    if (this.isCreatingSession) {
-      console.log('⚠️ Session creation already in progress, skipping duplicate call');
-      return;
-    }
-    
-    // Additional check: verify this tab hasn't already had a session created this page load
-    // This catches cases where component is destroyed and recreated
-    if (this.sessionManager.hasTabBeenInitialized(this.tabId)) {
-      // Check if we already have a current session for this tab
-      const loginId = this.currentUser?.signInDetails?.loginId;
-      const customerName = this.demoTrackingService.getCurrentCustomer() || 'default';
-      const existingSessions = this.sessionManager.getTabSessions(loginId, customerName, this.tabId);
-      
-      if (existingSessions.length > 0) {
-        console.log(`⚠️ Tab ${this.tabId} already initialized with session, using existing: ${existingSessions[0].sessionId}`);
-        this.currentSessionInfo = existingSessions[0];
-        this.loadAvailableSessions();
-        this.changeDetectorRef.markForCheck();
-        return;
-      }
-    }
-    
-    this.isCreatingSession = true;
-
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
-    console.log("TAB DATA",this.contextData)
-
     // Clear current messages
     this.messages = [{
       id: '1',
@@ -8151,12 +8110,9 @@ This analysis shows the impact of weather on audience behavior.`;
     this.agentConfig.clearAgentColorCache();
     this.shouldScrollToBottom = true;
 
-    // Create new session
-    const newSession = this.sessionManager.createNewSession(loginId, customerName, this.tabId);
+    // Create new session via forceNewSession
+    const newSession = this.sessionManager.forceNewSession();
     this.currentSessionInfo = newSession;
-    
-    // Mark this tab as initialized to prevent duplicate session creation on re-renders
-    this.sessionManager.markTabAsInitialized(this.tabId);
 
     // Refresh available sessions
     this.loadAvailableSessions();
@@ -8168,20 +8124,11 @@ This analysis shows the impact of weather on audience behavior.`;
     this.changeDetectorRef.markForCheck();
 
     console.log(`🆕 Created new session: ${newSession.sessionId}`);
-
-    // Reset the flag after a short delay to allow for legitimate new session requests
-    this.safeSetTimeout(() => {
-      this.isCreatingSession = false;
-    }, 500);
   }
 
   switchToSession(sessionId: string): void {
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
-    const tabId = this.contextData?.tabContext?.id || this.contextData?.tabId || this.tabConfig?.id;
-
     // Switch to the selected session
-    const session = this.sessionManager.switchSession(sessionId, loginId, customerName, tabId);
+    const session = this.sessionManager.switchSession(sessionId);
     if (session) {
       // Clear current messages (they'll be loaded from the new session context)
       this.messages = [];
@@ -8226,21 +8173,17 @@ This analysis shows the impact of weather on audience behavior.`;
       return;
     }
 
-    const loginId = this.currentUser?.signInDetails?.loginId;
-    let customerName: string = this.demoTrackingService.getCurrentCustomer() ? this.demoTrackingService.getCurrentCustomer() as string : 'default';
-    const tabId = this.contextData?.tabContext?.id || this.contextData?.tabId || this.tabConfig?.id;
+    // Delete the session (service auto-creates new if it was active)
+    this.sessionManager.deleteSession(sessionId);
 
-    // Delete the session
-    this.sessionManager.deleteSession(sessionId, loginId, customerName, tabId);
-
-    // If we deleted the current session, create a new one
+    // If we deleted the current session, update local state
     if (this.currentSessionInfo?.sessionId === sessionId) {
-      this.createNewSession();
-    } else {
-      // Just refresh the available sessions
-      this.loadAvailableSessions();
-      this.changeDetectorRef.markForCheck();
+      this.currentSessionInfo = this.sessionManager.getOrCreateSession();
     }
+
+    // Refresh the available sessions
+    this.loadAvailableSessions();
+    this.changeDetectorRef.markForCheck();
 
     console.log(`🗑️ Deleted session: ${sessionId}`);
   }

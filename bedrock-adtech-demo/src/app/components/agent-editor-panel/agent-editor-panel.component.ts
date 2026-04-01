@@ -197,13 +197,15 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.editingAgent.injectable_values = this.editingAgent.injectable_values || {};
       this.editingAgent.mcp_servers = this.editingAgent.mcp_servers || [];
       this.editingAgent.external_agent_configs = this.editingAgent.external_agent_configs || [];
+      this.editingAgent.is_a2a = this.editingAgent.is_a2a ?? false;
+      this.editingAgent.a2a_auth_type = this.editingAgent.a2a_auth_type || 'none';
       this.editingAgent.runtime_arn = this.editingAgent.runtime_arn || '';
       this.editingAgent.knowledge_base = this.editingAgent.knowledge_base || '';
       this.editingAgent.instructions = this.editingAgent.instructions || '';
 
       if (!this.editingAgent.model_inputs || Object.keys(this.editingAgent.model_inputs).length === 0) {
         this.editingAgent.model_inputs = {
-          default: { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }
+          default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
         };
       }
 
@@ -271,10 +273,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       agent_id: '', agent_name: '', agent_display_name: '', team_name: '',
       agent_description: '', tool_agent_names: [], external_agents: [],
       model_inputs: {
-        default: { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
       },
       agent_tools: [], injectable_values: {}, instructions: '', color: '#6842ff',
-      mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: ''
+      mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: '',
+      is_a2a: false,
+      a2a_auth_type: 'none'
     };
   }
 
@@ -331,6 +335,15 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.validationErrors.set('temperature', 'Temperature is required');
       } else if (modelInputs.temperature < 0 || modelInputs.temperature > 1) {
         this.validationErrors.set('temperature', 'Temperature must be between 0 and 1');
+      }
+    }
+
+    // Validate external A2A agent ARNs are non-empty
+    if (this.editingAgent.external_agent_configs?.length) {
+      const emptyArnAgents = this.editingAgent.external_agent_configs
+        .filter(agent => !agent.arn?.trim());
+      if (emptyArnAgents.length > 0) {
+        this.validationErrors.set('external_agent_arn', `${emptyArnAgents.length} external A2A agent(s) missing ARN`);
       }
     }
 
@@ -401,14 +414,14 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   updateModelInput(field: 'model_id' | 'max_tokens' | 'temperature', value: string | number): void {
     if (!this.editingAgent.model_inputs) {
       this.editingAgent.model_inputs = {
-        default: { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
       };
     }
     let key = 'default';
     if (!this.editingAgent.model_inputs['default']) {
       const keys = Object.keys(this.editingAgent.model_inputs);
       if (keys.length > 0) { key = keys[0]; }
-      else { this.editingAgent.model_inputs['default'] = { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }; }
+      else { this.editingAgent.model_inputs['default'] = { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }; }
     }
     (this.editingAgent.model_inputs[key] as any)[field] = value;
   }
@@ -836,7 +849,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       arn: '',
       isA2A: true,
       description: '',
-      enabled: true
+      enabled: true,
+      authType: 'none'
     };
     this.editingAgent.external_agent_configs.push(newAgent);
     this.openA2aAgentEditor(this.editingAgent.external_agent_configs.length - 1);
@@ -848,9 +862,16 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       // Clean up SSM token if it exists
       if (agent?.oauthToken?.hasToken && this.editingAgent.agent_name) {
         this.agentDynamoDBService.deleteA2AOAuthToken(this.editingAgent.agent_name, agent.id).catch(err => {
-          console.error('Error cleaning up A2A token on remove:', err);
+          console.warn('⚠️ Failed to clean up A2A OAuth token on remove:', err);
         });
       }
+      // Clean up SSM credentials if they exist
+      if (agent?.oauthCredentials?.hasCredentials && this.editingAgent.agent_name) {
+        this.agentDynamoDBService.deleteA2AOAuthToken(this.editingAgent.agent_name, agent.id).catch(err => {
+          console.warn('⚠️ Failed to clean up A2A OAuth credentials on remove:', err);
+        });
+      }
+      // Always remove from UI regardless of SSM cleanup outcome
       this.editingAgent.external_agent_configs.splice(index, 1);
     }
   }

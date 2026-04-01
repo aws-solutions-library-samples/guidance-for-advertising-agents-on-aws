@@ -73,6 +73,8 @@ export class NovaSonicService {
   private audioContentId = '';
   private pendingToolContentName = '';  // Track the content name for tool-use result responses
   private pendingToolUse: { toolUseId: string; agentName: string; query: string } | null = null;  // Stash tool-use until contentEnd
+  private toolResultSent = false;  // True after we send a tool result back on the stream
+  private awaitingPostToolResponse = false;  // True while waiting for the model's post-tool spoken response to finish
 
   constructor(private awsConfig: AwsConfigService) {
     this.initializeClient();
@@ -111,13 +113,23 @@ export class NovaSonicService {
   /**
    * Build an AgentToolDefinition from a list of agent cards retrieved from AgentDynamoDBService.
    * Constructs a route_to_agent tool with an enum of all agent names and their descriptions.
+   * Filters out orchestrator/router agents (e.g. AdFabricAgent) so Nova Sonic itself acts as the router.
    */
   buildAgentToolDefinition(agents: AgentConfiguration[]): AgentToolDefinition {
+    // Names of orchestrator/router agents that should NOT appear in the tool enum.
+    // Nova Sonic replaces these — it IS the router.
+    const ORCHESTRATOR_AGENTS = new Set([
+      'adfabricagent',
+    ]);
+
     // Agent cards from DynamoDB may use agent_name/agent_description or name/description
     const validAgents = agents.filter(a => {
       const name = a.agent_name || (a as any).name || '';
       const desc = a.agent_description || (a as any).description || '';
-      return name && desc;
+      if (!name || !desc) return false;
+      // Exclude orchestrator agents
+      if (ORCHESTRATOR_AGENTS.has(name.toLowerCase())) return false;
+      return true;
     });
 
     if (validAgents.length === 0) {
@@ -231,11 +243,13 @@ export class NovaSonicService {
         return;
       }
 
+      // Nova Sonic is only available in us-east-1
       this.bedrockRuntimeClient = new BedrockRuntimeClient({
-        region: awsConfig.region,
+        region: 'us-east-1',
         credentials: awsConfig.credentials
       });
       this.clientInitialized = true;
+      console.log('NovaSonicService: Client initialized with region us-east-1 (Nova Sonic only available here)');
     } catch (error) {
       console.error('NovaSonicService: Error setting up client:', error);
     }
@@ -563,6 +577,11 @@ export class NovaSonicService {
           } else if (role === 'ASSISTANT') {
             // This is the model's text response
             this.emitEvent({ type: 'text-response', text: content, timestamp: new Date() });
+            // If we already processed a tool-use cycle, the model is now giving its
+            // spoken acknowledgement. Mark that we're waiting for this response to finish.
+            if (this.toolResultSent) {
+              this.awaitingPostToolResponse = true;
+            }
           }
         }
 
@@ -601,6 +620,23 @@ export class NovaSonicService {
             const { toolUseId, agentName, query } = this.pendingToolUse;
             this.sendToolResult(toolUseId, agentName, query);
             this.pendingToolUse = null;
+            this.toolResultSent = true;
+          }
+
+          // Detect end of the post-tool-result response.
+          // After we send a tool result, the model responds with text + audio.
+          // When the audio (or text) content block ends and it's NOT a tool block,
+          // that means the model's spoken acknowledgement is done — emit turn-complete
+          // and end the session so the chat interface can route to the agent.
+          if (this.awaitingPostToolResponse && !isToolContentBlock && !hasToolStopReason) {
+            const stopReason = evt.contentEnd.stopReason;
+            // END_TURN or no stopReason on a non-tool contentEnd after tool result = model is done
+            if (stopReason === 'END_TURN' || !this.pendingToolContentName) {
+              console.log('🔧 NovaSonicService: Post-tool response complete (contentEnd stopReason=' + stopReason + ') — emitting turn-complete');
+              this.awaitingPostToolResponse = false;
+              this.toolResultSent = false;
+              this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
+            }
           }
         }
 
@@ -749,13 +785,15 @@ export class NovaSonicService {
   // --- Internal: System Prompt & Tool Config ---
 
   private buildSystemPrompt(customPrompt?: string, agentTools?: AgentToolDefinition[]): string {
-    const defaultPrompt = 'You are a helpful voice assistant for an advertising technology platform. Listen to the user\'s spoken request and determine the best course of action.';
+    const defaultPrompt = 'You are a helpful voice assistant for an advertising technology platform. You help users by routing their requests to the best specialist agent.';
 
     const routingInstructions = agentTools && agentTools.length > 0
-      ? '\n\nIMPORTANT: You MUST use the "route_to_agent" tool for EVERY user request. Do NOT answer the user\'s question yourself. ' +
-        'Your ONLY job is to determine which agent should handle the request and call route_to_agent with the appropriate agentName and the user\'s full query. ' +
-        'Always call the route_to_agent tool — never respond with just text. The specialized agents will handle the actual work. ' +
-        'If the user\'s request is ambiguous, pick the closest matching agent and route to it anyway.'
+      ? '\n\nYou are the voice router for this platform. Your job is to understand the user\'s request and route it to the most appropriate specialist agent using the "route_to_agent" tool. ' +
+        'Listen carefully to what the user is asking about, then select the single best agent for their request. ' +
+        'Before routing, briefly tell the user which agent you\'re sending them to and why (one sentence). ' +
+        'If the user\'s request is vague or could match multiple agents, ask the user a short clarifying question to narrow it down — do NOT guess. ' +
+        'Never route to an orchestrator or fabric agent. Only route to specialist agents that directly handle the user\'s topic. ' +
+        'Always call the route_to_agent tool once you know the right agent — never try to answer the question yourself.'
       : '';
 
     return (customPrompt || defaultPrompt) + routingInstructions;
@@ -816,6 +854,8 @@ export class NovaSonicService {
     // Clear pending tool use state
     this.pendingToolUse = null;
     this.pendingToolContentName = '';
+    this.toolResultSent = false;
+    this.awaitingPostToolResponse = false;
 
     // Clear timeout
     if (this.timeoutTimer) {
