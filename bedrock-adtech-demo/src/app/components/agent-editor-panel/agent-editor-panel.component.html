@@ -110,6 +110,43 @@
         <span class="char-count">{{ (editingAgent.agent_description || '').length }}/1024</span>
       </div>
 
+      <!-- A2A Protocol Toggle -->
+      <div class="form-group">
+        <div class="a2a-toggle-row">
+          <label class="toggle-label" for="is_a2a">
+            <span class="material-icons toggle-icon">share</span>
+            Enable A2A Protocol
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="is_a2a"
+              [(ngModel)]="editingAgent.is_a2a"
+              [disabled]="isLoading">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <span class="field-hint">Expose this agent via the A2A (Agent-to-Agent) JSON-RPC protocol for cross-agent communication.</span>
+
+        <!-- A2A Server Auth Type (shown when is_a2a is enabled) -->
+        <div class="a2a-server-auth-config" *ngIf="editingAgent.is_a2a">
+          <label class="config-label">Inbound Authentication</label>
+          <span class="field-hint">How other agents authenticate when calling this agent's A2A endpoint.</span>
+          <div class="auth-type-options">
+            <div class="auth-type-option" [class.selected]="(editingAgent.a2a_auth_type || 'none') === 'none'"
+              (click)="editingAgent.a2a_auth_type = 'none'">
+              <span class="material-icons">lock_open</span> None
+            </div>
+            <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'oauth'"
+              (click)="editingAgent.a2a_auth_type = 'oauth'">
+              <span class="material-icons">token</span> OAuth
+            </div>
+            <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'iam'"
+              (click)="editingAgent.a2a_auth_type = 'iam'">
+              <span class="material-icons">security</span> IAM
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Color Configuration Section -->
@@ -153,7 +190,7 @@
           (ngModelChange)="updateModelInput('model_id', $event)"
           [class.error]="hasError('model_id')"
           [disabled]="isLoading"
-          placeholder="e.g., anthropic.claude-3-5-sonnet-20241022-v2:0">
+          placeholder="e.g., global.anthropic.claude-sonnet-4-5-20250929-v1:0">
       </div>
       <div class="form-row">
         <div class="form-group half">
@@ -606,15 +643,30 @@
                 <span class="material-icons transport-icon">share</span>
                 <span class="server-name">{{ extAgent.name || 'Unnamed Agent' }}</span>
                 <span class="server-transport-badge a2a-badge">A2A</span>
+                <span class="server-transport-badge auth-type-badge" *ngIf="extAgent.authType && extAgent.authType !== 'none'">
+                  {{ extAgent.authType === 'oauth' ? 'OAuth' : 'IAM' }}
+                </span>
               </div>
               <div class="server-details">
                 <span class="server-detail" *ngIf="extAgent.arn">
                   <span class="material-icons">cloud</span>
                   {{ extAgent.arn }}
                 </span>
-                <span class="server-detail auth-badge" *ngIf="extAgent.oauthToken?.hasToken">
-                  <span class="material-icons">vpn_key</span>
-                  Bearer token configured
+                <span class="server-detail" *ngIf="!extAgent.arn" style="color: #ef4444;">
+                  <span class="material-icons" style="color: #ef4444;">error_outline</span>
+                  ARN required
+                </span>
+                <span class="server-detail auth-badge credential-stored" *ngIf="extAgent.authType === 'oauth' && extAgent.oauthCredentials?.hasCredentials">
+                  <span class="material-icons">check_circle</span>
+                  Credentials stored
+                </span>
+                <span class="server-detail auth-badge credential-not-stored" *ngIf="extAgent.authType === 'oauth' && !extAgent.oauthCredentials?.hasCredentials">
+                  <span class="material-icons">radio_button_unchecked</span>
+                  Not stored
+                </span>
+                <span class="server-detail auth-badge" *ngIf="extAgent.authType === 'iam'">
+                  <span class="material-icons">security</span>
+                  AWS IAM
                 </span>
               </div>
               <div class="server-description" *ngIf="extAgent.description">
@@ -636,6 +688,12 @@
       <div class="no-mcp-message" *ngIf="!editingAgent.external_agent_configs?.length">
         <span class="material-icons">info_outline</span>
         <span>No external A2A agents configured. Add agents to enable cross-agent communication.</span>
+      </div>
+
+      <!-- ARN validation warning -->
+      <div class="error-message" *ngIf="hasError('external_agent_arn')" style="margin-top: 12px;">
+        <span class="material-icons">error_outline</span>
+        {{ getError('external_agent_arn') }}
       </div>
 
       <!-- A2A Agent Editor - Rendered by parent agent-management-modal to avoid overflow clipping -->

@@ -2,7 +2,7 @@ from strands import Agent, tool
 from strands_tools import use_llm, memory, http_request, generate_image, file_read
 from strands.models import BedrockModel
 from strands.multiagent.a2a import A2AServer
-from strands_tools.a2a_client import A2AClientToolProvider
+# A2AClientToolProvider is used via shared.a2a_client_tools
 from botocore.config import Config
 import uvicorn
 from fastapi import FastAPI
@@ -38,6 +38,8 @@ from shared.adcp_tools import (
 )
 
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
+from shared.mcp_tools import build_mcp_tools_for_agent
+from shared.a2a_client_tools import build_a2a_client_tools
 # DynamoDB configuration loader for fast agent config access
 from shared.dynamodb_config_loader import (
     load_agent_instructions as ddb_load_instructions,
@@ -631,6 +633,7 @@ def clear_instructions_cache(agent_name: Optional[str] = None):
     else:
         _instructions_cache.clear()
         logger.info(f"🗑️ INSTRUCTIONS: Cleared all instructions cache")
+
 
 def refresh_all_caches(force_reinitialize: bool = False) -> Dict[str, Any]:
     """
@@ -1580,274 +1583,15 @@ def build_tools_for_agent(agent_name: str) -> list:
         tools.extend(mcp_tools)
         logger.info(f"🔌 BUILD_TOOLS: Added {len(mcp_tools)} MCP tool providers for {agent_name}")
     
+    # Build A2A client tools from external_agent_configs
+    a2a_tools = build_a2a_client_tools(agent_name, agent_config)
+    if a2a_tools:
+        tools.extend(a2a_tools)
+        logger.info(f"🔗 BUILD_TOOLS: Added {len(a2a_tools)} A2A client tool provider(s) for {agent_name}")
+    
     logger.info(f"🔧 BUILD_TOOLS: {agent_name} configured with {len(tools)} tools: {[getattr(t, '__name__', str(t)) for t in tools]}")
     return tools
 
-
-def build_mcp_tools_for_agent(agent_name: str, agent_config: dict) -> list:
-    """
-    Build MCP tool providers from the agent's mcp_servers configuration.
-    
-    Follows the Strands Agents MCP integration pattern:
-    https://strandsagents.com/latest/documentation/docs/user-guide/concepts/tools/mcp-tools/
-    
-    Args:
-        agent_name: Name of the agent
-        agent_config: Agent configuration dict containing mcp_servers
-        
-    Returns:
-        List of MCPClient instances configured for this agent
-    """
-    mcp_servers = agent_config.get("mcp_servers", [])
-    
-    # Debug logging to trace MCP config loading
-    logger.info(f"🔍 MCP_TOOLS: Checking mcp_servers for {agent_name}")
-    logger.info(f"   Agent config keys: {list(agent_config.keys())}")
-    logger.info(f"   mcp_servers count: {len(mcp_servers)}")
-    
-    if not mcp_servers:
-        logger.info(f"⚠️ MCP_TOOLS: No mcp_servers configured for {agent_name}")
-        return []
-    
-    logger.info(f"🔌 MCP_TOOLS: Found {len(mcp_servers)} MCP server(s) for {agent_name}")
-    for i, srv in enumerate(mcp_servers):
-        logger.info(f"   [{i+1}] {srv.get('name', 'unnamed')} - transport: {srv.get('transport', 'unknown')}, enabled: {srv.get('enabled', True)}")
-    
-    mcp_tools = []
-    
-    for server_config in mcp_servers:
-        # Skip disabled servers
-        if not server_config.get("enabled", True):
-            logger.info(f"⏭️ MCP_TOOLS: Skipping disabled MCP server '{server_config.get('name', 'unknown')}' for {agent_name}")
-            continue
-        
-        try:
-            mcp_client = create_mcp_client_from_config(server_config, agent_name)
-            if mcp_client:
-                mcp_tools.append(mcp_client)
-                logger.info(f"✅ MCP_TOOLS: Created MCP client '{server_config.get('name')}' for {agent_name}")
-        except Exception as e:
-            logger.error(f"❌ MCP_TOOLS: Failed to create MCP client '{server_config.get('name')}' for {agent_name}: {e}")
-            import traceback
-            logger.error(f"   Traceback: {traceback.format_exc()}")
-    
-    return mcp_tools
-
-
-def create_mcp_client_from_config(server_config: dict, agent_name: str) -> Optional[MCPClient]:
-    """
-    Create an MCPClient instance from a server configuration.
-    
-    Supports three transport types:
-    - stdio: Command-line tools (uvx, python, npx, etc.)
-    - http: HTTP-based MCP servers (Streamable HTTP)
-    - sse: Server-Sent Events transport
-    
-    Args:
-        server_config: MCP server configuration dict
-        agent_name: Name of the agent (for logging)
-        
-    Returns:
-        MCPClient instance or None if creation fails
-    """
-    transport = server_config.get("transport", "stdio")
-    server_name = server_config.get("name", "unknown")
-    prefix = server_config.get("prefix", "")
-    
-    # Build tool filters if configured
-    tool_filters = {}
-    if server_config.get("allowedTools"):
-        tool_filters["allowed"] = server_config["allowedTools"]
-    if server_config.get("rejectedTools"):
-        tool_filters["rejected"] = server_config["rejectedTools"]
-    
-    try:
-        if transport == "stdio":
-            return create_stdio_mcp_client(server_config, prefix, tool_filters)
-        elif transport == "http":
-            return create_http_mcp_client(server_config, prefix, tool_filters)
-        elif transport == "sse":
-            return create_sse_mcp_client(server_config, prefix, tool_filters)
-        else:
-            logger.error(f"❌ MCP_TOOLS: Unknown transport type '{transport}' for server '{server_name}'")
-            return None
-    except Exception as e:
-        logger.error(f"❌ MCP_TOOLS: Failed to create {transport} MCP client for '{server_name}': {e}")
-        return None
-
-
-def create_stdio_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
-    """
-    Create an MCPClient with stdio transport for command-line MCP servers.
-    
-    Example configuration:
-    {
-        "transport": "stdio",
-        "command": "uvx",
-        "args": ["awslabs.aws-documentation-mcp-server@latest"],
-        "env": {"FASTMCP_LOG_LEVEL": "ERROR"}
-    }
-    """
-    command = server_config.get("command")
-    args = server_config.get("args", [])
-    env = server_config.get("env", {})
-    
-    if not command:
-        logger.error(f"❌ MCP_TOOLS: stdio transport requires 'command' field")
-        return None
-    
-    logger.info(f"🔌 MCP_TOOLS: Creating stdio MCP client: {command} {' '.join(args)}")
-    
-    # Build environment dict - merge with current environment
-    full_env = dict(os.environ)
-    full_env.update(env)
-    
-    # Create the MCPClient with stdio transport
-    mcp_client_kwargs = {}
-    if prefix:
-        mcp_client_kwargs["prefix"] = prefix
-    if tool_filters:
-        mcp_client_kwargs["tool_filters"] = tool_filters
-    
-    return MCPClient(
-        lambda cmd=command, a=args, e=full_env: stdio_client(
-            StdioServerParameters(
-                command=cmd,
-                args=a,
-                env=e
-            )
-        ),
-        **mcp_client_kwargs
-    )
-
-
-def create_http_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
-    """
-    Create an MCPClient with HTTP (Streamable HTTP) transport.
-    
-    Supports:
-    - AWS IAM authentication via mcp-proxy-for-aws
-    - Custom headers (e.g., OAuth tokens)
-    
-    Example configuration:
-    {
-        "transport": "http",
-        "url": "https://api.example.com/mcp/",
-        "headers": {
-            "Authorization": "Bearer your-token-here"
-        },
-        "awsAuth": {
-            "region": "us-east-1",
-            "service": "bedrock-agentcore"
-        }
-    }
-    """
-    url = server_config.get("url")
-    aws_auth = server_config.get("awsAuth")
-    headers = server_config.get("headers", {})
-    server_name = server_config.get("name", "unknown")
-    
-    if not url:
-        logger.error(f"❌ MCP_TOOLS: http transport requires 'url' field for server '{server_name}'")
-        return None
-    
-    logger.info(f"🔌 MCP_TOOLS: Creating HTTP MCP client for '{server_name}': {url}")
-    logger.info(f"   AWS Auth: {aws_auth is not None}")
-    logger.info(f"   Custom Headers: {list(headers.keys()) if headers else 'None'}")
-    logger.info(f"   Prefix: '{prefix}' | Tool filters: {bool(tool_filters)}")
-    
-    mcp_client_kwargs = {}
-    if prefix:
-        mcp_client_kwargs["prefix"] = prefix
-    if tool_filters:
-        mcp_client_kwargs["tool_filters"] = tool_filters
-    
-    if aws_auth:
-        # Use AWS IAM authentication via mcp-proxy-for-aws
-        try:
-            from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
-            
-            aws_region = aws_auth.get("region", os.environ.get("AWS_REGION", "us-east-1"))
-            aws_service = aws_auth.get("service", "bedrock-agentcore")
-            
-            logger.info(f"🔐 MCP_TOOLS: Using AWS IAM auth for {url} (region={aws_region}, service={aws_service})")
-            
-            return MCPClient(
-                lambda u=url, r=aws_region, s=aws_service: aws_iam_streamablehttp_client(
-                    endpoint=u,
-                    aws_region=r,
-                    aws_service=s
-                ),
-                **mcp_client_kwargs
-            )
-        except ImportError:
-            logger.error(f"❌ MCP_TOOLS: mcp-proxy-for-aws not installed. Install with: pip install mcp-proxy-for-aws")
-            return None
-    else:
-        # Standard HTTP transport (with optional custom headers for auth)
-        try:
-            from mcp.client.streamable_http import streamablehttp_client
-            
-            logger.info(f"✅ MCP_TOOLS: Successfully imported streamablehttp_client, creating MCPClient for '{server_name}'")
-            
-            # If headers are provided, pass them to streamablehttp_client
-            if headers:
-                logger.info(f"🔑 MCP_TOOLS: Using custom headers for authentication")
-                mcp_client = MCPClient(
-                    lambda u=url, h=headers: streamablehttp_client(url=u, headers=h),
-                    **mcp_client_kwargs
-                )
-            else:
-                mcp_client = MCPClient(
-                    lambda u=url: streamablehttp_client(u),
-                    **mcp_client_kwargs
-                )
-            logger.info(f"✅ MCP_TOOLS: MCPClient created successfully for '{server_name}'")
-            return mcp_client
-        except ImportError as e:
-            logger.error(f"❌ MCP_TOOLS: mcp.client.streamable_http not available: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"❌ MCP_TOOLS: Failed to create MCPClient for '{server_name}': {e}")
-            import traceback
-            logger.error(f"   Traceback: {traceback.format_exc()}")
-            return None
-
-
-def create_sse_mcp_client(server_config: dict, prefix: str, tool_filters: dict) -> Optional[MCPClient]:
-    """
-    Create an MCPClient with Server-Sent Events (SSE) transport.
-    
-    Example configuration:
-    {
-        "transport": "sse",
-        "url": "http://localhost:8000/sse"
-    }
-    """
-    url = server_config.get("url")
-    
-    if not url:
-        logger.error(f"❌ MCP_TOOLS: sse transport requires 'url' field")
-        return None
-    
-    logger.info(f"🔌 MCP_TOOLS: Creating SSE MCP client: {url}")
-    
-    mcp_client_kwargs = {}
-    if prefix:
-        mcp_client_kwargs["prefix"] = prefix
-    if tool_filters:
-        mcp_client_kwargs["tool_filters"] = tool_filters
-    
-    try:
-        from mcp.client.sse import sse_client
-        
-        return MCPClient(
-            lambda u=url: sse_client(u),
-            **mcp_client_kwargs
-        )
-    except ImportError:
-        logger.error(f"❌ MCP_TOOLS: mcp.client.sse not available")
-        return None
 
 
 def create_agent(agent_name, conversation_context, is_collaborator):
@@ -1917,7 +1661,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     else:
         conversation_manager = None  # Use default behavior
 
-    return Agent(
+    agent = Agent(
         model=model,
         name=agent_name,
         system_prompt=enhanced_system_prompt,
@@ -1931,6 +1675,8 @@ def create_agent(agent_name, conversation_context, is_collaborator):
             "memory_id": orchestrator_instance.memory_id,
         },
     )
+
+    return agent
 
 
 session = boto3.session.Session()
@@ -2201,6 +1947,7 @@ class GenericAgent:
                     logger.warning(f"⚠️ CONTEXT_RESTORE: Failed to restore from AgentCore Memory: {restore_err}")
             
             agent = Agent(**agent_kwargs)
+
             return agent
         except Exception as e:
             logger.error(f"CREATE_ORCHESTRATOR: FAILED")

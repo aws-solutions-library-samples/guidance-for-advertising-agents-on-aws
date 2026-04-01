@@ -122,6 +122,10 @@ export interface AgentConfiguration {
   knowledge_base?: string;
   /** Structured external A2A agent configurations */
   external_agent_configs?: ExternalAgentConfig[];
+  /** Whether this agent is exposed via the A2A JSON-RPC protocol (defaults to false) */
+  is_a2a?: boolean;
+  /** Authentication type for inbound A2A requests to this agent's endpoint */
+  a2a_auth_type?: 'none' | 'oauth' | 'iam';
 }
 
 /**

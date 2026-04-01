@@ -696,6 +696,13 @@ Example format:
         console.log('📡 Subscribing to new session:', sessionId);
         this.lastSessionId = sessionId;
       }
+
+      // Route to A2A JSON-RPC if agent is configured as A2A
+      if (resolvedAgent.is_a2a && resolvedAgent.runtimeArn) {
+        console.log(`🔗 A2A agent detected: ${resolvedAgent.name}, routing via JSON-RPC to ${resolvedAgent.runtimeArn}`);
+        return this.invokeA2aAgentStreamInternal(resolvedAgent, query, observer, sessionId);
+      }
+
       return this.invokeAgentCoreStreamInternal(resolvedAgent, query, observer, sessionId, attachedFiles, resolvedAgent.agentType);
     }
 
@@ -1948,6 +1955,179 @@ Example format:
     } catch (error: any) {
       console.error('❌ Error uploading file to S3:', error);
       throw new Error(`Failed to upload file to S3: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  // ============================================
+  // A2A JSON-RPC Protocol Invocation
+  // ============================================
+
+  /**
+   * Invoke an A2A agent using JSON-RPC 2.0 message/send protocol.
+   * Used when an agent has is_a2a: true — sends a JSON-RPC request
+   * directly to the agent's runtime_arn endpoint instead of using
+   * the AgentCore InvokeAgent path.
+   */
+  private async invokeA2aAgentStreamInternal(
+    resolvedAgent: EnrichedAgent,
+    query: string,
+    observer: any,
+    sessionId: string
+  ): Promise<void> {
+    try {
+      const endpoint = resolvedAgent.runtimeArn!;
+      const agentName = resolvedAgent.name || resolvedAgent.agentType;
+
+      observer.next({
+        type: 'trace',
+        data: `Connecting to A2A agent: ${agentName}`,
+        timestamp: new Date(),
+        agentName,
+        messageType: 'reasoning'
+      });
+
+      // Build JSON-RPC 2.0 message/send request
+      const jsonRpcRequest = {
+        jsonrpc: '2.0',
+        id: v4(),
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            parts: [{ kind: 'text', text: query }]
+          },
+          sessionId: sessionId
+        }
+      };
+
+      // Build headers based on auth type
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (resolvedAgent.a2a_auth_type === 'oauth') {
+        // For OAuth, retrieve bearer token from SSM via the agent config service
+        // The token would be stored during agent configuration
+        console.log(`🔑 A2A OAuth auth for ${agentName} — bearer token required`);
+        // TODO: Implement OAuth token retrieval from SSM for browser-side A2A calls
+        // For now, log a warning
+        console.warn(`⚠️ A2A OAuth token retrieval not yet implemented for browser-side calls`);
+      } else if (resolvedAgent.a2a_auth_type === 'iam') {
+        // For IAM, sign the request with SigV4
+        try {
+          const session = await this.awsConfig.getCachedAuthSession();
+          if (session.credentials) {
+            const creds = session.credentials;
+            // Use AWS SDK's built-in signing via a temporary client
+            // For now, pass credentials as SigV4 headers
+            // The endpoint should accept IAM auth
+            console.log(`🔑 A2A IAM auth for ${agentName} — using SigV4 credentials`);
+            // Add session token if available (temporary credentials)
+            if (creds.sessionToken) {
+              headers['X-Amz-Security-Token'] = creds.sessionToken;
+            }
+          }
+        } catch (authErr) {
+          console.warn(`⚠️ Failed to get IAM credentials for A2A call:`, authErr);
+        }
+      }
+      // authType 'none' — no auth headers needed
+
+      console.log(`🔗 A2A JSON-RPC request to ${endpoint}:`, {
+        method: jsonRpcRequest.method,
+        id: jsonRpcRequest.id,
+        sessionId,
+        authType: resolvedAgent.a2a_auth_type || 'none'
+      });
+
+      // Send the JSON-RPC request
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(jsonRpcRequest)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`A2A request failed (${response.status}): ${errorText}`);
+      }
+
+      const jsonRpcResponse = await response.json();
+
+      // Parse JSON-RPC 2.0 response
+      if (jsonRpcResponse.error) {
+        // JSON-RPC error response
+        const errCode = jsonRpcResponse.error.code;
+        const errMsg = jsonRpcResponse.error.message;
+        observer.next({
+          type: 'error',
+          data: `A2A error [${errCode}]: ${errMsg}`,
+          timestamp: new Date(),
+          agentName
+        });
+      } else if (jsonRpcResponse.result) {
+        // Extract text from result.artifacts[*].parts[*].text
+        const artifacts = jsonRpcResponse.result.artifacts || [];
+        const textParts: string[] = [];
+
+        for (const artifact of artifacts) {
+          const parts = artifact.parts || [];
+          for (const part of parts) {
+            if (part.text) {
+              textParts.push(part.text);
+            }
+          }
+        }
+
+        const responseText = textParts.join('\n');
+
+        if (responseText) {
+          observer.next({
+            type: 'chunk',
+            data: responseText,
+            timestamp: new Date(),
+            agentName,
+            messageType: 'chunk'
+          });
+        } else {
+          observer.next({
+            type: 'chunk',
+            data: 'A2A agent returned an empty response.',
+            timestamp: new Date(),
+            agentName,
+            messageType: 'chunk'
+          });
+        }
+      } else {
+        observer.next({
+          type: 'chunk',
+          data: 'Unexpected A2A response format.',
+          timestamp: new Date(),
+          agentName,
+          messageType: 'chunk'
+        });
+      }
+
+      observer.next({
+        type: 'complete',
+        data: 'A2A invocation completed',
+        timestamp: new Date()
+      });
+      observer.complete();
+
+    } catch (error: any) {
+      console.error(`❌ A2A invocation error for ${resolvedAgent.name}:`, error);
+      observer.next({
+        type: 'error',
+        data: `A2A invocation failed: ${error.message || error}`,
+        timestamp: new Date()
+      });
+      observer.next({
+        type: 'complete',
+        data: 'A2A invocation failed',
+        timestamp: new Date()
+      });
+      observer.complete();
     }
   }
 

@@ -329,7 +329,9 @@ $fuchsia-accent: #c300e0;
       min-width: 0;
 
       .agent-name {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         font-size: 15px;
         font-weight: 600;
         color: #111827;
@@ -338,6 +340,22 @@ $fuchsia-accent: #c300e0;
         overflow: hidden;
         text-overflow: ellipsis;
         font-family: $font-family-ember;
+
+        // A2A protocol badge — Validates: Requirement 1.5
+        .a2a-badge {
+          display: inline-flex;
+          align-items: center;
+          flex-shrink: 0;
+          padding: 1px 8px;
+          font-size: 10px;
+          font-weight: 600;
+          line-height: 16px;
+          color: #fff;
+          background: $purple-accent;
+          border-radius: 30px;
+          letter-spacing: 0.03em;
+          font-family: $font-family-ember;
+        }
       }
 
       .agent-team {
@@ -2720,10 +2738,15 @@ max-width: 85vw;  }
   }
 }
 
-// A2A badge styling in the editor panel list
+// A2A badge styling in the editor panel list — Validates: Requirements 7.1, 7.3
 .a2a-badge {
-  background: linear-gradient(135deg, $purple-gradient-start 0%, $fuchsia-accent 100%) !important;
+  background: $purple-accent !important;
   color: white !important;
+  border-radius: 30px !important;
+  padding: 2px 10px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.03em;
 }
 
 // Responsive adjustments for A2A editor
@@ -2779,6 +2802,33 @@ max-width: 85vw;  }
   background: rgba(249, 250, 251, 0.8);
   border-radius: 16px;
   border: 1px solid rgba(229, 231, 235, 0.5);
+
+  .credential-status-indicator {
+    margin-bottom: 12px;
+
+    .credential-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: $font-family-ember;
+
+      .material-icons { font-size: 20px; }
+
+      &.stored {
+        color: #059669;
+
+        .material-icons { color: #10b981; }
+      }
+
+      &.not-stored {
+        color: #9ca3af;
+
+        .material-icons { color: #d1d5db; }
+      }
+    }
+  }
 
   .token-status {
     display: flex;

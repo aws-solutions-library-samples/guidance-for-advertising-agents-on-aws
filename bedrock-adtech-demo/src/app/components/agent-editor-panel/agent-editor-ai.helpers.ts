@@ -305,7 +305,7 @@ Return a JSON object with EXACTLY this structure (no markdown fences, no explana
     "external_agents": [],
     "model_inputs": {
       "default": {
-        "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "max_tokens": 8000,
         "temperature": 0.3
       }
@@ -351,7 +351,7 @@ IMPORTANT:
       external_agents: parsed.agent.external_agents || [],
       agent_tools: parsed.agent.agent_tools || [],
       model_inputs: parsed.agent.model_inputs || {
-        default: { model_id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
       },
       color: parsed.agent.color || '#6842ff'
     },
