@@ -546,14 +546,14 @@ def resolve_ssm_parameter(ssm_path: str, use_cache: bool = True) -> Optional[str
         response = ssm.get_parameter(Name=ssm_path, WithDecryption=True)
         value = response["Parameter"]["Value"]
         _config_cache[cache_key] = value
-        logger.info(f"✅ SSM_LOADER: Resolved parameter {ssm_path}")
+        logger.info(f"✅ SSM_LOADER: Resolved parameter {ssm_path} ({len(value)} chars)")
         return value
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "ParameterNotFound":
             logger.warning(f"⚠️ SSM_LOADER: Parameter not found: {ssm_path}")
         else:
-            logger.error(f"❌ SSM_LOADER: Error fetching {ssm_path}: {e}")
+            logger.error(f"❌ SSM_LOADER: Error fetching {ssm_path}: {error_code}")
         _config_cache[cache_key] = None
         return None
 
@@ -590,11 +590,10 @@ def resolve_mcp_server_auth(mcp_servers: List[Dict[str, Any]]) -> List[Dict[str,
             if "headers" not in server:
                 server["headers"] = {}
             server["headers"]["Authorization"] = f"Bearer {token}"
-            logger.info(f"✅ MCP_AUTH: Injected bearer token for server '{server.get('name', server.get('id', '?'))}'")
+            logger.info(f"✅ MCP_AUTH: Injected auth header for server '{server.get('name', server.get('id', '?'))}'")
         else:
             logger.warning(
-                f"⚠️ MCP_AUTH: Could not resolve token for server '{server.get('name', server.get('id', '?'))}' "
-                f"at {ssm_path}"
+                f"⚠️ MCP_AUTH: Could not resolve auth for server '{server.get('name', server.get('id', '?'))}'"
             )
 
     return mcp_servers

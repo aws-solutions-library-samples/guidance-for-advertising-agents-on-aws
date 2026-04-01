@@ -161,7 +161,6 @@ class A2ATokenManager:
             logger.error(
                 "❌ A2A_AUTH: Unexpected error retrieving credentials from %s",
                 ssm_path,
-                exc_info=True,
             )
             return None, None, (
                 "A2A authentication failed — unexpected error retrieving credentials"
@@ -218,7 +217,6 @@ class A2ATokenManager:
         except Exception:
             logger.error(
                 "❌ A2A_AUTH: Unexpected error during Cognito authentication",
-                exc_info=True,
             )
             return None, None, (
                 "A2A authentication failed — unexpected error during token acquisition"

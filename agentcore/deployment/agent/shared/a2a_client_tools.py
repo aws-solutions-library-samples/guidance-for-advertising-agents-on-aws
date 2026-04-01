@@ -109,14 +109,12 @@ def build_a2a_client_tools(agent_name: str, agent_config: dict) -> List:
                         oauth_creds["ssmPath"], pool_id, client_id
                     )
                     if err:
-                        # Auth error — log without credential details (Req 9.3, 9.4)
+                        # Auth error — log without credential details
                         logger.error(
                             "❌ A2A_TOOLS: OAuth token acquisition failed for '%s' "
-                            "(agent=%s, endpoint=%s): %s",
+                            "(agent=%s)",
                             entry_name,
                             agent_name,
-                            arn,
-                            err,
                         )
                         continue
 
