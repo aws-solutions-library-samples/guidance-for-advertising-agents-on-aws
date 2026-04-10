@@ -44,7 +44,7 @@
           {
             "brand": "Global Sports Apparel",
             "averageShare": "38%",
-            "strongestEvents": ["World Cup", "Premier League", "Champions League"],
+            "strongestEvents": ["World Cup", "International Soccer League", "Champions League"],
             "competitiveAdvantage": "Kit sponsorship provides consistent visibility"
           },
           {
@@ -58,7 +58,7 @@
           {
             "threat": "Cryptocurrency brands entering sports",
             "impact": "15% increase in sponsorship costs",
-            "affectedEvents": ["Premier League", "NBA Finals"]
+            "affectedEvents": ["International Soccer League", "Pro Basketball League Finals"]
           },
           {
             "threat": "Streaming platforms as sponsors",

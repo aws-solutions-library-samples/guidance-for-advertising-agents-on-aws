@@ -28,7 +28,7 @@
           "id": "agency-orchestration-discovery",
           "title": "Agency Agent Orchestration & AdCP Discovery",
           "description": "Agency Agent coordinates multi-agent workflow using AdCP Media Buy Protocol for inventory discovery.",
-          "query": "As the Agency Agent for Acme Energy's $2M sustainable energy campaign, I need to orchestrate the complete campaign workflow. First, use AdCP get_products to discover premium CTV inventory from ESPN, Fox Sports, and YouTube that aligns with environmental content. Target sports enthusiasts interested in sustainability. Then coordinate with Signal Agent for audience targeting, Identity Agent for reach estimation, and Verification Agent for brand safety verification before presenting the media plan to the Advertiser Agent for approval.",
+          "query": "As the Agency Agent for Acme Energy's $2M sustainable energy campaign, I need to orchestrate the complete campaign workflow. First, use AdCP get_products to discover premium CTV inventory from SportsPulse, Apex Sports, and StreamVault that aligns with environmental content. Target sports enthusiasts interested in sustainability. Then coordinate with Signal Agent for audience targeting, Identity Agent for reach estimation, and Verification Agent for brand safety verification before presenting the media plan to the Advertiser Agent for approval.",
           "category": "Media Buy Automation",
           "agentType": "AgencyAgent"
         },
@@ -52,7 +52,7 @@
           "id": "verification-brand-safety",
           "title": "Verification Agent Brand Safety & Quality Assurance (MCP)",
           "description": "Verification Agent performs brand safety verification using MCP and alerts.",
-          "query": "Verify brand safety for our Acme Energy campaign placements using MCP protocol. Check the following publisher properties: ESPN.com, FoxSports.com, YouTube environmental documentaries, and streaming fitness content. Apply tier_1 brand safety standards. Flag any properties with brand safety scores below 90 or fraud risk above 5%. If any incidents are detected, prepare an A2A alert for the Agency Agent with investigation details and recommended actions.",
+          "query": "Verify brand safety for our Acme Energy campaign placements using MCP protocol. Check the following publisher properties: SportsPulse.com, FoxSports.com, StreamVault environmental documentaries, and streaming fitness content. Apply tier_1 brand safety standards. Flag any properties with brand safety scores below 90 or fraud risk above 5%. If any incidents are detected, prepare an A2A alert for the Agency Agent with investigation details and recommended actions.",
           "category": "Media Buy Automation",
           "agentType": "VerificationAgent"
         },
@@ -68,7 +68,7 @@
           "id": "publisher-media-buy",
           "title": "Publisher Agent Media Buy Creation & Delivery (AdCP)",
           "description": "Publisher Agent creates media buy packages and tracks delivery using AdCP Media Buy Protocol.",
-          "query": "As Publisher Agent for ESPN Premium CTV inventory, process the incoming media buy request from Agency Agent using AdCP Media Buy Protocol. Create a media buy package for Acme Energy with: $500,000 budget allocation, premium sports documentary placements, 30-second video format, tier_1 brand safety, and environmental content alignment. Confirm creative deadlines, provide delivery projections, and set up real-time delivery tracking. Return the media_buy_id and package confirmation.",
+          "query": "As Publisher Agent for SportsPulse Premium CTV inventory, process the incoming media buy request from Agency Agent using AdCP Media Buy Protocol. Create a media buy package for Acme Energy with: $500,000 budget allocation, premium sports documentary placements, 30-second video format, tier_1 brand safety, and environmental content alignment. Confirm creative deadlines, provide delivery projections, and set up real-time delivery tracking. Return the media_buy_id and package confirmation.",
           "category": "Media Buy Automation",
           "agentType": "PublisherAgent"
         },
@@ -84,7 +84,7 @@
           "id": "agency-publisher-negotiation",
           "title": "Agency-Publisher Rate Negotiation",
           "description": "Agency and Publisher Agents negotiate premium inventory rates using.",
-          "query": "Initiate A2A negotiation with Publisher Agent for premium NFL Playoff inventory. Our Acme Energy campaign needs 50M impressions during the playoff window, but current CPMs of $48.90 exceed our $42 target. Propose a volume commitment deal: guaranteed $1.2M spend in exchange for $42 CPM floor and first-look rights on environmental documentary inventory. Include brand safety guarantees and delivery commitments in the negotiation.",
+          "query": "Initiate A2A negotiation with Publisher Agent for premium Pro Football League Playoff inventory. Our Acme Energy campaign needs 50M impressions during the playoff window, but current CPMs of $48.90 exceed our $42 target. Propose a volume commitment deal: guaranteed $1.2M spend in exchange for $42 CPM floor and first-look rights on environmental documentary inventory. Include brand safety guarantees and delivery commitments in the negotiation.",
           "category": "Media Buy Automation",
           "agentType": "AgencyAgent"
         },
@@ -92,7 +92,7 @@
           "id": "verification-incident-alert",
           "title": "Verification Agent Incident Alert & Investigation",
           "description": "Verification Agent detects brand safety incident and escalates via.",
-          "query": "ALERT: Brand safety incident detected on YouTube placement for Acme Energy campaign. A video in our environmental documentary targeting was flagged for controversial climate content that conflicts with brand guidelines. Current brand safety score dropped from 96 to 78. Prepare A2A incident report for Agency Agent including: incident details, affected impressions (estimated 125,000), recommended immediate actions (pause placement, exclude content category), and investigation timeline. Request acknowledgment and escalation decision.",
+          "query": "ALERT: Brand safety incident detected on StreamVault placement for Acme Energy campaign. A video in our environmental documentary targeting was flagged for controversial climate content that conflicts with brand guidelines. Current brand safety score dropped from 96 to 78. Prepare A2A incident report for Agency Agent including: incident details, affected impressions (estimated 125,000), recommended immediate actions (pause placement, exclude content category), and investigation timeline. Request acknowledgment and escalation decision.",
           "category": "Campaign Optimization",
           "agentType": "VerificationAgent"
         },
@@ -1973,7 +1973,7 @@
         {
           "title": "Ad Stack Waterfall Performance Analysis",
           "description": "Analyzing ad stack performance to optimize demand partner sequence and timeout settings",
-          "query": "Our current ad stack has Google Ad Manager as primary, followed by Amazon Publisher Services, then Prebid with 8 demand partners. We're seeing 2.3 second average response times and 78% fill rate. Google fills 45% at $8.50 average CPM, Amazon fills 25% at $6.20 CPM, and Prebid fills remaining 30% at $4.80 CPM. Should we reorder our waterfall or adjust timeout settings? Our page load speed target is under 2 seconds and we need to maintain revenue above $35,000 monthly.",
+          "query": "Our current ad stack has Google Ad Manager as primary, followed by StreamVault Media Publisher Services, then Prebid with 8 demand partners. We're seeing 2.3 second average response times and 78% fill rate. Google fills 45% at $8.50 average CPM, StreamVault Media fills 25% at $6.20 CPM, and Prebid fills remaining 30% at $4.80 CPM. Should we reorder our waterfall or adjust timeout settings? Our page load speed target is under 2 seconds and we need to maintain revenue above $35,000 monthly.",
           "category": "Ad Stack Optimization",
           "applicableCampaigns": [
             "camp-stack-opt",

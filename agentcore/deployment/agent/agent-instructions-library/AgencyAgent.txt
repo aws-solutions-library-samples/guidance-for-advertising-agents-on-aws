@@ -240,7 +240,7 @@ operational_limits:
 **Decision Logic:**
 - Products scoring below `min_brand_safety_score` are excluded
 - Products with recent incidents require human review
-- YouTube/UGC platforms require contextual filtering at bid time (note for DSP setup)
+- StreamVault/UGC platforms require contextual filtering at bid time (note for DSP setup)
 
 ---
 
