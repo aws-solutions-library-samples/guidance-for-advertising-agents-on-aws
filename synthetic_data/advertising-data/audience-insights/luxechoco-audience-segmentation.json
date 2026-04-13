@@ -28,7 +28,7 @@
           "seasonalPatterns": ["Valentine's Day", "Easter", "Christmas", "Birthdays"]
         },
         "digitalBehavior": {
-          "platforms": ["Instagram (85%)", "Facebook (72%)", "YouTube (68%)", "Pinterest (45%)"],
+          "platforms": ["Instagram (85%)", "Facebook (72%)", "StreamVault (68%)", "Pinterest (45%)"],
           "contentEngagement": ["Recipe videos", "Behind-the-scenes content", "Brand heritage stories"],
           "shoppingBehavior": ["Research online, buy offline (60%)", "Online purchase (40%)"],
           "influencerTrust": "High trust in food and lifestyle influencers"
