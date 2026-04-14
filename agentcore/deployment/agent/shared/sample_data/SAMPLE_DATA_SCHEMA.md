@@ -209,7 +209,7 @@ All data is cross-referenceable using common identifiers:
 | ViewabilityId | string (UUID) | Unique record identifier |
 | ImpressionId | string | Associated impression ID |
 | MeasurementTimestamp | datetime | When measured |
-| ViewabilityVendor | string | IAS/DoubleVerify/Moat/ComScore |
+| ViewabilityVendor | string | AdShield/DualCheck/Beacon/CoreMetric |
 | TDID | string | Trade Desk ID |
 | PartnerId | string | Partner ID |
 | AdvertiserId | string | Advertiser ID |

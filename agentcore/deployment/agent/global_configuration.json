@@ -880,7 +880,7 @@
             "external_agents": [],
             "injectable_values": {
                 "publisher_id": "pub_espn_001",
-                "publisher_name": "ESPN"
+                "publisher_name": "SportsPulse"
             },
             "model_inputs": {
                 "PublisherAgent": {
@@ -954,7 +954,7 @@
             "external_agents": [],
             "injectable_values": {
                 "provider_id": "ver_dv_001",
-                "provider_name": "DoubleVerify"
+                "provider_name": "DualCheck"
             },
             "model_inputs": {
                 "VerificationAgent": {

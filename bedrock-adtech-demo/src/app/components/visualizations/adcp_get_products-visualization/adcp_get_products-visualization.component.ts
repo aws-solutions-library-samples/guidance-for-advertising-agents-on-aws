@@ -23,7 +23,7 @@ import { VisualizationComponent } from '../visualization-component';
  *       "description": "High-impact CTV inventory during live sports events",
  *       "publisher_properties": [
  *         {
- *           "publisher_domain": "espn.com",
+ *           "publisher_domain": "sportspulse.com",
  *           "selection_type": "by_tag",
  *           "property_tags": ["ctv", "live_sports"]
  *         }

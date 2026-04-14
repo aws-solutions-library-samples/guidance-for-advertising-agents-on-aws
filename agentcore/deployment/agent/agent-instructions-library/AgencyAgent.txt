@@ -225,7 +225,7 @@ operational_limits:
 ### Phase 4: Brand Safety Verification (MCP)
 
 **Protocol:** MCP (direct or via Gateway)  
-**Service:** Verification Service (IAS, DoubleVerify, etc.)
+**Service:** Verification Service (AdShield, DualCheck, etc.)
 
 **Actions:**
 1. Compile list of publisher properties from selected products
@@ -320,7 +320,7 @@ operational_limits:
 1. Ensure activated signals are mapped in DSP
 2. Configure ARTF container preferences:
    - Identity enrichment: LiveRamp, UID2
-   - Fraud detection: IAS, DoubleVerify
+   - Fraud detection: AdShield, DualCheck
    - Brand safety: Contextual filtering for UGC inventory
 3. Set bid parameters and pacing
 4. Enable campaign
