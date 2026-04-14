@@ -289,7 +289,7 @@ $fuchsia-accent: #c300e0;
   border-radius: 16px;
   padding: 16px;
   border: 1px solid #e5e7eb;
-  border-left: 4px solid $purple-accent;
+  //border-left: 4px solid $purple-accent;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 0 8px 0 rgba(15, 23, 42, 0.1);
@@ -299,7 +299,7 @@ $fuchsia-accent: #c300e0;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
     transform: translateY(-2px);
     border-color: rgba($purple-accent, 0.3);
-    border-left-color: $purple-accent;
+    //border-left-color: $purple-accent;
   }
 
   .agent-card-header {
@@ -3011,6 +3011,216 @@ max-width: 85vw;  }
 
     .a2a-editor-actions {
       padding: 14px 20px;
+    }
+  }
+}
+
+// ============================================
+// Team Grouping Styles
+// ============================================
+
+// Controls bar (sort + filter)
+.agent-list-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+
+  .filter-control {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      font-size: 18px;
+      color: #9ca3af;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 36px 10px 40px;
+      border: 1px solid #ddd;
+      border-radius: 30px;
+      font-size: 14px;
+      font-family: $font-family-ember;
+      box-shadow: 2px 2px 5px rgba(121, 76, 255, 0.1);
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+
+      &:focus {
+        outline: none;
+        border-color: $purple-accent;
+        box-shadow: 0 0 0 2px rgba($purple-accent, 0.15);
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+    }
+
+    .clear-filter-btn {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: #9ca3af;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s ease;
+
+      .material-icons {
+        font-size: 18px;
+      }
+
+      &:hover {
+        color: #374151;
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+  }
+
+  .sort-control {
+    select {
+      padding: 10px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 30px;
+      font-size: 14px;
+      font-family: $font-family-ember;
+      background: #f3f4f6;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      appearance: auto;
+
+      &:hover {
+        background: #e5e7eb;
+        border-color: rgba($purple-accent, 0.3);
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $purple-accent;
+        box-shadow: 0 0 0 2px rgba($purple-accent, 0.15);
+      }
+    }
+  }
+}
+
+// Team group container
+.team-group {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Team headers
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: rgba(249, 250, 251, 0.6);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 16px;
+  border-left: 4px solid $purple-accent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: $font-family-ember;
+
+  &:hover {
+    background: rgba(249, 250, 251, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .chevron {
+    font-size: 20px;
+    color: #6b7280;
+    transition: transform 0.3s ease;
+
+    &.collapsed {
+      transform: rotate(-90deg);
+    }
+  }
+
+  .team-name {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    font-family: $font-family-ember;
+  }
+
+  .team-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    background: $purple-accent;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 30px;
+    font-family: $font-family-ember;
+  }
+}
+
+// Collapse animation
+.agent-cards {
+  transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+  max-height: 2000px;
+  opacity: 1;
+
+  &.collapsed {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    margin-top: 0;
+  }
+}
+
+// Filter empty state
+.filter-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+
+  .material-icons {
+    font-size: 48px;
+    color: #d1d5db;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    color: #6b7280;
+    font-family: $font-family-ember;
+  }
+}
+
+// Responsive adjustments for team grouping
+@media (max-width: 767px) {
+  .agent-list-controls {
+    flex-direction: column;
+    gap: 8px;
+
+    .sort-control select {
+      width: 100%;
     }
   }
 }

@@ -137,6 +137,21 @@ export interface AgentConfiguration {
 }
 
 /**
+ * Represents a group of agents sharing the same team_name.
+ * Used by the template to render collapsible team sections.
+ */
+export interface TeamGroup {
+  /** The team name displayed in the header. "Other Agents" for ungrouped. */
+  teamName: string;
+  /** Agents belonging to this team (post-filter). */
+  agents: AgentConfiguration[];
+  /** Whether this group is currently expanded in the UI. */
+  isExpanded: boolean;
+  /** Accent color derived from the first agent's configured color. */
+  accentColor: string;
+}
+
+/**
  * AgentManagementModalComponent - Modal for managing agent configurations
  * 
  * This component provides a UI for viewing, editing, adding, and removing agent
@@ -187,6 +202,11 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   // Store configured colors from global config for agent color lookup
   // Validates: Requirement 2.6 - Apply agent's configured color as accent border
   private configuredColors: Record<string, string> = {};
+
+  // Team grouping state
+  sortMode: 'team' | 'name-asc' | 'name-desc' = 'team';
+  filterText: string = '';
+  collapsedTeams: Set<string> = new Set();
 
   constructor(
       private agentDynamoDBService: AgentDynamoDBService,
@@ -945,5 +965,88 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
         }, 5000);
       }
     });
+  }
+
+  getFilteredAgents(): AgentConfiguration[] {
+    if (!this.filterText.trim()) {
+      return this.agents;
+    }
+    const search = this.filterText.toLowerCase().trim();
+    return this.agents.filter(agent =>
+      (agent.agent_display_name || '').toLowerCase().includes(search) ||
+      (agent.agent_description || '').toLowerCase().includes(search) ||
+      (agent.team_name || '').toLowerCase().includes(search)
+    );
+  }
+
+  getSortedFlatAgents(agents: AgentConfiguration[]): AgentConfiguration[] {
+    return [...agents].sort((a, b) => {
+      const nameA = (a.agent_display_name || '').toLowerCase();
+      const nameB = (b.agent_display_name || '').toLowerCase();
+      return this.sortMode === 'name-desc' ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
+    });
+  }
+
+  getGroupedAgents(): TeamGroup[] {
+    const filtered = this.getFilteredAgents();
+
+    if (this.sortMode === 'name-asc' || this.sortMode === 'name-desc') {
+      const sorted = this.getSortedFlatAgents(filtered);
+      return sorted.length > 0 ? [{
+        teamName: '',
+        agents: sorted,
+        isExpanded: true,
+        accentColor: '#6842ff'
+      }] : [];
+    }
+
+    // Group by team_name
+    const groups = new Map<string, AgentConfiguration[]>();
+    for (const agent of filtered) {
+      const team = agent.team_name?.trim() || 'Other Agents';
+      if (!groups.has(team)) {
+        groups.set(team, []);
+      }
+      groups.get(team)!.push(agent);
+    }
+
+    // Sort groups alphabetically, "Other Agents" last
+    const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+      if (a === 'Other Agents') return 1;
+      if (b === 'Other Agents') return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map(teamName => {
+      const agents = groups.get(teamName)!.sort((a, b) =>
+        (a.agent_display_name || '').localeCompare(b.agent_display_name || '')
+      );
+      return {
+        teamName,
+        agents,
+        isExpanded: !this.collapsedTeams.has(teamName),
+        accentColor: agents.length > 0 ? this.getAgentColor(agents[0]) : '#6842ff'
+      };
+    });
+  }
+
+  toggleTeamCollapse(teamName: string): void {
+    if (this.collapsedTeams.has(teamName)) {
+      this.collapsedTeams.delete(teamName);
+    } else {
+      this.collapsedTeams.add(teamName);
+    }
+  }
+
+  onSortChange(mode: string): void {
+    this.sortMode = mode as 'team' | 'name-asc' | 'name-desc';
+  }
+
+  onFilterChange(text: string): void {
+    this.filterText = text;
+  }
+
+  clearFilter(): void {
+    this.filterText = '';
   }
 }

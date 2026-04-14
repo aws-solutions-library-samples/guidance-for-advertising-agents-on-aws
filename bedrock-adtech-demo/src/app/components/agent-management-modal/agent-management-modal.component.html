@@ -84,60 +84,97 @@
           </button>
         </div>
 
-        <!-- Agent Cards -->
-        <div class="agent-cards" *ngIf="agents.length > 0">
-          <div 
-            class="agent-card" 
-            *ngFor="let agent of agents"
-            [style.border-left-color]="getAgentColor(agent)"
-            [class.readonly]="!canEditAgent(agent)"
-            (click)="selectAgent(agent)">
-            
-            <div class="agent-card-header">
-              <div class="agent-icon" [style.background-color]="getAgentColor(agent)">
-                <span class="material-icons">smart_toy</span>
-              </div>
-              <div class="agent-info">
-                <span class="agent-name">
-                  {{ agent.agent_display_name }}
-                  <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
-                </span>
-                <span class="agent-team">{{ agent.team_name }}</span>
-              </div>
-              <div class="agent-actions">
-                <button 
-                  class="icon-btn" 
-                  (click)="editAgent(agent); $event.stopPropagation()" 
-                  [title]="canEditAgent(agent) ? 'Edit Agent' : 'Only the author can edit this agent'"
-                  [disabled]="!canEditAgent(agent)">
-                  <span class="material-icons">edit</span>
-                </button>
-                <button 
-                  class="icon-btn delete" 
-                  (click)="deleteAgent(agent); $event.stopPropagation()" 
-                  [title]="canEditAgent(agent) ? 'Delete Agent' : 'Only the author can delete this agent'"
-                  [disabled]="!canEditAgent(agent)">
-                  <span class="material-icons">delete</span>
-                </button>
-              </div>
-            </div>
-            
-            <div class="agent-card-body">
-              <p class="agent-description">{{ agent.agent_description }}</p>
+        <!-- Controls Bar (sort + filter) -->
+        <div class="agent-list-controls" *ngIf="agents.length > 0">
+          <div class="filter-control">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" placeholder="Search agents..." [(ngModel)]="filterText" (ngModelChange)="onFilterChange($event)">
+            <button class="clear-filter-btn" *ngIf="filterText" (click)="clearFilter()">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          <div class="sort-control">
+            <select [(ngModel)]="sortMode" (ngModelChange)="onSortChange($event)">
+              <option value="team">Team Name</option>
+              <option value="name-asc">Agent Name (A-Z)</option>
+              <option value="name-desc">Agent Name (Z-A)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Team Groups -->
+        <div class="team-groups" *ngIf="agents.length > 0">
+          <div class="team-group" *ngFor="let group of getGroupedAgents()">
+            <!-- Team Header (only when sortMode is 'team') -->
+            <div class="team-header" *ngIf="sortMode === 'team'"
+                 [style.border-left-color]="group.accentColor"
+                 (click)="toggleTeamCollapse(group.teamName)">
+              <span class="material-icons chevron" [class.collapsed]="!group.isExpanded">expand_more</span>
+              <span class="team-name">{{ group.teamName }}</span>
+              <span class="team-count-badge">{{ group.agents.length }}</span>
             </div>
 
-            <div class="agent-card-footer">
-              <span class="agent-id">ID: {{ agent.agent_name }}</span>
-              <span class="agent-author">
-                <span class="material-icons">person</span>
-                {{ getAuthorDisplay(agent) }}
-              </span>
-              <span class="tool-count" *ngIf="agent.tool_agent_names?.length">
-                <span class="material-icons">build</span>
-                {{ agent.tool_agent_names.length }} tool{{ agent.tool_agent_names.length !== 1 ? 's' : '' }}
-              </span>
+            <!-- Agent Cards Grid (collapsible) -->
+            <div class="agent-cards" [class.collapsed]="!group.isExpanded && sortMode === 'team'">
+              <div
+                class="agent-card"
+                *ngFor="let agent of group.agents"
+                [class.readonly]="!canEditAgent(agent)"
+                (click)="selectAgent(agent)">
+
+                <div class="agent-card-header">
+                  <div class="agent-icon" [style.background-color]="getAgentColor(agent)">
+                    <span class="material-icons">smart_toy</span>
+                  </div>
+                  <div class="agent-info">
+                    <span class="agent-name">
+                      {{ agent.agent_display_name }}
+                      <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
+                    </span>
+                    <span class="agent-team">{{ agent.team_name }}</span>
+                  </div>
+                  <div class="agent-actions">
+                    <button
+                      class="icon-btn"
+                      (click)="editAgent(agent); $event.stopPropagation()"
+                      [title]="canEditAgent(agent) ? 'Edit Agent' : 'Only the author can edit this agent'"
+                      [disabled]="!canEditAgent(agent)">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button
+                      class="icon-btn delete"
+                      (click)="deleteAgent(agent); $event.stopPropagation()"
+                      [title]="canEditAgent(agent) ? 'Delete Agent' : 'Only the author can delete this agent'"
+                      [disabled]="!canEditAgent(agent)">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="agent-card-body">
+                  <p class="agent-description">{{ agent.agent_description }}</p>
+                </div>
+
+                <div class="agent-card-footer">
+                  <span class="agent-id">ID: {{ agent.agent_name }}</span>
+                  <span class="agent-author">
+                    <span class="material-icons">person</span>
+                    {{ getAuthorDisplay(agent) }}
+                  </span>
+                  <span class="tool-count" *ngIf="agent.tool_agent_names?.length">
+                    <span class="material-icons">build</span>
+                    {{ agent.tool_agent_names.length }} tool{{ agent.tool_agent_names.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- No Results -->
+        <div class="filter-empty-state" *ngIf="getGroupedAgents().length === 0 && filterText">
+          <span class="material-icons">search_off</span>
+          <p>No agents match your search.</p>
         </div>
       </div>
 
