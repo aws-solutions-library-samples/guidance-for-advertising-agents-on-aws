@@ -340,7 +340,11 @@ export class AgentConfigService implements OnInit {
           // Apply A2A protocol settings from agent config
           if (config.is_a2a) {
             mainAgent.is_a2a = true;
-            mainAgent.a2a_auth_type = config.a2a_auth_type || 'none';
+          }
+          // Always propagate a2a_auth_type — an agent can have OAuth auth
+          // configured on its runtime without being a full A2A JSON-RPC agent
+          if (config.a2a_auth_type) {
+            mainAgent.a2a_auth_type = config.a2a_auth_type;
           }
           // Override runtime_arn from agent config if set (A2A agents may have their own endpoint)
           if (config.runtime_arn) {

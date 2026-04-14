@@ -13,7 +13,7 @@
         },
         "content": {
           "title": "Lakers Dominate Celtics in Season Opener, James Scores Triple-Double",
-          "keywords": ["NBA", "Lakers", "Celtics", "LeBron James"]
+          "keywords": ["Pro Basketball League", "Lakers", "Celtics", "LeBron James"]
         }
       },
       "device": {
@@ -171,7 +171,7 @@
         "categories": ["IAB11", "IAB11-4"],
         "publisher": {
           "id": "pub-13579",
-          "name": "The New York Times"
+          "name": "The GNN Media Corp"
         },
         "content": {
           "title": "Senate Passes $1.2 Trillion Infrastructure Bill After Months of Negotiation",
@@ -220,16 +220,16 @@
       "request_id": "bid-78h90i12j34",
       "timestamp": "2025-05-20T14:27:42.567Z",
       "site": {
-        "domain": "espn.com",
-        "page": "https://www.espn.com/nfl/draft-2025-predictions",
+        "domain": "sportspulse.com",
+        "page": "https://www.sportspulse.com/nfl/draft-2025-predictions",
         "categories": ["IAB17", "IAB17-16"],
         "publisher": {
           "id": "pub-97531",
-          "name": "ESPN"
+          "name": "SportsPulse"
         },
         "content": {
-          "title": "NFL Draft 2025: Expert Predictions and Analysis",
-          "keywords": ["NFL", "draft", "football", "sports"]
+          "title": "Pro Football League Draft 2025: Expert Predictions and Analysis",
+          "keywords": ["Pro Football League", "draft", "football", "sports"]
         }
       },
       "device": {

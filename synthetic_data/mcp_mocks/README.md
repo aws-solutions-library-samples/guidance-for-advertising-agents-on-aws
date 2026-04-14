@@ -89,17 +89,17 @@ creative_formats ──> (referenced by products and creatives)
 
 ### Acme Energy Drink Campaign (camp_001)
 - **Advertiser:** adv_cpg_001 (Acme Consumer Goods)
-- **Agency:** agy_omni_001 (Omnicom Media Group)
+- **Agency:** agy_omni_001 (Atlas Media Group)
 - **Media Buy:** mb_001
 - **Packages:** pkg_001 through pkg_005
 - **Primary DSP:** The Trade Desk (dsp_ttd_001)
 
 ### Products Used
-- prod_espn_ctv_001 (ESPN Premium Sports CTV)
-- prod_fox_ctv_001 (Fox Sports CTV)
-- prod_paramount_ctv_001 (Paramount+ Sports CTV)
-- prod_youtube_olv_001 (YouTube Sports Premium)
-- prod_twitch_olv_001 (Twitch Sports & Esports)
+- prod_espn_ctv_001 (SportsPulse Premium Sports CTV)
+- prod_fox_ctv_001 (Apex Sports CTV)
+- prod_paramount_ctv_001 (Crestline+ Sports CTV)
+- prod_youtube_olv_001 (StreamVault Sports Premium)
+- prod_twitch_olv_001 (StreamVault Gaming & Esports)
 
 ### Signals Activated
 - sig_lr_004 (Sports Enthusiasts - Active Lifestyle)

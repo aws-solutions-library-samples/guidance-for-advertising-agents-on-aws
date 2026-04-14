@@ -86,8 +86,8 @@ class A2ATokenManager:
         # Check cache
         cached = self._token_cache.get(ssm_path)
         if cached is not None and not cached.is_expired:
-            logger.debug("🔑 A2A_AUTH: Using cached bearer token for %s", ssm_path)
-            return cached.token, None
+            logger.debug("🔑 A2A_AUTH: Using cached bearer token")
+            return cached.token, None  # noqa: S105
 
         # Fetch credentials from SSM
         username, password, err = self._fetch_credentials_from_ssm(ssm_path)
@@ -107,7 +107,7 @@ class A2ATokenManager:
             expires_at=time.time() + expires_in,
             ssm_path=ssm_path,
         )
-        logger.info("✅ A2A_AUTH: Acquired and cached bearer token for %s", ssm_path)
+        logger.info("✅ A2A_AUTH: Acquired and cached new bearer token")
         return token, None
 
     def _fetch_credentials_from_ssm(
@@ -131,8 +131,7 @@ class A2ATokenManager:
             password = creds.get("password")
             if not username or not password:
                 logger.error(
-                    "❌ A2A_AUTH: Credentials at %s missing username or password field",
-                    ssm_path,
+                    "❌ A2A_AUTH: Credentials missing required fields",
                 )
                 return None, None, (
                     "A2A authentication failed — credential format invalid at the configured path"
@@ -141,8 +140,7 @@ class A2ATokenManager:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             logger.error(
-                "❌ A2A_AUTH: SSM retrieval failed for %s — %s",
-                ssm_path,
+                "❌ A2A_AUTH: SSM retrieval failed — %s",
                 error_code,
             )
             return None, None, (
@@ -150,8 +148,7 @@ class A2ATokenManager:
             )
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(
-                "❌ A2A_AUTH: Failed to parse credentials from %s — %s",
-                ssm_path,
+                "❌ A2A_AUTH: Failed to parse credentials — %s",
                 type(e).__name__,
             )
             return None, None, (
@@ -159,9 +156,7 @@ class A2ATokenManager:
             )
         except Exception:
             logger.error(
-                "❌ A2A_AUTH: Unexpected error retrieving credentials from %s",
-                ssm_path,
-                exc_info=True,
+                "❌ A2A_AUTH: Unexpected error retrieving credentials",
             )
             return None, None, (
                 "A2A authentication failed — unexpected error retrieving credentials"
@@ -218,7 +213,6 @@ class A2ATokenManager:
         except Exception:
             logger.error(
                 "❌ A2A_AUTH: Unexpected error during Cognito authentication",
-                exc_info=True,
             )
             return None, None, (
                 "A2A authentication failed — unexpected error during token acquisition"

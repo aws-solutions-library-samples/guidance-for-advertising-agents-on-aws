@@ -156,6 +156,15 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   mcpOAuthCredentialsPending: boolean = false;
   mcpOAuthCredentialsEditing: boolean = false;
 
+  // Inbound A2A OAuth credentials state (for this agent's own A2A endpoint)
+  inboundA2aOAuthTokenEndpoint: string = '';
+  inboundA2aOAuthUsername: string = '';
+  inboundA2aOAuthPassword: string = '';
+  inboundA2aOAuthPasswordVisible: boolean = false;
+  inboundA2aOAuthSaving: boolean = false;
+  inboundA2aOAuthEditing: boolean = false;
+  inboundA2aOAuthError: string | null = null;
+
   @Output() a2aEditorOpened = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
   @Output() a2aEditorClosed = new EventEmitter<void>();
   @Output() a2aEditorSaved = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
@@ -1071,6 +1080,67 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.a2aEditorError = error.message || 'Failed to remove credentials.';
     } finally {
       this.a2aOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // ============================================
+  // Inbound A2A OAuth Credential Methods
+  // ============================================
+
+  /** Save inbound A2A OAuth credentials (client_id, username, password) to SSM for this agent's own A2A endpoint */
+  async saveInboundA2aOAuthCredentials(): Promise<void> {
+    if (!this.inboundA2aOAuthTokenEndpoint.trim() || !this.inboundA2aOAuthUsername.trim() || !this.inboundA2aOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+
+    this.inboundA2aOAuthSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const credentialsJson = JSON.stringify({
+        client_id: this.inboundA2aOAuthTokenEndpoint.trim(),
+        username: this.inboundA2aOAuthUsername.trim(),
+        password: this.inboundA2aOAuthPassword.trim()
+      });
+      const ssmPath = await this.agentDynamoDBService.storeA2AInboundOAuthCredentials(
+        this.editingAgent.agent_name,
+        credentialsJson
+      );
+
+      this.editingAgent.a2a_oauth_credentials = { hasCredentials: true, ssmPath: ssmPath || undefined };
+      this.inboundA2aOAuthTokenEndpoint = '';
+      this.inboundA2aOAuthUsername = '';
+      this.inboundA2aOAuthPassword = '';
+      this.inboundA2aOAuthEditing = false;
+    } catch (error: any) {
+      console.error('Error saving inbound A2A OAuth credentials:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.inboundA2aOAuthSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove inbound A2A OAuth credentials from SSM */
+  async removeInboundA2aOAuthCredentials(): Promise<void> {
+    if (!this.editingAgent.agent_name) return;
+
+    this.inboundA2aOAuthSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AInboundOAuthCredentials(this.editingAgent.agent_name);
+      this.editingAgent.a2a_oauth_credentials = undefined;
+      this.inboundA2aOAuthEditing = false;
+      this.inboundA2aOAuthTokenEndpoint = '';
+      this.inboundA2aOAuthUsername = '';
+      this.inboundA2aOAuthPassword = '';
+    } catch (error: any) {
+      console.error('Error removing inbound A2A OAuth credentials:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.inboundA2aOAuthSaving = false;
       this.cdr.markForCheck();
     }
   }

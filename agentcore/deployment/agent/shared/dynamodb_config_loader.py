@@ -37,6 +37,7 @@ _dynamodb_client = None
 _dynamodb_table = None
 _ssm_client = None
 _config_cache: Dict[str, Any] = {}
+_ssm_secret_cache: Dict[str, str] = {}  # Separate cache for SSM secrets (not logged)
 _cache_initialized = False
 
 # Config type constants
@@ -101,12 +102,14 @@ def get_ssm_client():
 
 def clear_config_cache(key: Optional[str] = None):
     """Clear the configuration cache."""
-    global _config_cache, _cache_initialized
+    global _config_cache, _ssm_secret_cache, _cache_initialized
     if key:
         _config_cache.pop(key, None)
+        _ssm_secret_cache.pop(key, None)
         logger.info(f"🗑️ DDB_CACHE: Cleared cache for {key}")
     else:
         _config_cache.clear()
+        _ssm_secret_cache.clear()
         _cache_initialized = False
         logger.info("🗑️ DDB_CACHE: Cleared all config cache")
 
@@ -534,9 +537,9 @@ def resolve_ssm_parameter(ssm_path: str, use_cache: bool = True) -> Optional[str
     """
     cache_key = f"ssm:{ssm_path}"
 
-    if use_cache and cache_key in _config_cache:
-        logger.debug(f"📦 DDB_CACHE: Cache HIT for SSM param: {ssm_path}")
-        return _config_cache[cache_key]
+    if use_cache and cache_key in _ssm_secret_cache:
+        logger.debug("📦 DDB_CACHE: Cache HIT for SSM param (redacted)")
+        return _ssm_secret_cache[cache_key]
 
     ssm = get_ssm_client()
     if not ssm:
@@ -544,17 +547,16 @@ def resolve_ssm_parameter(ssm_path: str, use_cache: bool = True) -> Optional[str
 
     try:
         response = ssm.get_parameter(Name=ssm_path, WithDecryption=True)
-        value = response["Parameter"]["Value"]
-        _config_cache[cache_key] = value
-        logger.info(f"✅ SSM_LOADER: Resolved parameter {ssm_path}")
-        return value
+        decrypted = response["Parameter"]["Value"]
+        _ssm_secret_cache[cache_key] = decrypted
+        logger.info("✅ SSM_LOADER: Resolved parameter successfully")
+        return decrypted
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "ParameterNotFound":
             logger.warning(f"⚠️ SSM_LOADER: Parameter not found: {ssm_path}")
         else:
-            logger.error(f"❌ SSM_LOADER: Error fetching {ssm_path}: {e}")
-        _config_cache[cache_key] = None
+            logger.error(f"❌ SSM_LOADER: Error fetching parameter: {error_code}")
         return None
 
 
@@ -590,11 +592,10 @@ def resolve_mcp_server_auth(mcp_servers: List[Dict[str, Any]]) -> List[Dict[str,
             if "headers" not in server:
                 server["headers"] = {}
             server["headers"]["Authorization"] = f"Bearer {token}"
-            logger.info(f"✅ MCP_AUTH: Injected bearer token for server '{server.get('name', server.get('id', '?'))}'")
+            logger.info(f"✅ MCP_AUTH: Injected auth header for server '{server.get('name', server.get('id', '?'))}'")
         else:
             logger.warning(
-                f"⚠️ MCP_AUTH: Could not resolve token for server '{server.get('name', server.get('id', '?'))}' "
-                f"at {ssm_path}"
+                f"⚠️ MCP_AUTH: Could not resolve auth for server '{server.get('name', server.get('id', '?'))}'"
             )
 
     return mcp_servers
