@@ -509,7 +509,7 @@ def query_viewability(
     Args:
         campaign_id: Filter by campaign ID
         adgroup_id: Filter by ad group ID
-        vendor: Filter by viewability vendor: 'IAS', 'DoubleVerify', 'Moat', 'ComScore'
+        vendor: Filter by viewability vendor: 'AdShield', 'DualCheck', 'Beacon', 'CoreMetric'
         group_by: Aggregate by dimension (default 'adgroup'): 'campaign', 'adgroup', 'vendor', 'site', 'none'
         include_raw_data: If True, include raw records in addition to aggregates (default False)
         limit: Maximum records to return

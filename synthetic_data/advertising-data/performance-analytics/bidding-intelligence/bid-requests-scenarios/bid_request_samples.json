@@ -166,8 +166,8 @@
       "request_id": "bid-90e12f34g56",
       "timestamp": "2025-05-20T14:26:18.234Z",
       "site": {
-        "domain": "nytimes.com",
-        "page": "https://www.nytimes.com/politics/2025/05/senate-infrastructure-bill",
+        "domain": "metrotimes.com",
+        "page": "https://www.metrotimes.com/politics/2025/05/senate-infrastructure-bill",
         "categories": ["IAB11", "IAB11-4"],
         "publisher": {
           "id": "pub-13579",

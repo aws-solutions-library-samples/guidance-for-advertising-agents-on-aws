@@ -64,7 +64,7 @@ platforms:
     integration_status: "active"
     activation_time_hours: 4
   - platform_id: "xandr"
-    platform_name: "Xandr"
+    platform_name: "Zephyr"
     integration_status: "active"
     activation_time_hours: 2
 
