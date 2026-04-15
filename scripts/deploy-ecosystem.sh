@@ -192,6 +192,134 @@ agent_exists() {
     [ -n "$agent_list" ] && [ "$agent_list" != "None" ]
 }
 
+# Function to ensure the guidance agent's execution role has InvokeAgentRuntime permission.
+# The AgentCore SDK auto-creates the role but doesn't include this permission, which is
+# needed for the guidance agent to call other AgentCore runtimes (e.g., seller MCP runtime).
+# This function is idempotent — it checks first and only patches if missing.
+ensure_invoke_runtime_permission() {
+    local role_name="AgentCoreRole-${STACK_PREFIX}-AdFabricAgent-${UNIQUE_ID}"
+    local account_id
+    account_id=$(aws_cmd sts get-caller-identity --query 'Account' --output text 2>/dev/null)
+
+    if [ -z "$account_id" ]; then
+        print_warning "⚠️  Could not determine AWS account ID, skipping IAM permission check"
+        return 0
+    fi
+
+    print_status "🔐 Checking InvokeAgentRuntime permission on ${role_name}..."
+
+    # Check if the role exists
+    if ! iam_role_exists "$role_name"; then
+        print_warning "⚠️  Role ${role_name} not found, skipping IAM permission patch"
+        return 0
+    fi
+
+    # Find the role's managed policy (auto-created by AgentCore SDK)
+    local policy_arn
+    policy_arn=$(aws_cmd iam list-attached-role-policies \
+        --role-name "$role_name" \
+        --query "AttachedPolicies[?starts_with(PolicyName,'AgentCoreRole-')].PolicyArn | [0]" \
+        --output text 2>/dev/null)
+
+    if [ -z "$policy_arn" ] || [ "$policy_arn" = "None" ]; then
+        print_warning "⚠️  No AgentCoreRole policy found on ${role_name}, skipping"
+        return 0
+    fi
+
+    # Check if InvokeAgentRuntime is already in the policy
+    local version_id
+    version_id=$(aws_cmd iam get-policy --policy-arn "$policy_arn" \
+        --query 'Policy.DefaultVersionId' --output text 2>/dev/null)
+
+    local has_permission
+    has_permission=$($PYTHON_CMD -c "
+import json, sys, urllib.parse
+try:
+    import subprocess
+    cmd = ['aws', 'iam', 'get-policy-version',
+           '--policy-arn', '$policy_arn',
+           '--version-id', '$version_id',
+           '--query', 'PolicyVersion.Document', '--output', 'json']
+    if '$AWS_PROFILE':
+        cmd.extend(['--profile', '$AWS_PROFILE'])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    doc = json.loads(result.stdout)
+    if isinstance(doc, str):
+        doc = json.loads(urllib.parse.unquote(doc))
+    for stmt in doc.get('Statement', []):
+        actions = stmt.get('Action', [])
+        if isinstance(actions, str):
+            actions = [actions]
+        if 'bedrock-agentcore:InvokeAgentRuntime' in actions:
+            print('yes')
+            sys.exit(0)
+    print('no')
+except Exception as e:
+    print(f'error:{e}', file=sys.stderr)
+    print('no')
+" 2>/dev/null)
+
+    if [ "$has_permission" = "yes" ]; then
+        print_status "✅ InvokeAgentRuntime permission already present on ${role_name}"
+        return 0
+    fi
+
+    print_status "📝 Adding InvokeAgentRuntime permission to ${role_name}..."
+
+    # Generate updated policy document
+    local updated_policy
+    updated_policy=$($PYTHON_CMD -c "
+import json, sys, urllib.parse, subprocess
+cmd = ['aws', 'iam', 'get-policy-version',
+       '--policy-arn', '$policy_arn',
+       '--version-id', '$version_id',
+       '--query', 'PolicyVersion.Document', '--output', 'json']
+if '$AWS_PROFILE':
+    cmd.extend(['--profile', '$AWS_PROFILE'])
+result = subprocess.run(cmd, capture_output=True, text=True)
+doc = json.loads(result.stdout)
+if isinstance(doc, str):
+    doc = json.loads(urllib.parse.unquote(doc))
+doc['Statement'].append({
+    'Sid': 'AgentCoreInvokeRuntime',
+    'Effect': 'Allow',
+    'Action': ['bedrock-agentcore:InvokeAgentRuntime'],
+    'Resource': 'arn:aws:bedrock-agentcore:${AWS_REGION}:${account_id}:runtime/*'
+})
+print(json.dumps(doc))
+" 2>/dev/null)
+
+    if [ -z "$updated_policy" ]; then
+        print_warning "⚠️  Failed to generate updated policy, skipping"
+        return 0
+    fi
+
+    # Write to temp file and create new policy version
+    local tmp_policy="/tmp/agentcore_role_policy_$$.json"
+    echo "$updated_policy" > "$tmp_policy"
+
+    # Delete oldest non-default version if we're at the 5-version limit
+    local oldest_version
+    oldest_version=$(aws_cmd iam list-policy-versions --policy-arn "$policy_arn" \
+        --query "Versions[?IsDefaultVersion==\`false\`].VersionId | [0]" \
+        --output text 2>/dev/null)
+    if [ -n "$oldest_version" ] && [ "$oldest_version" != "None" ]; then
+        aws_cmd iam delete-policy-version --policy-arn "$policy_arn" \
+            --version-id "$oldest_version" 2>/dev/null || true
+    fi
+
+    if aws_cmd iam create-policy-version \
+        --policy-arn "$policy_arn" \
+        --policy-document "file://${tmp_policy}" \
+        --set-as-default > /dev/null 2>&1; then
+        print_success "✅ Added InvokeAgentRuntime permission to ${role_name}"
+    else
+        print_warning "⚠️  Failed to update IAM policy — you may need to add InvokeAgentRuntime manually"
+    fi
+
+    rm -f "$tmp_policy"
+}
+
 # Function to check if an agent is A2A-enabled
 # Returns 0 (true) if agent has both use_handler_template=true AND protocol="A2A"
 # Returns 1 (false) otherwise
@@ -3149,6 +3277,12 @@ EOF
         
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
+    
+    # Ensure the guidance agent's execution role has InvokeAgentRuntime permission.
+    # The AgentCore SDK auto-creates the role but doesn't know the guidance agent
+    # needs to call other runtimes (e.g., the seller MCP runtime). This step is
+    # idempotent — it checks first and only patches if the permission is missing.
+    ensure_invoke_runtime_permission
     
     # Memory was already created before agent deployment (above)
     # Add user prompt after AgentCore deployment completion
