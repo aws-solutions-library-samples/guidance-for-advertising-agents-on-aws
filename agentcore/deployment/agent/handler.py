@@ -830,7 +830,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         agent_config = get_agent_config(agent_name=agent_name)
         model_inputs = agent_config.get("model_inputs", {}).get(agent_name, {})
 
-    model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0")
+    model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-6")
     
     # Claude 4.5 Haiku doesn't allow both temperature and top_p
     model_kwargs = {
@@ -840,8 +840,8 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         "cache_tools": "default",
     }
     
-    if "claude-haiku-4-5" in model_id:
-        # For Claude 4.5 Haiku, only use temperature (prioritize over top_p)
+    if "claude-haiku-4-5" in model_id or "claude-sonnet-4-6" in model_id:
+        # These models don't allow both temperature and top_p
         model_kwargs["temperature"] = model_inputs.get("temperature", 0.8)
     else:
         # For other models, use both parameters
@@ -1184,10 +1184,9 @@ class GenericAgent:
                 "external_agents": [],
                 "model_inputs": {
                     f"{agent_name}": {
-                        "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                        "model_id": "us.anthropic.claude-sonnet-4-6",
                         "max_tokens": 12000,
                         "temperature": 0.3,
-                        "top_p": 0.8,
                     }
                 },
             }
@@ -1197,14 +1196,13 @@ class GenericAgent:
             model_inputs = config.get("model_inputs", {}).get(agent_name, {})
         except Exception as e:
             model_inputs = {
-                "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "model_id": "us.anthropic.claude-sonnet-4-6",
                 "max_tokens": 12000,
                 "temperature": 0.3,
-                "top_p": 0.8,
             }
 
         try:
-            model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0")
+            model_id = model_inputs.get("model_id", "us.anthropic.claude-sonnet-4-6")
             model = BedrockModel(
                 model_id=model_id,
                 max_tokens=model_inputs.get("max_tokens", 12000),
@@ -1212,9 +1210,8 @@ class GenericAgent:
                 cache_tools="default",
             )
             
-            # Claude 4.5 Haiku doesn't allow both temperature and top_p
-            if "claude-haiku-4-5" in model_id:
-                # For Claude 4.5 Haiku, only use temperature (prioritize over top_p)
+            # Claude 4.5 Haiku and Claude Sonnet 4.6 don't allow both temperature and top_p
+            if "claude-haiku-4-5" in model_id or "claude-sonnet-4-6" in model_id:
                 if model_inputs.get("temperature"):
                     model.temperature = model_inputs.get("temperature")
             else:
