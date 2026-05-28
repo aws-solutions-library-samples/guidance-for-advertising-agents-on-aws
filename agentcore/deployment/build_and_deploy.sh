@@ -465,7 +465,15 @@ print_status "Skipping memory setup - handled by ecosystem deployment"
 print_status "Building Docker image..."
 cd "${AGENTCORE_DIR}/deployment/agent"
 # Set memory environment variables for all AgentCore agents using consistent pattern
-MEMORY_ID="${STACK_PREFIX}memory${UNIQUE_ID}"
+# Try to read the actual memory_record_id (which includes the API-generated suffix)
+MEMORY_RECORD_FILE="${PROJECT_ROOT}/.memory-record-${STACK_PREFIX}-${UNIQUE_ID}.json"
+if [ -f "$MEMORY_RECORD_FILE" ]; then
+    MEMORY_ID=$(python3 -c "import json, sys; data=json.load(sys.stdin); print(data.get('memory_record_id',''))" < "$MEMORY_RECORD_FILE" 2>/dev/null)
+fi
+if [ -z "$MEMORY_ID" ]; then
+    MEMORY_ID="${STACK_PREFIX}memory${UNIQUE_ID}"
+    print_warning "Could not read memory record ID from $MEMORY_RECORD_FILE, using constructed ID: $MEMORY_ID"
+fi
 
 # Get the visualizations table name from CloudFormation stack output
 # print_status "Retrieving visualizations table name from infrastructure stack..."

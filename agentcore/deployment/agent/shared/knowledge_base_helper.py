@@ -354,11 +354,12 @@ class KnowledgeBaseHelper:
                 return None
 
             # Get the foundation model ARN for generation
-            # Default to Claude 3 Haiku for cost-effective generation
-            model_arn = os.environ.get(
-                "KB_MODEL_ARN",
-                "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
-            )
+            # Use inference profile for claude-3-5-haiku (required for newer models)
+            model_arn = os.environ.get("KB_MODEL_ARN")
+            if not model_arn:
+                sts = boto3.client("sts", region_name=self.region)
+                account_id = sts.get_caller_identity()["Account"]
+                model_arn = f"arn:aws:bedrock:{self.region}:{account_id}:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0"
 
             # Create bedrock agent runtime client
             bedrock_agent_runtime = boto3.client(

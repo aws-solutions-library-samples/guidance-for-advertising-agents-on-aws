@@ -236,6 +236,7 @@ Resources:
             ],
             "Principal": [
               "${BedrockExecutionRole.Arn}",
+              "arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-KB-Advertising-Role-${UniqueId}",
               "arn:aws:iam::${AWS::AccountId}:root"
             ],
             "Description": "Access for Bedrock Knowledge Bases"
