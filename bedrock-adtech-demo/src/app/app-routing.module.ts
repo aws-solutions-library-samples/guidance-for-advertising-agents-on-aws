@@ -5,6 +5,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { GenericTabComponent } from './components/generic-tab/generic-tab.component';
 
 const routes: Routes = [
+  { path: '', component: LoginComponent },
   { path: 'login', component: LoginComponent },
   { 
     path: 'campaign-planning', 

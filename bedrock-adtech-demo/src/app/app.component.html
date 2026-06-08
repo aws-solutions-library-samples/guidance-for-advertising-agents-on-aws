@@ -4,8 +4,10 @@
     <div class="header-content">
       <div class="title-section">
         <h1 class="app-title">{{title}}</h1>
-        <p class="app-subtitle">A <span class="playground-handwriting">playground</span> for simulating
-          {{getIndustry()}} scenarios using Agents on AWS</p>
+        <span class="session-id-header" [title]="sessionManager.getCurrentSessionId()" (click)="copySessionId()">
+          <span class="material-icons">fingerprint</span>
+          {{sessionManager.getCurrentSessionId()}}
+        </span>
       </div>
       <div class="user-section">
 
@@ -55,7 +57,7 @@
           <!-- More Button (shows when menu is collapsed) -->
           <button class="nova-button secondary more-button user-button" (click)="toggleMenu()" title="More options">
             <span class="material-icons">more_horiz</span>
-            {{ currentUser?.signInDetails?.loginId || 'User' }}
+            {{ userDisplayName }}
           </button>
         </div>
       </div>
@@ -73,25 +75,26 @@
 
   <!-- Tab Interface (shown when tabs are loaded) -->
   <div class="nova-tab-container" *ngIf="!isLoadingTabs">
-    <div class="nova-tab-nav">
-      <div class="tabs-wrapper">
-        <button *ngFor="let tab of tabs" class="nova-tab" [class.active]="isActiveTab(tab.id)"
-          (click)="selectTab(tab.id)">
-          <div class="tab-icon-wrapper">
-            <span class="material-icons tab-icon">{{tab.icon}}</span>
-          </div>
-          <div class="tab-content">
+    <!-- Left Sidebar Navigation -->
+    <div class="nova-sidebar" [class.collapsed]="isSidebarCollapsed">
+      <div class="sidebar-toggle" (click)="isSidebarCollapsed = !isSidebarCollapsed">
+        <span class="material-icons">{{ isSidebarCollapsed ? 'chevron_right' : 'chevron_left' }}</span>
+      </div>
+      <div class="sidebar-tabs">
+        <button *ngFor="let tab of tabs" class="sidebar-tab" [class.active]="isActiveTab(tab.id)"
+          (click)="selectTab(tab.id)" [title]="tab.title">
+          <span class="material-icons tab-icon">{{tab.icon}}</span>
+          <div class="tab-label" *ngIf="!isSidebarCollapsed">
             <div class="tab-title">{{tab.title}}</div>
             <div class="tab-description">{{tab.description}}</div>
           </div>
-          <div class="tab-indicator" *ngIf="isActiveTab(tab.id)"></div>
         </button>
       </div>
     </div>
 
-    <div class="nova-tab-content">
+    <!-- Main Content -->
+    <div class="nova-tab-content" [class.sidebar-collapsed]="isSidebarCollapsed">
       <div class="content-wrapper">
-        <!-- Dynamic tab content - conditional rendering ensures component lifecycle -->
         <ng-container *ngFor="let tab of tabs">
           <app-generic-tab [tabId]="tab.id" [currentUser]="currentUser" *ngIf="isActiveTab(tab.id)"
             (messagesUpdated)="messagesUpdated($event)" [tabConfig]="tab.config">
@@ -104,7 +107,6 @@
 
 <!-- Router Outlet for Login -->
 <router-outlet *ngIf="!isAuthenticated"></router-outlet>
-
 <!-- Quick Setup Modal -->
 <div class="quick-setup-overlay" *ngIf="showQuickSetup" (click)="closeQuickSetup()">
   <div class="quick-setup-modal standard-modal-panel" style='flex-direction: column;' (click)="$event.stopPropagation()">
@@ -364,13 +366,13 @@
 <app-demo-modal *ngIf="showDemoModal" [currentUser]="currentUser" (closeModal)="closeDemoModal()">
 </app-demo-modal>
 
-<!-- Context Panel Component (Floating) -->
-<app-context-panel class="context-panel-element" [style.bottom.px]="contextDetailsPosition.bottom"
+<!-- Context Panel Component (Floating) — hidden: blocks chat input, visualization replay not needed for demo -->
+<!-- <app-context-panel class="context-panel-element" [style.bottom.px]="contextDetailsPosition.bottom"
   [style.right.px]="contextDetailsPosition.right" *ngIf="isAuthenticated&&currentTab"
   [tabConfig]="currentTab.config" [currentContext]="contextData"
   (contextPanelShow)="onContextPanelShow()" (contextPanelHide)="onContextPanelHide()"
   (publisherSelect)="selectPublisher($event)">
-</app-context-panel>
+</app-context-panel> -->
 
 <!-- Tour Overlay (shown at all times when authenticated) -->
 <app-tour-overlay *ngIf="isAuthenticated"></app-tour-overlay>

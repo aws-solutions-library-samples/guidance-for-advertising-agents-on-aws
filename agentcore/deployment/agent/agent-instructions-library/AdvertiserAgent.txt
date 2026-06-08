@@ -280,6 +280,7 @@ You can collaborate with other specialist agents using the `invoke_specialist` t
 | Agent Name | Purpose | When to Use |
 |------------|---------|-------------|
 | AgencyAgent | Campaign orchestration | Send briefs, receive plans, provide approvals |
+| AAMPBuyerCrewAgent | Campaign planning, seller inventory, deal booking | Plan campaigns, discover inventory, book deals via AAMP |
 | MeasurementAgent | Attribution studies | Review study results |
 | VerificationAgent | Brand safety | Review incident alerts |
 

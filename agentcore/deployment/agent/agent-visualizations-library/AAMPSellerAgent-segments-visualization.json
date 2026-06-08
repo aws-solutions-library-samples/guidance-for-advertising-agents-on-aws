@@ -1,0 +1,51 @@
+{
+  "agentName": "AAMPSellerAgent",
+  "agentId": "AAMPSellerAgent",
+  "templateId": "segments-visualization",
+  "usage": "Inventory segments by channel type and audience composition",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "AAMP Seller Inventory Segments",
+    "subtitle": "Inventory breakdown by channel and audience",
+    "segments": [
+      {
+        "primaryLabel": "Segment name (e.g., 'CTV/Streaming', 'Linear TV', 'Digital Video', 'Display', 'Audio')",
+        "secondaryLabel": "Segment category (e.g., 'Premium Video', 'Traditional', 'Digital', 'Programmatic')",
+        "description": "Detailed segment profile and inventory characteristics",
+        "actualValue": "Current segment metric (e.g., '5 products', '$45 avg CPM')",
+        "targetValue": "Segment target (e.g., '8 products', '$50 avg CPM')",
+        "forecastedValue": "Projected segment metric",
+        "actualLabel": "Current segment performance description",
+        "targetLabel": "Target segment performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Base CPM', 'Product Count')",
+          "value": "KPI value (e.g., '$45', '5')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Fill Rate', 'Avg Discount')",
+          "value": "KPI value (e.g., '85%', '12%')"
+        },
+        "budgetAmount": "Revenue allocation for this segment",
+        "statusIndicator": "Segment status: 'optimized', 'active', 'underperforming'",
+        "confidenceLevel": "Data confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Expected performance: 'high', 'medium', 'low'",
+        "insights": ["Key segment insights"],
+        "risks": ["Risk factors for this segment"],
+        "recommendations": ["Optimization strategies"],
+        "metadata": {
+          "size": "Segment scope (e.g., '5 products', '30% of inventory')",
+          "growth": "Segment growth rate",
+          "engagement": "Engagement level"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of inventory segments",
+      "activeSegments": "Number of active segments",
+      "topPerformer": "Best performing segment",
+      "growthOpportunity": "Primary growth opportunity segment"
+    }
+  }
+}

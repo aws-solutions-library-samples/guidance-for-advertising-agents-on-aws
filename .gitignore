@@ -7,6 +7,8 @@ __pycache__/
 
 # AgentCore Starter Toolkit (auto-generated, contains hardcoded default SDK role)
 .bedrock_agentcore.yaml
+.bedrock_agentcore/
+agentcore/deployment/agent/.bedrock_agentcore/
 build/
 develop-eggs/
 dist/
@@ -93,6 +95,16 @@ aws-exports.js
 .memory*
 .appsync*
 .ads-gw*
+.aamp-runtime*
+.external-jwt-runtime*
+ad_seller.db
+agentcore/deployment/deploy_external_jwt_runtime.sh
+aamp-response.md
+.*mcp-handler*.json
+.oauth-gw*
+
+# Resolved config (generated from template at deploy time — never commit)
+agentcore/deployment/agent/global_configuration.json
 
 # CloudFormation and CDK
 *.zip
@@ -173,6 +185,14 @@ demo-guides
 docs/agents_for_advertising_demo.mov
 docs/demo.mov
 agentcore/deployment/agent/Dockerfile
-.ads-gw*
-docs/agents_for_advertising_demo.mov
-docs/demo.mov
+lambda/tests/__init__.py
+agentcore/deployment/agent/global_configuration.json
+
+
+# Customer-specific demo data (generated per-customer, not checked in)
+synthetic_data/customers/
+synthetic_data/mcp_mocks/*_*.csv
+!synthetic_data/mcp_mocks/products.csv
+!synthetic_data/mcp_mocks/signals.csv
+!synthetic_data/mcp_mocks/campaigns.csv
+!synthetic_data/mcp_mocks/advertisers_agencies.csv

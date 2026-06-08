@@ -99,6 +99,7 @@ export interface AgentConfiguration {
   agent_name: string;
   agent_display_name: string;
   team_name: string;
+  agent_family?: string;
   agent_description: string;
   tool_agent_names: string[];
   external_agents: string[];
@@ -169,6 +170,29 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   selectedAgent: AgentConfiguration | null = null;
   isEditing: boolean = false;
   isAddingNew: boolean = false;
+
+  /** Agents grouped by agent_family, sorted alphabetically within each group */
+  agentFamilies: { family: string; color: string; agents: AgentConfiguration[] }[] = [];
+
+  /** Preferred display order for agent families */
+  private readonly familyOrder: string[] = [
+    'Orchestrators',
+    'Demand Side',
+    'Supply Side',
+    'Intelligence & Signals',
+    'AAMP Marketplace',
+    'Agentic Ecosystem'
+  ];
+
+  /** Color per family — used for group header accents */
+  private readonly familyColors: Record<string, string> = {
+    'Orchestrators':          '#41205B',
+    'Demand Side':            '#AB5209',
+    'Supply Side':            '#0E7C6B',
+    'Intelligence & Signals': '#804294',
+    'AAMP Marketplace':       '#C62828',
+    'Agentic Ecosystem':      '#1565C0',
+  };
 
   // Error handling
   errorMessage: string | null = null;
@@ -277,7 +301,85 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       this.errorMessage = 'Failed to load agents. Please try again.';
     } finally {
       this.isLoading = false;
+      this.buildAgentFamilies();
     }
+  }
+
+  /**
+   * Groups agents by agent_family and sorts alphabetically within each group.
+   * Families appear in a fixed display order; any unknown families sort to the end.
+   */
+  private buildAgentFamilies(): void {
+    const grouped = new Map<string, AgentConfiguration[]>();
+
+    for (const agent of this.agents) {
+      const family = agent.agent_family || this.inferAgentFamily(agent.agent_name) || 'Uncategorized';
+      if (!grouped.has(family)) {
+        grouped.set(family, []);
+      }
+      grouped.get(family)!.push(agent);
+    }
+
+    // Sort agents alphabetically within each group
+    for (const agents of grouped.values()) {
+      agents.sort((a, b) =>
+        (a.agent_display_name || a.agent_name).localeCompare(b.agent_display_name || b.agent_name)
+      );
+    }
+
+    // Sort families by preferred order, unknowns at the end
+    const sortedFamilies = Array.from(grouped.entries())
+      .sort(([a], [b]) => {
+        const idxA = this.familyOrder.indexOf(a);
+        const idxB = this.familyOrder.indexOf(b);
+        const orderA = idxA >= 0 ? idxA : this.familyOrder.length;
+        const orderB = idxB >= 0 ? idxB : this.familyOrder.length;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.localeCompare(b);
+      })
+      .map(([family, agents]) => ({ family, color: this.familyColors[family] || '#6b7280', agents }));
+
+    this.agentFamilies = sortedFamilies;
+  }
+
+  /**
+   * Fallback mapping from agent_name to agent_family when the field is missing
+   * from DynamoDB (pre-sync). Can be removed once all deployments carry agent_family.
+   */
+  private inferAgentFamily(agentName: string): string | null {
+    const familyMap: Record<string, string> = {
+      AdFabricAgent: 'Orchestrators',
+      CampaignOptimizationAgent: 'Demand Side',
+      AudienceStrategyAgent: 'Demand Side',
+      ChannelMixOptimizationAgent: 'Demand Side',
+      CampaignArchitectureAgent: 'Demand Side',
+      CreativeSelectionAgent: 'Demand Side',
+      AdFormatSelectorAgent: 'Demand Side',
+      BidOptimizationAgent: 'Demand Side',
+      BidSimulatorAgent: 'Demand Side',
+      MediaPlanningAgent: 'Supply Side',
+      YieldOptimizationAgent: 'Supply Side',
+      InventoryOptimizationAgent: 'Supply Side',
+      AdLoadOptimizationAgent: 'Supply Side',
+      MediaPlanCompiler: 'Supply Side',
+      AudienceIntelligenceAgent: 'Intelligence & Signals',
+      ContextualAnalysisAgent: 'Intelligence & Signals',
+      CurrentEventsAgent: 'Intelligence & Signals',
+      EventsAgent: 'Intelligence & Signals',
+      WeatherImpactAgent: 'Intelligence & Signals',
+      TimingStrategyAgent: 'Intelligence & Signals',
+      FormatStrategyOptimizerAgent: 'Intelligence & Signals',
+      AAMPSellerCrewAgent: 'AAMP Marketplace',
+      AAMPBuyerCrewAgent: 'AAMP Marketplace',
+      AgencyAgent: 'Agentic Ecosystem',
+      AdvertiserAgent: 'Agentic Ecosystem',
+      PublisherAgent: 'Agentic Ecosystem',
+      SignalAgent: 'Agentic Ecosystem',
+      VerificationAgent: 'Agentic Ecosystem',
+      MeasurementAgent: 'Agentic Ecosystem',
+      IdentityAgent: 'Agentic Ecosystem',
+    };
+    return familyMap[agentName] || null;
   }
 
   /**
@@ -684,6 +786,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       agent_name: '',
       agent_display_name: '',
       team_name: '',
+      agent_family: '',
       agent_description: '',
       tool_agent_names: [],
       external_agents: [],

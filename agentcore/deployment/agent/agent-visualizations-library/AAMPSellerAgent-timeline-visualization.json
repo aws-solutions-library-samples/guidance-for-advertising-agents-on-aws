@@ -1,0 +1,50 @@
+{
+  "agentName": "AAMPSellerAgent",
+  "agentId": "AAMPSellerAgent",
+  "templateId": "timeline-visualization",
+  "usage": "Deal lifecycle timeline and order state transitions",
+  "dataMapping": {
+    "visualizationType": "timeline",
+    "templateId": "timeline-visualization",
+    "title": "AAMP Deal Lifecycle Timeline",
+    "subtitle": "Deal negotiation and order fulfillment phases",
+    "startDate": "Deal initiation date (ISO format)",
+    "endDate": "Deal completion date (ISO format)",
+    "totalDuration": "Total deal lifecycle duration",
+    "overallObjective": "Deal lifecycle objective",
+    "phases": [
+      {
+        "primaryLabel": "Phase name (e.g., 'Discovery', 'Negotiation', 'Booking', 'Distribution')",
+        "secondaryLabel": "Phase type (e.g., 'Pre-Deal', 'Active Negotiation', 'Fulfillment')",
+        "description": "Phase objectives and activities",
+        "startDate": "Phase start date (ISO format)",
+        "endDate": "Phase end date (ISO format)",
+        "duration": "Phase duration description",
+        "status": "Phase status: 'upcoming', 'active', 'completed'",
+        "priority": "Phase priority: 'high', 'medium', 'low'",
+        "expectedOutcome": "Expected phase outcomes",
+        "budget": "Phase budget or deal value",
+        "resources": ["Required resources"],
+        "milestones": [
+          {
+            "date": "Milestone date (ISO format)",
+            "label": "Milestone name",
+            "status": "Milestone status: 'pending', 'achieved'"
+          }
+        ],
+        "dependencies": ["Prerequisites and dependencies"],
+        "risks": ["Risk factors"]
+      }
+    ],
+    "milestones": [
+      {
+        "date": "Key milestone date (ISO format)",
+        "label": "Milestone name",
+        "description": "Milestone details",
+        "status": "Milestone status: 'upcoming', 'achieved'"
+      }
+    ],
+    "successMetrics": ["Deal success criteria"],
+    "criticalPath": ["Critical deal phases"]
+  }
+}

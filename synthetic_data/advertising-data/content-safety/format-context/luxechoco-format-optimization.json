@@ -54,7 +54,7 @@
             "reasoning": "Respects serious content while maintaining brand presence"
           }
         ],
-        "publisherExamples": ["Global Relay News", "Le Monde", "Spiegel Online", "The Sentinel"]
+        "publisherExamples": ["BBC News", "Le Monde", "Spiegel Online", "The Guardian"]
       },
       "lifestyleStreaming": {
         "contextType": "Entertainment consumption",

@@ -1,0 +1,18 @@
+{
+  "agentName": "AAMPBuyerAgent",
+  "agentId": "AAMPBuyerAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Deal metrics, pricing comparisons, and budget allocation"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Negotiation timeline and campaign execution phases"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Inventory segments and audience targeting analysis"
+    }
+  ]
+}

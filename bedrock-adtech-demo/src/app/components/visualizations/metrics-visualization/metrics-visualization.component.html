@@ -98,13 +98,13 @@
              [class.trend-down]="metric.trend === 'down'"
              [class.trend-stable]="metric.trend === 'stable'"
              [style.color]="safeColor(metric.color)">
-          {{metric.value}}<span class="metric-unit" *ngIf="metric.unit">{{metric.unit}}</span>
+          {{metric.value || metric.actualValue || metric.currentValue}}<span class="metric-unit" *ngIf="metric.unit && !(metric.value || metric.actualValue || '').toString().includes(metric.unit)">{{metric.unit}}</span>
         </div>
-        <div class="metric-label">{{metric.label}}</div>
-        <div class="metric-target" *ngIf="metric.target">Target: {{metric.target}}</div>
+        <div class="metric-label">{{metric.label || metric.primaryLabel}}</div>
+        <div class="metric-target" *ngIf="metric.target || metric.targetValue">Target: {{metric.target || metric.targetValue}}</div>
         <div class="metric-benchmark" *ngIf="metric.benchmark">Benchmark: {{metric.benchmark}}</div>
-        <div class="metric-confidence" *ngIf="metric.confidence" 
-             [class]="'confidence-' + metric.confidence">{{metric.confidence}} confidence</div>
+        <div class="metric-confidence" *ngIf="metric.confidence || metric.confidenceLevel" 
+             [class]="'confidence-' + (metric.confidence || metric.confidenceLevel)">{{metric.confidence || metric.confidenceLevel}} confidence</div>
       </div>
     </ng-template>
   </div>

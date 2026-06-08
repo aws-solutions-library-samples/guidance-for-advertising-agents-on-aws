@@ -176,10 +176,24 @@ def _create_http(server_config: dict, prefix: str, tool_filters: dict) -> Option
             aws_region = aws_auth.get("region", os.environ.get("AWS_REGION", "us-east-1"))
             aws_service = aws_auth.get("service", "bedrock-agentcore")
 
-            logger.info(f"🔐 MCP_TOOLS: Using AWS IAM auth for {url} (region={aws_region}, service={aws_service})")
+            # If the URL is an ARN, convert it to the HTTPS endpoint URL.
+            # ARN format: arn:aws:bedrock-agentcore:<region>:<account>:runtime/<runtime-id>
+            # HTTPS format: https://bedrock-agentcore.<region>.amazonaws.com/runtimes/<url-encoded-arn>/invocations
+            # See: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp.html
+            endpoint = url
+            if url.startswith("arn:"):
+                try:
+                    encoded_arn = url.replace(":", "%3A").replace("/", "%2F")
+                    endpoint = f"https://bedrock-agentcore.{aws_region}.amazonaws.com/runtimes/{encoded_arn}/invocations"
+                    logger.info(f"🔄 MCP_TOOLS: Converted ARN to endpoint: {endpoint}")
+                except Exception as arn_err:
+                    logger.error(f"❌ MCP_TOOLS: Failed to convert ARN to endpoint: {arn_err}")
+                    return None
+
+            logger.info(f"🔐 MCP_TOOLS: Using AWS IAM auth for {endpoint} (region={aws_region}, service={aws_service})")
 
             return MCPClient(
-                lambda u=url, r=aws_region, s=aws_service: aws_iam_streamablehttp_client(
+                lambda u=endpoint, r=aws_region, s=aws_service: aws_iam_streamablehttp_client(
                     endpoint=u, aws_region=r, aws_service=s
                 ),
                 **mcp_client_kwargs,

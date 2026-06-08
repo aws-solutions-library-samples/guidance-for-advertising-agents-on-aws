@@ -48,6 +48,8 @@ RESUME_AT_STEP=1
 UNIQUE_ID="${UNIQUE_ID:-}"
 CLEAN_DEPLOYMENT=true
 CLEANUP_MODE=false
+LOCAL_AAMP_PATH=""
+AAMP_BRANCH="${AAMP_BRANCH:-main}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -105,8 +107,10 @@ setup_python_environment() {
     # Check if boto3 is installed
     if ! $PYTHON_CMD -c "import boto3" 2>/dev/null; then
         print_status "Installing required Python dependencies (boto3, botocore)..."
-        $PYTHON_CMD -m pip install --upgrade pip
-        $PYTHON_CMD -m pip install boto3 botocore
+        $PYTHON_CMD -m pip install --upgrade pip --quiet 2>/dev/null
+        # Remove awscli if present — it conflicts with newer boto3/botocore
+        $PYTHON_CMD -m pip uninstall awscli -y --quiet 2>/dev/null || true
+        $PYTHON_CMD -m pip install --upgrade boto3 botocore --quiet 2>/dev/null
         
         if [ $? -ne 0 ]; then
             print_error "Failed to install Python dependencies"
@@ -190,6 +194,134 @@ agent_exists() {
     local agent_name="$1"
     local agent_list=$(aws_cmd bedrock-agent list-agents --region "$AWS_REGION" --query "agentSummaries[?agentName=='$agent_name'].agentId" --output text 2>/dev/null)
     [ -n "$agent_list" ] && [ "$agent_list" != "None" ]
+}
+
+# Function to ensure the guidance agent's execution role has InvokeAgentRuntime permission.
+# The AgentCore SDK auto-creates the role but doesn't include this permission, which is
+# needed for the guidance agent to call other AgentCore runtimes (e.g., seller MCP runtime).
+# This function is idempotent — it checks first and only patches if missing.
+ensure_invoke_runtime_permission() {
+    local role_name="AgentCoreRole-${STACK_PREFIX}-AdFabricAgent-${UNIQUE_ID}"
+    local account_id
+    account_id=$(aws_cmd sts get-caller-identity --query 'Account' --output text 2>/dev/null)
+
+    if [ -z "$account_id" ]; then
+        print_warning "⚠️  Could not determine AWS account ID, skipping IAM permission check"
+        return 0
+    fi
+
+    print_status "🔐 Checking InvokeAgentRuntime permission on ${role_name}..."
+
+    # Check if the role exists
+    if ! iam_role_exists "$role_name"; then
+        print_warning "⚠️  Role ${role_name} not found, skipping IAM permission patch"
+        return 0
+    fi
+
+    # Find the role's managed policy (auto-created by AgentCore SDK)
+    local policy_arn
+    policy_arn=$(aws_cmd iam list-attached-role-policies \
+        --role-name "$role_name" \
+        --query "AttachedPolicies[?starts_with(PolicyName,'AgentCoreRole-')].PolicyArn | [0]" \
+        --output text 2>/dev/null)
+
+    if [ -z "$policy_arn" ] || [ "$policy_arn" = "None" ]; then
+        print_warning "⚠️  No AgentCoreRole policy found on ${role_name}, skipping"
+        return 0
+    fi
+
+    # Check if InvokeAgentRuntime is already in the policy
+    local version_id
+    version_id=$(aws_cmd iam get-policy --policy-arn "$policy_arn" \
+        --query 'Policy.DefaultVersionId' --output text 2>/dev/null)
+
+    local has_permission
+    has_permission=$($PYTHON_CMD -c "
+import json, sys, urllib.parse
+try:
+    import subprocess
+    cmd = ['aws', 'iam', 'get-policy-version',
+           '--policy-arn', '$policy_arn',
+           '--version-id', '$version_id',
+           '--query', 'PolicyVersion.Document', '--output', 'json']
+    if '$AWS_PROFILE':
+        cmd.extend(['--profile', '$AWS_PROFILE'])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    doc = json.loads(result.stdout)
+    if isinstance(doc, str):
+        doc = json.loads(urllib.parse.unquote(doc))
+    for stmt in doc.get('Statement', []):
+        actions = stmt.get('Action', [])
+        if isinstance(actions, str):
+            actions = [actions]
+        if 'bedrock-agentcore:InvokeAgentRuntime' in actions:
+            print('yes')
+            sys.exit(0)
+    print('no')
+except Exception as e:
+    print(f'error:{e}', file=sys.stderr)
+    print('no')
+" 2>/dev/null)
+
+    if [ "$has_permission" = "yes" ]; then
+        print_status "✅ InvokeAgentRuntime permission already present on ${role_name}"
+        return 0
+    fi
+
+    print_status "📝 Adding InvokeAgentRuntime permission to ${role_name}..."
+
+    # Generate updated policy document
+    local updated_policy
+    updated_policy=$($PYTHON_CMD -c "
+import json, sys, urllib.parse, subprocess
+cmd = ['aws', 'iam', 'get-policy-version',
+       '--policy-arn', '$policy_arn',
+       '--version-id', '$version_id',
+       '--query', 'PolicyVersion.Document', '--output', 'json']
+if '$AWS_PROFILE':
+    cmd.extend(['--profile', '$AWS_PROFILE'])
+result = subprocess.run(cmd, capture_output=True, text=True)
+doc = json.loads(result.stdout)
+if isinstance(doc, str):
+    doc = json.loads(urllib.parse.unquote(doc))
+doc['Statement'].append({
+    'Sid': 'AgentCoreInvokeRuntime',
+    'Effect': 'Allow',
+    'Action': ['bedrock-agentcore:InvokeAgentRuntime'],
+    'Resource': 'arn:aws:bedrock-agentcore:${AWS_REGION}:${account_id}:runtime/*'
+})
+print(json.dumps(doc))
+" 2>/dev/null)
+
+    if [ -z "$updated_policy" ]; then
+        print_warning "⚠️  Failed to generate updated policy, skipping"
+        return 0
+    fi
+
+    # Write to temp file and create new policy version
+    local tmp_policy="/tmp/agentcore_role_policy_$$.json"
+    echo "$updated_policy" > "$tmp_policy"
+
+    # Delete oldest non-default version if we're at the 5-version limit
+    local oldest_version
+    oldest_version=$(aws_cmd iam list-policy-versions --policy-arn "$policy_arn" \
+        --query "Versions[?IsDefaultVersion==\`false\`].VersionId | [0]" \
+        --output text 2>/dev/null)
+    if [ -n "$oldest_version" ] && [ "$oldest_version" != "None" ]; then
+        aws_cmd iam delete-policy-version --policy-arn "$policy_arn" \
+            --version-id "$oldest_version" 2>/dev/null || true
+    fi
+
+    if aws_cmd iam create-policy-version \
+        --policy-arn "$policy_arn" \
+        --policy-document "file://${tmp_policy}" \
+        --set-as-default > /dev/null 2>&1; then
+        print_success "✅ Added InvokeAgentRuntime permission to ${role_name}"
+    else
+        print_warning "⚠️  Failed to update IAM policy — you may need to add InvokeAgentRuntime manually"
+    fi
+
+    rm -f "$tmp_policy"
 }
 
 # Function to check if an agent is A2A-enabled
@@ -2440,7 +2572,7 @@ except:
 
 deploy_agent_via_toolkit() {
     # Deploy an AgentCore agent using the AgentCore Starter Toolkit CLI (no Docker required)
-    # Uses CodeBuild-based deployment: agentcore configure + agentcore launch
+    # Uses CodeBuild-based deployment: agentcore configure + agentcore deploy
     local agent_name="$1"
     local agentcore_agent_name="$2"
     local agent_dir="$3"
@@ -2451,7 +2583,7 @@ deploy_agent_via_toolkit() {
     # Check if agentcore CLI is installed
     if ! command -v agentcore &> /dev/null; then
         print_status "Installing AgentCore Starter Toolkit CLI..."
-        pip install bedrock-agentcore-starter-toolkit --quiet 2>/dev/null || {
+        pip install bedrock-agentcore-starter-toolkit==0.3.4 --quiet 2>/dev/null || {
             print_error "Failed to install bedrock-agentcore-starter-toolkit"
             print_error "Install manually: pip install bedrock-agentcore-starter-toolkit"
             return 1
@@ -2658,7 +2790,7 @@ print(arn)
     fi
     
     # NOTE: The AgentCore Starter Toolkit's `agentcore configure` always overwrites the Dockerfile.
-    # All custom environment variables are passed via `agentcore launch --env` flags instead.
+    # All custom environment variables are passed via `agentcore deploy --env` flags instead.
     
     # Run agentcore configure from the agent directory
     print_status "Configuring agent via AgentCore CLI..."
@@ -2705,6 +2837,7 @@ print(arn)
     configure_cmd="$configure_cmd --entrypoint handler.py"
     configure_cmd="$configure_cmd --name $runtime_name"
     configure_cmd="$configure_cmd --non-interactive"
+    configure_cmd="$configure_cmd --deployment-type container"
     configure_cmd="$configure_cmd --region $toolkit_region"
     configure_cmd="$configure_cmd --execution-role $role_arn"
     
@@ -2722,9 +2855,9 @@ print(arn)
     
     print_status "✅ Agent configured successfully"
     
-    # Run agentcore launch with environment variables
+    # Run agentcore deploy with environment variables
     print_status "Deploying agent via AgentCore CLI (CodeBuild)..."
-    local deploy_cmd="agentcore launch"
+    local deploy_cmd="agentcore deploy"
     deploy_cmd="$deploy_cmd --agent $runtime_name"
     deploy_cmd="$deploy_cmd --auto-update-on-conflict"
     
@@ -2790,11 +2923,11 @@ print(arn)
         deploy_cmd="$deploy_cmd --env APPSYNC_CHANNEL_NAMESPACE=$appsync_channel_namespace"
     fi
     
-    print_status "Running: agentcore launch --agent $runtime_name --auto-update-on-conflict [+env vars]"
+    print_status "Running: agentcore deploy --agent $runtime_name --auto-update-on-conflict [+env vars]"
     (cd "$agent_dir" && eval $deploy_cmd)
     
     if [ $? -ne 0 ]; then
-        print_error "AgentCore launch failed"
+        print_error "AgentCore deploy failed"
         return 1
     fi
     
@@ -3149,6 +3282,12 @@ EOF
         
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
+    
+    # Ensure the guidance agent's execution role has InvokeAgentRuntime permission.
+    # The AgentCore SDK auto-creates the role but doesn't know the guidance agent
+    # needs to call other runtimes (e.g., the seller MCP runtime). This step is
+    # idempotent — it checks first and only patches if the permission is missing.
+    ensure_invoke_runtime_permission
     
     # Memory was already created before agent deployment (above)
     # Add user prompt after AgentCore deployment completion
@@ -4501,6 +4640,18 @@ parse_args() {
                 CLEANUP_MODE=true
                 shift
                 ;;
+            --local-aamp)
+                LOCAL_AAMP_PATH="$2"
+                shift 2
+                ;;
+            --aamp-branch)
+                AAMP_BRANCH="$2"
+                shift 2
+                ;;
+            --deploy-mcp)
+                DEPLOY_MCP=true
+                shift
+                ;;
             -h|--help)
                 show_usage
                 exit 0
@@ -4524,7 +4675,10 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-13)"
+    echo "  --local-aamp PATH        Use local IAB AAMP repos instead of cloning from GitHub"
+    echo "  --aamp-branch BRANCH     Branch to checkout in IAB repos (default: main)"
+    echo "  --deploy-mcp             Deploy seller MCP runtime in addition to HTTP (default: HTTP only)"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4538,6 +4692,10 @@ show_usage() {
     echo "  $0 --resume-at 5                     # Resume from step 5"
     echo "  $0 --resume-at 9                     # Resume from step 9 (DynamoDB upload)"
     echo "  $0 --resume-at 8 --skip-confirmations # Resume from step 8 without update confirmations"
+    echo "  $0 --resume-at 11                     # Resume from step 11 (AAMP agents)"
+    echo "  $0 --resume-at 13                     # Resume from step 13 (OAuth MCP Gateway)"
+    echo "  $0 --local-aamp /path/to/iab-aamp     # Use local IAB repos for AAMP deployment"
+    echo "  $0 --aamp-branch feature/agentcore     # Clone IAB repos at specific branch"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4603,6 +4761,517 @@ cleanup_python_environment() {
     fi
 }
 
+# =============================================================================
+# Phase 13: Deploy OAuth MCP Gateway (Quick Suite + Desktop Apps)
+# =============================================================================
+# Creates a Cognito-authenticated MCP Gateway so business users can connect
+# from Quick Suite web without AWS CLI credentials. Registers the same Lambda
+# targets as the IAM gateway.
+# =============================================================================
+deploy_oauth_mcp_gateway() {
+    print_step "Step 13: Deploying OAuth MCP Gateway (Quick Suite + Desktop Apps)..."
+    
+    local mcp_deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_a4a_mcp_handler.py"
+    if [ -f "$mcp_deploy_script" ]; then
+        python3 "$mcp_deploy_script" \
+            --stack-prefix "$STACK_PREFIX" \
+            --unique-id "$UNIQUE_ID" \
+            --region "$AWS_REGION" \
+            ${AWS_PROFILE:+--profile "$AWS_PROFILE"} && \
+            print_success "✅ OAuth MCP Gateway deployed (list_agents, get_agent_schema, invoke_agent)" || \
+            print_warning "⚠️  OAuth gateway deployment had issues (non-blocking). Run manually:
+    python agentcore/deployment/deploy_a4a_mcp_handler.py --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION ${AWS_PROFILE:+--profile $AWS_PROFILE}"
+    else
+        print_warning "⚠️  deploy_a4a_mcp_handler.py not found. Skipping Phase 13."
+    fi
+}
+
+# =============================================================================
+# Phase 12: Deploy AAMP Agents (IAB buyer & seller)
+# =============================================================================
+# Clones IAB repos (or uses local paths) and delegates deployment to each
+# repo's own deploy.sh script. Captures runtime ARNs and uploads AAMP agent
+# configs to DynamoDB.
+# =============================================================================
+deploy_aamp_agents() {
+    print_step "Step 11b: Deploying AAMP agents (IAB buyer & seller)..."
+    
+    local aamp_seller_dir=""
+    local aamp_buyer_dir=""
+    local aamp_clone_dir="${PROJECT_ROOT}/.aamp-repos-${UNIQUE_ID}"
+    local aamp_runtime_file="${PROJECT_ROOT}/.aamp-runtime-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    
+    # Initialize runtime tracking
+    cat > "$aamp_runtime_file" << REOF
+{
+  "stack_prefix": "$STACK_PREFIX",
+  "unique_id": "$UNIQUE_ID",
+  "region": "$AWS_REGION",
+  "aamp_branch": "$AAMP_BRANCH",
+  "deployment_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "agents": {}
+}
+REOF
+    
+    # ── Resolve source directories ──────────────────────────────────────
+    if [ -n "$LOCAL_AAMP_PATH" ]; then
+        print_status "🏠 Using local AAMP repos: $LOCAL_AAMP_PATH"
+        
+        # Validate local path exists
+        if [ ! -d "$LOCAL_AAMP_PATH" ]; then
+            print_error "❌ Local AAMP path does not exist: $LOCAL_AAMP_PATH"
+            return 1
+        fi
+        
+        aamp_seller_dir="${LOCAL_AAMP_PATH}/seller-agent"
+        aamp_buyer_dir="${LOCAL_AAMP_PATH}/buyer-agent"
+        
+        # Validate seller repo
+        if [ ! -d "$aamp_seller_dir" ]; then
+            print_error "❌ Seller agent directory not found: $aamp_seller_dir"
+            return 1
+        fi
+        if [ ! -f "$aamp_seller_dir/infra/aws/agentcore/deploy.sh" ]; then
+            print_error "❌ Seller deploy script not found: $aamp_seller_dir/infra/aws/agentcore/deploy.sh"
+            return 1
+        fi
+        
+        # Validate buyer repo
+        if [ ! -d "$aamp_buyer_dir" ]; then
+            print_error "❌ Buyer agent directory not found: $aamp_buyer_dir"
+            return 1
+        fi
+        if [ ! -f "$aamp_buyer_dir/infra/aws/agentcore/deploy.sh" ]; then
+            print_error "❌ Buyer deploy script not found: $aamp_buyer_dir/infra/aws/agentcore/deploy.sh"
+            return 1
+        fi
+        
+        # Clean stale .bedrock_agentcore.yaml to avoid CLI picking up old agent entries
+        for repo_dir in "$aamp_seller_dir" "$aamp_buyer_dir"; do
+            if [ -f "$repo_dir/.bedrock_agentcore.yaml" ]; then
+                print_status "🧹 Removing stale .bedrock_agentcore.yaml from $(basename $repo_dir)"
+                rm -f "$repo_dir/.bedrock_agentcore.yaml"
+            fi
+        done
+    else
+        print_status "📦 Cloning IAB repos at branch: $AAMP_BRANCH"
+        
+        # Clean up any previous clone directory
+        if [ -d "$aamp_clone_dir" ]; then
+            rm -rf "$aamp_clone_dir"
+        fi
+        mkdir -p "$aamp_clone_dir"
+        
+        # Clone seller agent
+        print_status "Cloning IAB seller-agent..."
+        if git clone -b "$AAMP_BRANCH" --depth 1 \
+            "https://github.com/rkmaws/seller-agent.git" \
+            "$aamp_clone_dir/seller-agent" 2>&1; then
+            print_success "✅ Seller agent cloned successfully"
+        else
+            print_error "❌ Failed to clone seller-agent at branch: $AAMP_BRANCH"
+            print_warning "   Skipping AAMP seller agent deployment"
+        fi
+        
+        # Clone buyer agent
+        print_status "Cloning IAB buyer-agent..."
+        if git clone -b "$AAMP_BRANCH" --depth 1 \
+            "https://github.com/rkmaws/buyer-agent.git" \
+            "$aamp_clone_dir/buyer-agent" 2>&1; then
+            print_success "✅ Buyer agent cloned successfully"
+        else
+            print_error "❌ Failed to clone buyer-agent at branch: $AAMP_BRANCH"
+            print_warning "   Skipping AAMP buyer agent deployment"
+        fi
+        
+        aamp_seller_dir="$aamp_clone_dir/seller-agent"
+        aamp_buyer_dir="$aamp_clone_dir/buyer-agent"
+    fi
+    
+    # ── Deploy Seller Agent ─────────────────────────────────────────────
+    local seller_mcp_runtime_arn=""
+    local seller_http_runtime_arn=""
+    local seller_runtime_arn=""
+    local seller_agent_name="${STACK_PREFIX}_aamp_seller_${UNIQUE_ID}"
+    
+    if [ -d "$aamp_seller_dir" ] && [ -f "$aamp_seller_dir/infra/aws/agentcore/deploy.sh" ]; then
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_status "Deploying AAMP Seller Agent: $seller_agent_name"
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        local seller_deploy_cmd="bash $aamp_seller_dir/infra/aws/agentcore/deploy.sh"
+        # Default to HTTP-only deployment. MCP runtime is optional (--deploy-mcp flag)
+        # because the MCP runtime-to-runtime pattern causes guidance agent OOM (Issue 19).
+        # The MCP runtime is still useful for direct MCP clients (Claude Desktop, etc.)
+        if [ "${DEPLOY_MCP:-false}" = true ]; then
+            seller_deploy_cmd="$seller_deploy_cmd --mode all"
+            print_status "   Deploy mode: all (MCP + HTTP) — DEPLOY_MCP=true"
+        else
+            seller_deploy_cmd="$seller_deploy_cmd --mode http"
+            print_status "   Deploy mode: http only (set DEPLOY_MCP=true to include MCP runtime)"
+        fi
+        seller_deploy_cmd="$seller_deploy_cmd --region $AWS_REGION"
+        seller_deploy_cmd="$seller_deploy_cmd --name ${STACK_PREFIX}_aamp_seller_${UNIQUE_ID}"
+        
+        if [ -n "$AWS_PROFILE" ]; then
+            seller_deploy_cmd="$seller_deploy_cmd --profile $AWS_PROFILE"
+        fi
+        
+        # Run deploy from the seller repo root (required by agentcore CLI)
+        if (cd "$aamp_seller_dir" && eval "$seller_deploy_cmd"); then
+            print_success "✅ AAMP Seller Agent deployed successfully (MCP + HTTP)"
+            
+            # Extract both MCP and HTTP runtime ARNs from .bedrock_agentcore.yaml
+            # With --mode all, IAB deploy.sh creates two agents: {name}_mcp and {name}_http
+            if [ -f "$aamp_seller_dir/.bedrock_agentcore.yaml" ]; then
+                read seller_mcp_runtime_arn seller_http_runtime_arn < <($PYTHON_CMD -c "
+import yaml, sys
+try:
+    with open('$aamp_seller_dir/.bedrock_agentcore.yaml', 'r') as f:
+        data = yaml.safe_load(f)
+    agents = data.get('agents', {})
+    mcp_arn = ''
+    http_arn = ''
+    for name, cfg in agents.items():
+        arn = cfg.get('bedrock_agentcore', {}).get('agent_arn', '')
+        if not arn:
+            continue
+        if 'mcp' in name.lower():
+            mcp_arn = arn
+        else:
+            http_arn = arn
+    print(f'{mcp_arn} {http_arn}')
+except Exception as e:
+    print(' ', file=sys.stderr)
+" 2>/dev/null || echo " ")
+            fi
+            
+            # Backward compat: seller_runtime_arn points to HTTP runtime
+            seller_runtime_arn="${seller_http_runtime_arn}"
+            
+            if [ -n "$seller_mcp_runtime_arn" ]; then
+                print_status "   MCP Runtime ARN: $seller_mcp_runtime_arn"
+            else
+                print_warning "   Could not extract seller MCP runtime ARN"
+            fi
+            if [ -n "$seller_http_runtime_arn" ]; then
+                print_status "   HTTP Runtime ARN: $seller_http_runtime_arn"
+            else
+                print_warning "   Could not extract seller HTTP runtime ARN"
+            fi
+        else
+            print_error "❌ Failed to deploy AAMP Seller Agent"
+            print_warning "   Continuing with buyer agent deployment..."
+        fi
+    else
+        print_warning "⚠️  Seller agent directory or deploy script not found — skipping"
+    fi
+    
+    # ── Deploy Buyer Agent ──────────────────────────────────────────────
+    local buyer_runtime_arn=""
+    local buyer_agent_name="${STACK_PREFIX}_aamp_buyer_${UNIQUE_ID}_http"
+    
+    if [ -d "$aamp_buyer_dir" ] && [ -f "$aamp_buyer_dir/infra/aws/agentcore/deploy.sh" ]; then
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_status "Deploying AAMP Buyer Agent: $buyer_agent_name"
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        local buyer_deploy_cmd="bash $aamp_buyer_dir/infra/aws/agentcore/deploy.sh"
+        buyer_deploy_cmd="$buyer_deploy_cmd --mode http"
+        buyer_deploy_cmd="$buyer_deploy_cmd --region $AWS_REGION"
+        buyer_deploy_cmd="$buyer_deploy_cmd --name $buyer_agent_name"
+        
+        if [ -n "$AWS_PROFILE" ]; then
+            buyer_deploy_cmd="$buyer_deploy_cmd --profile $AWS_PROFILE"
+        fi
+        
+        # Pass seller URL if we have the seller runtime ARN
+        if [ -n "$seller_runtime_arn" ]; then
+            buyer_deploy_cmd="$buyer_deploy_cmd --seller-url $seller_runtime_arn"
+        fi
+        
+        # Run deploy from the buyer repo root (required by agentcore CLI)
+        if (cd "$aamp_buyer_dir" && eval "$buyer_deploy_cmd"); then
+            print_success "✅ AAMP Buyer Agent deployed successfully"
+            
+            # Extract runtime ARN from .bedrock_agentcore.yaml
+            if [ -f "$aamp_buyer_dir/.bedrock_agentcore.yaml" ]; then
+                buyer_runtime_arn=$($PYTHON_CMD -c "
+import yaml, sys
+try:
+    with open('$aamp_buyer_dir/.bedrock_agentcore.yaml', 'r') as f:
+        data = yaml.safe_load(f)
+    agents = data.get('agents', {})
+    for name, cfg in agents.items():
+        arn = cfg.get('bedrock_agentcore', {}).get('agent_arn', '')
+        if arn:
+            print(arn)
+            break
+except Exception as e:
+    print('', file=sys.stderr)
+" 2>/dev/null || echo "")
+            fi
+            
+            if [ -n "$buyer_runtime_arn" ]; then
+                print_status "   Runtime ARN: $buyer_runtime_arn"
+            else
+                print_warning "   Could not extract buyer runtime ARN from .bedrock_agentcore.yaml"
+            fi
+        else
+            print_error "❌ Failed to deploy AAMP Buyer Agent"
+            print_warning "   Continuing with remaining deployment steps..."
+        fi
+    else
+        print_warning "⚠️  Buyer agent directory or deploy script not found — skipping"
+    fi
+    
+    # ── Store runtime ARNs ──────────────────────────────────────────────
+    setup_python_environment
+    
+    $PYTHON_CMD << PYEOF
+import json, sys
+
+runtime_file = "$aamp_runtime_file"
+seller_mcp_arn = "$seller_mcp_runtime_arn"
+seller_http_arn = "$seller_http_runtime_arn"
+buyer_arn = "$buyer_runtime_arn"
+
+try:
+    with open(runtime_file, 'r') as f:
+        data = json.load(f)
+    
+    if seller_http_arn:
+        data['agents']['AAMPSellerCrewAgent'] = {
+            'name': 'AAMPSellerCrewAgent',
+            'runtime_arn': seller_http_arn,
+            'agent_name': '${STACK_PREFIX}_aamp_seller_http_${UNIQUE_ID}',
+            'protocol': 'HTTP'
+        }
+    if buyer_arn:
+        data['agents']['AAMPBuyerCrewAgent'] = {
+            'name': 'AAMPBuyerCrewAgent',
+            'runtime_arn': buyer_arn,
+            'runtime_name': '$buyer_agent_name',
+            'protocol': 'HTTP'
+        }
+    
+    with open(runtime_file, 'w') as f:
+        json.dump(data, f, indent=2)
+    
+    print(f"Stored {len(data['agents'])} AAMP agent runtime(s)", file=sys.stderr)
+except Exception as e:
+    print(f"ERROR storing runtime ARNs: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+    
+    # ── Merge AAMP agents into main AgentCore tracking file ─────────────
+    local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    
+    if [ -f "$agentcore_info_file" ]; then
+        print_status "Merging AAMP agents into main AgentCore tracking file..."
+        
+        $PYTHON_CMD << PYEOF2
+import json, sys
+from datetime import datetime
+
+tracking_file = "$agentcore_info_file"
+seller_mcp_arn = "$seller_mcp_runtime_arn"
+seller_http_arn = "$seller_http_runtime_arn"
+buyer_arn = "$buyer_runtime_arn"
+seller_name = "$seller_agent_name"
+buyer_name = "$buyer_agent_name"
+
+try:
+    with open(tracking_file, 'r') as f:
+        data = json.load(f)
+    
+    deployed = data.get('deployed_agents', [])
+    existing_names = {a.get('name') for a in deployed if isinstance(a, dict)}
+    
+    seller_mcp_name = "${STACK_PREFIX}_aamp_seller_mcp_${UNIQUE_ID}"
+    seller_http_name = "${STACK_PREFIX}_aamp_seller_http_${UNIQUE_ID}"
+    
+    if seller_mcp_arn and seller_mcp_name not in existing_names:
+        deployed.append({
+            'name': seller_mcp_name,
+            'runtime_arn': seller_mcp_arn,
+            'runtime_id': seller_mcp_arn.split('/')[-1] if seller_mcp_arn else '',
+            'deployment_time': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'source': 'aamp_phase_12',
+            'protocol': 'MCP'
+        })
+    
+    if seller_http_arn and seller_http_name not in existing_names:
+        deployed.append({
+            'name': seller_http_name,
+            'runtime_arn': seller_http_arn,
+            'runtime_id': seller_http_arn.split('/')[-1] if seller_http_arn else '',
+            'deployment_time': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'source': 'aamp_phase_12',
+            'protocol': 'HTTP'
+        })
+    
+    if buyer_arn and buyer_name not in existing_names:
+        deployed.append({
+            'name': buyer_name,
+            'runtime_arn': buyer_arn,
+            'runtime_id': buyer_arn.split('/')[-1] if buyer_arn else '',
+            'deployment_time': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'source': 'aamp_phase_12'
+        })
+    
+    data['deployed_agents'] = deployed
+    
+    with open(tracking_file, 'w') as f:
+        json.dump(data, f, indent=2)
+    
+    print(f"Merged AAMP agents into tracking file", file=sys.stderr)
+except Exception as e:
+    print(f"WARNING: Could not merge into tracking file: {e}", file=sys.stderr)
+PYEOF2
+    fi
+    
+    # ── Store in SSM Parameter Store ────────────────────────────────────
+    if [ -n "$seller_runtime_arn" ] || [ -n "$buyer_runtime_arn" ]; then
+        local ssm_store_script="${PROJECT_ROOT}/agentcore/deployment/store_agentcore_values.sh"
+        if [ -f "$ssm_store_script" ]; then
+            print_status "Storing AAMP runtime ARNs in SSM Parameter Store..."
+            local ssm_cmd="$ssm_store_script --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            if [ -n "$AWS_PROFILE" ]; then
+                ssm_cmd="$ssm_cmd --profile $AWS_PROFILE"
+            fi
+            
+            if $ssm_cmd; then
+                print_success "✅ AAMP runtime ARNs stored in SSM"
+            else
+                print_warning "⚠️  Failed to store AAMP runtime ARNs in SSM — continuing"
+            fi
+        fi
+    fi
+    
+    # ── Resolve config template with AAMP runtime ARNs ─────────────────
+    print_status "Resolving global_configuration.json from template..."
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local resolve_cmd="$PYTHON_CMD ${SCRIPT_DIR}/resolve_config.py \
+        --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID \
+        --region $AWS_REGION --config-dir $agent_config_dir"
+
+    if eval "$resolve_cmd"; then
+        print_success "✅ Config resolved from template with AAMP runtime ARNs"
+    else
+        print_warning "⚠️  Config resolution failed — manual resolve may be needed"
+    fi
+
+    # ── Upload AAMP agent configs to DynamoDB ───────────────────────────
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+    
+    if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
+        print_status "Uploading AAMP agent configurations to DynamoDB..."
+        
+        local upload_script="${SCRIPT_DIR}/upload_agent_configs_to_dynamodb.py"
+        local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+        
+        if [ -f "$upload_script" ]; then
+            local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION --agent-config-dir $agent_config_dir --mode overwrite --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID"
+            
+            if [ -n "$AWS_PROFILE" ]; then
+                upload_cmd="$upload_cmd --profile $AWS_PROFILE"
+            fi
+            
+            if eval "$upload_cmd"; then
+                print_success "✅ AAMP agent configurations uploaded to DynamoDB"
+            else
+                print_warning "⚠️  Failed to upload AAMP configs to DynamoDB — continuing"
+            fi
+        fi
+    fi
+    
+    # ── Summary ─────────────────────────────────────────────────────────
+    print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    print_status "Phase 12: AAMP Deployment Summary"
+    print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    if [ -n "$seller_http_runtime_arn" ]; then
+        print_success "  ✅ AAMPSellerCrewAgent (HTTP): $seller_http_runtime_arn"
+    else
+        print_warning "  ❌ AAMPSellerCrewAgent (HTTP): not deployed"
+    fi
+    
+    if [ -n "$buyer_runtime_arn" ]; then
+        print_success "  ✅ AAMPBuyerCrewAgent (HTTP): $buyer_runtime_arn"
+    else
+        print_warning "  ❌ AAMPBuyerCrewAgent (HTTP): not deployed"
+    fi
+    
+    print_status "  Runtime cache: $aamp_runtime_file"
+    print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # ── Post-deploy: Sync configs to all three sources ──────────────────
+    # The deploy script uploads to DynamoDB (Step 9) but the S3 data bucket
+    # and S3 UI bucket can get stale after Phase 12 deploys new AAMP runtimes.
+    # This step ensures all three config sources are consistent.
+    
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local data_bucket="${STACK_PREFIX}-data-${UNIQUE_ID}"
+    local ui_bucket="${STACK_PREFIX}-ui-${UNIQUE_ID}"
+    
+    print_status "📤 Post-deploy: Syncing configs to S3 data and UI buckets..."
+    
+    # Sync global_configuration.json to S3 data bucket
+    if aws_cmd s3 cp "${agent_config_dir}/global_configuration.json" \
+        "s3://${data_bucket}/configs/global_configuration.json" 2>/dev/null; then
+        print_success "  ✅ S3 data bucket config synced"
+    else
+        print_warning "  ⚠️  Failed to sync S3 data bucket config"
+    fi
+    
+    # Sync global_configuration.json to S3 UI bucket
+    if aws_cmd s3 cp "${agent_config_dir}/global_configuration.json" \
+        "s3://${ui_bucket}/assets/global_configuration.json" 2>/dev/null; then
+        print_success "  ✅ S3 UI bucket config synced"
+    else
+        print_warning "  ⚠️  Failed to sync S3 UI bucket config"
+    fi
+    
+    # Sync tab-configurations.json to S3 UI bucket
+    local tab_config="${PROJECT_ROOT}/synthetic_data/configs/tab-configurations.json"
+    if [ -f "$tab_config" ]; then
+        if aws_cmd s3 cp "$tab_config" \
+            "s3://${ui_bucket}/assets/tab-configurations.json" 2>/dev/null; then
+            print_success "  ✅ S3 UI bucket tab config synced"
+        else
+            print_warning "  ⚠️  Failed to sync S3 UI bucket tab config"
+        fi
+    fi
+    
+    # Invalidate CloudFront cache
+    local cf_distribution_id=""
+    cf_distribution_id=$(aws_cmd cloudfront list-distributions \
+        --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '${ui_bucket}')].Id" \
+        --output text 2>/dev/null)
+    
+    if [ -n "$cf_distribution_id" ] && [ "$cf_distribution_id" != "None" ]; then
+        if aws_cmd cloudfront create-invalidation \
+            --distribution-id "$cf_distribution_id" \
+            --paths "/*" >/dev/null 2>&1; then
+            print_success "  ✅ CloudFront cache invalidated (distribution: $cf_distribution_id)"
+        else
+            print_warning "  ⚠️  Failed to invalidate CloudFront cache"
+        fi
+    else
+        print_warning "  ⚠️  CloudFront distribution not found for ${ui_bucket}"
+    fi
+    
+    # Clean up cloned repos if not using local path
+    if [ -z "$LOCAL_AAMP_PATH" ] && [ -d "$aamp_clone_dir" ]; then
+        print_status "Cleaning up cloned AAMP repos..."
+        rm -rf "$aamp_clone_dir"
+    fi
+    
+    return 0
+}
+
 # Function to confirm deployment steps
 confirm_deployment_steps() {
     print_status "=========================================="
@@ -4622,6 +5291,7 @@ confirm_deployment_steps() {
         "Phase 9: Deploy AgentCore agents"
         "Phase 10: Generate UI configuration"
         "Phase 11: Warmup agent runtimes"
+        "Phase 12: Deploy AAMP agents (IAB buyer & seller)"
     )
     
     print_status "The following steps will be executed:"
@@ -4645,6 +5315,12 @@ confirm_deployment_steps() {
     print_status "  Demo Email: ${DEMO_USER_EMAIL:-will be prompted}"
     print_status "  Image Model: $IMAGE_GENERATION_MODEL"
     print_status "  Clean Deployment: $CLEAN_DEPLOYMENT"
+    
+    if [ -n "$LOCAL_AAMP_PATH" ]; then
+        print_status "  AAMP Local Path: $LOCAL_AAMP_PATH"
+    else
+        print_status "  AAMP Branch: $AAMP_BRANCH"
+    fi
     
     echo ""
     print_warning "⚠️  This deployment will create AWS resources that may incur costs."
@@ -4932,6 +5608,11 @@ main() {
     print_status "  Clean Deployment: $CLEAN_DEPLOYMENT"
     print_status "  Image Model: ${IMAGE_GENERATION_MODEL:-amazon.nova-canvas-v1:0}"
     print_status "  Resume at Step: $RESUME_AT_STEP"
+    if [ -n "$LOCAL_AAMP_PATH" ]; then
+        print_status "  AAMP Local Path: $LOCAL_AAMP_PATH"
+    else
+        print_status "  AAMP Branch: $AAMP_BRANCH"
+    fi
     echo ""
     
     # Initialize unique ID
@@ -4949,6 +5630,8 @@ main() {
     # Phase 9: Deploy AgentCore agents (uses gateway URLs from step 6)
     # Phase 10: Generate UI configuration
     # Phase 11: Warm up agent runtimes with test prompts
+    # Phase 12: Deploy AAMP agents (IAB buyer & seller via agentcore CLI)
+    # Phase 13: Deploy OAuth MCP Gateway for Quick Suite Web + Desktop Apps
     
     # Pre-deployment validation
     if [ "$RESUME_AT_STEP" -le 1 ]; then
@@ -5017,7 +5700,15 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 11 ]; then
+        deploy_aamp_agents
+    fi
+    
+    if [ "$RESUME_AT_STEP" -le 12 ]; then
         warmup_agent_runtimes
+    fi
+    
+    if [ "$RESUME_AT_STEP" -le 13 ]; then
+        deploy_oauth_mcp_gateway
     fi
     
     # Final summary
@@ -5035,6 +5726,12 @@ main() {
     print_status "  ✅ Data Source Ingestion: Triggered"
     print_status "  ✅ Visualization Data: Migrated to DynamoDB for AgentCore agents"
     print_status "  ✅ Agent Runtimes: Warmed up for faster response times"
+    
+    # Check if AAMP agents were deployed
+    local aamp_runtime_file="${PROJECT_ROOT}/.aamp-runtime-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    if [ -f "$aamp_runtime_file" ]; then
+        print_status "  ✅ AAMP Agents: IAB buyer & seller deployed on AgentCore"
+    fi
     
     # Check if AdCP Gateway was deployed
     local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"

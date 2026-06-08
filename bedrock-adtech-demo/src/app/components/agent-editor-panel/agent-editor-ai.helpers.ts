@@ -300,6 +300,7 @@ Return a JSON object with EXACTLY this structure (no markdown fences, no explana
     "agent_name": "Same as agent_id",
     "agent_display_name": "Human-readable name (e.g., Campaign Optimization Agent)",
     "team_name": "Appropriate team name",
+    "agent_family": "One of: Orchestrators, Demand Side, Supply Side, Intelligence & Signals, AAMP Marketplace, Agentic Ecosystem",
     "agent_description": "1-2 sentence description of what this agent does",
     "tool_agent_names": ["list of tool agent names from the available list above, if relevant"],
     "external_agents": [],

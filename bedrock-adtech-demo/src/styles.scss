@@ -1478,30 +1478,130 @@ table thead {
 
 // Nova-style tab navigation with glass effect
 .nova-tab-container {
-  /* background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px); */
-  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  display: flex;
+  flex-direction: row;
   overflow: hidden;
-  height: 84vh;
-  margin:0px 32px;
+  height: 90vh;
+  margin: 0px 0px 0px 0px;
 
   .nova-tab-nav {
-    //max-width: 90vw;
-    margin: 0 auto;
-    border-bottom: #EEE solid 1px;
-    box-shadow: 0px 5px 18px 0px rgba(0, 0, 0, 0.05);
-    //padding: 0 32px;
+    display: none; // Hidden — replaced by sidebar
+  }
+}
 
-    .tabs-wrapper {
-      display: flex;
-      gap: 2px;
-      overflow-x: auto;
+// Left sidebar navigation
+.nova-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  min-width: 220px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  transition: width 0.2s ease, min-width 0.2s ease;
+  overflow: hidden;
 
-      &::-webkit-scrollbar {
-        display: none;
+  &.collapsed {
+    width: 48px;
+    min-width: 48px;
+
+    .sidebar-tab {
+      justify-content: center;
+      padding: 12px 0;
+    }
+  }
+
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #e5e7eb;
+    color: #6b7280;
+
+    &:hover {
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .material-icons {
+      font-size: 18px;
+    }
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 4px;
+    flex: 1;
+  }
+
+  .sidebar-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    width: 100%;
+
+    .tab-icon {
+      font-size: 20px;
+      color: #6b7280;
+      flex-shrink: 0;
+    }
+
+    .tab-label {
+      overflow: hidden;
+
+      .tab-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.3;
+      }
+
+      .tab-description {
+        font-size: 0.65rem;
+        color: #9ca3af;
+        line-height: 1.2;
       }
     }
+
+    &:hover {
+      background: #e5e7eb;
+    }
+
+    &.active {
+      background: #ede9fe;
+      border-left: 3px solid #6842ff;
+
+      .tab-icon {
+        color: #6842ff;
+      }
+
+      .tab-label .tab-title {
+        color: #6842ff;
+      }
+    }
+  }
+}
+
+.nova-tab-content {
+  flex: 1;
+  overflow: hidden;
+
+  &.sidebar-collapsed {
+    // Content expands when sidebar collapses
+  }
+
+  .content-wrapper {
+    height: 100%;
   }
 }
 

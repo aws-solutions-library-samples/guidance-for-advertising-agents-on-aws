@@ -1,8 +1,6 @@
 # Guidance for Advertising Agents
 
-> **📋 v2 Architecture Update:** This version introduces significant architectural changes including DynamoDB-backed agent configuration, a Nova Sonic voice interface, a full CRUD agent management UI, and UI-generated visualizations. If you are upgrading from v1, please review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for a detailed breakdown of all changes.
-
-This guidance demonstrates how to deploy a comprehensive agentic application for advertising workflows using Amazon Bedrock AgentCore. The solution showcases advanced multi-agent collaboration across the entire advertising value chain - from strategic media planning and audience targeting to real-time bid optimization and publisher revenue management.
+> **📋 v2.1 Update:** This version adds IAB AAMP marketplace agents (buyer/seller deal negotiation crews), AI Desktop App integration via MCP Gateway (Amazon Quick, Kiro, Claude Desktop), OAuth authentication for business users, UI improvements, and enhanced visualizations. Previous v2 features: DynamoDB-backed agent configuration, Nova Sonic voice interface, full CRUD agent management UI, and UI-generated visualizations. If you are upgrading from v1, please review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for a detailed breakdown of all changes.
 
 ## Table of Contents 
 
@@ -16,7 +14,7 @@ This guidance demonstrates how to deploy a comprehensive agentic application for
     - [Supported Regions](#supported-regions)
 3. [Deployment Steps](#deployment-steps)
 4. [Deployment Validation](#deployment-validation)
-5. [Running the Guidance](#running-the-guidance)
+5. [Interacting with Agents](#interacting-with-agents)
 6. [Customizing the Demo](#customizing-the-demo)
 7. [Next Steps](#next-steps)
 8. [Cleanup](#cleanup)
@@ -37,8 +35,10 @@ Modern advertising requires intelligent coordination across multiple specialized
 - **Publisher Monetization**: Ad load optimization, inventory forecasting, campaign timing, and revenue format selection
 
 This guidance provides an agentic solution that delivers:
-- **Multi-Agent Application**: 21+ specialized AI agents with intelligent orchestration across 4 orchestrator agents and 17+ specialist agents
+- **Multi-Agent Application**: 30+ specialized AI agents with intelligent orchestration across 6 orchestrator agents and 20+ specialist agents
 - **AgentCore Container Runtime**: All agents deployed using Amazon Bedrock AgentCore for enhanced capabilities including persistent memory, multi-agent coordination, and external API integration
+- **AI Desktop App Integration**: Connect from Amazon Quick, Kiro, or Claude Desktop via MCP Gateway — OAuth for business users, IAM for developers
+- **IAB AAMP Marketplace**: Full buyer/seller deal negotiation flow with CrewAI-based agents (Plan → Discover → Price → Negotiate → Book)
 - **Interactive Demo Interface**: Angular-based UI with real-time agent collaboration visualization, auto-generated charts and metrics, and a Nova Sonic voice interface
 - **DynamoDB-Backed Agent Configuration**: Full CRUD management of agent configs (instructions, cards, visualization maps) through a dedicated UI, with DynamoDB-first storage and S3 fallback
 - **Cost-Optimized Model Assignment**: Intelligent foundation model selection based on task complexity
@@ -50,8 +50,11 @@ This guidance provides an agentic solution that delivers:
 ![Architecture](assets/Architecture.png)
 
 **Key Architecture Components:**
-- **4 Orchestrator Agents**: Media Planning, Campaign Optimization, Yield Optimization, and Inventory Optimization
-- **17+ Specialist Agents**: Audience Intelligence, Audience Strategy, Timing Strategy, Format Strategy, Channel Mix, Campaign Architecture, Creative Selection, Ad Load Optimization, Media Plan Compiler, Weather Impact, Current Events, Contextual Analysis, Bid Optimization, Bid Simulator, Ad Format Selector, Events, and more
+- **6 Orchestrator Agents**: Media Planning, Campaign Optimization, Yield Optimization, Inventory Optimization, Agency Agent, AdFabric Router
+- **20+ Specialist Agents**: Audience Intelligence, Audience Strategy, Timing Strategy, Format Strategy, Channel Mix, Campaign Architecture, Creative Selection, Ad Load Optimization, Media Plan Compiler, Weather Impact, Current Events, Contextual Analysis, Bid Optimization, Bid Simulator, Ad Format Selector, Events, and more
+- **IAB AAMP Marketplace Agents**: Buyer Crew (DealBookingFlow) and Seller Crew (PublisherCrew) for automated deal negotiation
+- **Agentic Ecosystem Agents**: Advertiser, Publisher, Signal, Identity, Measurement, Verification — representing each participant in the ad ecosystem
+- **MCP Gateway (OAuth + IAM)**: Dual-gateway architecture exposing agents as MCP tools to AI desktop apps (Quick, Kiro, Claude Desktop)
 - **1 Knowledge Base**: With 1 data source covering campaign intelligence, audience strategy, brand and content safety, performance analytics, and inventory & yield optimization across multiple subdirectories
 - **Shared Memory System**: Unified context across all agents enabling sophisticated cross-domain decision making
 - **DynamoDB Agent Configuration**: Centralized agent config management (instructions, cards, visualization maps, global config) stored in DynamoDB with S3 fallback, enabling runtime CRUD operations from the UI
@@ -62,7 +65,7 @@ This guidance provides an agentic solution that delivers:
 
 ### Cost 
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of October 2025, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $329.86 per month, assuming daily usage (see cost breakdown for details)._
+_You are responsible for the cost of the AWS services used while running this Guidance. As of April 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region ranges from approximately $197 to $1,563+ per month depending on usage volume (see cost breakdown and scenarios below)._
 
 The AgentCore deployment model provides cost advantages through:
 - **Pay-per-use container runtime**: Only pay when agents are actively processing requests
@@ -74,18 +77,37 @@ _We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/la
 
 ### Sample Cost Table 
 
-The following table provides a sample cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
+The following table provides a cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
 
 | AWS service | Dimensions | Monthly Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock Foundation Models | average 4 conversation turns per session, average 6 LLM prompts per conversation turn at $0.003 per prompt, average 1.5 sessions a day | $19.44 |
-| Amazon Bedrock AgentCore Runtime | AgentCore Runtime, AgentCore Memory, average session duration of 45 minutes | $16.61 |
-| Amazon S3 | Knowledge base data storage (5GB), generated content, static hosting | $2.50 |
-| Amazon OpenSearch Serverless | Knowledge base, vector search operations | $219.00 |
-| AWS Lambda | image generation | $1.50 |
-| Amazon DynamoDB | Agent configuration storage (instructions, cards, visualization maps, global config), generated content details, session management | $70.31 |
-| AWS CloudFront | Global content delivery for demo interface | $0.50 |
-| **Total** | | **~$329.86** |
+| Amazon Bedrock Foundation Models | Claude Sonnet 4.5 for orchestration, Claude Sonnet 4 for specialist agents; ~2K input + 1K output tokens per agent call; cost scales with query volume | See scenarios below |
+| Amazon Bedrock AgentCore Runtime | 1 shared container runtime hosting 21+ agents; pay-per-session pricing with auto-scaling; includes AgentCore Memory for session context | See scenarios below |
+| Amazon S3 | Knowledge base source documents (5 GB) + generated creative assets + UI static hosting; Standard storage class | $2.50 |
+| Amazon OpenSearch Serverless | 1 VECTORSEARCH collection for knowledge base retrieval; minimum 0.5 OCU indexing + 0.5 OCU search at $0.24/OCU-hour (runs continuously) | $175.20 |
+| AWS Lambda | Async image generation (Nova Canvas); scales with creative production volume | $1.50 |
+| Amazon DynamoDB | Agent configuration, session state, creative tracking, visualization data; on-demand capacity mode | $3.75 |
+| AWS CloudFront | UI distribution; scales with user traffic | $0.50 |
+
+### Usage-Based Cost Scenarios
+
+Variable costs (Bedrock LLM + AgentCore Runtime) scale linearly with the number of agent interactions. Each agent interaction averages ~6 LLM calls across the orchestrator and specialist agents.
+
+| Scenario | Concurrent Users | Agent Interactions/Day | Bedrock LLM | AgentCore Runtime | Fixed Infrastructure | Monthly Total |
+|----------|-----------------|----------------------|-------------|-------------------|---------------------|---------------|
+| Evaluation | 1-2 | 20 | $9 | $5 | $183 | ~$197 |
+| Team pilot | 5 | 100 | $45 | $24 | $183 | ~$252 |
+| Department rollout | 15 | 500 | $225 | $120 | $183 | ~$528 |
+| Production | 50 | 2,000 | $900 | $480 | $183+ | ~$1,563+ |
+
+**Assumptions and notes:**
+- All prices are based on US East (N. Virginia) on-demand pricing as of April 2026.
+- Fixed infrastructure cost ($183/month) includes OpenSearch Serverless ($175.20), S3 ($2.50), DynamoDB ($3.75), Lambda ($1.50), and CloudFront ($0.50).
+- OpenSearch Serverless is the primary fixed cost driver — the minimum OCU allocation runs continuously regardless of query volume.
+- Bedrock LLM cost assumes ~$0.015 per agent interaction (averaged across Sonnet 4.5 orchestrator and Sonnet 4 specialist calls at published per-token rates).
+- AgentCore Runtime cost assumes ~$0.008 per agent interaction based on pay-per-session pricing with ~45 second average session duration.
+- Production scenario: OpenSearch Serverless may auto-scale beyond minimum OCUs under sustained query load, increasing the fixed infrastructure cost.
+- Foundation model costs can be reduced by routing simpler tasks to Claude Haiku, configurable per agent in the global configuration.
 
 ## Prerequisites 
 
@@ -242,7 +264,7 @@ The deployment user/role needs comprehensive permissions. Here's the minimum req
 
 This Guidance is optimized for regions with full Amazon Bedrock AgentCore support:
 - **US East (N. Virginia)** - us-east-1 (Recommended - most comprehensive model availability)
-- **US West (Oregon)** - us-east-1 (Full AgentCore and model support)
+- **US West (Oregon)** - us-west-2 (Full AgentCore and model support)
 - **Europe (Ireland)** - eu-west-1 (AgentCore available, check model availability)
 
 **Important Notes:**
@@ -256,7 +278,7 @@ This Guidance is optimized for regions with full Amazon Bedrock AgentCore suppor
 
 ## Deployment Steps 
 
-The deployment process uses a single comprehensive script that handles all infrastructure, AgentCore containers, knowledge bases, and UI configuration automatically in 11 phases:
+The deployment process uses a single comprehensive script that handles all infrastructure, AgentCore containers, knowledge bases, and UI configuration automatically in 13 phases:
 
 1. **Phase 1**: Check and adjust AWS service quotas
 2. **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
@@ -269,6 +291,8 @@ The deployment process uses a single comprehensive script that handles all infra
 9. **Phase 9**: Deploy AgentCore agents
 10. **Phase 10**: Generate UI configuration
 11. **Phase 11**: Warm up agent runtimes
+12. **Phase 12**: Deploy AAMP agents (IAB buyer & seller)
+13. **Phase 13**: Deploy OAuth MCP Gateway for Quick Suite Web + Desktop Apps
 
 ### Prerequisites Setup
 
@@ -353,34 +377,12 @@ Execute the following command with the appropriate variables:
   --skip-confirmations true
 ```
 
-The deployment script automatically handles:
-- **Phase 1**: Check and adjust AWS service quotas
-- **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
-- **Phase 3**: Deploy Lambda functions and migrate visualization data
-- **Phase 4**: Deploy knowledge bases with organized data sources
-- **Phase 5**: Sync data sources (start ingestion jobs)
-- **Phase 6**: Deploy AdCP MCP Gateway for agent collaboration
-- **Phase 7**: Upload agent configurations to S3
-- **Phase 8**: Upload agent configurations to DynamoDB
-- **Phase 9**: Deploy AgentCore agents
-- **Phase 10**: Generate UI configuration
-- **Phase 11**: Warm up agent runtimes
+The deployment script automatically handles 13 phases
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-a4a-us-east-1`. The name of the file depends on stack-prefix and region.
 
 ```bash
-# ReDeploy with required configurations. REVIEW and UPDATE the variables as needed. Refer to list below for resume-at phase description
-# Phase 1: Check and adjust AWS service quotas
-# Phase 2: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
-# Phase 3: Deploy Lambda functions and migrate visualization data
-# Phase 4: Deploy knowledge bases with organized data sources
-# Phase 5: Sync data sources (start ingestion jobs)
-# Phase 6: Deploy AdCP MCP Gateway for agent collaboration
-# Phase 7: Upload agent configurations to S3
-# Phase 8: Upload agent configurations to DynamoDB
-# Phase 9: Deploy AgentCore agents
-# Phase 10: Generate UI configuration
-# Phase 11: Warm up agent runtimes
+# ReDeploy with required configurations. REVIEW and UPDATE the variables as needed.
 
 ./scripts/deploy-ecosystem.sh \
   --stack-prefix a4a \
@@ -644,6 +646,24 @@ aws cognito-idp admin-create-user \
 - Ask about weather impact on campaigns
 - Request social sentiment analysis
 - Verify real-time data integration in responses
+
+## Interacting with Agents
+
+Once agents are deployed on Amazon Bedrock AgentCore, you can interact with them in multiple ways:
+
+| # | Method | Best For | Auth | Setup Time |
+|---|--------|----------|------|-----------|
+| 1 | **Angular UI** (standalone web app) | Demos, admin config, full-featured multi-agent chat | Cognito (browser login) | 0 min — just open the CloudFront URL |
+| 2 | **Quick Suite** (web + desktop) | Business users who live in Quick daily | OAuth (Cognito login via Quick) | 2 min |
+| 3 | **Kiro / Claude Desktop / Cursor** | Developers and SAs with AWS CLI | IAM (SigV4 via `mcp-proxy-for-aws`) | 5 min |
+| 4 | **Direct SDK** | Programmatic access, CI/CD, automation | IAM (boto3/AWS SDK) | Varies |
+
+**Recommended:**
+- **Business users** → Quick Suite (OAuth) — no AWS CLI, no terminal, just sign in
+- **Developers** → Kiro or Claude Desktop (IAM) — uses existing AWS credentials
+- **Demos & admin** → Angular UI — full admin panel, visualizations, voice interface
+
+For detailed setup instructions for each method, see [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md).
 
 ## Customizing the Demo
 
@@ -1042,6 +1062,74 @@ npm run start
 - Implement blue-green deployment strategies
 - Configure automated rollback capabilities
 
+
+## Connect AI Desktop Apps (MCP Gateway)
+
+The A4A platform can be accessed from AI desktop apps (Amazon Quick, Kiro, Claude Desktop) via the MCP Gateway — no custom UI required.
+
+### What It Adds
+
+Three MCP tools registered on the existing AdCP Gateway:
+- **`list_agents`** — Discover available agents (30+ agents across 6 families)
+- **`get_agent_schema`** — Get an agent's capabilities, collaborators, and tools
+- **`invoke_agent`** — Invoke any agent with a natural language prompt
+
+These appear alongside the existing 8 AdCP data tools (get_products, get_signals, etc.) on the same gateway connection.
+
+### Deploy the Agent Tools Target
+
+```bash
+# Add agent invocation tools to the existing gateway (additive — doesn't modify existing tools)
+python agentcore/deployment/deploy_a4a_mcp_handler.py \
+  --stack-prefix a4a \
+  --unique-id <YOUR_UNIQUE_ID> \
+  --region us-west-2 \
+  --profile <YOUR_PROFILE>
+```
+
+The script auto-discovers the existing gateway, deploys the Lambda, and registers the tools. It outputs the gateway URL and a ready-to-paste MCP config block.
+
+### Connect from Kiro or Quick Desktop
+
+Add to `~/.kiro/settings/mcp.json` (or Quick Desktop MCP settings):
+
+```json
+{
+  "mcpServers": {
+    "a4a-agents": {
+      "command": "uvx",
+      "timeout": 300000,
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://<GATEWAY_ID>.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp",
+        "--metadata", "AWS_REGION=us-west-2",
+        "--read-timeout", "300"
+      ],
+      "env": {
+        "AWS_PROFILE": "<YOUR_PROFILE>"
+      }
+    }
+  }
+}
+```
+
+### Verify
+
+After connecting, you should see 11-12 tools listed. Test with:
+- "List available advertising agents" → returns 30+ agents grouped by family
+- "Get schema for AgencyAgent" → returns collaborators, tools, input format
+
+### Quick Skill (Optional)
+
+For the best Quick experience, upload `quick-skill/SKILL.md` as a skill in Quick (Settings → Capabilities → Skills → Upload). This adds agent routing, formatting, and decision cards.
+
+### Documentation
+
+- **Business user setup:** [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md)
+- **Sample MCP config:** [`quick-skill/mcp-config-sample.json`](quick-skill/mcp-config-sample.json)
+- **Sample prompts:** See the [Running the Guidance](#running-the-guidance) section above — the same scenario prompts work in Quick
+
+---
 
 ## Cleanup 
 

@@ -162,8 +162,19 @@ export class AgentConfigService implements OnInit {
     }
 
     // First, process all deployed agents (filter out AdFabricAgent)
+    // Also filter out AAMP runtime agents — these have config entries in global_config
+    // that provide proper names, descriptions, and family grouping. The raw runtime
+    // names (e.g., a4a_aamp_seller_omixaj_mcp) don't match config keys and cause duplicates.
     const mainAgents = deployedAgents
-      .filter(agent => agent.status === 'active' && !agent.agentType.toLowerCase().includes('adfabricagent'))
+      .filter(agent => {
+        const typeLower = agent.agentType.toLowerCase();
+        if (!agent.status || agent.status !== 'active') return false;
+        if (typeLower.includes('adfabricagent')) return false;
+        // Filter AAMP runtime agents — both raw (a4a_aamp_seller_omixaj_mcp) and
+        // normalized (AampSellerAgent, Aamp Buyer Agent) forms
+        if (typeLower.includes('_aamp_') || typeLower.includes('aamp')) return false;
+        return true;
+      })
       .map((deployedAgent, index) => {
         // Try to find matching config (optional - graceful fallback if not found)
         const configKey = agentConfig ? this.findConfigKey(deployedAgent.agentType, agentConfig) : null;

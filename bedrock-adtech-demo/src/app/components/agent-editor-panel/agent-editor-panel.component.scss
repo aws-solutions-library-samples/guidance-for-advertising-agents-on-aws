@@ -814,6 +814,35 @@ $fuchsia-accent: #c300e0;
   gap: 8px;
 }
 
+// Tool Agents Grouped by Family
+.tool-agents-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tool-agents-family {
+  .tool-agents-family-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+    font-family: $font-family-ember;
+
+    .family-color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  }
+}
+
 .tool-agent-chip {
   display: flex;
   align-items: center;

@@ -53,6 +53,26 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   validationErrors: Map<string, string> = new Map();
   isMarkdownPreview: boolean = false;
 
+  /** Available agent family options for the dropdown */
+  agentFamilyOptions: string[] = [
+    'Orchestrators',
+    'Demand Side',
+    'Supply Side',
+    'Intelligence & Signals',
+    'AAMP Marketplace',
+    'Agentic Ecosystem'
+  ];
+
+  /** Color per family — used for group label accents */
+  private readonly familyColors: Record<string, string> = {
+    'Orchestrators':          '#41205B',
+    'Demand Side':            '#AB5209',
+    'Supply Side':            '#0E7C6B',
+    'Intelligence & Signals': '#804294',
+    'AAMP Marketplace':       '#C62828',
+    'Agentic Ecosystem':      '#1565C0',
+  };
+
   // Visualization mappings state
   visualizationMappings: VisualizationMapping | null = null;
   isLoadingMappings: boolean = false;
@@ -279,7 +299,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
   private createEmptyAgent(): AgentConfiguration {
     return {
-      agent_id: '', agent_name: '', agent_display_name: '', team_name: '',
+      agent_id: '', agent_name: '', agent_display_name: '', team_name: '', agent_family: '',
       agent_description: '', tool_agent_names: [], external_agents: [],
       model_inputs: {
         default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
@@ -476,6 +496,81 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
   getFilteredAvailableAgents(): string[] {
     return this.availableAgents.filter(name => name !== this.editingAgent.agent_name);
+  }
+
+  /**
+   * Returns available agents grouped by family for the Tool Agents selector.
+   * Each group contains agents sorted alphabetically.
+   */
+  getGroupedAvailableAgents(): { family: string; color: string; agents: string[] }[] {
+    const filtered = this.getFilteredAvailableAgents();
+    const grouped = new Map<string, string[]>();
+
+    for (const name of filtered) {
+      const family = this.inferAgentFamily(name) || 'Uncategorized';
+      if (!grouped.has(family)) {
+        grouped.set(family, []);
+      }
+      grouped.get(family)!.push(name);
+    }
+
+    // Sort agents alphabetically within each group
+    for (const agents of grouped.values()) {
+      agents.sort((a, b) => a.localeCompare(b));
+    }
+
+    // Sort families by preferred order
+    const familyOrder = this.agentFamilyOptions;
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => {
+        const idxA = familyOrder.indexOf(a);
+        const idxB = familyOrder.indexOf(b);
+        const orderA = idxA >= 0 ? idxA : familyOrder.length;
+        const orderB = idxB >= 0 ? idxB : familyOrder.length;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.localeCompare(b);
+      })
+      .map(([family, agents]) => ({ family, color: this.familyColors[family] || '#6b7280', agents }));
+  }
+
+  /**
+   * Fallback mapping from agent_name to agent_family when the field is missing.
+   * Mirrors the mapping in AgentManagementModalComponent.
+   */
+  private inferAgentFamily(agentName: string): string | null {
+    const familyMap: Record<string, string> = {
+      AdFabricAgent: 'Orchestrators',
+      CampaignOptimizationAgent: 'Demand Side',
+      AudienceStrategyAgent: 'Demand Side',
+      ChannelMixOptimizationAgent: 'Demand Side',
+      CampaignArchitectureAgent: 'Demand Side',
+      CreativeSelectionAgent: 'Demand Side',
+      AdFormatSelectorAgent: 'Demand Side',
+      BidOptimizationAgent: 'Demand Side',
+      BidSimulatorAgent: 'Demand Side',
+      MediaPlanningAgent: 'Supply Side',
+      YieldOptimizationAgent: 'Supply Side',
+      InventoryOptimizationAgent: 'Supply Side',
+      AdLoadOptimizationAgent: 'Supply Side',
+      MediaPlanCompiler: 'Supply Side',
+      AudienceIntelligenceAgent: 'Intelligence & Signals',
+      ContextualAnalysisAgent: 'Intelligence & Signals',
+      CurrentEventsAgent: 'Intelligence & Signals',
+      EventsAgent: 'Intelligence & Signals',
+      WeatherImpactAgent: 'Intelligence & Signals',
+      TimingStrategyAgent: 'Intelligence & Signals',
+      FormatStrategyOptimizerAgent: 'Intelligence & Signals',
+      AAMPSellerCrewAgent: 'AAMP Marketplace',
+      AAMPBuyerCrewAgent: 'AAMP Marketplace',
+      AgencyAgent: 'Agentic Ecosystem',
+      AdvertiserAgent: 'Agentic Ecosystem',
+      PublisherAgent: 'Agentic Ecosystem',
+      SignalAgent: 'Agentic Ecosystem',
+      VerificationAgent: 'Agentic Ecosystem',
+      MeasurementAgent: 'Agentic Ecosystem',
+      IdentityAgent: 'Agentic Ecosystem',
+    };
+    return familyMap[agentName] || null;
   }
 
   // ============================================

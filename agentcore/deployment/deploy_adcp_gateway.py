@@ -61,11 +61,12 @@ class AdCPGatewayDeployer:
             raise ValueError(f"Invalid AWS profile name: {profile}")
         return profile
     
-    def __init__(self, stack_prefix: str, unique_id: str, region: str = "us-east-1", profile: str = None):
+    def __init__(self, stack_prefix: str, unique_id: str, region: str = "us-east-1", profile: str = None, data_dir: str = None):
         self.stack_prefix = stack_prefix
         self.unique_id = unique_id
         self.region = region
         self.profile = profile
+        self.data_dir = data_dir  # Custom CSV data directory (overrides default mcp_mocks)
         
         try:
             # Create boto3 session - use profile if provided, otherwise use default credential chain
@@ -395,17 +396,6 @@ class AdCPGatewayDeployer:
         lambda_handler_path = os.path.join(project_root, "lambda", "adcp_mcp_handler.py")
         mcp_mocks_dir = os.path.join(project_root, "synthetic_data", "mcp_mocks")
         
-        # CSV files to include in the Lambda package
-        csv_files = [
-            ("products.csv", "products.csv"),  # Primary name
-            ("products (1).csv", "products.csv"),  # Fallback name -> normalized
-            ("signals.csv", "signals.csv"),
-            ("campaigns.csv", "campaigns.csv"),
-            ("verification_services.csv", "verification_services.csv"),
-            ("measurement_providers.csv", "measurement_providers.csv"),
-            ("identity_providers.csv", "identity_providers.csv"),
-        ]
-        
         # Verify Lambda handler exists - fail loudly if not
         if not os.path.exists(lambda_handler_path):
             error_msg = f"FATAL: Lambda handler not found at {lambda_handler_path}"
@@ -423,26 +413,55 @@ class AdCPGatewayDeployer:
                 handler_code = f.read()
             zf.writestr('lambda_function.py', handler_code)
             
-            # Add CSV data files
-            added_files = set()
-            for csv_entry in csv_files:
-                if isinstance(csv_entry, tuple):
-                    source_name, target_name = csv_entry
-                else:
-                    source_name = target_name = csv_entry
+            # Add CSV data files — glob all <type>*.csv files and merge
+            # Convention: products.csv (base) + products_nineseven.csv (overlay) → merged data/products.csv
+            csv_types = {
+                "products": "products.csv",
+                "signals": "signals.csv",
+                "campaigns": "campaigns.csv",
+                "verification_services": "verification_services.csv",
+                "measurement_providers": "measurement_providers.csv",
+                "identity_providers": "identity_providers.csv",
+                "advertisers_agencies": "advertisers_agencies.csv",
+            }
+            
+            import glob as glob_module
+            for csv_type, target_name in csv_types.items():
+                # Find all matching files: <type>.csv, <type>_*.csv
+                pattern_exact = os.path.join(mcp_mocks_dir, f"{csv_type}.csv")
+                pattern_overlay = os.path.join(mcp_mocks_dir, f"{csv_type}_*.csv")
                 
-                # Skip if we already added this target file
-                if target_name in added_files:
+                matched_files = []
+                if os.path.exists(pattern_exact):
+                    matched_files.append(pattern_exact)
+                matched_files.extend(sorted(glob_module.glob(pattern_overlay)))
+                
+                if not matched_files:
+                    logger.debug(f"No CSV files found for type '{csv_type}'")
                     continue
                 
-                csv_path = os.path.join(mcp_mocks_dir, source_name)
-                if os.path.exists(csv_path):
-                    logger.info(f"Adding data file: {source_name} -> data/{target_name}")
+                # Merge: first file provides header + rows, subsequent files append rows only
+                combined_content = ""
+                total_rows = 0
+                for i, csv_path in enumerate(matched_files):
                     with open(csv_path, 'r', encoding='utf-8') as f:
-                        zf.writestr(f'data/{target_name}', f.read())
-                    added_files.add(target_name)
-                else:
-                    logger.debug(f"CSV file not found: {csv_path} (may use alternate)")
+                        lines = f.readlines()
+                    if i == 0:
+                        # First file: include header + all rows
+                        combined_content = ''.join(lines)
+                        total_rows += len(lines) - 1  # minus header
+                    else:
+                        # Overlay files: skip header (line 0), append rows
+                        if len(lines) > 1:
+                            rows = ''.join(lines[1:])
+                            if not combined_content.endswith('\n'):
+                                combined_content += '\n'
+                            combined_content += rows
+                            total_rows += len(lines) - 1
+                            logger.info(f"  ✅ Merged {len(lines)-1} rows from {os.path.basename(csv_path)}")
+                
+                logger.info(f"Adding data/{target_name}: {len(matched_files)} file(s), {total_rows} total rows")
+                zf.writestr(f'data/{target_name}', combined_content)
         
         logger.info("Lambda deployment package created successfully")
         return zip_buffer.getvalue()
@@ -1028,6 +1047,10 @@ def main():
                         help="Enable semantic search on the gateway (enabled by default)")
     parser.add_argument("--target-only", action="store_true", 
                         help="Only add Lambda target to existing gateway (skip gateway creation)")
+    parser.add_argument("--data-dir", 
+                        help="Additional CSV data directory to merge with default mcp_mocks. "
+                             "Products/signals are APPENDED (additive). "
+                             "Use for customer-specific data, e.g. synthetic_data/customers/nineseven/mcp_mocks")
     
     args = parser.parse_args()
     
@@ -1036,6 +1059,7 @@ def main():
     logger.info(f"  Unique ID: {args.unique_id}")
     logger.info(f"  Region: {args.region}")
     logger.info(f"  Profile: {args.profile or 'default'}")
+    logger.info(f"  Data Dir: {args.data_dir or 'default (synthetic_data/mcp_mocks)'}")
     logger.info(f"  Semantic Search: {'enabled' if args.enable_semantic_search else 'disabled'}")
     
     try:
@@ -1043,7 +1067,8 @@ def main():
             stack_prefix=args.stack_prefix,
             unique_id=args.unique_id,
             region=args.region,
-            profile=args.profile
+            profile=args.profile,
+            data_dir=args.data_dir
         )
     except Exception as e:
         error_result = {

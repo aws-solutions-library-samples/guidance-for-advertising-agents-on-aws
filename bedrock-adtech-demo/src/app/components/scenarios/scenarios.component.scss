@@ -42,14 +42,14 @@
 
 .scenarios-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
   grid-template-columns: 1fr;
 }
 
 .scenario-card {
   perspective: 1000px;
   cursor: pointer;
-  height: 200px;
+  height: 140px;
 
   .card-inner {
     position: relative;
@@ -70,7 +70,7 @@
     height: 100%;
     backface-visibility: hidden;
     border-radius: 8px;
-    padding: 1.5rem;
+    padding: 1rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 

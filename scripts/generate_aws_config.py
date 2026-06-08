@@ -539,6 +539,30 @@ def get_memory_record_id(stack_prefix, unique_id):
     return None
 
 
+def get_cognito_domain(stack_prefix, unique_id, region, profile):
+    """Get the Cognito User Pool domain for SSO configuration."""
+    try:
+        import boto3
+        session = boto3.Session(profile_name=profile, region_name=region)
+        cognito_client = session.client("cognito-idp")
+
+        # Find the user pool by name convention
+        pool_name = f"{stack_prefix}-users-{unique_id}"
+        response = cognito_client.list_user_pools(MaxResults=60)
+        for pool in response.get("UserPools", []):
+            if pool["Name"] == pool_name:
+                pool_id = pool["Id"]
+                # Get the domain
+                pool_details = cognito_client.describe_user_pool(UserPoolId=pool_id)
+                domain = pool_details["UserPool"].get("Domain", "")
+                if domain:
+                    return domain
+                break
+    except Exception as e:
+        print(f"    ⚠️  Could not look up Cognito domain: {e}")
+    return None
+
+
 def get_agentcore_runtime_arns(region, profile):
     """Get AgentCore runtime ARNs from AWS"""
     runtime_arns = {}
@@ -1048,6 +1072,24 @@ def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file
     if "cognito" in infrastructure_config:
         aws_config["aws"]["cognito"] = infrastructure_config["cognito"]
 
+    # Add SSO configuration if --sso-provider was specified
+    # This is passed via the sso_provider parameter (set by caller)
+    if hasattr(generate_aws_config, '_sso_provider') and generate_aws_config._sso_provider:
+        sso_provider = generate_aws_config._sso_provider
+        sso_label = getattr(generate_aws_config, '_sso_label', 'Sign in with SSO')
+        # Look up Cognito domain
+        cognito_domain = get_cognito_domain(stack_prefix, unique_id or stack_suffix, region, profile)
+        if cognito_domain:
+            aws_config["sso"] = {
+                "enabled": True,
+                "providerName": sso_provider,
+                "label": sso_label,
+                "cognitoDomain": f"{cognito_domain}.auth.{region}.amazoncognito.com",
+            }
+            print(f"    ✅ Added SSO configuration: provider={sso_provider}, domain={cognito_domain}")
+        else:
+            print(f"    ⚠️  SSO provider specified but no Cognito domain found — skipping SSO config")
+
     # Write to the output file
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
@@ -1089,6 +1131,16 @@ def main():
         "--output",
         default="bedrock-adtech-demo/src/assets/aws-config.json",
         help="Output file path (default: bedrock-adtech-demo/src/assets/aws-config.json)",
+    )
+    generate_parser.add_argument(
+        "--sso-provider",
+        default=None,
+        help="SSO identity provider name in Cognito (e.g., 'AmazonFederate', 'OktaOIDC'). Enables SSO button in UI.",
+    )
+    generate_parser.add_argument(
+        "--sso-label",
+        default="Sign in with SSO",
+        help="Label for the SSO button in the UI (default: 'Sign in with SSO')",
     )
 
     # Validate command
@@ -1133,6 +1185,10 @@ def main():
             print(f"   Profile: {profile}")
             print(f"   Output File: {output_file}")
             print()
+
+            # Pass SSO config to generate function if specified
+            generate_aws_config._sso_provider = getattr(args, 'sso_provider', None)
+            generate_aws_config._sso_label = getattr(args, 'sso_label', 'Sign in with SSO')
 
             aws_config, skipped_agents = generate_aws_config(
                 stack_prefix=stack_prefix,

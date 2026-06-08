@@ -73,17 +73,8 @@
           [class.flipping]="selectedScenarioIndex === i" (click)="selectScenario(scenario, i)">
           <div class="card-inner">
             <div class="card-front">
-              <div class="agent-type-indicator" *ngIf="scenario.agentType">
-                <span class="material-icons agent-icon" [style.color]="getAgentColorFromScenario(scenario)">
-                  {{ getAgentIcon(scenario.agentType) }}
-                </span>
-                <span class="agent-name" [style.color]="getAgentColorFromScenario(scenario)">
-                  {{ scenario.agentType }}
-                </span>
-              </div>
               <h4>{{scenario.title}}</h4>
               <p>{{scenario.description}}</p>
-              <span class="scenario-category">{{scenario.category}}</span>
             </div>
             <div class="card-back">
               <div class="card-back-content">
@@ -102,14 +93,7 @@
 
   <!-- Chat Interface -->
   <div class="chat-container">
-<div style="display: flex; flex-direction: row; gap:7px;">
-<button class="session-refresh-btn" (click)="refreshSession()" title="Start a new session">
-          <span class="material-icons">refresh</span>
-        </button>
-        <span class="session-id-label" [title]="getFullSessionId()" (click)="copySessionId()">
-          <span class="material-icons">fingerprint</span>
-          {{getFullSessionId()}}
-        </span></div>
+
     <!-- Chat Header with Export and Clear Buttons -->
     <!-- <div class="chat-header">
       <div class="chat-info">

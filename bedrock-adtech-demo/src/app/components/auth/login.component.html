@@ -7,6 +7,20 @@
 
     <!-- Regular Sign In Form -->
     <div *ngIf="!showNewPasswordForm" class="form-section">
+      <button
+        *ngIf="ssoEnabled"
+        type="button"
+        class="btn btn-primary btn-sso"
+        (click)="signInWithSSO()"
+        [disabled]="isLoading"
+      >
+        {{ ssoLabel }}
+      </button>
+
+      <div *ngIf="ssoEnabled" class="divider">
+        <span>or sign in with email</span>
+      </div>
+
       <form (ngSubmit)="signIn()" #loginForm="ngForm">
         <div class="form-group">
           <label for="email">Email</label>

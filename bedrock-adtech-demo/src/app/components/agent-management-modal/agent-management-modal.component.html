@@ -84,58 +84,67 @@
           </button>
         </div>
 
-        <!-- Agent Cards -->
-        <div class="agent-cards" *ngIf="agents.length > 0">
-          <div 
-            class="agent-card" 
-            *ngFor="let agent of agents"
-            [style.border-left-color]="getAgentColor(agent)"
-            [class.readonly]="!canEditAgent(agent)"
-            (click)="selectAgent(agent)">
-            
-            <div class="agent-card-header">
-              <div class="agent-icon" [style.background-color]="getAgentColor(agent)">
-                <span class="material-icons">smart_toy</span>
-              </div>
-              <div class="agent-info">
-                <span class="agent-name">
-                  {{ agent.agent_display_name }}
-                  <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
-                </span>
-                <span class="agent-team">{{ agent.team_name }}</span>
-              </div>
-              <div class="agent-actions">
-                <button 
-                  class="icon-btn" 
-                  (click)="editAgent(agent); $event.stopPropagation()" 
-                  [title]="canEditAgent(agent) ? 'Edit Agent' : 'Only the author can edit this agent'"
-                  [disabled]="!canEditAgent(agent)">
-                  <span class="material-icons">edit</span>
-                </button>
-                <button 
-                  class="icon-btn delete" 
-                  (click)="deleteAgent(agent); $event.stopPropagation()" 
-                  [title]="canEditAgent(agent) ? 'Delete Agent' : 'Only the author can delete this agent'"
-                  [disabled]="!canEditAgent(agent)">
-                  <span class="material-icons">delete</span>
-                </button>
-              </div>
+        <!-- Agent Cards grouped by agent_family -->
+        <div class="agent-families" *ngIf="agents.length > 0">
+          <div class="agent-family-group" *ngFor="let group of agentFamilies">
+            <div class="family-header">
+              <span class="family-color-dot" [style.background-color]="group.color"></span>
+              <h3 class="family-name">{{ group.family }}</h3>
+              <span class="family-count" [style.color]="group.color" [style.background-color]="group.color + '14'">{{ group.agents.length }}</span>
             </div>
-            
-            <div class="agent-card-body">
-              <p class="agent-description">{{ agent.agent_description }}</p>
-            </div>
+            <div class="agent-cards">
+              <div 
+                class="agent-card" 
+                *ngFor="let agent of group.agents"
+                [style.border-left-color]="getAgentColor(agent)"
+                [class.readonly]="!canEditAgent(agent)"
+                (click)="selectAgent(agent)">
+                
+                <div class="agent-card-header">
+                  <div class="agent-icon" [style.background-color]="getAgentColor(agent)">
+                    <span class="material-icons">smart_toy</span>
+                  </div>
+                  <div class="agent-info">
+                    <span class="agent-name">
+                      {{ agent.agent_display_name }}
+                      <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
+                    </span>
+                    <span class="agent-team">{{ agent.team_name }}</span>
+                  </div>
+                  <div class="agent-actions">
+                    <button 
+                      class="icon-btn" 
+                      (click)="editAgent(agent); $event.stopPropagation()" 
+                      [title]="canEditAgent(agent) ? 'Edit Agent' : 'Only the author can edit this agent'"
+                      [disabled]="!canEditAgent(agent)">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button 
+                      class="icon-btn delete" 
+                      (click)="deleteAgent(agent); $event.stopPropagation()" 
+                      [title]="canEditAgent(agent) ? 'Delete Agent' : 'Only the author can delete this agent'"
+                      [disabled]="!canEditAgent(agent)">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="agent-card-body">
+                  <p class="agent-description">{{ agent.agent_description }}</p>
+                </div>
 
-            <div class="agent-card-footer">
-              <span class="agent-id">ID: {{ agent.agent_name }}</span>
-              <span class="agent-author">
-                <span class="material-icons">person</span>
-                {{ getAuthorDisplay(agent) }}
-              </span>
-              <span class="tool-count" *ngIf="agent.tool_agent_names?.length">
-                <span class="material-icons">build</span>
-                {{ agent.tool_agent_names.length }} tool{{ agent.tool_agent_names.length !== 1 ? 's' : '' }}
-              </span>
+                <div class="agent-card-footer">
+                  <span class="agent-id">ID: {{ agent.agent_name }}</span>
+                  <span class="agent-author">
+                    <span class="material-icons">person</span>
+                    {{ getAuthorDisplay(agent) }}
+                  </span>
+                  <span class="tool-count" *ngIf="agent.tool_agent_names?.length">
+                    <span class="material-icons">build</span>
+                    {{ agent.tool_agent_names.length }} tool{{ agent.tool_agent_names.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

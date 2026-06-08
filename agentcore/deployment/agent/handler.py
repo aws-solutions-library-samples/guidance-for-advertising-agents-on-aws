@@ -500,6 +500,16 @@ def load_instructions_for_agent(agent_name: str, use_cache: bool = True):
         logger.info(f"📦 INSTRUCTIONS: Cache HIT for {agent_name}")
         return _instructions_cache[agent_name]
     
+    # Check if this agent uses shared instructions from another agent name
+    agent_config = get_agent_config(agent_name)
+    shared_name = agent_config.get("shared_config_name")
+    if shared_name and shared_name != agent_name:
+        logger.info(f"📎 INSTRUCTIONS: {agent_name} uses shared instructions from {shared_name}")
+        content = load_instructions_for_agent(shared_name, use_cache=use_cache)
+        if content:
+            _instructions_cache[agent_name] = content
+            return content
+    
     # Try DynamoDB AgentConfigTable first (fastest)
     # Pass use_cache through - when False, DynamoDB loader uses consistent read
     content = ddb_load_instructions(agent_name, use_cache=use_cache)
@@ -873,11 +883,19 @@ def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     """
     Get the knowledge base ID for an agent from DynamoDB global config.
     The config value must be the actual KB ID (e.g. 'ABCDEF1234'), not a name.
+    Falls back to the first available KB ID if the agent name doesn't match.
     """
     global GLOBAL_CONFIG
     if not GLOBAL_CONFIG:
         GLOBAL_CONFIG = ddb_load_global_config() or {}
-    kb_id = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
+    kb_map = GLOBAL_CONFIG.get("knowledge_bases", {})
+    kb_id = kb_map.get(agent_name)
+    if not kb_id and kb_map:
+        # Fallback: use the first available KB ID when agent name doesn't match
+        # This handles cases where the LLM passes a wrong agent_name parameter
+        first_kb_id = next(iter(kb_map.values()), None)
+        logger.warning(f"⚠️ KB config for '{agent_name}' not found, falling back to default KB: {first_kb_id}")
+        kb_id = first_kb_id
     if kb_id and len(kb_id) < 8:
         logger.warning(f"⚠️ KB config for {agent_name} looks like a name ('{kb_id}'), not an ID. "
                        f"Update knowledge_bases in DynamoDB global config to use actual KB IDs.")
@@ -1011,8 +1029,10 @@ def initialize_handler():
         _initialization_complete = True
         
         elapsed = (datetime.now() - init_start).total_seconds()
+        build_version = os.environ.get("BUILD_VERSION", "unknown")
         logger.info("=" * 60)
         logger.info(f"🚀 HANDLER INITIALIZATION COMPLETE in {elapsed:.2f}s")
+        logger.info(f"   - Build version: {build_version}")
         logger.info(f"   - Config cache entries: {len(_config_cache)}")
         logger.info(f"   - Instructions cache entries: {len(_instructions_cache)}")
         logger.info("=" * 60)
@@ -1243,6 +1263,98 @@ def get_runtime_arn_and_auth_config(agent_name: str):
 #         return f"Error: {error_msg}"
 
 
+# ---------------------------------------------------------------------------
+# Response sanitization for external runtime responses
+# ---------------------------------------------------------------------------
+
+def _sanitize_external_response(text: str, agent_name: str = "") -> str:
+    """Sanitize responses from external runtimes before returning to the orchestrator.
+    
+    Strips:
+    - <thinking>...</thinking> blocks (CrewAI internal reasoning)
+    - <visualization-data>...</visualization-data> blocks (seller viz tags)
+    - Raw KB retrieval metadata (S3 URIs, chunk IDs, source metadata)
+    - Raw JSON objects that should be formatted as prose
+    """
+    import re
+    
+    if not text:
+        return text
+    
+    # Strip <thinking>...</thinking> blocks
+    text = re.sub(r'<thinking>.*?</thinking>\s*', '', text, flags=re.DOTALL)
+    
+    # Strip <visualization-data>...</visualization-data> blocks
+    text = re.sub(r'<visualization-data[^>]*>.*?</visualization-data>\s*', '', text, flags=re.DOTALL)
+    
+    # Strip raw KB retrieval metadata blocks (S3 URIs, chunk IDs)
+    # These appear as JSON with x-amz-bedrock-kb-* keys
+    text = re.sub(
+        r'\{[^}]*"x-amz-bedrock-kb-[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+    
+    # Strip retrievedReferences blocks with S3 locations
+    text = re.sub(
+        r',?\s*"retrievedReferences"\s*:\s*\[.*?\]\s*',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+    
+    # Strip location/metadata blocks with s3Location URIs
+    text = re.sub(
+        r',?\s*"location"\s*:\s*\{[^}]*"s3Location"[^}]*\}[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+    
+    # Strip "metadata": {"x-amz-bedrock-kb-*": ...} blocks
+    text = re.sub(
+        r',?\s*"metadata"\s*:\s*\{[^}]*"x-amz-bedrock-kb-[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+    
+    # If the entire response is a raw JSON object (common with BuyerCrewAgent),
+    # try to extract meaningful content
+    stripped = text.strip()
+    if stripped.startswith('{') and stripped.endswith('}'):
+        try:
+            parsed = json.loads(stripped)
+            # Check if it's a buyer-style campaign plan JSON
+            if 'campaign_name' in parsed or 'total_budget' in parsed:
+                # Format as readable summary
+                parts = []
+                if parsed.get('campaign_name'):
+                    # Truncate long campaign names (often the full prompt is stuffed in)
+                    name = parsed['campaign_name'][:80]
+                    parts.append(f"**Campaign:** {name}")
+                if parsed.get('total_budget'):
+                    parts.append(f"**Budget:** ${parsed['total_budget']:,.0f}")
+                if parsed.get('flight'):
+                    parts.append(f"**Flight:** {parsed['flight']}")
+                if parsed.get('status'):
+                    parts.append(f"**Status:** {parsed['status']}")
+                if parsed.get('audience_coverage'):
+                    cov = parsed['audience_coverage']
+                    cov_parts = [f"{k}: {v}%" for k, v in cov.items()]
+                    parts.append(f"**Audience Coverage:** {', '.join(cov_parts)}")
+                if parts:
+                    text = '\n'.join(parts)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass  # Not valid JSON or unexpected structure, leave as-is
+    
+    # Clean up excessive whitespace from stripping
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    return text.strip()
+
+
 @tool
 def invoke_specialist_with_RAG(
     agent_prompt: str, agent_name: str, is_collaborator: bool = True
@@ -1251,6 +1363,61 @@ def invoke_specialist_with_RAG(
     global collected_sources
     global GLOBAL_CONFIG
 
+    # ── Shortcut: If the agent has a runtime_arn, call the runtime directly ──
+    # External runtimes (e.g., AAMPSellerCrewAgent, AAMPBuyerCrewAgent) have their
+    # own tools and don't need local RAG. Route directly to the external runtime.
+    agent_config = get_agent_config(agent_name)
+    runtime_arn = agent_config.get("runtime_arn", "")
+
+    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+        logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
+        try:
+            region = os.environ.get("AWS_REGION", "us-west-2")
+            from botocore.config import Config
+            agentcore_client = boto3.client(
+                "bedrock-agentcore",
+                region_name=region,
+                config=Config(read_timeout=300, connect_timeout=10),
+            )
+
+            logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
+
+            payload = json.dumps({
+                "prompt": agent_prompt,
+                "routing_mode": "crew",
+            }).encode("utf-8")
+
+            response = agentcore_client.invoke_agent_runtime(
+                agentRuntimeArn=runtime_arn,
+                payload=payload,
+                contentType="application/json",
+                accept="application/json",
+            )
+
+            response_body = response.get("response", response.get("body", b""))
+            if hasattr(response_body, "read"):
+                response_body = response_body.read()
+            if isinstance(response_body, bytes):
+                response_body = response_body.decode("utf-8")
+
+            try:
+                parsed = json.loads(response_body)
+                result_text = parsed.get("response", response_body)
+            except json.JSONDecodeError:
+                result_text = response_body
+
+            # Sanitize external runtime response
+            result_text = _sanitize_external_response(str(result_text), agent_name)
+
+            logger.info(f"✅ TOOL: Direct runtime invoke succeeded for {agent_name} ({len(str(result_text))} chars)")
+
+            return f"<agent-message agent='{agent_name}'>{result_text}</agent-message>"
+
+        except Exception as e:
+            logger.error(f"❌ TOOL: Direct runtime invoke failed for {agent_name}: {e}")
+            return f"<agent-message agent='{agent_name}'>Error invoking {agent_name} runtime: {e}</agent-message>"
+
+    # ── Standard path: Create a local Strands agent with RAG tools ──
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id
@@ -1295,6 +1462,66 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
     
     logger.info(f"🔧 TOOL: Invoking specialist agent: {agent_name}")
     
+    # ── Shortcut: If the agent has a runtime_arn, call the runtime directly ──
+    # This avoids creating a proxy Strands agent that would need A2A tools.
+    # The runtime handles the request end-to-end (e.g., CrewAI crew with tools).
+    # When A2A is available, this path is skipped (runtime_arn would be empty).
+    agent_config = get_agent_config(agent_name)
+    runtime_arn = agent_config.get("runtime_arn", "")
+    
+    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+        logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
+        try:
+            region = os.environ.get("AWS_REGION", "us-west-2")
+            from botocore.config import Config
+            agentcore_client = boto3.client(
+                "bedrock-agentcore",
+                region_name=region,
+                config=Config(read_timeout=300, connect_timeout=10),
+            )
+            
+            # Pass the prompt directly to the runtime
+            logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
+            
+            payload = json.dumps({
+                "prompt": agent_prompt,
+                "routing_mode": "crew",
+            }).encode("utf-8")
+            
+            response = agentcore_client.invoke_agent_runtime(
+                agentRuntimeArn=runtime_arn,
+                payload=payload,
+                contentType="application/json",
+                accept="application/json",
+            )
+            
+            # AgentCore returns the response in the 'response' key (StreamingBody),
+            # not 'body'. Read and decode it.
+            response_body = response.get("response", response.get("body", b""))
+            if hasattr(response_body, "read"):
+                response_body = response_body.read()
+            if isinstance(response_body, bytes):
+                response_body = response_body.decode("utf-8")
+            
+            # Extract the response content
+            try:
+                parsed = json.loads(response_body)
+                result_text = parsed.get("response", response_body)
+            except json.JSONDecodeError:
+                result_text = response_body
+            
+            logger.info(f"✅ TOOL: Direct runtime invoke succeeded for {agent_name} ({len(str(result_text))} chars)")
+            
+            # Sanitize external runtime response
+            result_text = _sanitize_external_response(str(result_text), agent_name)
+            
+            return f"<agent-message agent='{agent_name}'>{result_text}</agent-message>"
+            
+        except Exception as e:
+            logger.error(f"❌ TOOL: Direct runtime invoke failed for {agent_name}: {e}")
+            return f"<agent-message agent='{agent_name}'>Error invoking {agent_name} runtime: {e}</agent-message>"
+    
+    # ── Standard path: Create a Strands collaborator agent ──
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id

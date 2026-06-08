@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../environments/environment';
 import { AgentConfigService } from './services/agent-config.service';
 import { DemoTrackingService } from './services/demo-tracking.service';
+import { SessionManagerService } from './services/session-manager.service';
 import { EnrichedAgent } from './models/application-models';
 
 interface TabConfig {
@@ -33,12 +34,14 @@ interface VersionConfig {
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Agents for ' + environment.industryType;
-  activeTab = 'generic-tab-1'; // Start with first tab from config
+  activeTab = 'publisher-operations'; // Start with Publisher Operations tab
   isAuthenticated = false;
   currentUser: any = null;
+  userDisplayName = 'User';
 
   tabs: TabConfig[] = [];
   isLoadingTabs = true;
+  isSidebarCollapsed = false;
 
   // Quick Setup properties
   showQuickSetup = false;
@@ -87,13 +90,21 @@ export class AppComponent implements OnInit, OnDestroy {
     private bedrockService: BedrockService,
     private agentConfigService: AgentConfigService,
     private demoTrackingService: DemoTrackingService,
-    private http: HttpClient
+    private http: HttpClient,
+    public sessionManager: SessionManagerService
   ) {
     // Make AwsConfigService available for debugging in browser console
     (window as any).awsConfigService = this.awsConfig;
   }
   getIndustry() {
     return environment.industryType;
+  }
+
+  copySessionId(): void {
+    const id = this.sessionManager.getCurrentSessionId();
+    navigator.clipboard.writeText(id).then(() => {
+      console.log('Session ID copied:', id);
+    });
   }
   
   onAgentSelected(): void {
@@ -112,9 +123,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.awsConfig.user$.subscribe((user) => {
       this.currentUser = user;
       this.isAuthenticated = !!user;
+      this.userDisplayName = this.getUserDisplayName(user);
 
       if (!user) {
-        this.router.navigate(['/login']);
+        // Don't redirect to /login if we're handling an OAuth callback
+        const hasOAuthCode = window.location.search.includes('code=');
+        if (!hasOAuthCode) {
+          this.router.navigate(['/login']);
+        }
         // Clear tabs when not authenticated
         this.tabs = [];
         this.isLoadingTabs = false;
@@ -216,7 +232,7 @@ export class AppComponent implements OnInit, OnDestroy {
           config: {},
           messages: []
         }];
-        this.activeTab = 'generic-tab-1';
+        this.activeTab = 'publisher-operations';
         //console.log('⚠️ Using default fallback tab');
       }
     } finally {
@@ -232,8 +248,7 @@ export class AppComponent implements OnInit, OnDestroy {
           this.contextDetailsPosition = { bottom: '0', right: '0' };
           if (position) {
             this.contextDetailsPosition.bottom = (position.height + 10) + "px !important";
-            this.contextDetailsPosition.right = "20px"
-
+            this.contextDetailsPosition.right = "60px"
           }
 
 
@@ -260,6 +275,30 @@ export class AppComponent implements OnInit, OnDestroy {
 
   isActiveTab(tabId: string): boolean {
     return this.activeTab === tabId;
+  }
+
+  private getUserDisplayName(user: any): string {
+    if (!user) return 'User';
+    // Try signInDetails (email/password login)
+    if (user.signInDetails?.loginId) return user.signInDetails.loginId;
+    // Try username (may be email for SSO users)
+    if (user.username && user.username.includes('@')) return user.username;
+    // Try to get email from stored token
+    try {
+      const config = this.awsConfig.getConfig();
+      const clientId = config?.aws?.cognito?.userPoolWebClientId;
+      if (clientId) {
+        const lastUser = localStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.LastAuthUser`);
+        if (lastUser) {
+          const idToken = localStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.${lastUser}.idToken`);
+          if (idToken) {
+            const payload = JSON.parse(atob(idToken.split('.')[1]));
+            return payload.email || payload.preferred_username || payload.sub || 'User';
+          }
+        }
+      }
+    } catch (e) {}
+    return user.userId || 'User';
   }
 
   async signOut(): Promise<void> {
@@ -347,10 +386,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Demo Modal Methods
   private checkDemoModal(): void {
-    // Only show demo modal if user is authenticated
-    if (this.isAuthenticated && this.currentUser && this.demoTrackingService.shouldShowDemoModal()) {
-      this.showDemoModal = true;
-    }
+    // Disabled — customer info popup not needed for demo/workshop
+    // if (this.isAuthenticated && this.currentUser && this.demoTrackingService.shouldShowDemoModal()) {
+    //   this.showDemoModal = true;
+    // }
   }
 
   closeDemoModal(): void {

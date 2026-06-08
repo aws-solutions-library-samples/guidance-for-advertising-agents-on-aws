@@ -251,7 +251,9 @@ export class AwsConfigService implements OnInit {
                 a => (a.name.indexOf(agentName)>-1||agentName.indexOf(a.name)>-1)
               );
               console.log(agentName + " added to agents list")
-              const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || agentcoreAgent.runtime_arn || '';
+              // Look up per-agent ARN: 1) global config runtime_arn, 2) matching SSM agent by name, 3) first SSM agent as fallback
+              const matchingSsmAgent = agentcoreData.agents.find((a: any) => a.name === agentName || a.name?.indexOf(agentName) > -1 || agentName.indexOf(a.name) > -1);
+              const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || matchingSsmAgent?.runtime_arn || agentcoreAgent.runtime_arn || '';
               const agentEntry = {
                 name: agentName,
                 agentType: agentName,
@@ -413,7 +415,9 @@ export class AwsConfigService implements OnInit {
         a => (a.name.indexOf(agentName) > -1 || agentName.indexOf(a.name) > -1)
       );
       
-      const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || agentcoreAgent.runtime_arn || '';
+      // Look up per-agent ARN: 1) global config runtime_arn, 2) matching SSM agent by name, 3) first SSM agent as fallback
+      const matchingSsmAgent = agentcoreData.agents.find((a: any) => a.name === agentName || a.name?.indexOf(agentName) > -1 || agentName.indexOf(a.name) > -1);
+      const perAgentArn = this.global_config.agent_configs[agentName].runtime_arn || matchingSsmAgent?.runtime_arn || agentcoreAgent.runtime_arn || '';
       const agentEntry = {
         name: agentName,
         agentType: agentName,
@@ -481,6 +485,9 @@ export class AwsConfigService implements OnInit {
   }
 
   private configureAmplify(config: AwsConfig): void {
+    // Determine the current origin for OAuth redirects
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4200';
+
     Amplify.configure({
       Auth: {
         Cognito: {
@@ -488,7 +495,15 @@ export class AwsConfigService implements OnInit {
           userPoolClientId: config.aws.cognito.userPoolWebClientId,
           identityPoolId: config.aws.cognito.identityPoolId,
           loginWith: {
-            email: true
+            email: true,
+            oauth: {
+              domain: `a4a-${config.uniqueId || 'omixaj'}.auth.${config.aws.region}.amazoncognito.com`,
+              scopes: ['openid', 'email', 'profile'],
+              redirectSignIn: [`${currentOrigin}/`],
+              redirectSignOut: [`${currentOrigin}/`],
+              responseType: 'code',
+              providers: [{ custom: 'AmazonFederate' }]
+            }
           },
           signUpVerificationMethod: 'code',
           userAttributes: {

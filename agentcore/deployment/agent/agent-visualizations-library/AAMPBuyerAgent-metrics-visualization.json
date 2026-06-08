@@ -1,0 +1,31 @@
+{
+  "agentName": "AAMPBuyerAgent",
+  "agentId": "AAMPBuyerAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Deal metrics, pricing comparisons, and budget allocation",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "AAMP Buyer Deal Dashboard",
+    "subtitle": "Deal negotiation metrics and budget tracking",
+    "metrics": [
+      {
+        "primaryLabel": "Metric name (e.g., 'Negotiated CPM', 'Budget Utilization', 'Deal Count')",
+        "secondaryLabel": "Metric category (e.g., 'Pricing', 'Budget', 'Deals')",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'Target CPM', 'Savings vs Rate Card', 'Active Orders')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, $, count)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

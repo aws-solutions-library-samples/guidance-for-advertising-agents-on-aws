@@ -517,158 +517,62 @@
 }
 
 .scenarios-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .scenario-card {
-    background: var(--hype-theme-prompt-card);
-    border: none;
-    border-radius: 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
     cursor: pointer;
-    position: relative;
     overflow: hidden;
-    height: 250px;
-    perspective: 1000px;
-    box-shadow: 0 0 8px 0 var(--hype-theme-prompt-card-null);
-    transition: box-shadow 0.3s ease;
+    padding: 10px 14px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+        border-color: #6842ff;
+        box-shadow: 0 2px 8px rgba(104, 66, 255, 0.15);
+    }
 
     .card-inner {
-        position: relative;
         width: 100%;
-        height: 100%;
-        text-align: left;
-        transition: transform 0.6s;
-        transform-style: preserve-3d;
-    }
-
-    &.flipping .card-inner {
-        transform: rotateY(180deg);
-    }
-
-    .card-front,
-    .card-back {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-        border-radius: 10px;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
     }
 
     .card-front {
-        background: white;
+        h4 {
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin: 0 0 2px 0;
+            line-height: 1.3;
+            color: #1f2937;
+        }
 
-        .agent-type-indicator {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
-            padding: 4px 8px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 12px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            width: fit-content;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
-            .agent-icon {
-                font-size: 14px;
-                opacity: 0.9;
-            }
-
-            .agent-name {
-                font-size: 0.7rem;
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                opacity: 0.9;
-            }
+        p {
+            font-size: 0.72rem;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
     }
 
     .card-back {
-        background: linear-gradient(135deg, #6842ff 0%, #491782 100%);
-        color: white;
-        transform: rotateY(180deg);
-
-        .card-back-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-
-            .material-icons {
-                font-size: 3rem;
-                margin-bottom: 12px;
-                opacity: 0.9;
-            }
-
-            p {
-                font-size: 1.1rem;
-                font-weight: 500;
-                margin: 0;
-            }
-        }
+        display: none;
     }
 
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #6842ff, #c300e0, #ff6200);
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-        z-index: 1;
+    &:hover {
+        border-color: #6842ff;
+        box-shadow: 0 2px 8px rgba(104, 66, 255, 0.15);
     }
+}
 
-    &:hover:not(.flipping) {
-        box-shadow: 0 0 10px 0 var(--hype-theme-prompt-card-hover);
-
-        &::before {
-            transform: scaleX(1);
-        }
-    }
-
-    h4 {
-        color: #1f2937;
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0 0 8px 0;
-        padding-right: 20px;
-    }
-
-    p {
-        color: #6b7280;
-        font-size: 0.9rem;
-        line-height: 1.5;
-        margin: 0 0 12px 0;
-        flex: 1;
-    }
-
-    .scenario-category {
-        position: absolute;
-        bottom: 16px;
-        right: 16px;
-        background: rgba(73, 23, 130, 0.1);
-        color: #491782;
-        padding: 8px 16px;
-        border-radius: 24px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border: 1px solid rgba(73, 23, 130, 0.15);
-    }
+.scenario-category {
+    display: none;
 }
 
 // New scenarios panel design
@@ -764,7 +668,7 @@
     .scenarios-grid {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 10px;
     }
 
     .scenario-card {
@@ -774,7 +678,7 @@
         cursor: pointer;
         transition: all 0.3s ease;
         perspective: 1000px;
-        height: 250px;
+        height: 150px;
 
         &:hover {
             border-color: #6842ff;

@@ -58,41 +58,22 @@ export class TourService {
         {
           id: 'welcome',
           title: 'Welcome to Agents for Advertising',
-          content: 'This interface demonstrates how AI agents work together to solve complex advertising challenges. Unlike simple chatbots, these agents can analyze data, make decisions, and integrate with business systems to provide actionable insights and automation.',
-          target: '.main-container',
-          position: 'center',
+          content: 'This interface demonstrates how AI agents work together to solve complex advertising challenges. Use the left sidebar to switch between Publisher Operations, AAMP Marketplace, AdTech Symposium, and Agency & Advertiser scenarios.',
+          target: '.nova-sidebar',
+          position: 'right',
           backdrop: true,
-          highlight: false,
+          highlight: true,
           order: 1
         },
         {
-          id: 'context-info',
-          title: 'Context Section - Current Data State',
-          content: 'This section displays the current context and data that agents are working with. It shows contextual factors that inform agent decision-making. This data serves as the foundation for the agent recommendations, and is passed into the agent invocation.',
-          target: '.context-trigger-container',
-          position: 'right',
-          highlight: true,
-          highlightClass: 'tour-highlight-warning,with-margin-and-padding',
-          order: 2,
-          events: [
-            {
-              type: 'mouseover',
-              target: '.context-trigger-btn',
-              delay: 0,
-              action: 'mouseover'
-            }
-          ]
-        }
-        ,
-        {
           id: 'scenarios-button',
           title: 'Scenario Collection',
-          content: 'When you see this scenarios panel open, you can explore pre-built questions and use cases that demonstrate agentic capabilities. These scenarios showcase how agents handle different challenges and makes is easy to do experiment or demo quickly.',
+          content: 'Click this button to open pre-built scenarios. Each tab has different scenarios — click a card to auto-fill the chat with that prompt.',
           target: '.scenarios-btn',
           position: 'left',
           highlight: true,
           highlightClass: 'tour-highlight-warning',
-          order: 3,
+          order: 2,
           events: [
             {
               type: 'open-panel',
@@ -101,54 +82,38 @@ export class TourService {
             }
           ]
         },
-
-        {
-          id: 'tab-configuration',
-          title: 'Tab Configuration',
-          content: 'The scenario questions, as well as the context data for each tab, can be configured via the Tab Setup button in the header menu.',
-          target: '.tab-setup-button',
-          position: 'left',
-          highlight: true,
-          highlightClass: 'tour-highlight-warning,with-margin-and-padding',
-          order: 4,
-          events: [{
-            type: 'click',
-            target: '.scenario-card:first-child',
-            delay: 300,
-          },
-          {
-            type: 'click',
-            target: '.user-button',
-            delay: 0
-          }
-          ]
-        },
         {
           id: 'chat-section',
           title: 'Agent Conversation Thread',
-          content: 'This chat interface visualizes the conversation between AI agents and users as a structured message thread. It demonstrates agentic thought processes, collaborative reasoning, and how agents build upon each other\'s insights. This represents the "thinking out loud" approach rather than black-box AI responses. There are 2 ways to input chat messages. You can either select a scenario from the scenarios panel, or you can type your own message in the input field.',
-          target: '.message',
+          content: 'This chat shows the conversation between you and AI agents. Agents think out loud — you\'ll see their reasoning, sub-agent delegation, and structured data. Select a scenario card or type your own message to start.',
+          target: '.chat-messages',
           position: 'left',
           highlight: true,
           highlightClass: 'tour-highlight-warning,with-margin-and-padding',
-          order: 5,
-          events: [
-
-
-          ]
+          order: 3,
+          events: []
         },
         {
           id: 'active-agents',
-          title: 'Active Agents Collaboration',
-          content: 'This section shows all AI agents that have contributed to the current conversation. Each agent has specialized expertise (Campaign Strategy, Creative Selection, Bid Optimization, etc.). Click on any agent to see their specific contributions and structured data.',
+          title: 'Active Agents',
+          content: 'As agents respond, they appear here. Each colored badge shows an agent that contributed to the conversation. Click the eye icon to show/hide messages from specific agents.',
           target: '.participants-list',
           position: 'bottom',
           highlight: true,
           highlightClass: 'tour-highlight-active,with-margin-and-padding',
+          order: 4,
+          events: []
+        },
+        {
+          id: 'tools-panel',
+          title: 'Tools',
+          content: 'Use these buttons to: copy the conversation as Markdown, open the glossary of fictional brands, or configure which data the agents see.',
+          target: '.floating-actions',
+          position: 'left',
+          highlight: true,
+          highlightClass: 'tour-highlight-warning',
           order: 5,
-          events: [
-
-          ]
+          events: []
         },
 
         {

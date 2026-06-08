@@ -1,0 +1,77 @@
+{
+  "tools": [
+    {
+      "name": "upload_customer_data",
+      "description": "Upload a customer-specific data file (CSV or JSON) to the A4A demo environment. The file is stored in S3 and made available to the appropriate system (AdCP Lambda, AAMP Seller, or Bedrock KB).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Customer identifier (e.g. 'nineseven', 'prosiebensat1')"
+          },
+          "file_type": {
+            "type": "string",
+            "description": "Type of data being uploaded. Valid values: adcp_products, adcp_signals, adcp_campaigns, adcp_advertisers, aamp_inventory, aamp_audiences, kb_doc"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Filename (e.g. 'products_nineseven.csv', 'au-sports-viewer-profiles.json')"
+          },
+          "content": {
+            "type": "string",
+            "description": "File content as text (CSV rows or JSON string)"
+          }
+        },
+        "required": ["customer_id", "file_type", "file_name", "content"]
+      }
+    },
+    {
+      "name": "deploy_customer",
+      "description": "Trigger deployment of customer data that has been uploaded. Triggers KB ingestion for knowledge base grounding. AdCP and Seller agents read from S3 at runtime — no explicit redeploy needed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Customer identifier"
+          },
+          "targets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Which systems to trigger (kb, adcp, seller). Default: ['kb']."
+          }
+        },
+        "required": ["customer_id"]
+      }
+    },
+    {
+      "name": "list_customer_datasets",
+      "description": "List all customer overlay datasets currently deployed in S3.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Optional: filter by customer ID. Omit to list all."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "remove_customer_data",
+      "description": "Remove a customer's overlay data from S3 and trigger re-ingestion. After removal, agents will serve only base (Meridian) data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Customer identifier to remove"
+          }
+        },
+        "required": ["customer_id"]
+      }
+    }
+  ]
+}

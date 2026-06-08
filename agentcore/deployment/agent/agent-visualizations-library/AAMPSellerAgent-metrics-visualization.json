@@ -1,0 +1,31 @@
+{
+  "agentName": "AAMPSellerAgent",
+  "agentId": "AAMPSellerAgent",
+  "templateId": "metrics-visualization",
+  "usage": "Inventory metrics, pricing summaries, and delivery KPIs",
+  "dataMapping": {
+    "visualizationType": "metrics",
+    "templateId": "metrics-visualization",
+    "title": "AAMP Seller Inventory Dashboard",
+    "subtitle": "Inventory availability, pricing, and delivery metrics",
+    "metrics": [
+      {
+        "primaryLabel": "Metric name (e.g., 'Total Products', 'Average CPM', 'Fill Rate', 'Active Deals')",
+        "secondaryLabel": "Metric category (e.g., 'Inventory', 'Pricing', 'Delivery')",
+        "items": [
+          {
+            "primaryLabel": "Metric name (e.g., 'CTV Inventory', 'Base CPM', 'Deal Count')",
+            "actualValue": "Current metric value",
+            "targetValue": "Target metric value",
+            "actualLabel": "Current performance description",
+            "targetLabel": "Target performance description",
+            "unit": "Metric unit (%, $, count)",
+            "trend": "Performance trend: 'up', 'down', 'stable'",
+            "isPrimary": "Is this a primary KPI: true/false",
+            "insights": ["Key insights about this metric"]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -79,6 +79,17 @@
         </span>
       </div>
 
+      <!-- Agent Family -->
+      <div class="form-group">
+        <label for="agent_family">Agent Family</label>
+        <select id="agent_family" class="form-control" [(ngModel)]="editingAgent.agent_family"
+          [disabled]="isLoading">
+          <option value="">— Select family —</option>
+          <option *ngFor="let family of agentFamilyOptions" [value]="family">{{ family }}</option>
+        </select>
+        <span class="field-hint">Groups agents in the management view. Does not affect runtime behavior.</span>
+      </div>
+
       <!-- Description -->
       <div class="form-group">
         <label for="agent_description">Description <span class="required">*</span></label>
@@ -398,13 +409,21 @@
         Tool Agents
       </h5>
       <p class="section-description">Select agents that this agent can invoke as tools.</p>
-      <div class="tool-agents-grid">
-        <div *ngFor="let agentName of getFilteredAvailableAgents()" class="tool-agent-chip"
-          [class.selected]="isToolAgentSelected(agentName)" [class.disabled]="isLoading"
-          (click)="!isLoading && toggleToolAgent(agentName)">
-          <span class="material-icons">{{ isToolAgentSelected(agentName) ? 'check_circle' : 'radio_button_unchecked'
-            }}</span>
-          <span class="agent-name">{{ agentName }}</span>
+      <div class="tool-agents-grouped">
+        <div *ngFor="let group of getGroupedAvailableAgents()" class="tool-agents-family">
+          <div class="tool-agents-family-label">
+            <span class="family-color-dot" [style.background-color]="group.color"></span>
+            {{ group.family }}
+          </div>
+          <div class="tool-agents-grid">
+            <div *ngFor="let agentName of group.agents" class="tool-agent-chip"
+              [class.selected]="isToolAgentSelected(agentName)" [class.disabled]="isLoading"
+              (click)="!isLoading && toggleToolAgent(agentName)">
+              <span class="material-icons">{{ isToolAgentSelected(agentName) ? 'check_circle' : 'radio_button_unchecked'
+                }}</span>
+              <span class="agent-name">{{ agentName }}</span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="selected-count" *ngIf="editingAgent.tool_agent_names?.length">

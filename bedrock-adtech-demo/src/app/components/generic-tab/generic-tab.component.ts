@@ -5,6 +5,7 @@ import { AwsConfigService } from '../../services/aws-config.service';
 import { AgentConfigService } from '../../services/agent-config.service';
 import { SessionManagerService, SessionInfo } from '../../services/session-manager.service';
 import { DemoTrackingService } from '../../services/demo-tracking.service';
+import { HttpClient } from '@angular/common/http';
 import { TextUtils } from '../../utils/text-utils';
 import { Publisher, Content } from '../../models/advertising';
 import { ChatInterfaceComponent } from '../chat-interface/chat-interface.component';
@@ -45,6 +46,10 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Visibility Settings
   showVisibilitySettings = false;
+
+  // Glossary
+  showGlossary = false;
+  glossaryData: any = null;
   visibilitySettings: VisibilitySettings = {
     hiddenMessageTypes: ['tool-trace', 'error'],
     includedContextSections: ['currentCampaign', 'selectedAgent', 'userProfile'],
@@ -97,7 +102,8 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     private awsConfig: AwsConfigService,
     private agentConfig: AgentConfigService,
     private sessionManager: SessionManagerService,
-    private demoTrackingService: DemoTrackingService
+    private demoTrackingService: DemoTrackingService,
+    private http: HttpClient
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -108,6 +114,7 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     this.showPreferencesPanel = false;
     this.initializeAgentSelection();
     this.loadTabConfig(this.tabConfig);
+    this.loadGlossary();
 
     // Subscribe to tab config updates from DynamoDB saves
     this.tabConfigSub = this.agentConfig.tabConfigUpdated.subscribe(async (updatedConfig) => {
@@ -552,6 +559,53 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
 
   togglePreferencesSelector(): void {
     this.showVisibilitySettings = true;
+  }
+
+  toggleGlossary(): void {
+    this.showGlossary = !this.showGlossary;
+  }
+
+  copyConversationAsMarkdown(): void {
+    if (!this.chatInterface) return;
+    const messages = this.chatInterface.messages || [];
+    if (messages.length === 0) {
+      alert('No messages to copy');
+      return;
+    }
+
+    const lines: string[] = [`# Conversation Export — ${new Date().toLocaleString()}`, ''];
+    for (const msg of messages) {
+      if (msg.sender === 'user') {
+        lines.push(`## 🧑 User`);
+        lines.push(msg.text || '');
+      } else {
+        const agent = msg.displayName || msg.agentName || 'Agent';
+        lines.push(`## 🤖 ${agent}`);
+        const text = msg.data?.finalResponse || msg.text || '';
+        lines.push(text);
+      }
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+    }
+
+    const markdown = lines.join('\n');
+    navigator.clipboard.writeText(markdown).then(() => {
+      alert(`Copied ${messages.length} messages as Markdown`);
+    }).catch(() => {
+      // Fallback: open in new window
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.write('<pre>' + markdown.replace(/</g, '&lt;') + '</pre>');
+      }
+    });
+  }
+
+  private loadGlossary(): void {
+    this.http.get<any>('assets/glossary.json').subscribe({
+      next: (data) => this.glossaryData = data,
+      error: () => console.warn('Glossary not found')
+    });
   }
 
   // Visibility Settings Methods

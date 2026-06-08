@@ -2581,7 +2581,34 @@ Example format:
 
                 // Decode the chunk
                 const chunk = decoder.decode(value, { stream: true });
-                //console.log('🔍 Raw AgentCore chunk:', chunk);
+
+                // Handle non-SSE responses (plain text/JSON from non-Strands agents like AAMP)
+                // These don't have 'data: ' prefix — they're raw response payloads
+                if (!chunk.includes('data: ') && chunk.trim().length > 0) {
+                  let plainText = chunk.trim();
+                  // Unescape JSON-encoded string (wrapped in quotes)
+                  if (plainText.startsWith('"') && plainText.endsWith('"')) {
+                    try { plainText = JSON.parse(plainText); } catch { /* use as-is */ }
+                  }
+                  // Try parsing as JSON object with response field
+                  try {
+                    const parsed = JSON.parse(plainText);
+                    if (parsed?.response) {
+                      plainText = typeof parsed.response === 'string' ? parsed.response : (parsed.response?.text || JSON.stringify(parsed.response));
+                    }
+                  } catch { /* not JSON object, use as-is */ }
+
+                  if (plainText.length > 5) {
+                    observer.next({
+                      type: 'chunk',
+                      data: plainText,
+                      timestamp: new Date(),
+                      agentName: resolvedAgent.name || resolvedAgent.id,
+                      messageType: 'final-response'
+                    });
+                  }
+                  continue;
+                }
 
                 // Process each line in the chunk (Server-Sent Events format)
                 const lines = chunk.split('\n');
@@ -2591,8 +2618,26 @@ Example format:
                     let dataContent = line.substring(6); // Remove 'data: ' prefix
                     // Skip Python object representations and non-JSON data
                     if (dataContent.includes('<strands.agent.agent.Agent object') ||
-                      dataContent.includes('event_loop_cycle_id') ||
-                      !dataContent.trim().startsWith('{')) {
+                      dataContent.includes('event_loop_cycle_id')) {
+                      continue;
+                    }
+
+                    // Handle non-JSON responses (plain strings from non-Strands agents)
+                    if (!dataContent.trim().startsWith('{') && !dataContent.trim().startsWith('[')) {
+                      let plainText = dataContent.trim();
+                      // Unescape JSON-encoded strings (wrapped in quotes)
+                      if (plainText.startsWith('"') && plainText.endsWith('"')) {
+                        try { plainText = JSON.parse(plainText); } catch { /* use as-is */ }
+                      }
+                      if (plainText.length > 10) {
+                        observer.next({
+                          type: 'chunk',
+                          data: plainText,
+                          timestamp: new Date(),
+                          agentName: resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'final-response'
+                        });
+                      }
                       continue;
                     }
 
@@ -2626,6 +2671,21 @@ Example format:
 
                       if (isExternalAgent) console.log('🔍 Parsed External Agent event:', eventData);
                       //console.log('🔍 Parsed AgentCore event:', dataContent.substring(0, 300));
+
+                      // Handle non-Strands agent responses (e.g., AAMP buyer/seller using BedrockAgentCoreApp)
+                      // These return {"response": "...", "metadata": {...}} directly, not Strands streaming events
+                      if (eventData.response && !eventData.event && !eventData.message) {
+                        const responseText = eventData.response?.text || (typeof eventData.response === 'string' ? eventData.response : JSON.stringify(eventData.response, null, 2));
+                        console.log('✅ Non-Strands agent response detected, emitting as final-response');
+                        observer.next({
+                          type: 'chunk',
+                          data: responseText,
+                          timestamp: new Date(),
+                          agentName: resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'final-response'
+                        });
+                        continue;
+                      }
 
                       // Handle Strands StreamEvent format from AgentCore
                       if (eventData.event) {
@@ -2958,8 +3018,25 @@ Example format:
 
 
                     } catch (parseError) {
-                      // Skip unparseable data lines
-                      //console.warn('⚠️ Could not parse AgentCore event data:', dataContent.substring(0, 100));
+                      // Non-JSON data line — could be a plain text response from non-Strands agents
+                      // (e.g., AAMP buyer/seller using BedrockAgentCoreApp returning a plain string)
+                      if (dataContent.trim().length > 0 && !dataContent.includes('event_loop') && !dataContent.includes('<strands')) {
+                        // Unescape the string if it's a JSON-encoded string (starts/ends with quotes)
+                        let plainText = dataContent.trim();
+                        if (plainText.startsWith('"') && plainText.endsWith('"')) {
+                          try { plainText = JSON.parse(plainText); } catch { /* use as-is */ }
+                        }
+                        if (plainText.length > 10) {
+                          console.log('✅ Non-Strands plain text response detected, emitting as final-response');
+                          observer.next({
+                            type: 'chunk',
+                            data: plainText,
+                            timestamp: new Date(),
+                            agentName: resolvedAgent.name || resolvedAgent.id,
+                            messageType: 'final-response'
+                          });
+                        }
+                      }
                     }
                   }
                 }
@@ -2968,11 +3045,37 @@ Example format:
               reader.releaseLock();
             }
 
+            // Fallback: if stream completed but no final-response was emitted
+            // (happens with non-Strands agents like AAMP buyer/seller),
+            // try to parse accumulated text and emit as final response
+            if (accumulatedText.trim()) {
+              try {
+                const parsed = JSON.parse(accumulatedText);
+                const responseText = parsed?.response?.text || parsed?.response || accumulatedText;
+                const finalText = typeof responseText === 'string' ? responseText : JSON.stringify(responseText, null, 2);
+                observer.next({
+                  type: 'chunk',
+                  data: finalText,
+                  timestamp: new Date(),
+                  agentName: resolvedAgent.name || resolvedAgent.id,
+                  messageType: 'final-response'
+                });
+              } catch {
+                // Not JSON — emit raw text
+                observer.next({
+                  type: 'chunk',
+                  data: accumulatedText,
+                  timestamp: new Date(),
+                  agentName: resolvedAgent.name || resolvedAgent.id,
+                  messageType: 'final-response'
+                });
+              }
+            }
+
 
 
           } else {
             // Fallback to non-streaming processing
-            console.log('⚠️ AgentCore response not streamable, using fallback processing');
 
             let responseText = '';
             let parsedResponse: any = null;

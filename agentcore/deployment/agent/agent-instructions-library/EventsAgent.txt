@@ -48,7 +48,7 @@ Audience Analysis:
 
 QUALITY AND FRAUD DETECTION:
 Viewability Analysis:
-- Compare viewability scores across vendors (Beacon, AdShield, DualCheck)
+- Compare viewability scores across vendors (Moat, IAS, DoubleVerify)
 - Identify discrepancies in vendor measurements
 - Correlate viewability with conversion performance
 - Analyze viewability by placement and device type

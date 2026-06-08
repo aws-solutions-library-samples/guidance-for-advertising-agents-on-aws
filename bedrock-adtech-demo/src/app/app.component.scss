@@ -33,31 +33,70 @@ app-context-panel {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-  padding: 20px 32px;
+  padding: 8px 24px;
   position: sticky;
   top: 0;
   z-index: 100;
 
   .header-content {
-    //max-width: 90vw;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
     width: 100%;
-    gap: 24px;
+    gap: 16px;
   }
 
   .title-section {
     flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 
     .app-title {
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 600;
       font-family: "Amazon Ember", "Amazon Ember V2", -apple-system, BlinkMacSystemFont, sans-serif;
       color: #1f2937;
-      margin: 0 0 4px 0;
+      margin: 0;
       letter-spacing: -0.5px;
+
+      .app-subtitle-inline {
+        font-size: 16px;
+        font-weight: 400;
+        color: #6b7280;
+        letter-spacing: 0;
+
+        .playground-handwriting {
+          font-family: "Sacramento", cursive;
+          font-size: 24px;
+          font-weight: 400;
+          color: #7a42a9;
+        }
+      }
+    }
+
+    .session-id-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: #f3f4f6;
+      white-space: nowrap;
+      font-family: monospace;
+
+      .material-icons {
+        font-size: 14px;
+      }
+
+      &:hover {
+        background: #e5e7eb;
+        color: #6b7280;
+      }
     }
 
     .app-subtitle {

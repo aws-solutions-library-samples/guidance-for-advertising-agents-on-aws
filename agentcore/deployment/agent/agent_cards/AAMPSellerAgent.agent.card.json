@@ -1,0 +1,20 @@
+{
+  "agent_name": "AAMPSellerAgent",
+  "agent_description": "IAB AAMP seller agent — manages publisher inventory, pricing, deals, orders, and SSP distribution via 41 MCP tools",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/aampselleragent",
+  "skills": [
+    "inventory_management",
+    "pricing",
+    "deal_negotiation",
+    "order_management",
+    "ssp_distribution"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "aamp",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "seller"
+  }
+}

@@ -66,11 +66,24 @@
       <span class="material-icons">list</span>
     </button>
 
-    <!-- Export PDF Button -->
-    <button class="floating-btn pdf-btn" (click)="exportChatToPdf()"
+    <!-- Export PDF Button — hidden, use Markdown copy instead -->
+    <!--<button class="floating-btn pdf-btn" (click)="exportChatToPdf()"
       [disabled]="isExportingPdf"
       title="Export conversation to PDF">
       <span class="material-icons">{{ isExportingPdf ? 'hourglass_empty' : 'picture_as_pdf' }}</span>
+    </button>-->
+
+    <!-- Copy Chat as Markdown -->
+    <button class="floating-btn secondary" (click)="copyConversationAsMarkdown()"
+      title="Copy conversation as Markdown">
+      <span class="material-icons">content_copy</span>
+    </button>
+
+    <!-- Glossary Button -->
+    <button class="floating-btn secondary glossary-btn" (click)="toggleGlossary()"
+      [class.active]="showGlossary"
+      title="Demo Universe Glossary">
+      <span class="material-icons">{{ showGlossary ? 'close' : 'menu_book' }}</span>
     </button>
   </div>
 
@@ -144,4 +157,24 @@
     (modalClosed)="onSessionPromptClosed()">
   </app-session-prompt-modal>
 
-</div>
+  <!-- Glossary Panel -->
+  <div class="glossary-panel" [class.open]="showGlossary">
+    <div class="glossary-content">
+      <div class="glossary-header">
+        <h3>{{glossaryData?.title || 'Glossary'}}</h3>
+        <button class="glossary-close" (click)="showGlossary = false">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="glossary-body" *ngIf="glossaryData">
+        <div *ngFor="let section of glossaryData.sections" class="glossary-section">
+          <h4>{{section.heading}}</h4>
+          <div *ngFor="let item of section.items" class="glossary-item">
+            <div class="glossary-item-name">{{item.name}}</div>
+            <div class="glossary-item-desc">{{item.description}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="glossary-overlay" (click)="showGlossary = false"></div>
+  </div></div>

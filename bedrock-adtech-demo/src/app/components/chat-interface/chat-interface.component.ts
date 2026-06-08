@@ -2022,7 +2022,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // View mode methods for per-message toggle (text-only, summary-visuals, visuals-only)
   getViewMode(messageId: string): ViewMode {
-    return this.messageViewModes.get(messageId) || 'summary-visuals';
+    return this.messageViewModes.get(messageId) || 'text-only';
   }
 
   setViewMode(messageId: string, mode: ViewMode): void {
@@ -2842,6 +2842,37 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'collaborator-response':
                 // Create a separate message for each collaborator response - SIMPLIFIED to match working version
                 {
+                  // Skip sources JSON that leaked into collaborator responses
+                  if (messageText && typeof messageText === 'string') {
+                    if (messageText.includes('"type": "sources"') || messageText.includes('"type":"sources"')) {
+                      console.log('⚠️ Filtering out sources JSON from collaborator-response (string match)');
+                      break;
+                    }
+                    try {
+                      const parsed = JSON.parse(messageText);
+                      if (parsed && parsed.type === 'sources' && parsed.sources) {
+                        console.log('⚠️ Filtering out sources JSON from collaborator-response');
+                        break;
+                      }
+                    } catch (_) { /* not JSON */ }
+                    if (messageText.includes('"ResponseMetadata"') && messageText.includes('"retrievedReferences"')) {
+                      console.log('⚠️ Filtering out raw KB citation metadata from collaborator-response');
+                      break;
+                    }
+                    if (messageText.includes('"sessionId"') && messageText.includes('"x-amz-bedrock-kb-source-uri"')) {
+                      console.log('⚠️ Filtering out raw KB source metadata from collaborator-response');
+                      break;
+                    }
+                    if (messageText.includes('"generatedResponsePart"') && messageText.includes('"retrievedReferences"')) {
+                      console.log('⚠️ Filtering out raw KB generated response with citations from collaborator-response');
+                      break;
+                    }
+                    if (messageText.includes('"x-amz-bedrock-kb-chunk-id"') || messageText.includes('"x-amz-bedrock-kb-data-source-id"')) {
+                      console.log('⚠️ Filtering out raw KB chunk metadata from collaborator-response');
+                      break;
+                    }
+                  }
+
                   const collaboratorMessageId = `collaborator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                   
                   // Get the toolUseId from metadata to link to original prompt
@@ -2930,6 +2961,35 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'final-response':
               case 'tool-result':
               case 'response':
+                // Skip sources JSON that leaked into the text stream — these are handled
+                // by the dedicated 'sources-update' / 'knowledge-base-sources' handlers
+                if (messageText && typeof messageText === 'string') {
+                  // Quick string check first — catches partial JSON and fragments
+                  if (messageText.includes('"type": "sources"') || messageText.includes('"type":"sources"')) {
+                    console.log('⚠️ Filtering out sources JSON from final-response text (string match)');
+                    break;
+                  }
+                  try {
+                    const parsed = JSON.parse(messageText);
+                    if (parsed && (
+                      (parsed.type === 'sources' && parsed.sources) ||
+                      (parsed.type === 'sources' && typeof parsed.sources === 'object')
+                    )) {
+                      console.log('⚠️ Filtering out sources JSON from final-response text');
+                      break;
+                    }
+                  } catch (_) { /* not JSON — check for raw citation fragments */ }
+                  // Also filter out raw KB citation metadata that leaked into text
+                  // These contain ResponseMetadata, sessionId, citations, retrievedReferences
+                  if (messageText.includes('"ResponseMetadata"') && messageText.includes('"citations"') && messageText.includes('"retrievedReferences"')) {
+                    console.log('⚠️ Filtering out raw KB citation metadata from text');
+                    break;
+                  }
+                  if (messageText.includes('"sessionId"') && messageText.includes('"x-amz-bedrock-kb-source-uri"')) {
+                    console.log('⚠️ Filtering out raw KB source metadata from text');
+                    break;
+                  }
+                }
                 // Always create a new message for final responses - don't update existing ones
                 messageText = this.removeLastFinalResponseText(agentName, messageText);
                 const finalResponseMessage: Message = {
@@ -3113,6 +3173,14 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 break;
 
               default:
+                // Skip sources events — these contain raw KB citation JSON
+                if (messageType === 'sources' || (messageText && typeof messageText === 'string' && (
+                  messageText.includes('"type": "sources"') || messageText.includes('"type":"sources"') ||
+                  (messageText.includes('"ResponseMetadata"') && messageText.includes('"retrievedReferences"'))
+                ))) {
+                  console.log('⚠️ Filtering out sources event from default handler:', messageType);
+                  break;
+                }
                 // Handle any visualization type generically
                 if (messageType && messageType.endsWith('-visualization')) {
                   try {
@@ -3223,6 +3291,16 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
             //console.log('🔍 Chunk messageType:', messageType, 'agentName:', agentName);
 
             if (messageType === 'collaborator-response') {
+              // Skip sources JSON that leaked into chunk events
+              if (messageText && (
+                messageText.includes('"type": "sources"') || messageText.includes('"type":"sources"') ||
+                (messageText.includes('"ResponseMetadata"') && messageText.includes('"retrievedReferences"')) ||
+                (messageText.includes('"sessionId"') && messageText.includes('"x-amz-bedrock-kb-source-uri"'))
+              )) {
+                console.log('⚠️ Filtering out sources JSON from chunk collaborator-response');
+                return;
+              }
+
               // Check if this is actually an AgentCore agent before treating as such
               const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
               // Get metadata from the event if available
@@ -3363,6 +3441,14 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
 
             } else {
+              // Skip sources JSON in non-collaborator chunks too
+              if (messageText && (
+                messageText.includes('"type": "sources"') || messageText.includes('"type":"sources"') ||
+                (messageText.includes('"ResponseMetadata"') && messageText.includes('"retrievedReferences"'))
+              )) {
+                console.log('⚠️ Filtering out sources JSON from chunk event');
+                return;
+              }
               // Check for embedded visualization data in chunk events (e.g., <visualization-data type="adcp_get_products-visualization">)
               const embeddedViz = this.detectEmbeddedAdcpVisualization(messageText);
               console.log('🔍 Checking for embedded AdCP visualization:', embeddedViz ? 'FOUND' : 'not found', messageType);
@@ -3617,6 +3703,12 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
    * on the message's data object as visualizationAnalysis.
    */
   private triggerVisualizationAnalysis(agentName: string, responseText: string, messageId: string): void {
+    // DISABLED: The Haiku post-processing call adds ~6s latency, costs tokens, and generates
+    // a different format (primaryLabel/actualValue) than what agents produce (label/value),
+    // causing rendering mismatches. Agents already embed <visualization-data> blocks in their
+    // response text which the UI extracts and renders directly.
+    // To re-enable, remove this early return.
+    return;
     this.visualizationAnalyzerService.analyzeResponse(agentName, responseText).then(
       (analysisResult: VisualizationAnalysisResult | null) => {
         if (!analysisResult) {
@@ -4713,6 +4805,35 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     const unescapeNewlines = (text: string): string => {
       return text.replace(/\\n/g, '\n');
     };
+
+    // ── Early handling for raw JSON responses (e.g. AAMP agents) ──
+    // Detect JSON error objects and format them as user-friendly markdown.
+    // Also extract the "response" field from JSON wrapper objects.
+    const rawText = finalResponse || message.text || '';
+    const trimmed = rawText.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        // Error response — show a friendly message instead of raw JSON
+        if (parsed.error) {
+          const friendlyContent = `⚠️ **Agent Error**\n\n${parsed.error}` +
+            (parsed.detail ? `\n\n<details><summary>Details</summary>\n\n\`\`\`\n${parsed.detail}\n\`\`\`\n</details>` : '');
+          // Update both message.text and finalResponse so the rest of the pipeline sees clean text
+          message.text = friendlyContent;
+          if (message.data) {
+            message.data.finalResponse = friendlyContent;
+          }
+        } else if (parsed.response && typeof parsed.response === 'string') {
+          // Wrapped response — unwrap it
+          message.text = parsed.response;
+          if (message.data) {
+            message.data.finalResponse = parsed.response;
+          }
+        }
+      } catch {
+        // Not valid JSON — continue with normal processing
+      }
+    }
 
     // If still thinking, show thinking history + current trace + thinking indicator
     if (isThinking) {
