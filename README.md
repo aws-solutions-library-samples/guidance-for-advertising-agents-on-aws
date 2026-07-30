@@ -47,7 +47,7 @@ This guidance provides an agentic solution that delivers:
 
 ### Architecture
 
-![Architecture](assets/Architecture.png)
+![Architecture](assets/architecture2.drawio.svg)
 
 **Key Architecture Components:**
 - **4 Orchestrator Agents**: Media Planning, Campaign Optimization, Yield Optimization, and Inventory Optimization
@@ -59,13 +59,12 @@ This guidance provides an agentic solution that delivers:
 - **Visualization Analyzer**: Automatic detection of visualization-worthy data in agent responses, rendering charts, allocations, timelines, and metrics in the UI
 - **Nova Sonic Voice Interface**: Real-time speech-to-speech agent interaction using Amazon Nova Sonic with bidirectional streaming, tool-use routing, and turn management
 - **External API Integration**: Real-time data from weather services, social media platforms, and competitive intelligence feeds
-- **External A2A Agents**: Optionally deploy standalone agents (e.g. AdCreationAgent) to their own AgentCore runtime, invoked by the main agents over the A2A protocol with IAM, Cognito OAuth, or static Bearer Token inbound auth (see [`external-agents/`](external-agents/README.md))
-- **IAB AAMP Marketplace**: Optional buyer and seller agents built on the IAB Tech Lab Agentic Ad Marketplace Protocol (AAMP) — deployed to their own AgentCore HTTP runtimes, authenticated inbound with a Cognito OAuth bearer (so they can be hosted in any account), and invoked by the AgencyAgent to drive a 5-step buy/sell flow in the AAMP Marketplace UI tab. Requires setting the AAMP inventory endpoint after deploy (see [section 8](#8-iab-aamp-marketplace-buyer--seller-agents) and [`docs/aamp-deployment-modes.md`](docs/aamp-deployment-modes.md))
+- **External A2A Agents**: Optionally deploy standalone agents (e.g. AdCreationAgent, AAMP Seller Agent) to their own AgentCore runtime, invoked by the main agents over the A2A protocol with IAM, Cognito OAuth, or static Bearer Token inbound auth (see [`external-agents/`](external-agents/README.md))
 - **Invocation Notification Hook**: Optionally configure any agent to fire a webhook notification (fire-and-forget, no response awaited) to an external endpoint every time it's invoked with a real user prompt — useful for driving an external display, log sink, or workflow trigger
 
 ### Cost 
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of October 2025, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $329.86 per month, assuming daily usage (see cost breakdown for details)._
+_You are responsible for the cost of the AWS services used while running this Guidance. As of July 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $371.31 per month, assuming daily usage (see cost breakdown for details)._
 
 The AgentCore deployment model provides cost advantages through:
 - **Pay-per-use container runtime**: Only pay when agents are actively processing requests
@@ -73,7 +72,7 @@ The AgentCore deployment model provides cost advantages through:
 - **Optimized model usage**: Intelligent foundation model assignment (Claude Sonnet 5 for orchestrators, with the option to switch specialists to Claude Haiku 4.5 for further cost savings)
 - **Dynamic scaling**: Container-based agents scale automatically based on demand
 
-_We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
+_We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. This estimate reflects the AWS services and configuration in the current architecture; you are encouraged to review newer AWS services or features that may offer more cost-effective ways to run this workload and to apply them as optimizations. The repository maintainers periodically update this Guidance to reflect updated best practices. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
 
 ### Sample Cost Table 
 
@@ -81,14 +80,20 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 | AWS service | Dimensions | Monthly Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock Foundation Models | average 4 conversation turns per session, average 6 LLM prompts per conversation turn at $0.003 per prompt, average 1.5 sessions a day | $19.44 |
-| Amazon Bedrock AgentCore Runtime | AgentCore Runtime, AgentCore Memory, average session duration of 45 minutes | $16.61 |
-| Amazon S3 | Knowledge base data storage (5GB), generated content, static hosting | $2.50 |
-| Amazon OpenSearch Serverless | Knowledge base, vector search operations | $219.00 |
-| AWS Lambda | image generation | $1.50 |
-| Amazon DynamoDB | Agent configuration storage (instructions, cards, visualization maps, global config), generated content details, session management | $70.31 |
-| AWS CloudFront | Global content delivery for demo interface | $0.50 |
-| **Total** | | **~$329.86** |
+| Amazon Bedrock Foundation Models | Claude Sonnet 5 (orchestrators) + Haiku 4.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
+| Amazon Bedrock AgentCore | AgentCore Runtime (container invocations), AgentCore Memory (short-term + summary/semantic), AgentCore Gateway (MCP over IAM SigV4); average session duration of 45 minutes | $24.00 |
+| Amazon Bedrock — Nova Sonic (voice) | Bidirectional speech-to-speech streaming for the voice interface, priced per minute of audio in/out; occasional demo use | $6.00 |
+| Amazon Bedrock — Image models (Nova Canvas / SD 3.5) | Creative generation via the asynchronous image pipeline | $3.00 |
+| Amazon OpenSearch Serverless | Knowledge base vector collection, indexing and search OCUs (dominant fixed cost) | $219.00 |
+| Amazon DynamoDB | 3 on-demand (pay-per-request) tables: AgentConfig (instructions, cards, visualization maps, global/tab config), ImageStatus (async job state), Visualizations (maps + templates); config read on every agent invocation | $70.31 |
+| Amazon S3 | 4 buckets: knowledge base source data (5GB), UI static hosting (OAC), generated content, and services bucket | $3.00 |
+| AWS Lambda | 5 MCP tool-target and pipeline functions: AdCP tools, agents-as-tools, audience taxonomy, image request, and async image processor | $2.50 |
+| AWS WAF | Web ACL with AWS common managed rule set fronting the CloudFront distribution | $6.00 |
+| Amazon CloudWatch | AgentCore observability — logs, metrics, and traces | $5.00 |
+| AWS CloudFront | Global content delivery for the demo interface | $0.50 |
+| Amazon Cognito | User Pool + Identity Pool for authentication (within free tier at demo scale) | $0.00 |
+| AWS Systems Manager | Parameter Store (standard parameters for gateway/runtime config). Additional authenticated connections (bearer-token notification hooks, A2A credential providers) add SSM SecureString / Secrets Manager charges — see the Invocation Notification Hook cost note | $0.00 |
+| **Total** | | **~$371.31** |
 
 ## Prerequisites 
 
@@ -261,7 +266,7 @@ This Guidance is optimized for regions with full Amazon Bedrock AgentCore suppor
 
 The deployment process uses a single comprehensive script that handles all infrastructure, AgentCore containers, knowledge bases, and UI configuration automatically in 11 phases:
 
-1. **Phase 1**: Check and adjust AWS service quotas
+1. **Phase 1**: Check service quota prerequisites
 2. **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
 3. **Phase 3**: Deploy Lambda functions and migrate visualization data
 4. **Phase 4**: Deploy knowledge bases with organized data sources
@@ -271,8 +276,9 @@ The deployment process uses a single comprehensive script that handles all infra
 8. **Phase 8**: Upload agent configurations to DynamoDB
 9. **Phase 9**: Deploy AgentCore agents
 10. **Phase 10**: Generate UI configuration
-11. **Phase 11**: Warm up agent runtimes
-12. **Phase 12**: Deploy the IAB AAMP buyer & seller agents and wire their runtime ARNs + authentication into the config. The IAB source is pulled at deploy time — cloned from the upstream repos at `--aamp-branch` (default `main`), or taken from your own checkouts with `--local-aamp` (see [section 8](#8-iab-aamp-marketplace-buyer--seller-agents)). A failure here logs a warning and leaves the rest of the deployment intact
+11. **Phase 11**: Warm up agent runtimes _(runs last — after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
+
+> **Note:** Between Phase 10 and Phase 11 the script runs the **optional, opt-in external A2A agents** step (it prompts in interactive mode and is skipped with `--skip-confirmations`). It is not one of the 11 numbered phases — see [External Agents (A2A)](#7-external-agents-a2a). Warmup (Phase 11) deliberately runs after it.
 
 ### Prerequisites Setup
 
@@ -358,7 +364,7 @@ Execute the following command with the appropriate variables:
 ```
 
 The deployment script automatically handles:
-- **Phase 1**: Check and adjust AWS service quotas
+- **Phase 1**: Check service quota prerequisites
 - **Phase 2**: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
 - **Phase 3**: Deploy Lambda functions and migrate visualization data
 - **Phase 4**: Deploy knowledge bases with organized data sources
@@ -368,14 +374,13 @@ The deployment script automatically handles:
 - **Phase 8**: Upload agent configurations to DynamoDB
 - **Phase 9**: Deploy AgentCore agents
 - **Phase 10**: Generate UI configuration
-- **Phase 11**: Warm up agent runtimes
-- **Phase 12**: Deploy IAB AAMP buyer & seller agents — source is cloned from the upstream IAB repos at `--aamp-branch` (default `main`), or supplied with `--local-aamp` (see [section 8](#8-iab-aamp-marketplace-buyer--seller-agents))
+- **Phase 11**: Warm up agent runtimes _(runs last, after the optional external A2A agents step)_
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-a4a-us-east-1`. The name of the file depends on stack-prefix and region.
 
 ```bash
 # ReDeploy with required configurations. REVIEW and UPDATE the variables as needed. Refer to list below for resume-at phase description
-# Phase 1: Check and adjust AWS service quotas
+# Phase 1: Check service quota prerequisites
 # Phase 2: Deploy infrastructure (Core: S3, OpenSearch, Cognito; Services: Lambda, DynamoDB)
 # Phase 3: Deploy Lambda functions and migrate visualization data
 # Phase 4: Deploy knowledge bases with organized data sources
@@ -385,8 +390,7 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 8: Upload agent configurations to DynamoDB
 # Phase 9: Deploy AgentCore agents
 # Phase 10: Generate UI configuration
-# Phase 11: Warm up agent runtimes
-# Phase 12: Deploy IAB AAMP buyer & seller agents (clones the upstream IAB repos at --aamp-branch, default main; or use --local-aamp)
+# Phase 11: Warm up agent runtimes (runs last, after the optional external A2A agents step)
 
 ./scripts/deploy-ecosystem.sh \
   --stack-prefix a4a \
@@ -909,20 +913,29 @@ aws cognito-idp admin-create-user \
 
 ### 5. Add Custom Visualizations
 
-  Agents can generate custom visualizations (charts, timelines, allocations) that appear in the UI. Visualization templates are stored in `agentcore/deployment/agent/agent-visualizations-library`, with agent-specific mappings in the `agent-visualizations-library/agent-visualization-maps/` subdirectory.
+  Agents render visualizations (charts, timelines, allocations, KPI tiles, and more) in the UI by mapping their responses to visualization templates. The template library ships with the repo under `agentcore/deployment/agent/agent-visualizations-library/`, and each agent has a visualization map that selects which of those templates it uses.
 
-  **Create a new visualization:**
-  1. Define the visualization JSON structure following existing templates in `agent-visualizations-library/`
-  2. Map it to your agent in the `agent-visualizations-library/agent-visualization-maps/` subdirectory
-  3. The agent will automatically use these templates when generating responses
-  
-  **Available visualization types:**
+  **Recommended: generate mappings from the Agent Management UI — no files to author.**
+
+  You no longer need to hand-write mapping JSON or drop files into the `agent-visualization-maps/` subdirectory. Open an agent in the Agent Management UI's editor and go to the **Visualization Mappings** section:
+  1. Click **Generate** (the button reads **Enhance** if the agent already has mappings).
+  2. Optionally add a prompt and attach reference documents to steer the selection.
+  3. Claude analyzes the agent's name, description, and instructions and proposes a mapping drawn from the available template library.
+  4. Review and save — the map persists to DynamoDB (`VIZ_MAP#AgentName`) and applies on the agent's next invocation, with no redeploy required.
+
+  **Available visualization templates include:**
   - allocations-visualization: Budget and resource distribution
   - channels-visualization: Channel performance analysis
   - segments-visualization: Audience segment breakdowns
   - timeline-visualization: Campaign schedules and milestones
   - metrics-visualization: KPI dashboards and performance metrics
   - creative-visualization: Generated creative assets
+  - bar-chart / donut-chart / histogram-visualization: Generic chart types
+  - adcp_*-visualization: Ad Context Protocol tool-result displays (products, media buys, delivery, governance, and more)
+
+  **Advanced (optional): file-based mappings.**
+
+  You can still define mappings as files — author new template JSON under `agent-visualizations-library/` and the agent-specific map under `agent-visualizations-library/agent-visualization-maps/`, then upload them with `scripts/upload_visualization_templates_to_dynamodb.py`. This path is only needed when creating a brand-new template *type*; for mapping existing templates to an agent, use the UI **Generate** option above.
   
   **Example Scenarios**
   
@@ -947,6 +960,7 @@ aws cognito-idp admin-create-user \
       "YourAgentName": {
         "model_id": "global.anthropic.claude-sonnet-5",
         "max_tokens": 12000,
+        "temperature": 0.3,
         "top_p": 0.8
       }
     }
@@ -964,16 +978,16 @@ aws cognito-idp admin-create-user \
   runtime (and, if desired, their own account or region) while still being
   invoked as A2A tools by the main agents.
 
-  One reference agent is included:
+  Two reference agents are included:
   - **AdCreationAgent** — composites brand assets onto standard IAB display ad
     units, uploads them to S3, and returns presigned URLs. Same-account,
     **IAM/SigV4** inbound auth; needs an S3 bucket. Wired into
     `MediaPlanningAgent`.
-
-  > **Note:** The IAB AAMP buyer/seller marketplace agents are *not* part of
-  > `external-agents/`. They are deployed from the upstream IAB Tech Lab repos
-  > via the optional **Phase 12** of `deploy-ecosystem.sh` and invoked over
-  > IAM/SigV4 — see [section 8, "IAB AAMP Marketplace"](#8-iab-aamp-marketplace-buyer--seller-agents) below.
+  - **AAMP Seller Agent** (`--agent AAMPSellerAgent`) — follows the IAB Tech
+    Lab seller-agent design (tiered pricing, deal-ID minting, supply-chain
+    transparency).
+    **Cognito OAuth** inbound auth (no cross-account IAM trust needed), no S3.
+    Wired into `PublisherAgent`.
 
   **How they connect:**
   Each external agent is referenced by an `external_agent_configs` entry on a
@@ -997,176 +1011,36 @@ aws cognito-idp admin-create-user \
   can find the table. See [`external-agents/README.md`](external-agents/README.md)
   for inbound-auth details, cross-account notes, and the full flag reference.
 
-  **Note:** Two reference external agents currently ship in `external-agents/`:
-  `AdCreationAgent` (described above and fully wired into `MediaPlanningAgent`),
-  plus `AdCPSellerAgent` — a fully
+  **Note:** Three reference external agents currently ship in this repo:
+  `AdCreationAgent` and `AAMPSellerAgent` (both described above and fully
+  wired into the main agent graph), plus `AdCPSellerAgent` — a fully
   [AdCP 3.1](https://docs.adcontextprotocol.org)-compliant sell-side agent
   whose runtimes deploy and are independently testable, but end-to-end
   wiring into `PublisherAgent` is pending buyer-side AdCP client support.
-  (The IAB AAMP buyer/seller agents are deployed separately via Phase 12 — see
-  section 8.)
 
-  **Optional auto-deploy prompt:** When you run `scripts/deploy-ecosystem.sh`
-  **interactively** (without `--skip-confirmations`), it will offer, after
-  the normal 11 phases complete, to automatically discover and deploy any
-  `external-agents/*/agentcore.json` it finds. Non-interactive runs skip this
-  and print the manual command instead — external-agent deployment stays an
-  explicit, opt-in step unless you accept that prompt.
+  **Deployment is opt-in — external agents (including AAMP) do NOT deploy
+  automatically.** The main `scripts/deploy-ecosystem.sh` never provisions
+  them as part of its standard 11 phases; you deploy them as a separate,
+  explicit step. Specifically:
+  - **Standard / documented deploy** (`--skip-confirmations true`, or any
+    non-interactive run): external agents are **skipped entirely**. The script
+    prints the manual `deploy_external_agents.py` command and moves on — the
+    AAMP Seller, AdCreation, and AdCP Seller runtimes are **not** created.
+  - **Interactive deploy** (running `scripts/deploy-ecosystem.sh` **without**
+    `--skip-confirmations`): after the 11 phases complete, the script discovers
+    any `external-agents/*/agentcore.json` and asks
+    `Deploy external A2A agents now? (y/N)` — the default is **No**. They are
+    created only if you explicitly answer `y`.
+  - **Manual any time:** run the `deploy_external_agents.py` command shown
+    above for the specific `--agent` you want.
 
-### 8. IAB AAMP Marketplace (Buyer & Seller Agents)
+  So no code needs to be commented out to avoid creating the AAMP agents under
+  the default deployment — they simply won't be created unless you opt in.
+  (Deploying them requires Docker with buildx, since external agents build
+  ARM64 container images, and provisions additional AgentCore runtimes that
+  add to cost.)
 
-  **What it is:**
-  An optional buyer/seller marketplace built on the IAB Tech Lab **Agentic Ad
-  Marketplace Protocol (AAMP)**. Two agents run in their own AgentCore **HTTP
-  runtimes**, deployed from the upstream IAB repos rather than from this repo:
-  - **AAMPSellerAgent** — publisher sell-side agent: inventory catalog,
-    tiered / rate-card pricing, and deal creation (PG / PD / PA). Backed by a
-    CrewAI PublisherCrew + Bedrock Converse over real inventory data.
-  - **AAMPBuyerAgent** — campaign planning with budget allocation across
-    CTV, digital video, mobile, and performance channels via a DealBookingFlow
-    + PortfolioCrew.
-
-  **How they connect — external agent entries, not top-level agents:**
-  Because the AAMP agents live in **their own runtimes**, they are declared as
-  `external_agent_configs` entries on the agents that use them (the
-  **AgencyAgent** by default) — *not* as top-level `agent_configs` entries. This
-  distinction is load-bearing: a top-level entry tells the AdFabric runtime the
-  agent is a **local, config-based collaborator**, so it would build a Strands
-  agent and route `invoke_specialist` to it instead of connecting over the
-  external-agent path that actually carries the remote runtime's ARN and
-  credentials. To let another agent call them, add the same entry to that
-  agent's `external_agent_configs`.
-
-  The runtime turns each entry into a dedicated tool named
-  `invoke_<entry-name>` — so the AgencyAgent calls
-  `invoke_aampselleragent(prompt="…")` / `invoke_aampbuyeragent(prompt="…")`.
-  A stable `runtimeSessionId` derived from the conversation session is passed on
-  every call, so the buyer and seller runtimes share one session for the entire
-  conversation.
-
-  **Authentication (OAuth by default):**
-  Each AAMP runtime is deployed with a **Cognito JWT authorizer**, so callers
-  present a Cognito **bearer token** rather than signing with SigV4. This is
-  what lets the AAMP agents be hosted **anywhere** — a different account or
-  organization — with no cross-account IAM trust. The deploy provisions the
-  inbound Cognito login and stores it as an encrypted SSM SecureString at
-  `/{stack-prefix}/a2a-inbound-tokens/{unique-id}/{AgentName}`, then records the
-  contract on the **external agent entry**:
-
-  | Entry field | Meaning |
-  |---|---|
-  | `authType` | `oauth` (bearer) or `iam` (SigV4) — mirrors the authorizer the runtime was actually deployed with |
-  | `oauthCredentials` | `{ hasCredentials, ssmPath }` — where the caller reads the inbound login |
-  | `cognitoPoolId` / `cognitoClientId` | Pool + app client the bearer is minted against |
-  | `isA2A` | `false` — these are AgentCore **HTTP** runtimes expecting the `{prompt, routing_mode}` envelope, not A2A JSON-RPC peers |
-
-  Set `AAMP_INBOUND_AUTH=iam` to fall back to same-account SigV4.
-
-  **Model:** the crews run on `bedrock/global.anthropic.claude-opus-5` (the
-  global cross-region inference profile). The upstream IAB default (Nova Pro)
-  fails CrewAI tool calling on the Bedrock Converse API with
-  `ModelErrorException: Model produced invalid sequence as part of ToolUse`.
-  Override with `AAMP_LLM_MODEL` if you need a different model.
-
-  > **⚠️ Action required — set the AAMP inventory endpoint.**
-  > The IAB buyer's inventory-discovery tool (`search_advertising_products`)
-  > calls an **OpenDirect 2.1 REST** endpoint. No such endpoint ships with this
-  > stack (an AgentCore runtime does not serve that surface), so the deploy
-  > writes the honest sentinel `"not defined"` into the AAMP Seller entry's
-  > `aampInventoryEndpoint` property and **inventory discovery will fail until
-  > you set a real one**. Set it in the **Agent Management console** → the agent
-  > that hosts the entry (AgencyAgent) → *External A2A Agents* → **AAMPSellerAgent**
-  > → *AAMP Inventory Endpoint* (the field renders only for entries that carry
-  > the property), e.g. `https://your-opendirect-host/api/v2.1`. The console
-  > shows a "Not configured" warning while the sentinel is in place.
-
-  **AAMP Marketplace tab (5-step flow):** Plan Campaign (buyer) → Discover
-  Inventory (seller) → Get Pricing (seller) → Negotiate Deal (seller) → Book
-  Deals (seller). All steps route through the AgencyAgent, and both buyer and
-  seller agent bubbles are visible in the conversation.
-
-  **Where the source comes from (the pull):**
-  The buyer and seller are **not vendored in this repo** — they are the upstream
-  IAB Tech Lab projects, fetched at deploy time. Phase 12 gets them one of two
-  ways:
-
-  | Mode | Flag | Behavior |
-  |---|---|---|
-  | Clone (default) | `--aamp-branch <branch>` (default `main`) | Shallow-clones `github.com/rkmaws/seller-agent` and `github.com/rkmaws/buyer-agent` into `.aamp-repos-<unique-id>/`, then **deletes the clones** when the phase finishes |
-  | Local checkout | `--local-aamp <dir>` | Uses your own checkouts; the directory must contain `seller-agent/` and `buyer-agent/`. Nothing is cloned or deleted, and any deploy-time patches are reverted afterwards so your working tree is left untouched |
-
-  Because the clones are ephemeral, every fix Phase 12 needs is applied as a
-  **post-clone patch on each run** rather than being committed upstream — the
-  upstream repos are never modified (we have no write access to them).
-
-  **Deploy them (Phase 12 of `deploy-ecosystem.sh`):**
-  Phase 12 runs as part of a standard deploy — no flag is required, since the
-  clone path is the default.
-  ```bash
-  # Default: Phase 12 clones the IAB repos at main
-  ./scripts/deploy-ecosystem.sh \
-    --stack-prefix a4a --region us-east-1 --profile agnts4ad \
-    --resume-at 12 --skip-confirmations true
-
-  # …pin a branch
-  ./scripts/deploy-ecosystem.sh \
-    --stack-prefix a4a --region us-east-1 --profile agnts4ad \
-    --aamp-branch feat/agentcore-adapter \
-    --resume-at 12 --skip-confirmations true
-
-  # …or use local checkouts (dir must contain seller-agent/ and buyer-agent/)
-  ./scripts/deploy-ecosystem.sh \
-    --stack-prefix a4a --region us-east-1 --profile agnts4ad \
-    --local-aamp /path/to/iab-aamp \
-    --resume-at 12 --skip-confirmations true
-  ```
-
-  What Phase 12 (`scripts/deploy_aamp_agents.sh`) does, in order:
-
-  1. **Credential preflight** — validates that the AWS SDK credential chain
-     resolves (the same check `agentcore configure` performs) and fails with one
-     clear message instead of letting the toolkit fail opaquely per agent. It
-     makes no assumption about *how* you authenticate — env vars, shared profile,
-     SSO, credential_process, or an instance role all pass through unchanged.
-  2. **Pull** the seller and buyer source (clone or local, per the table above).
-  3. **Patch: `PYTHONPATH=/app/src:/app`** — the IAB repos use a `src/` layout
-     and their package `__init__.py` self-imports absolutely (`from ad_seller
-     import …`). The toolkit's container runs `python -m src.ad_seller.…` from
-     `/app` and never installs the package, so without this the runtime crashes
-     on startup with `ModuleNotFoundError: No module named 'ad_seller'`.
-  4. **Patch: Cognito JWT authorizer** — appends
-     `agentcore configure --authorizer-config '{"customJWTAuthorizer": …}'` so the
-     runtimes accept a bearer token (skipped, with a warning, if Cognito can't be
-     resolved — the deploy then stays on IAM/SigV4 rather than silently claiming
-     OAuth).
-  5. **Model override** — exports `DEFAULT_LLM_MODEL` so both crews run on Claude
-     Opus 5 instead of the upstream Nova Pro default (see *Model* above).
-  6. **Deploy** each runtime through the repo's own
-     `infra/aws/agentcore/deploy.sh --mode http`. The seller's MCP runtime is
-     opt-in via `DEPLOY_MCP=true`. ARNs are read back from each repo's
-     `.bedrock_agentcore.yaml` keyed by `server_protocol`, and recorded in
-     `.aamp-runtime-<stack-prefix>-<unique-id>.json`.
-  7. **Provision inbound credentials** — `scripts/provision_aamp_a2a_auth.py`
-     creates the Cognito user each runtime accepts and stores it as an SSM
-     SecureString (it reuses the external-agents provisioning code, so the
-     credential schema and path convention can't drift).
-  8. **Wire the config** — `scripts/wire_aamp_agents.py` patches each AAMP
-     **external agent entry** (ARN + auth + inventory endpoint) into both the
-     local `global_configuration.json` and the live `GLOBAL_CONFIG/v1` item in
-     DynamoDB, per-agent and independently. It also migrates away from the older
-     top-level-agent shape if it finds it. A missing runtime is skipped with an
-     honest warning — never written as a placeholder.
-  9. **Re-sync** `global_configuration.json` to the S3 data and UI buckets, sync
-     the tab config, and invalidate CloudFront.
-
-  Phase 12 is resilient by design: a failure on one agent logs a warning and the
-  other still deploys, and a non-zero exit from the IAB script is tolerated when
-  `.bedrock_agentcore.yaml` shows a runtime was actually created.
-
-  The IAB SDK repos, branch, and full buyer/seller runtime architecture are
-  documented in [`docs/aamp-deployment-modes.md`](docs/aamp-deployment-modes.md).
-
-### 9. Invocation Notification Hook
+### 8. Invocation Notification Hook
 
   **What it is:**
   A single optional field on any agent's configuration, `notify_on_invocation`,
@@ -1207,6 +1081,27 @@ aws cognito-idp admin-create-user \
   does not display a "sent"/"delivered" indicator, since a fire-and-forget
   request can't reliably distinguish "delivered" from "silently blocked by
   CORS" — failures are logged to the browser console only.
+
+  **⚠️ A note on cost when scaling connections:** each **Bearer Token** you
+  configure — for a notification hook here, or for a static-bearer External
+  Agent (A2A) connection — is stored as an AWS Systems Manager Parameter
+  Store **SecureString**, and each **A2A OAuth / API-key credential provider**
+  stores its secret in **AWS Secrets Manager**. The default deployment uses
+  only free standard SSM parameters (reflected as `$0.00` in the cost table
+  above), but as you add more authenticated connections these per-item costs
+  accrue and are **not** included in the estimate:
+  - **Secrets Manager**: ~$0.40 per secret per month, plus ~$0.05 per 10,000
+    API calls.
+  - **SSM SecureString**: standard-tier parameters have no storage charge, but
+    they are KMS-encrypted, so each store/retrieve incurs a small KMS request
+    charge; if you exceed the standard-tier parameter limit and switch to the
+    advanced tier, that adds ~$0.05 per parameter per month.
+
+  A handful of connections is negligible, but if you wire up many agents with
+  bearer-token notifications or many external credential providers, budget for
+  these charges and delete parameters/secrets for connections you remove (see
+  Cleanup). Prefer IAM (SigV4) auth where possible — it uses the browser
+  session's temporary credentials and stores no secret at all.
 
 ## Next Steps 
 
@@ -1524,3 +1419,4 @@ For any feedback, questions, or suggestions, please use the issues tab under thi
 
 - Zelle Steyn
 - Ranjith Krishnamoorthy
+- Negin Rouhanizadeh
