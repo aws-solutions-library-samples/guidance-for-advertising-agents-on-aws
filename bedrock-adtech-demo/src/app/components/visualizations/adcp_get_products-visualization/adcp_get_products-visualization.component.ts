@@ -64,6 +64,7 @@ export class AdcpInventoryVisualizationComponent extends VisualizationComponent 
   @Input() inventoryData: any;
   @Input() compactMode: boolean = false;
 
+  selectedProductId: string = '';
   private processedData: any = null;
   private lastInputHash: string = '';
 
@@ -301,6 +302,11 @@ export class AdcpInventoryVisualizationComponent extends VisualizationComponent 
       'flat_rate': 'Flat Rate'
     };
     return labels[String(model || '').toLowerCase()] || String(model || '').toUpperCase() || '';
+  }
+
+  selectProduct(productId: string): void {
+    this.selectedProductId = this.selectedProductId === productId ? '' : productId;
+    this.cdr.markForCheck();
   }
 
   trackByProductId = (index: number, product: any): string => {

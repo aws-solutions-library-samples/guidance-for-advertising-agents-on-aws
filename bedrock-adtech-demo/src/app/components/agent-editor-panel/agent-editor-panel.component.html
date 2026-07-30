@@ -124,6 +124,10 @@
               (click)="editingAgent.a2a_auth_type = 'iam'">
               <span class="material-icons">security</span> IAM
             </div>
+            <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'bearer'"
+              (click)="editingAgent.a2a_auth_type = 'bearer'">
+              <span class="material-icons">key</span> Bearer Token
+            </div>
           </div>
 
           <!-- Inbound OAuth Credentials (shown when OAuth is selected) -->
@@ -143,7 +147,7 @@
             <div class="token-status"
               *ngIf="editingAgent.a2a_oauth_credentials?.hasCredentials && !inboundA2aOAuthEditing">
               <div class="token-actions">
-                <button class="nova-button secondary small" (click)="inboundA2aOAuthEditing = true">
+                <button class="nova-button secondary small" (click)="beginInboundA2aOAuthUpdate()">
                   <span class="material-icons">edit</span> Update
                 </button>
                 <button class="nova-button secondary small danger" (click)="removeInboundA2aOAuthCredentials()">
@@ -178,10 +182,15 @@
                   </button>
                 </div>
               </div>
-              <span class="field-hint token-hint">
+              <span class="field-hint token-hint" *ngIf="!editingAgent.a2a_oauth_credentials?.hasCredentials">
                 <span class="material-icons">info_outline</span>
                 Credentials are stored encrypted in AWS SSM. A bearer token will be acquired via Cognito
                 USER_PASSWORD_AUTH when invoking this agent.
+              </span>
+              <span class="field-hint token-hint" *ngIf="editingAgent.a2a_oauth_credentials?.hasCredentials && inboundA2aOAuthEditing">
+                <span class="material-icons">info_outline</span>
+                Current values are shown below. Change any of them and click Save to overwrite the stored
+                credentials in SSM. All three fields are required.
               </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="saveInboundA2aOAuthCredentials()"
@@ -190,7 +199,87 @@
                   {{ inboundA2aOAuthSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>
                 <button class="nova-button secondary small" *ngIf="inboundA2aOAuthEditing"
-                  (click)="inboundA2aOAuthEditing = false; inboundA2aOAuthTokenEndpoint = ''; inboundA2aOAuthUsername = ''; inboundA2aOAuthPassword = ''">
+                  (click)="inboundA2aOAuthEditing = false; inboundA2aOAuthTokenEndpoint = ''; inboundA2aOAuthUsername = ''; inboundA2aOAuthPassword = ''; inboundA2aOAuthError = null">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="inboundA2aOAuthError">
+                <span class="material-icons">error_outline</span>
+                {{ inboundA2aOAuthError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Inbound Bearer Token Config (self-deployed agents only) -->
+          <div class="oauth-credentials-config" *ngIf="editingAgent.a2a_auth_type === 'bearer'">
+            <!-- Honest scope/enforcement note — no fabricated "secured" status (Req 4.3) -->
+            <span class="field-hint token-hint">
+              <span class="material-icons">info_outline</span>
+              Inbound Bearer Token applies only to agents <strong>you deploy yourself</strong> via
+              <code>external-agents/deploy_external_agents.py</code>. Enforcement is done by the AgentCore runtime
+              authorizer configured at deploy time, which validates a <strong>JWT from a configured issuer</strong> — a
+              pasted opaque string is only accepted inbound if it is such a JWT. The shared AdFabric orchestrator
+              runtime is not affected. Storing a token here does not by itself secure the endpoint.
+            </span>
+            <!-- Token reference status (factual — whether a value is stored, not an enforcement claim) -->
+            <div class="credential-status-indicator" *ngIf="!inboundA2aBearerTokenEditing">
+              <div class="credential-status stored" *ngIf="editingAgent.a2a_bearer_token?.hasToken">
+                <span class="material-icons">check_circle</span>
+                <span>Token stored in SSM</span>
+              </div>
+              <div class="credential-status not-stored" *ngIf="!editingAgent.a2a_bearer_token?.hasToken">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>No token stored</span>
+              </div>
+            </div>
+            <!-- Expiry warning (only when a stored token's expiry is in the past) -->
+            <div class="token-error"
+              *ngIf="editingAgent.a2a_bearer_token?.hasToken && isBearerTokenExpired(editingAgent.a2a_bearer_token?.expiresAt)">
+              <span class="material-icons">error_outline</span>
+              Token expired ({{ editingAgent.a2a_bearer_token?.expiresAt | date:'medium' }}). Store a new one.
+            </div>
+            <!-- Token already stored — show actions -->
+            <div class="token-status"
+              *ngIf="editingAgent.a2a_bearer_token?.hasToken && !inboundA2aBearerTokenEditing">
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="inboundA2aBearerTokenEditing = true">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="removeInboundA2aBearerToken()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
+            </div>
+            <!-- Token input (new or editing) -->
+            <div class="credentials-input-group"
+              *ngIf="!editingAgent.a2a_bearer_token?.hasToken || inboundA2aBearerTokenEditing">
+              <div class="credential-field">
+                <label>Token <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="inboundA2aBearerTokenVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="inboundA2aBearerTokenValue" placeholder="Paste token (JWT the authorizer accepts)..."
+                    autocomplete="off" spellcheck="false">
+                  <button class="toggle-visibility-btn"
+                    (click)="inboundA2aBearerTokenVisible = !inboundA2aBearerTokenVisible" type="button"
+                    [title]="inboundA2aBearerTokenVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ inboundA2aBearerTokenVisible ? 'visibility_off' : 'visibility'
+                      }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="credential-field">
+                <label>Expiry <span class="optional-hint">(optional)</span></label>
+                <input type="datetime-local" class="form-control" [(ngModel)]="inboundA2aBearerTokenExpiry"
+                  autocomplete="off">
+              </div>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="saveInboundA2aBearerToken()"
+                  [disabled]="inboundA2aBearerTokenSaving || !inboundA2aBearerTokenValue.trim()">
+                  <span class="material-icons">{{ inboundA2aBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ inboundA2aBearerTokenSaving ? 'Saving...' : 'Save Token' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="inboundA2aBearerTokenEditing"
+                  (click)="inboundA2aBearerTokenEditing = false; inboundA2aBearerTokenValue = ''; inboundA2aBearerTokenExpiry = ''; inboundA2aOAuthError = null">
                   Cancel
                 </button>
               </div>
@@ -247,6 +336,7 @@
         <span class="field-hint">Optional. If not set, the agent will use the default shared runtime ARN.</span>
       </div>
     </div>
+
     <!-- Color Configuration Section -->
     <div class="form-section">
       
@@ -255,9 +345,6 @@
         <span class="material-icons">palette</span>
         Agent Color
       </h5>
-        <div class="color-preview" [style.background-color]="editingAgent.color || '#6842ff'">
-          <span class="material-icons">smart_toy</span>
-        </div>
         <div class="color-palette">
           <button *ngFor="let color of presetColors" class="color-swatch" [style.background-color]="color"
             [class.selected]="isColorSelected(color)" (click)="selectColor(color)" [disabled]="isLoading"
@@ -295,15 +382,6 @@
             (ngModelChange)="updateModelInput('max_tokens', $event)" [disabled]="isLoading" min="100" max="200000"
             step="100">
           <span class="field-hint">100 - 200,000</span>
-        </div>
-        <div class="form-group half">
-          <label for="temperature">Temperature</label>
-          <div class="slider-container">
-            <input type="range" id="temperature" class="slider" [ngModel]="getDefaultModelInputs()?.temperature"
-              (ngModelChange)="updateModelInput('temperature', $event)" [disabled]="isLoading" min="0" max="1"
-              step="0.1">
-            <span class="slider-value">{{ getDefaultModelInputs()?.temperature || 0.3 }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -693,6 +771,21 @@
       <p class="section-description">Connect to external agents via A2A (Agent-to-Agent) protocol with optional OAuth
         authentication.</p>
 
+      <!-- Credential stored in Parameter Store but its entry config not persisted yet.
+           Credential writes are immediate; entry config is staged until the agent is
+           saved, so until then the runtime cannot see the entry and the credential is
+           inert. Stating that plainly beats letting "Token stored" imply it is live. -->
+      <div class="credential-pending-save-warning" *ngIf="hasA2aCredentialsAwaitingAgentSave()">
+        <span class="material-icons">info_outline</span>
+        <span>
+          Credential changes for
+          <strong>{{ getA2aCredentialsAwaitingAgentSave().join(', ') }}</strong>
+          are stored in Parameter Store but are <strong>not active yet</strong>.
+          Save this agent to publish the connection — until then the runtime will not
+          use them.
+        </span>
+      </div>
+
       <!-- A2A Agents List -->
       <div class="a2a-agents-list" *ngIf="editingAgent.external_agent_configs?.length">
         <div class="a2a-agent-item-wrapper" *ngFor="let extAgent of editingAgent.external_agent_configs; let i = index">
@@ -710,7 +803,7 @@
                 <span class="server-transport-badge a2a-badge">A2A</span>
                 <span class="server-transport-badge auth-type-badge"
                   *ngIf="extAgent.authType && extAgent.authType !== 'none'">
-                  {{ extAgent.authType === 'oauth' ? 'OAuth' : 'IAM' }}
+                  {{ extAgent.authType === 'oauth' ? 'OAuth' : (extAgent.authType === 'iam' ? 'IAM' : 'Bearer Token') }}
                 </span>
               </div>
               <div class="server-details">
@@ -735,6 +828,21 @@
                 <span class="server-detail auth-badge" *ngIf="extAgent.authType === 'iam'">
                   <span class="material-icons">security</span>
                   AWS IAM
+                </span>
+                <span class="server-detail auth-badge credential-stored"
+                  *ngIf="extAgent.authType === 'bearer' && extAgent.bearerToken?.hasToken && !isBearerTokenExpired(extAgent.bearerToken?.expiresAt)">
+                  <span class="material-icons">check_circle</span>
+                  Token stored
+                </span>
+                <span class="server-detail auth-badge credential-not-stored"
+                  *ngIf="extAgent.authType === 'bearer' && extAgent.bearerToken?.hasToken && isBearerTokenExpired(extAgent.bearerToken?.expiresAt)">
+                  <span class="material-icons">error_outline</span>
+                  Token expired
+                </span>
+                <span class="server-detail auth-badge credential-not-stored"
+                  *ngIf="extAgent.authType === 'bearer' && !extAgent.bearerToken?.hasToken">
+                  <span class="material-icons">radio_button_unchecked</span>
+                  Not stored
                 </span>
               </div>
               <div class="server-description" *ngIf="extAgent.description">
@@ -765,6 +873,138 @@
       </div>
 
       <!-- A2A Agent Editor - Rendered by parent agent-management-modal to avoid overflow clipping -->
+    </div>
+
+    <!-- Invocation Notification Section (independent of A2A/is_a2a above) -->
+    <div class="form-section">
+      <h5 class="section-title">
+        <span class="material-icons">notifications_active</span>
+        Invocation Notification (optional)
+      </h5>
+      <p class="section-description">
+        Fire a webhook notification to an external endpoint every time this agent is invoked with a real user
+        prompt. Fire-and-forget — this agent's behavior is unaffected either way, and no response from the
+        endpoint is expected or read.
+      </p>
+
+      <div class="no-mcp-message" *ngIf="!editingAgent.notify_on_invocation">
+        <span class="material-icons">info_outline</span>
+        <span>No invocation notification configured.</span>
+        <button class="add-template-button" (click)="enableNotifyOnInvocation()" [disabled]="isLoading"
+          style="margin-left: auto;">
+          <span class="material-icons">add</span>
+          Configure
+        </button>
+      </div>
+
+      <ng-container *ngIf="editingAgent.notify_on_invocation as notifyConfig">
+        <div class="a2a-form-group">
+          <label>Endpoint URL <span class="required">*</span></label>
+          <input type="text" class="form-control" [(ngModel)]="notifyConfig.endpoint"
+            placeholder="https://example.com/webhook" (blur)="validateNotifyEndpoint()">
+          <span class="error-message" *ngIf="hasError('notify_endpoint')">
+            <span class="material-icons">error_outline</span>
+            {{ getError('notify_endpoint') }}
+          </span>
+        </div>
+
+        <!-- Auth type selector -->
+        <div class="auth-type-options">
+          <div class="auth-type-option" [class.selected]="notifyConfig.auth_type === 'none'"
+            (click)="setNotifyAuthType('none')">
+            <span class="material-icons">lock_open</span> None
+          </div>
+          <div class="auth-type-option" [class.selected]="notifyConfig.auth_type === 'iam'"
+            (click)="setNotifyAuthType('iam')">
+            <span class="material-icons">security</span> AWS IAM
+          </div>
+          <div class="auth-type-option" [class.selected]="notifyConfig.auth_type === 'bearer'"
+            (click)="setNotifyAuthType('bearer')">
+            <span class="material-icons">key</span> Bearer Token
+          </div>
+        </div>
+
+        <!-- AWS IAM notice -->
+        <div class="external-runtime-auth-notice" *ngIf="notifyConfig.auth_type === 'iam'">
+          <span class="material-icons">info</span>
+          <span>The request is signed with your current session's AWS credentials (SigV4). Suitable for
+            same-account endpoints such as API Gateway with an IAM authorizer.</span>
+        </div>
+
+        <!-- Bearer Token Config (verbatim static token — works with any endpoint) -->
+        <div class="oauth-credentials-config" *ngIf="notifyConfig.auth_type === 'bearer'">
+          <div class="credential-status-indicator" *ngIf="!notifyBearerTokenEditing">
+            <div class="credential-status stored" *ngIf="notifyConfig.bearer_token?.hasToken">
+              <span class="material-icons">check_circle</span>
+              <span>Token stored</span>
+            </div>
+            <div class="credential-status not-stored" *ngIf="!notifyConfig.bearer_token?.hasToken">
+              <span class="material-icons">radio_button_unchecked</span>
+              <span>Not stored</span>
+            </div>
+          </div>
+          <div class="token-error" *ngIf="notifyConfig.bearer_token?.hasToken && isBearerTokenExpired(notifyConfig.bearer_token?.expiresAt)">
+            <span class="material-icons">error_outline</span>
+            Token expired ({{ notifyConfig.bearer_token?.expiresAt | date:'medium' }}). Paste a new one.
+          </div>
+          <div class="token-status" *ngIf="notifyConfig.bearer_token?.hasToken && !notifyBearerTokenEditing">
+            <div class="token-actions">
+              <button class="nova-button secondary small" (click)="notifyBearerTokenEditing = true">
+                <span class="material-icons">edit</span> Update
+              </button>
+              <button class="nova-button secondary small danger" (click)="removeNotifyBearerToken()">
+                <span class="material-icons">delete_outline</span> Remove
+              </button>
+            </div>
+          </div>
+          <div class="credentials-input-group" *ngIf="!notifyConfig.bearer_token?.hasToken || notifyBearerTokenEditing">
+            <div class="credential-field">
+              <label>Token <span class="required">*</span></label>
+              <div class="token-input-row">
+                <input [type]="notifyBearerTokenVisible ? 'text' : 'password'" class="form-control"
+                  [(ngModel)]="notifyBearerTokenValue" placeholder="Paste bearer token..."
+                  autocomplete="off" spellcheck="false">
+                <button class="toggle-visibility-btn" (click)="notifyBearerTokenVisible = !notifyBearerTokenVisible"
+                  type="button" [title]="notifyBearerTokenVisible ? 'Hide' : 'Show'">
+                  <span class="material-icons">{{ notifyBearerTokenVisible ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="credential-field">
+              <label>Expiry <span class="optional-hint">(optional)</span></label>
+              <input type="datetime-local" class="form-control" [(ngModel)]="notifyBearerTokenExpiry"
+                autocomplete="off">
+            </div>
+            <span class="field-hint token-hint">
+              <span class="material-icons">info_outline</span>
+              The token is stored encrypted in AWS SSM and sent verbatim as
+              <code>Authorization: Bearer &lt;token&gt;</code>. It is not refreshed — set an optional expiry to be
+              warned when it lapses, then paste a replacement.
+            </span>
+            <div class="token-save-actions">
+              <button class="nova-button primary small" (click)="saveNotifyBearerToken()"
+                [disabled]="notifyBearerTokenSaving || !notifyBearerTokenValue.trim()">
+                <span class="material-icons">{{ notifyBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
+                {{ notifyBearerTokenSaving ? 'Saving...' : 'Save Token' }}
+              </button>
+              <button class="nova-button secondary small" *ngIf="notifyBearerTokenEditing"
+                (click)="notifyBearerTokenEditing = false; notifyBearerTokenValue = ''; notifyBearerTokenExpiry = ''">
+                Cancel
+              </button>
+            </div>
+            <div class="token-error" *ngIf="notifyEditorError">
+              <span class="material-icons">error_outline</span>
+              {{ notifyEditorError }}
+            </div>
+          </div>
+        </div>
+
+        <div class="server-actions" style="justify-content: flex-end; margin-top: 12px;">
+          <button class="remove-server-btn" (click)="disableNotifyOnInvocation()" [disabled]="isLoading" title="Remove">
+            <span class="material-icons">delete_outline</span> Remove notification
+          </button>
+        </div>
+      </ng-container>
     </div>
 
     <!-- Instructions Section -->
@@ -1031,26 +1271,35 @@
         <span>{{ previewTemplateUsage }}</span>
       </div>
       <div class="preview-content">
-        <div class="preview-data-section">
-          <h6>Sample Data Structure</h6>
+        <!-- Live Visualization Render -->
+        <div class="preview-live-render" *ngIf="previewSampleData">
+          <h6>Live Preview</h6>
+          <div class="preview-visualization-container" [ngSwitch]="previewSampleData?.visualizationType">
+            <app-metrics-visualization *ngSwitchCase="'metrics'" [metricData]="previewSampleData"></app-metrics-visualization>
+            <app-allocations-visualization *ngSwitchCase="'allocations'" [channelAllocations]="previewSampleData"></app-allocations-visualization>
+            <app-timeline-visualization *ngSwitchCase="'timeline'" [timelineData]="previewSampleData"></app-timeline-visualization>
+            <app-channels-visualization *ngSwitchCase="'channels'" [channelCards]="previewSampleData"></app-channels-visualization>
+            <app-segments-visualization *ngSwitchCase="'segments'" [segmentCards]="previewSampleData"></app-segments-visualization>
+            <app-creative-visualization *ngSwitchCase="'creative'" [creativeData]="previewSampleData"></app-creative-visualization>
+            <app-adcp_get_products-visualization *ngSwitchCase="'adcp_get_products'" [inventoryData]="previewSampleData"></app-adcp_get_products-visualization>
+            <app-presentation-visualization *ngSwitchCase="'presentation'" [presentationData]="previewSampleData"></app-presentation-visualization>
+            <app-histogram-visualization *ngSwitchCase="'histogram'" [data]="previewSampleData"></app-histogram-visualization>
+            <app-double-histogram-visualization *ngSwitchCase="'double-histogram'" [data]="previewSampleData"></app-double-histogram-visualization>
+            <app-donut-chart-visualization *ngSwitchCase="'donut-chart'" [data]="previewSampleData"></app-donut-chart-visualization>
+            <app-bar-chart-visualization *ngSwitchCase="'bar-chart'" [data]="previewSampleData"></app-bar-chart-visualization>
+            <app-decision-tree-visualization *ngSwitchCase="'decision-tree'" [decisionTreeData]="previewSampleData"></app-decision-tree-visualization>
+            <!-- Fallback: show JSON when no matching component -->
+            <div *ngSwitchDefault class="preview-fallback">
+              <p class="preview-fallback-note">No live renderer available for type "{{ previewSampleData?.visualizationType }}". Showing raw data structure:</p>
+              <pre class="preview-json">{{ previewSampleData | json }}</pre>
+            </div>
+          </div>
+        </div>
+        <!-- Collapsible JSON Structure -->
+        <details class="preview-json-details">
+          <summary><span class="material-icons">code</span> Sample Data Structure (JSON)</summary>
           <pre class="preview-json">{{ previewSampleData | json }}</pre>
-        </div>
-        <div class="preview-info">
-          <div class="info-card">
-            <span class="material-icons">lightbulb</span>
-            <div>
-              <strong>How to use this template</strong>
-              <p>Include a JSON block with the structure shown above. The visualization will automatically render.</p>
-            </div>
-          </div>
-          <div class="info-card">
-            <span class="material-icons">code</span>
-            <div>
-              <strong>Required Fields</strong>
-              <p>Ensure your output includes <code>visualizationType</code> and <code>templateId</code>.</p>
-            </div>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
   </div>

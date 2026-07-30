@@ -1,0 +1,26 @@
+{
+  "templateId": "adcp_update_media_buy-visualization",
+  "visualizationType": "adcp_update_media_buy-visualization",
+  "description": "Display AdCP media buy update changes from update_media_buy MCP tool calls. Glass chips showing old→new values with amber glow.",
+  "usage": "Wrap the update_media_buy response in <visualization-data type=\"adcp_update_media_buy-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_update_media_buy-visualization (REQUIRED)",
+    "media_buy_id": "The media buy ID that was updated",
+    "changes": [
+      {
+        "field": "Field name that changed (e.g., 'budget', 'end_date')",
+        "old_value": "Previous value",
+        "new_value": "New value"
+      }
+    ]
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_update_media_buy-visualization",
+    "media_buy_id": "mb_2024_espn_001",
+    "changes": [
+      { "field": "budget", "old_value": "$50,000", "new_value": "$75,000" },
+      { "field": "end_date", "old_value": "2024-07-31", "new_value": "2024-08-15" }
+    ]
+  }
+}

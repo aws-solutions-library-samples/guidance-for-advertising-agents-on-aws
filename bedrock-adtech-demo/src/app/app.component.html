@@ -4,8 +4,16 @@
     <div class="header-content">
       <div class="title-section">
         <h1 class="app-title">{{title}}</h1>
-        <p class="app-subtitle">A <span class="playground-handwriting">playground</span> for simulating
-          {{getIndustry()}} scenarios using Agents on AWS</p>
+        
+        <span class="session-id-pill" *ngIf="sessionId" [title]="getFullSessionId()"
+          (click)="copySessionId()">
+          <span class="material-icons">fingerprint</span>
+          {{sessionId}}
+        </span>
+        <button class="session-refresh-btn" *ngIf="sessionId" (click)="refreshSession()"
+          title="Start a new session">
+          <span class="material-icons">refresh</span>
+        </button>
       </div>
       <div class="user-section">
 

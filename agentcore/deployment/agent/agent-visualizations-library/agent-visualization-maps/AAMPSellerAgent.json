@@ -1,0 +1,18 @@
+{
+  "agentName": "AAMPSellerAgent",
+  "agentId": "AAMPSellerAgent",
+  "templates": [
+    {
+      "templateId": "metrics-visualization",
+      "usage": "Inventory metrics, pricing summaries, and delivery KPIs"
+    },
+    {
+      "templateId": "timeline-visualization",
+      "usage": "Deal lifecycle timeline and order state transitions"
+    },
+    {
+      "templateId": "segments-visualization",
+      "usage": "Inventory segments by channel type and audience composition"
+    }
+  ]
+}

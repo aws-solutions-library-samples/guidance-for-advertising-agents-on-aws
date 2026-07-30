@@ -1,0 +1,120 @@
+# ============================================================================
+# A4A Demo — Customer Configuration Template
+# ============================================================================
+# Fill this in for each new customer demo. The data generator (or Quick)
+# will use this to produce all synthetic datasets.
+#
+# Copy this file to: synthetic_data/customers/{customer_id}/config.yaml
+# Then generate data: ask Quick "generate A4A demo data from config.yaml"
+# ============================================================================
+
+# --- Identity ---
+customer_id: ""          # lowercase, no spaces (e.g. "nineseven", "fox-sports")
+display_name: ""         # e.g. "Nine-Seven JV (Australia)"
+market: ""               # ISO country code: AU, US, UK, DE, etc.
+currency: ""             # ISO 4217: AUD, USD, GBP, EUR
+geo_targets: ""          # comma-separated: "AU,NZ" or "US,CA"
+
+# --- Publishers (one or more networks in the JV/demo) ---
+publishers:
+  - id: ""               # short id (e.g. "nine", "seven", "fox")
+    name: ""             # full name (e.g. "Nine Entertainment")
+    domain: ""           # e.g. "9now.com.au"
+    properties:          # their streaming/linear platforms
+      - name: ""         # e.g. "9Now Sport CTV"
+        type: ctv        # ctv | bvod | linear | svod_ads
+        description: ""
+
+# --- Content Properties (the actual shows/sports/events) ---
+# Each becomes a product row in products.csv + inventory.csv
+content_properties:
+  - id: ""               # e.g. "nrl-live"
+    name: ""             # e.g. "NRL State of Origin"
+    publisher: ""        # references publishers[].id above
+    property: ""         # references publishers[].properties[].name
+    type: live_sport     # live_sport | catchup_entertainment | news | svod_premium
+    iab_category: ""     # IAB content taxonomy (e.g. "IAB17|IAB17-12")
+    format_types: "video_standard_30s,video_standard_15s"
+    floor_cpm: 0         # floor CPM in local currency
+    avg_cpm: 0           # average CPM
+    ceiling_cpm: 0       # ceiling CPM (premium events)
+    estimated_daily_impressions: 0
+    estimated_daily_reach: 0
+    audience_composition: ""  # key:value pairs (e.g. "male_25_54:0.65,sports:0.91")
+    peak_months: []      # e.g. [Jun, Jul]
+    peak_viewers: ""     # e.g. "4M"
+    description: ""      # one-liner for product catalog
+
+# --- Audience Segments ---
+audiences:
+  - id: ""               # e.g. "afl-fans"
+    name: ""             # e.g. "AFL Enthusiasts 18-54"
+    description: ""
+    size: 0              # individuals
+    segment_type: FIRST_PARTY  # FIRST_PARTY | THIRD_PARTY
+    data_provider: ""    # e.g. "Quantium", "LiveRamp AU"
+    iab_taxonomy_id: ""  # e.g. "6.1.2"
+
+# --- Advertisers (for campaign scenarios) ---
+advertisers:
+  - id: ""               # e.g. "woolworths"
+    name: ""             # e.g. "Woolworths Group"
+    industry: ""         # e.g. "grocery_retail"
+    agency: ""           # e.g. "OMD Australia"
+    annual_media_spend: ""  # e.g. "180M"
+    preferred_dsp: ""    # e.g. "The Trade Desk,DV360"
+
+# --- Campaigns (pre-built RFP scenarios) ---
+campaigns:
+  - id: ""               # e.g. "woolworths-bbl-summer"
+    advertiser: ""       # references advertisers[].id
+    name: ""             # e.g. "Woolworths Fresh Food BBL Summer 2026"
+    objective: brand_awareness  # brand_awareness | consideration | conversion
+    budget: 0            # in local currency
+    content_alignment: ""  # references content_properties[].id
+    target_audience: ""  # references audiences[].id
+    start_date: ""       # YYYY-MM-DD
+    end_date: ""
+
+# --- Rate Card ---
+rate_card:
+  tiers:
+    - name: ""           # e.g. "Premium Live Sport"
+      description: ""
+      cpm_range: [0, 0]  # [min, max]
+      min_spend: 0
+      ad_load_min_per_hour: 0
+  surcharges:
+    live_event_premium: "+25%"
+    finals_premium: "+40%"
+    audience_targeting: "+15%"
+  discounts:
+    volume_250k_plus: "-5%"
+    annual_commitment: "-8%"
+
+# --- Media Kits (curated packages for AAMP seller) ---
+media_kits:
+  - id: ""               # e.g. "nrl-state-of-origin"
+    name: ""             # e.g. "NRL State of Origin 2026"
+    description: ""
+    content_properties: []  # list of content_properties[].id
+    cpm_range: [0, 0]
+    target_audience: ""
+
+# --- Demo Scenarios (what prompts to run) ---
+demo_scenarios:
+  - title: ""
+    agent: MediaPlanningAgent  # MediaPlanningAgent | YieldOptimizationAgent | AdLoadOptimizationAgent | AgencyAgent
+    prompt: ""           # The actual prompt to invoke
+    why_it_resonates: "" # Talking point for the demo presenter
+
+# --- Brand Safety Notes (customer-specific) ---
+brand_safety:
+  restricted_categories: []    # e.g. ["gambling", "alcohol before 8:30pm"]
+  sport_specific_risks: []     # e.g. ["player misconduct protocol"]
+  family_safe_zones: []        # e.g. ["kids section", "daytime content"]
+
+# --- Key Corrections (things NOT to say in demo) ---
+corrections:
+  - wrong: ""            # e.g. "Nine has cricket"
+    right: ""            # e.g. "Cricket is Seven's — moved in 2018"

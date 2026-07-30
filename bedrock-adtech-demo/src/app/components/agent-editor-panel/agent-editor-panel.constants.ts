@@ -23,6 +23,14 @@ export interface MCPToolListResult {
 
 export const AVAILABLE_TEMPLATES: string[] = [
   'adcp_get_products-visualization',
+  'adcp_create_media_buy-visualization',
+  'adcp_get_media_buys-visualization',
+  'adcp_get_media_buy_delivery-visualization',
+  'adcp_update_media_buy-visualization',
+  'adcp_get_content_standards-visualization',
+  'adcp_get_property_list-visualization',
+  'adcp_calibrate_content-visualization',
+  'adcp_check_governance-visualization',
   'allocations-visualization',
   'bar-chart-visualization',
   'channels-visualization',

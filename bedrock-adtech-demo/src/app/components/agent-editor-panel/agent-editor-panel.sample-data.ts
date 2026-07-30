@@ -135,3 +135,144 @@ export const SAMPLE_DATA_BY_TEMPLATE: Record<string, any> = {
     ]
   }
 };
+
+
+// ============================================================================
+// AdCP Protocol Visualizations — extended sample data
+// ============================================================================
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_create_media_buy-visualization'] = {
+  visualizationType: 'adcp_create_media_buy-visualization',
+  templateId: 'adcp_create_media_buy-visualization',
+  media_buy_id: 'mb_2024_espn_001',
+  status: 'confirmed',
+  budget: 50000,
+  currency: 'USD',
+  product_name: 'Premium Sports CTV - Live Events',
+  start_date: '2024-07-01',
+  end_date: '2024-07-31',
+  estimated_impressions: 2500000
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_get_media_buys-visualization'] = {
+  visualizationType: 'adcp_get_media_buys-visualization',
+  templateId: 'adcp_get_media_buys-visualization',
+  media_buys: [
+    {
+      media_buy_id: 'mb_001',
+      name: 'ESPN CTV Campaign',
+      status: 'active',
+      budget: 50000,
+      spent: 32000,
+      currency: 'USD',
+      start_date: '2024-07-01',
+      end_date: '2024-07-31',
+      impressions_delivered: 1600000,
+      impressions_target: 2500000
+    },
+    {
+      media_buy_id: 'mb_002',
+      name: 'Fox Sports Premium',
+      status: 'paused',
+      budget: 35000,
+      spent: 12000,
+      currency: 'USD',
+      start_date: '2024-07-05',
+      end_date: '2024-08-15',
+      impressions_delivered: 600000,
+      impressions_target: 1800000
+    },
+    {
+      media_buy_id: 'mb_003',
+      name: 'Hulu Video Spot',
+      status: 'completed',
+      budget: 20000,
+      spent: 20000,
+      currency: 'USD',
+      start_date: '2024-06-01',
+      end_date: '2024-06-30',
+      impressions_delivered: 1000000,
+      impressions_target: 1000000
+    }
+  ]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_get_media_buy_delivery-visualization'] = {
+  visualizationType: 'adcp_get_media_buy_delivery-visualization',
+  templateId: 'adcp_get_media_buy_delivery-visualization',
+  impressions_delivered: 1600000,
+  reach: 540000,
+  completion_rate: 0.87,
+  spend: 32000,
+  daily_delivery: [45000, 52000, 48000, 61000, 55000, 58000, 63000, 68000, 72000]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_update_media_buy-visualization'] = {
+  visualizationType: 'adcp_update_media_buy-visualization',
+  templateId: 'adcp_update_media_buy-visualization',
+  media_buy_id: 'mb_2024_espn_001',
+  changes: [
+    { field: 'budget', old_value: '$50,000', new_value: '$75,000' },
+    { field: 'end_date', old_value: '2024-07-31', new_value: '2024-08-15' },
+    { field: 'target_impressions', old_value: '2.5M', new_value: '3.8M' }
+  ]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_get_content_standards-visualization'] = {
+  visualizationType: 'adcp_get_content_standards-visualization',
+  templateId: 'adcp_get_content_standards-visualization',
+  standards: [
+    {
+      name: 'Brand Safety',
+      rules: [
+        { name: 'No competitor adjacency', description: 'Ads must not appear next to competitor content', severity: 'error' },
+        { name: 'Family-safe content', description: 'All placements must be in family-safe environments', severity: 'warning' }
+      ]
+    },
+    {
+      name: 'Format Requirements',
+      rules: [
+        { name: 'Video length 15-30s', description: 'All video creatives must be 15 or 30 seconds', severity: 'error' },
+        { name: 'Captions required', description: 'All video must include closed captions', severity: 'info' }
+      ]
+    }
+  ]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_get_property_list-visualization'] = {
+  visualizationType: 'adcp_get_property_list-visualization',
+  templateId: 'adcp_get_property_list-visualization',
+  properties: [
+    { domain: 'espn.com', type: 'ctv' },
+    { domain: 'foxsports.com', type: 'ctv' },
+    { domain: 'hulu.com', type: 'video' },
+    { domain: 'nytimes.com', type: 'display' },
+    { domain: 'spotify.com', type: 'audio' },
+    { domain: 'pandora.com', type: 'audio' },
+    { domain: 'tiktok.com', type: 'mobile' }
+  ]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_calibrate_content-visualization'] = {
+  visualizationType: 'adcp_calibrate_content-visualization',
+  templateId: 'adcp_calibrate_content-visualization',
+  overall_score: 8.4,
+  segments: [
+    { name: 'Brand Alignment', score: 9.2 },
+    { name: 'Audience Fit', score: 8.1 },
+    { name: 'Context Safety', score: 7.8 },
+    { name: 'Format Match', score: 8.5 }
+  ]
+};
+
+SAMPLE_DATA_BY_TEMPLATE['adcp_check_governance-visualization'] = {
+  visualizationType: 'adcp_check_governance-visualization',
+  templateId: 'adcp_check_governance-visualization',
+  verdict: 'pass',
+  message: 'All governance checks passed for media buy mb_001',
+  checks: [
+    { name: 'Budget Compliance', status: 'pass', detail: 'Within approved limits' },
+    { name: 'Brand Safety', status: 'pass', detail: 'Tier 1 verified' },
+    { name: 'Audience Targeting', status: 'pass', detail: 'Compliant with privacy rules' }
+  ]
+};

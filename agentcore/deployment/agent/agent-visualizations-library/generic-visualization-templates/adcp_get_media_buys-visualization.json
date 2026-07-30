@@ -1,0 +1,41 @@
+{
+  "templateId": "adcp_get_media_buys-visualization",
+  "visualizationType": "adcp_get_media_buys-visualization",
+  "description": "Display AdCP media buys list from get_media_buys MCP tool calls. Stacked glass rows with status glow and pacing bars.",
+  "usage": "Wrap the get_media_buys response in <visualization-data type=\"adcp_get_media_buys-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_get_media_buys-visualization (REQUIRED)",
+    "media_buys": [
+      {
+        "media_buy_id": "Unique media buy identifier",
+        "name": "Media buy display name",
+        "status": "Status: 'active', 'paused', 'completed', 'scheduled'",
+        "budget": "Total budget (number)",
+        "spent": "Amount spent so far (number)",
+        "currency": "Currency code",
+        "start_date": "Start date",
+        "end_date": "End date",
+        "impressions_delivered": "Impressions delivered so far (number)",
+        "impressions_target": "Target impressions (number)"
+      }
+    ]
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_get_media_buys-visualization",
+    "media_buys": [
+      {
+        "media_buy_id": "mb_001",
+        "name": "ESPN CTV Campaign",
+        "status": "active",
+        "budget": 50000,
+        "spent": 32000,
+        "currency": "USD",
+        "start_date": "2024-07-01",
+        "end_date": "2024-07-31",
+        "impressions_delivered": 1600000,
+        "impressions_target": 2500000
+      }
+    ]
+  }
+}

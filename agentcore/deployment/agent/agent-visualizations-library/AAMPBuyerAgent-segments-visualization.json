@@ -1,0 +1,51 @@
+{
+  "agentName": "AAMPBuyerAgent",
+  "agentId": "AAMPBuyerAgent",
+  "templateId": "segments-visualization",
+  "usage": "Inventory segments and audience targeting analysis",
+  "dataMapping": {
+    "visualizationType": "segments",
+    "templateId": "segments-visualization",
+    "title": "AAMP Buyer Targeting Segments",
+    "subtitle": "Inventory and audience segment analysis for media buying",
+    "segments": [
+      {
+        "primaryLabel": "Segment name (e.g., 'CTV Sports Audience', 'News Viewers', 'Streaming Subscribers')",
+        "secondaryLabel": "Segment category (e.g., 'Premium Audience', 'Broad Reach', 'Niche Targeting')",
+        "description": "Detailed segment profile and targeting characteristics",
+        "actualValue": "Current segment metric (e.g., '2.5M reach', '$42 CPM')",
+        "targetValue": "Segment target (e.g., '3M reach', '$38 CPM')",
+        "forecastedValue": "Projected segment metric",
+        "actualLabel": "Current segment performance description",
+        "targetLabel": "Target segment performance description",
+        "forecastedLabel": "Forecast description",
+        "primaryMetric": {
+          "label": "Primary KPI (e.g., 'Negotiated CPM', 'Estimated Reach')",
+          "value": "KPI value (e.g., '$42', '2.5M')"
+        },
+        "secondaryMetric": {
+          "label": "Secondary KPI (e.g., 'Discount vs Rate Card', 'Budget Share')",
+          "value": "KPI value (e.g., '12%', '35%')"
+        },
+        "budgetAmount": "Budget allocation for this segment",
+        "statusIndicator": "Segment status: 'optimized', 'active', 'underperforming'",
+        "confidenceLevel": "Targeting confidence: 'high', 'medium', 'low'",
+        "performanceLevel": "Expected performance: 'high', 'medium', 'low'",
+        "insights": ["Key targeting insights"],
+        "risks": ["Risk factors for this segment"],
+        "recommendations": ["Targeting optimization strategies"],
+        "metadata": {
+          "size": "Segment scope (e.g., '2.5M users', '35% of budget')",
+          "growth": "Segment growth rate",
+          "engagement": "Engagement level"
+        }
+      }
+    ],
+    "summary": {
+      "totalSegments": "Number of targeting segments",
+      "activeSegments": "Number of active segments",
+      "topPerformer": "Best performing segment",
+      "growthOpportunity": "Primary growth opportunity"
+    }
+  }
+}

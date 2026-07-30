@@ -1,0 +1,29 @@
+{
+  "templateId": "adcp_check_governance-visualization",
+  "visualizationType": "adcp_check_governance-visualization",
+  "description": "Display AdCP governance check results from check_governance MCP tool calls. Full-width glass banner with PASS/HOLD/FAIL glow.",
+  "usage": "Wrap the check_governance response in <visualization-data type=\"adcp_check_governance-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_check_governance-visualization (REQUIRED)",
+    "verdict": "Overall verdict: 'pass', 'hold', 'fail'",
+    "message": "Summary message about the governance check",
+    "checks": [
+      {
+        "name": "Check name (e.g., 'Budget Compliance')",
+        "status": "Check status: 'pass', 'fail', 'warning'",
+        "detail": "Optional detail message"
+      }
+    ]
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_check_governance-visualization",
+    "verdict": "pass",
+    "message": "All governance checks passed for media buy mb_001",
+    "checks": [
+      { "name": "Budget Compliance", "status": "pass", "detail": "Within approved limits" },
+      { "name": "Brand Safety", "status": "pass", "detail": "Tier 1 verified" },
+      { "name": "Audience Targeting", "status": "pass", "detail": "Compliant with privacy rules" }
+    ]
+  }
+}

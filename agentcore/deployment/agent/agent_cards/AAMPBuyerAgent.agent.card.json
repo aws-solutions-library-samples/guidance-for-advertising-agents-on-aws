@@ -1,0 +1,19 @@
+{
+  "agent_name": "AAMPBuyerAgent",
+  "agent_description": "IAB AAMP buyer agent — automates media buying, deal negotiation, and DSP activation via OpenDirect 2.1",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/aampbuyeragent",
+  "skills": [
+    "media_buying",
+    "deal_negotiation",
+    "campaign_execution",
+    "dsp_activation"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "aamp",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "buyer"
+  }
+}

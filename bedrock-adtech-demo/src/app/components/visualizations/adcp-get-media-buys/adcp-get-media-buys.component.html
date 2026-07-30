@@ -1,0 +1,28 @@
+<div *ngIf="mediaBuysData" class="adcp-get-media-buys">
+  <div class="glass-row" *ngFor="let buy of buys; trackBy: trackById"
+       [ngClass]="getGlowClass(buy.status)">
+    <div class="row-top">
+      <div class="buy-identity">
+        <span class="buy-name">{{buy.name || buy.id}}</span>
+        <span class="buy-id">{{buy.id}}</span>
+      </div>
+      <div class="buy-budget">
+        <span class="spent">{{formatCurrency(buy.spent, buy.currency)}}</span>
+        <span class="of-total">/ {{formatCurrency(buy.budget, buy.currency)}}</span>
+      </div>
+      <div class="buy-status">
+        <span class="status-label">{{buy.status}}</span>
+      </div>
+    </div>
+    <div class="pacing-track">
+      <div class="pacing-fill" [ngClass]="getGlowClass(buy.status)"
+           [style.width.%]="buy.pacing"></div>
+    </div>
+    <div class="row-bottom">
+      <span *ngIf="buy.startDate" class="date-range">{{buy.startDate}} — {{buy.endDate}}</span>
+      <span *ngIf="buy.impressionsTarget" class="impressions">
+        {{formatNumber(buy.impressionsDelivered)}} / {{formatNumber(buy.impressionsTarget)}} imp
+      </span>
+    </div>
+  </div>
+</div>

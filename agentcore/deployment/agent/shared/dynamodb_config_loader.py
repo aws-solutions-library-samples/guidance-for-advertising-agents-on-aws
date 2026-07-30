@@ -40,12 +40,25 @@ _config_cache: Dict[str, Any] = {}
 _ssm_secret_cache: Dict[str, str] = {}  # Separate cache for SSM secrets (not logged)
 _cache_initialized = False
 
+# Revision (the GLOBAL_CONFIG item's `updated_at`) that the currently cached
+# global config was loaded from. Used to detect that another process wrote a
+# newer config, so this process can reload instead of serving a stale snapshot.
+# None means "no global config has been loaded in this process yet".
+_global_config_revision: Optional[str] = None
+
+# Attribute on the GLOBAL_CONFIG item that changes on every write.
+GLOBAL_CONFIG_REVISION_ATTRIBUTE = "updated_at"
+
 # Config type constants
 CONFIG_TYPE_INSTRUCTION = "instruction"
 CONFIG_TYPE_CARD = "card"
 CONFIG_TYPE_VIZ_MAP = "visualization_map"
 CONFIG_TYPE_VIZ_TEMPLATE = "visualization_template"
 CONFIG_TYPE_GLOBAL = "global_config"
+
+# Primary key of the single global-configuration item.
+GLOBAL_CONFIG_PK = "GLOBAL_CONFIG"
+GLOBAL_CONFIG_SK = "v1"
 
 
 def get_agent_config_table_name() -> Optional[str]:
@@ -102,15 +115,18 @@ def get_ssm_client():
 
 def clear_config_cache(key: Optional[str] = None):
     """Clear the configuration cache."""
-    global _config_cache, _ssm_secret_cache, _cache_initialized
+    global _config_cache, _ssm_secret_cache, _cache_initialized, _global_config_revision
     if key:
         _config_cache.pop(key, None)
         _ssm_secret_cache.pop(key, None)
+        if key == "global_config":
+            _global_config_revision = None
         logger.info(f"🗑️ DDB_CACHE: Cleared cache for {key}")
     else:
         _config_cache.clear()
         _ssm_secret_cache.clear()
         _cache_initialized = False
+        _global_config_revision = None
         logger.info("🗑️ DDB_CACHE: Cleared all config cache")
 
 
@@ -419,14 +435,16 @@ def load_global_config(use_cache: bool = True) -> Optional[Dict[str, Any]]:
     Returns:
         Global config as dict, or None if not found
     """
+    global _global_config_revision
+
     cache_key = "global_config"
     
     if use_cache and cache_key in _config_cache:
         logger.debug("📦 DDB_CACHE: Cache HIT for global config")
         return _config_cache[cache_key]
     
-    pk = "GLOBAL_CONFIG"
-    sk = "v1"
+    pk = GLOBAL_CONFIG_PK
+    sk = GLOBAL_CONFIG_SK
     
     # Use consistent read when not using cache (i.e., during refresh)
     item = _get_item(pk, sk, consistent_read=not use_cache)
@@ -435,13 +453,100 @@ def load_global_config(use_cache: bool = True) -> Optional[Dict[str, Any]]:
         try:
             config = json.loads(content) if isinstance(content, str) else content
             _config_cache[cache_key] = config
-            logger.info(f"✅ DDB_LOADER: Loaded global config (consistent_read={not use_cache})")
+            # Record the revision this snapshot came from so a later staleness
+            # probe can tell whether another process has written a newer config.
+            _global_config_revision = item.get(GLOBAL_CONFIG_REVISION_ATTRIBUTE)
+            logger.info(
+                f"✅ DDB_LOADER: Loaded global config "
+                f"(consistent_read={not use_cache}, revision={_global_config_revision})"
+            )
             return config
         except json.JSONDecodeError as e:
             logger.error(f"❌ DDB_LOADER: Invalid JSON in global config: {e}")
     
     _config_cache[cache_key] = None
+    _global_config_revision = None
     return None
+
+
+def get_cached_global_config_revision() -> Optional[str]:
+    """Return the revision of the global config currently held in this process.
+
+    None means no global config has been successfully loaded here yet.
+    """
+    return _global_config_revision
+
+
+def check_global_config_freshness() -> Dict[str, Any]:
+    """Compare this process's cached global-config revision against DynamoDB.
+
+    Performs a single projected ``GetItem`` that reads only the revision
+    attribute — it does NOT fetch the (large) config body. Uses a consistent
+    read so a write made moments ago is visible.
+
+    Returns a dict describing what was actually determined. ``known`` is False
+    when the comparison could not be made (table unset, throttled, item
+    missing, transient error); in that case ``stale`` is None rather than a
+    guess, and the caller decides how to proceed.
+
+        {
+          "known": bool,             # was a comparison actually possible?
+          "stale": Optional[bool],   # None when not known
+          "cached_revision": Optional[str],
+          "remote_revision": Optional[str],
+          "error": Optional[str],    # short reason when known is False
+        }
+    """
+    result: Dict[str, Any] = {
+        "known": False,
+        "stale": None,
+        "cached_revision": _global_config_revision,
+        "remote_revision": None,
+        "error": None,
+    }
+
+    table = get_dynamodb_table()
+    if not table:
+        result["error"] = "agent config table not configured"
+        return result
+
+    try:
+        response = table.get_item(
+            Key={"pk": GLOBAL_CONFIG_PK, "sk": GLOBAL_CONFIG_SK},
+            ProjectionExpression=GLOBAL_CONFIG_REVISION_ATTRIBUTE,
+            ConsistentRead=True,
+        )
+    except ClientError as e:
+        result["error"] = e.response.get("Error", {}).get("Code", "ClientError")
+        return result
+    except Exception as e:  # noqa: BLE001 - never let a probe break an invocation
+        result["error"] = type(e).__name__
+        return result
+
+    # Distinguish "item absent" from "item present but the projection matched no
+    # attributes" — a projected GetItem can legitimately return an empty Item.
+    if "Item" not in response:
+        result["error"] = "GLOBAL_CONFIG item not found"
+        return result
+    item = response["Item"] or {}
+
+    remote_revision = item.get(GLOBAL_CONFIG_REVISION_ATTRIBUTE)
+    result["remote_revision"] = remote_revision
+
+    if remote_revision is None:
+        # The item exists but carries no revision attribute, so drift cannot be
+        # detected by comparison. Report that honestly instead of assuming fresh.
+        result["error"] = f"item has no '{GLOBAL_CONFIG_REVISION_ATTRIBUTE}' attribute"
+        return result
+
+    result["known"] = True
+    # A process that has not loaded any config yet is not "stale" — it simply
+    # has nothing to compare, and the normal load path will fetch the config.
+    if _global_config_revision is None:
+        result["stale"] = False
+    else:
+        result["stale"] = str(remote_revision) != str(_global_config_revision)
+    return result
 
 
 # ============================================
@@ -737,11 +842,12 @@ def put_global_config(config: Dict[str, Any]) -> bool:
     
     try:
         table.put_item(Item={
-            "pk": "GLOBAL_CONFIG",
-            "sk": "v1",
+            "pk": GLOBAL_CONFIG_PK,
+            "sk": GLOBAL_CONFIG_SK,
             "config_type": CONFIG_TYPE_GLOBAL,
             "content": json.dumps(config),
-            "updated_at": datetime.utcnow().isoformat()
+            # Doubles as the revision marker read by check_global_config_freshness().
+            GLOBAL_CONFIG_REVISION_ATTRIBUTE: datetime.utcnow().isoformat()
         })
         logger.info("✅ DDB_WRITER: Stored global config")
         return True

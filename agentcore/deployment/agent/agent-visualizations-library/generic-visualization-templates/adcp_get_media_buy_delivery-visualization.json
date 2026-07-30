@@ -1,0 +1,23 @@
+{
+  "templateId": "adcp_get_media_buy_delivery-visualization",
+  "visualizationType": "adcp_get_media_buy_delivery-visualization",
+  "description": "Display AdCP media buy delivery KPIs from get_media_buy_delivery MCP tool calls. Glass tile with bright KPI numbers and sparkline.",
+  "usage": "Wrap the get_media_buy_delivery response in <visualization-data type=\"adcp_get_media_buy_delivery-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_get_media_buy_delivery-visualization (REQUIRED)",
+    "impressions_delivered": "Total impressions delivered (number)",
+    "reach": "Unique reach (number)",
+    "completion_rate": "Video completion rate 0-1 (number)",
+    "spend": "Total spend (number)",
+    "daily_delivery": "Array of daily impression counts for sparkline (number[])"
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_get_media_buy_delivery-visualization",
+    "impressions_delivered": 1600000,
+    "reach": 540000,
+    "completion_rate": 0.87,
+    "spend": 32000,
+    "daily_delivery": [45000, 52000, 48000, 61000, 55000, 58000, 63000]
+  }
+}

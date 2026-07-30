@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { AwsConfigService } from './services/aws-config.service';
+import { SessionManagerService } from './services/session-manager.service';
 import { TourService } from './services/tour.service';
 import { BedrockService } from './services/bedrock.service';
 import { HttpClient } from '@angular/common/http';
@@ -80,6 +82,10 @@ export class AppComponent implements OnInit, OnDestroy {
   contextDetailsPosition: { bottom: string; right: string; } = { bottom: '110px', right: '47px' };
   currentTab: any;
 
+  // Current session id (shown as a pill in the header)
+  sessionId: string | null = null;
+  private sessionSubscription?: Subscription;
+
   constructor(
     private awsConfig: AwsConfigService,
     private router: Router,
@@ -87,6 +93,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private bedrockService: BedrockService,
     private agentConfigService: AgentConfigService,
     private demoTrackingService: DemoTrackingService,
+    private sessionManager: SessionManagerService,
     private http: HttpClient
   ) {
     // Make AwsConfigService available for debugging in browser console
@@ -94,6 +101,27 @@ export class AppComponent implements OnInit, OnDestroy {
   }
   getIndustry() {
     return environment.industryType;
+  }
+
+  // Full session id for the header pill tooltip
+  getFullSessionId(): string {
+    return this.sessionId || 'No active session';
+  }
+
+  // Copy the active session id to the clipboard
+  copySessionId(): void {
+    if (this.sessionId) {
+      navigator.clipboard.writeText(this.sessionId).then(() => {
+        console.log('Session ID copied to clipboard:', this.sessionId);
+      }).catch(err => {
+        console.error('Failed to copy session ID:', err);
+      });
+    }
+  }
+
+  // Start a new session — the active chat interface performs the full reset
+  refreshSession(): void {
+    this.sessionManager.requestSessionRefresh();
   }
   
   onAgentSelected(): void {
@@ -108,6 +136,11 @@ export class AppComponent implements OnInit, OnDestroy {
     // Apply light theme to body
     document.body.classList.add('light-theme');
 
+    // Keep the header session pill in sync with the active session
+    this.sessionSubscription = this.sessionManager.session$.subscribe((session) => {
+      this.sessionId = session?.sessionId ?? null;
+    });
+
     // Subscribe to authentication state
     this.awsConfig.user$.subscribe((user) => {
       this.currentUser = user;
@@ -119,6 +152,8 @@ export class AppComponent implements OnInit, OnDestroy {
         this.tabs = [];
         this.isLoadingTabs = false;
       } else {
+        // Ensure a session exists so the header pill has a value to display
+        this.sessionId = this.sessionManager.getOrCreateSession().sessionId;
         // Load tab configurations after authentication
         this.loadTabConfigurations().then((tabs) => {
           tabs.forEach((tab)=>
@@ -1232,5 +1267,6 @@ Make sure each scenario has realistic business problems and detailed queries tha
     if (this.menuCollapseTimeout) {
       clearTimeout(this.menuCollapseTimeout);
     }
+    this.sessionSubscription?.unsubscribe();
   }
 } 

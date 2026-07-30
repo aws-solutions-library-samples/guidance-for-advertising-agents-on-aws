@@ -204,6 +204,14 @@ ${availableTemplates.map(t => `- ${t}`).join('\n')}
 
 Template Descriptions:
 - adcp_get_products-visualization: Displays product inventory with pricing, reach, and audience data
+- adcp_create_media_buy-visualization: Frosted confirmation chip for create_media_buy results (ID, budget, green glow)
+- adcp_get_media_buys-visualization: Stacked glass rows listing media buys with status glow and pacing bars
+- adcp_get_media_buy_delivery-visualization: Glass KPI tile showing delivery metrics with glowing sparkline
+- adcp_update_media_buy-visualization: Glass chips showing old→new field changes with amber glow
+- adcp_get_content_standards-visualization: Collapsible frosted pills displaying content standards and rules
+- adcp_get_property_list-visualization: Frosted chip cluster showing publisher domains with overflow
+- adcp_calibrate_content-visualization: Glass tile with glowing segmented bar for calibration scores
+- adcp_check_governance-visualization: Full-width glass banner with PASS/HOLD/FAIL glow (green/amber/red)
 - allocations-visualization: Shows budget allocation across channels/publishers
 - bar-chart-visualization: Generic bar chart for comparing values
 - channels-visualization: Channel performance and distribution
@@ -305,9 +313,8 @@ Return a JSON object with EXACTLY this structure (no markdown fences, no explana
     "external_agents": [],
     "model_inputs": {
       "default": {
-        "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "max_tokens": 8000,
-        "temperature": 0.3
+        "model_id": "global.anthropic.claude-sonnet-5",
+        "max_tokens": 8000
       }
     },
     "agent_tools": ["list of relevant tools like invoke_specialist_with_RAG, retrieve_knowledge_base_results_tool, lookup_events, etc."],
@@ -351,7 +358,7 @@ IMPORTANT:
       external_agents: parsed.agent.external_agents || [],
       agent_tools: parsed.agent.agent_tools || [],
       model_inputs: parsed.agent.model_inputs || {
-        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000}
       },
       color: parsed.agent.color || '#6842ff'
     },

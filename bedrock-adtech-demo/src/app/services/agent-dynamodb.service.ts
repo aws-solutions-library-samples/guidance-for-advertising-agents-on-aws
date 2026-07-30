@@ -66,8 +66,8 @@ export interface ExternalAgentConfig {
   description?: string;
   /** Whether this external agent is enabled */
   enabled: boolean;
-  /** Authentication type: 'none', 'oauth', or 'iam' */
-  authType?: 'none' | 'oauth' | 'iam';
+  /** Authentication type: 'none', 'oauth', 'iam', or 'bearer' */
+  authType?: 'none' | 'oauth' | 'iam' | 'bearer';
   /** OAuth Bearer Token authentication for A2A agents */
   oauthToken?: {
     /** Whether a token has been stored in SSM Parameter Store */
@@ -82,10 +82,66 @@ export interface ExternalAgentConfig {
     /** SSM parameter path for the credentials */
     ssmPath?: string;
   };
-  /** AWS IAM authentication config */
+  /**
+   * Static Bearer Token authentication for A2A agents. The raw token lives
+   * only in SSM SecureString; the record keeps a reference plus an optional
+   * operator-supplied expiry used for UI warnings (no auto-refresh).
+   */
+  bearerToken?: {
+    /** Whether a token has been stored in SSM Parameter Store */
+    hasToken: boolean;
+    /** SSM parameter path (set after token storage) */
+    ssmPath?: string;
+    /** ISO 8601 expiry timestamp; optional; drives UI expiry awareness only */
+    expiresAt?: string;
+  };
+  /** AWS IAM authentication config. `service` only applies to SigV4 (iam) auth. */
   awsAuth?: {
     region: string;
-    service: string;
+    service?: string;
+  };
+  /** Cognito user pool id recorded when this entry's runtime uses OAuth */
+  cognitoPoolId?: string;
+  /** Cognito app client id recorded when this entry's runtime uses OAuth */
+  cognitoClientId?: string;
+  /**
+   * AAMP-only: base URL of the OpenDirect inventory endpoint the IAB AAMP
+   * agents use for inventory discovery (their `search_advertising_products`
+   * tool speaks OpenDirect REST).
+   *
+   * The deployment writes the literal string `"not defined"` because no
+   * reachable OpenDirect endpoint ships with this stack — an AgentCore runtime
+   * does not serve that surface. Inventory discovery genuinely does not work
+   * until an operator sets a real endpoint here, and the UI says so rather than
+   * implying a working default. Only entries that carry this property render
+   * the field in the editor, so it stays out of the way for every other
+   * external agent.
+   */
+  aampInventoryEndpoint?: string;
+}
+
+/**
+ * Optional webhook-style notification hook fired whenever an agent is
+ * invoked with a real user prompt. Completely independent of the A2A
+ * external-agent/is_a2a features above — the receiving system is assumed to
+ * be arbitrary (a display, a logger, anything) and is never awaited for a
+ * response. See spec: a2a-invocation-notify-hook.
+ */
+export interface NotifyOnInvocationConfig {
+  /** HTTPS endpoint to POST the notification to */
+  endpoint: string;
+  /** Auth type for the notification POST. Matches the existing A2A auth vocabulary (no api_key/oauth2/Secrets Manager). */
+  auth_type: 'none' | 'iam' | 'bearer';
+  /**
+   * Static Bearer Token reference. The raw token lives only in SSM
+   * SecureString; this record keeps a reference plus an optional
+   * operator-supplied expiry used for UI warnings (no auto-refresh).
+   * Present only when auth_type === 'bearer'.
+   */
+  bearer_token?: {
+    hasToken: boolean;
+    ssmPath?: string;
+    expiresAt?: string;
   };
 }
 
@@ -105,7 +161,9 @@ export interface AgentConfiguration {
     [agentName: string]: {
       model_id: string;
       max_tokens: number;
-      temperature: number;
+      // NOTE: `temperature` is deliberately absent. The models in use deprecated
+      // it, and sending it caused requests to be rejected with a default
+      // placeholder response instead of a real completion. Model defaults apply.
       top_p?: number;
     };
   };
@@ -125,7 +183,30 @@ export interface AgentConfiguration {
   /** Whether this agent is exposed via the A2A JSON-RPC protocol (defaults to false) */
   is_a2a?: boolean;
   /** Authentication type for inbound A2A requests to this agent's endpoint */
-  a2a_auth_type?: 'none' | 'oauth' | 'iam';
+  a2a_auth_type?: 'none' | 'oauth' | 'iam' | 'bearer';
+  /** OAuth credentials for this agent's own (self-deployed) A2A endpoint, stored in SSM */
+  a2a_oauth_credentials?: {
+    /** Whether credentials have been stored in SSM Parameter Store */
+    hasCredentials: boolean;
+    /** SSM parameter path for the credentials */
+    ssmPath?: string;
+  };
+  /**
+   * Static Bearer Token reference for this agent's own (self-deployed) A2A
+   * endpoint. Enforcement is the deploy-time runtime authorizer's job, not
+   * application code — this stores only a reference and optional expiry.
+   */
+  a2a_bearer_token?: {
+    hasToken: boolean;
+    ssmPath?: string;
+    expiresAt?: string;
+  };
+  /**
+   * Optional: notify an external system whenever this agent is invoked with
+   * a real user prompt. Independent of is_a2a/external_agent_configs — see
+   * NotifyOnInvocationConfig for details.
+   */
+  notify_on_invocation?: NotifyOnInvocationConfig;
 }
 
 /**
@@ -498,7 +579,24 @@ export class AgentDynamoDBService {
       
       // Update agent in global config
       globalConfig.agent_configs[agent.agent_name] = agent;
-      
+
+      // Propagate this agent's own model_inputs entry to any orchestrator that
+      // has a per-collaborator override for this agent. When AgencyAgent
+      // invokes SignalAgent as a collaborator, the backend reads
+      // AgencyAgent.model_inputs[SignalAgent] — not SignalAgent.model_inputs.
+      // Without this propagation, model edits appear to "not take" for
+      // collaborator-invoked agents.
+      // See handler.py::get_collaborator_agent_model_inputs.
+      const ownModelEntry = agent.model_inputs?.[agent.agent_name];
+      if (ownModelEntry) {
+        for (const [otherName, otherAgent] of Object.entries(globalConfig.agent_configs)) {
+          if (otherName === agent.agent_name) continue;
+          if (otherAgent.model_inputs && otherAgent.model_inputs[agent.agent_name]) {
+            otherAgent.model_inputs[agent.agent_name] = { ...ownModelEntry };
+          }
+        }
+      }
+
       // Sync color to configured_colors so it's picked up by agent-config.service
       if (agent.color) {
         if (!globalConfig.configured_colors) {
@@ -1123,6 +1221,223 @@ export class AgentDynamoDBService {
       }
       console.error(`❌ AgentDynamoDBService: Failed to retrieve A2A OAuth token at ${ssmPath}:`, error);
       return null;
+    }
+  }
+
+  // ============================================
+  // A2A External Agent Bearer Token Management (SSM SecureString)
+  // ============================================
+  //
+  // A "bearer" A2A auth entry stores an operator-pasted token verbatim and
+  // sends it as `Authorization: Bearer <token>`. Unlike the OAuth path, the
+  // token is NOT minted via Cognito — it works against peers hosted anywhere
+  // (AWS or not). The token is written only as a SecureString; the agent
+  // record keeps just { hasToken, ssmPath, expiresAt }. The token value is
+  // never logged or echoed in errors.
+
+  /** Maximum accepted bearer-token length (chars) before storage. */
+  private static readonly MAX_BEARER_TOKEN_LENGTH = 8192;
+
+  /**
+   * Store a static Bearer Token for an A2A external agent securely in SSM.
+   * Reuses the existing outbound path scheme
+   * (/{stackPrefix}/a2a-tokens/{uniqueId}/{agentName}/{externalAgentName}).
+   *
+   * Validates before storage: the token must be non-empty after trimming and
+   * within the length bound. Validation and permission errors are surfaced
+   * WITHOUT including the token value. Returns the SSM path on success.
+   */
+  async storeA2ABearerToken(agentName: string, externalAgentName: string, token: string): Promise<string | null> {
+    const trimmed = (token || '').trim();
+    if (!trimmed) {
+      throw new Error('Bearer token is required and cannot be empty.');
+    }
+    if (trimmed.length > AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH) {
+      throw new Error(`Bearer token is too long (max ${AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH} characters).`);
+    }
+
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      await this.ssmClient.send(new PutParameterCommand({
+        Name: ssmPath,
+        Value: trimmed,
+        Type: 'SecureString',
+        Overwrite: true,
+        Description: `Static A2A bearer token for external agent ${externalAgentName} on agent ${agentName}`
+      }));
+
+      console.log(`✅ AgentDynamoDBService: Stored A2A bearer token at ${ssmPath}`);
+      return ssmPath;
+    } catch (error: any) {
+      // Never include the token value in the error.
+      const errorMsg = error?.message || error?.name || 'Unknown error';
+      console.error(`❌ AgentDynamoDBService: Failed to store A2A bearer token at ${ssmPath}:`, error);
+      throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission on that path prefix.`);
+    }
+  }
+
+  /**
+   * Retrieve a static A2A Bearer Token from SSM. Returns the decrypted token
+   * string, or null if not found.
+   */
+  async getA2ABearerToken(agentName: string, externalAgentName: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({
+        Name: ssmPath,
+        WithDecryption: true
+      }));
+
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        console.warn(`⚠️ AgentDynamoDBService: No A2A bearer token found at ${ssmPath}`);
+        return null;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to retrieve A2A bearer token at ${ssmPath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a static A2A Bearer Token from SSM Parameter Store.
+   */
+  async deleteA2ABearerToken(agentName: string, externalAgentName: string): Promise<boolean> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return false;
+    }
+
+    const ssmPath = this.getA2ATokenSsmPath(agentName, externalAgentName);
+
+    try {
+      await this.ssmClient.send(new DeleteParameterCommand({ Name: ssmPath }));
+      console.log(`✅ AgentDynamoDBService: Deleted A2A bearer token at ${ssmPath}`);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        return true;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to delete A2A bearer token at ${ssmPath}:`, error);
+      return false;
+    }
+  }
+
+  // ============================================
+  // Invocation Notification Bearer Token Management (SSM SecureString)
+  // ============================================
+  //
+  // Mirrors the A2A bearer-token pattern above exactly (same validation,
+  // same never-leak-the-token-in-errors behavior), but stored under a
+  // separate path prefix since this feature is independent of A2A. See
+  // spec: a2a-invocation-notify-hook.
+
+  /**
+   * Build the SSM parameter path for an agent's invocation-notification
+   * bearer token. Format: /{stackPrefix}/notify-tokens/{uniqueId}/{agentName}
+   */
+  private getNotifyTokenSsmPath(agentName: string): string {
+    return `/${this.stackPrefix}/notify-tokens/${this.uniqueId}/${agentName}`;
+  }
+
+  /**
+   * Store a static Bearer Token for an agent's invocation-notification hook
+   * securely in SSM. Validates before storage: the token must be non-empty
+   * after trimming and within the length bound. Validation and permission
+   * errors are surfaced WITHOUT including the token value. Returns the SSM
+   * path on success.
+   */
+  async storeNotifyBearerToken(agentName: string, token: string): Promise<string | null> {
+    const trimmed = (token || '').trim();
+    if (!trimmed) {
+      throw new Error('Bearer token is required and cannot be empty.');
+    }
+    if (trimmed.length > AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH) {
+      throw new Error(`Bearer token is too long (max ${AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH} characters).`);
+    }
+
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getNotifyTokenSsmPath(agentName);
+
+    try {
+      await this.ssmClient.send(new PutParameterCommand({
+        Name: ssmPath,
+        Value: trimmed,
+        Type: 'SecureString',
+        Overwrite: true,
+        Description: `Static invocation-notification bearer token for agent ${agentName}`
+      }));
+
+      console.log(`✅ AgentDynamoDBService: Stored notify bearer token at ${ssmPath}`);
+      return ssmPath;
+    } catch (error: any) {
+      // Never include the token value in the error.
+      const errorMsg = error?.message || error?.name || 'Unknown error';
+      console.error(`❌ AgentDynamoDBService: Failed to store notify bearer token at ${ssmPath}:`, error);
+      throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission on that path prefix.`);
+    }
+  }
+
+  /**
+   * Retrieve a static invocation-notification Bearer Token from SSM.
+   * Returns the decrypted token string, or null if not found.
+   */
+  async getNotifyBearerToken(agentName: string): Promise<string | null> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+
+    const ssmPath = this.getNotifyTokenSsmPath(agentName);
+
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({
+        Name: ssmPath,
+        WithDecryption: true
+      }));
+
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        console.warn(`⚠️ AgentDynamoDBService: No notify bearer token found at ${ssmPath}`);
+        return null;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to retrieve notify bearer token at ${ssmPath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a static invocation-notification Bearer Token from SSM Parameter Store.
+   */
+  async deleteNotifyBearerToken(agentName: string): Promise<boolean> {
+    if (!await this.ensureClient() || !this.ssmClient) {
+      return false;
+    }
+
+    const ssmPath = this.getNotifyTokenSsmPath(agentName);
+
+    try {
+      await this.ssmClient.send(new DeleteParameterCommand({ Name: ssmPath }));
+      console.log(`✅ AgentDynamoDBService: Deleted notify bearer token at ${ssmPath}`);
+      return true;
+    } catch (error: any) {
+      if (error.name === 'ParameterNotFound') {
+        return true;
+      }
+      console.error(`❌ AgentDynamoDBService: Failed to delete notify bearer token at ${ssmPath}:`, error);
+      return false;
     }
   }
 

@@ -158,7 +158,7 @@ source agentcore/deployment/.venv/bin/activate
 **AWS Errors**: Verify credentials and Bedrock model access:
 ```bash
 aws sts get-caller-identity
-aws bedrock-runtime converse --model-id anthropic.claude-3-haiku-20240307-v1:0 --messages '[{"role":"user","content":[{"text":"test"}]}]' --region us-east-1
+aws bedrock-runtime converse --model-id global.anthropic.claude-haiku-4-5-20251001-v1:0 --messages '[{"role":"user","content":[{"text":"test"}]}]' --region us-east-1
 ```
 
 ### Verbose Mode

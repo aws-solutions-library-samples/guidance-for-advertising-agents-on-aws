@@ -233,7 +233,18 @@ export interface EnrichedAgent {
 
   // A2A protocol support
   is_a2a?: boolean; // Whether this agent uses A2A JSON-RPC protocol
-  a2a_auth_type?: 'none' | 'oauth' | 'iam'; // Auth type for A2A endpoint
+  a2a_auth_type?: 'none' | 'oauth' | 'iam' | 'bearer'; // Auth type for A2A endpoint
+
+  // Invocation notification hook (independent of A2A/is_a2a above)
+  notify_on_invocation?: {
+    endpoint: string;
+    auth_type: 'none' | 'iam' | 'bearer';
+    bearer_token?: {
+      hasToken: boolean;
+      ssmPath?: string;
+      expiresAt?: string;
+    };
+  };
 }
 
 export interface TabConfiguration {
@@ -276,7 +287,7 @@ export interface PendingSpecialistInvocation {
 
 // --- Nova Sonic & Client-Side Visualization Types ---
 
-export type ViewMode = 'text-only' | 'summary-visuals' | 'visuals-only';
+export type ViewMode = 'text-visuals' | 'summary-visuals';
 
 export interface VisualizationAnalysisResult {
   summary: string;           // Max 5 sentences

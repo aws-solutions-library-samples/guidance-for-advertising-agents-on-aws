@@ -1,140 +1,14 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, ViewChild, ChangeDetectorRef, NgZone } from '@angular/core';
-import { AgentDynamoDBService } from '../../services/agent-dynamodb.service';
+import { AgentDynamoDBService, AgentConfiguration, ExternalAgentConfig, MCPServerConfig, NotifyOnInvocationConfig } from '../../services/agent-dynamodb.service';
 import { AgentConfigService } from '../../services/agent-config.service';
 import { BedrockService } from '../../services/bedrock.service';
 import { AgentEditorPanelComponent } from '../agent-editor-panel/agent-editor-panel.component';
 import { AttachedDocument, generateFullAgentConfig } from '../agent-editor-panel/agent-editor-ai.helpers';
 import { AVAILABLE_TEMPLATES } from '../agent-editor-panel/agent-editor-panel.constants';
 
-/**
- * MCP Server configuration for connecting to external MCP tools
- * Follows the Strands Agents MCP integration pattern
- */
-export interface MCPServerConfig {
-  /** Unique identifier for this MCP server configuration */
-  id: string;
-  /** Display name for the MCP server */
-  name: string;
-  /** Transport type: 'stdio' for command-line tools, 'http' for HTTP-based servers */
-  transport: 'stdio' | 'http' | 'sse';
-  /** For stdio transport: the command to run (e.g., 'uvx', 'python', 'npx') */
-  command?: string;
-  /** For stdio transport: arguments to pass to the command */
-  args?: string[];
-  /** For http/sse transport: the URL of the MCP server */
-  url?: string;
-  /** Optional environment variables to set when running the command */
-  env?: Record<string, string>;
-  /** Optional HTTP headers for authentication (e.g., {"Authorization": "Bearer token"}) */
-  headers?: Record<string, string>;
-  /** Optional prefix to add to all tool names from this server (prevents conflicts) */
-  prefix?: string;
-  /** Optional list of tool names to allow (whitelist) */
-  allowedTools?: string[];
-  /** Optional list of tool names to reject (blacklist) */
-  rejectedTools?: string[];
-  /** Whether this MCP server is enabled */
-  enabled: boolean;
-  /** Optional description of what this MCP server provides */
-  description?: string;
-  /** For AWS IAM authenticated endpoints */
-  awsAuth?: {
-    region: string;
-    service: string;
-  };
-  /** OAuth Bearer Token authentication */
-  oauthToken?: {
-    /** Whether a token has been stored in SSM Parameter Store */
-    hasToken: boolean;
-    /** SSM parameter path (set by backend after token storage) */
-    ssmPath?: string;
-  };
-}
-
-/**
- * External A2A (Agent-to-Agent) agent configuration
- * Allows connecting to remote agents via ARN with optional OAuth authentication
- */
-export interface ExternalAgentConfig {
-  /** Unique identifier for this external agent entry */
-  id: string;
-  /** Display name for the external agent */
-  name: string;
-  /** ARN of the remote agent (e.g., AgentCore runtime ARN or A2A endpoint) */
-  arn: string;
-  /** Whether this agent is an A2A (Agent-to-Agent) protocol agent */
-  isA2A: boolean;
-  /** Optional description of what this external agent provides */
-  description?: string;
-  /** Whether this external agent is enabled */
-  enabled: boolean;
-  /** Authentication type: 'none', 'oauth', or 'iam' */
-  authType?: 'none' | 'oauth' | 'iam';
-  /** OAuth Bearer Token authentication for A2A agents */
-  oauthToken?: {
-    /** Whether a token has been stored in SSM Parameter Store */
-    hasToken: boolean;
-    /** SSM parameter path (set after token storage) */
-    ssmPath?: string;
-  };
-  /** OAuth credentials stored in SSM (username/password for token acquisition) */
-  oauthCredentials?: {
-    /** Whether credentials have been stored in SSM Parameter Store */
-    hasCredentials: boolean;
-    /** SSM parameter path for the credentials */
-    ssmPath?: string;
-  };
-  /** AWS IAM authentication config */
-  awsAuth?: {
-    region: string;
-    service: string;
-  };
-}
-
-/**
- * Agent configuration interface matching the design document
- */
-export interface AgentConfiguration {
-  agent_id: string;
-  agent_name: string;
-  agent_display_name: string;
-  team_name: string;
-  agent_description: string;
-  tool_agent_names: string[];
-  external_agents: string[];
-  model_inputs: {
-    [agentName: string]: {
-      model_id: string;
-      max_tokens: number;
-      temperature: number;
-      top_p?: number;
-    };
-  };
-  agent_tools: string[];
-  instructions?: string;
-  color?: string;
-  injectable_values?: Record<string, string>;
-  author?: string; // User ID of the agent creator - only the author can edit/delete
-  /** MCP server configurations for external tool integration */
-  mcp_servers?: MCPServerConfig[];
-  /** Optional runtime ARN override for this agent (if different from the default shared ARN) */
-  runtime_arn?: string;
-  /** Knowledge base name this agent uses for RAG (maps to knowledge_bases in global config) */
-  knowledge_base?: string;
-  /** Structured external A2A agent configurations */
-  external_agent_configs?: ExternalAgentConfig[];
-  /** Whether this agent is exposed via the A2A JSON-RPC protocol (defaults to false) */
-  is_a2a?: boolean;
-  /** Authentication type for inbound A2A requests to this agent's endpoint */
-  a2a_auth_type?: 'none' | 'oauth' | 'iam';
-  /** OAuth credentials for this agent's A2A endpoint (stored in SSM) */
-  a2a_oauth_credentials?: {
-    /** Whether credentials have been stored in SSM Parameter Store */
-    hasCredentials: boolean;
-    /** SSM parameter path for the credentials */
-    ssmPath?: string;
-  };
-}
+// Re-export the canonical schema types (defined once in agent-dynamodb.service.ts)
+// so existing consumers importing from this file continue to work unchanged.
+export { AgentConfiguration, ExternalAgentConfig, MCPServerConfig, NotifyOnInvocationConfig };
 
 /**
  * Represents a group of agents sharing the same team_name.
@@ -692,9 +566,8 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   /**
    * Creates an empty agent configuration with default values
    * Validates: Requirement 4.3 - Default values for optional fields:
-   * - model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0' (default model)
+   * - model_id: 'global.anthropic.claude-sonnet-5' (default model)
    * - max_tokens: 8000
-   * - temperature: 0.3
    * - agent_tools: empty array
    * - color: '#6842ff' (purple accent)
    */
@@ -709,9 +582,8 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       external_agents: [],
       model_inputs: {
         default: {
-          model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
-          max_tokens: 8000,      // Validates: Requirement 4.3 - default max_tokens
-          temperature: 0.3       // Validates: Requirement 4.3 - default temperature
+          model_id: 'global.anthropic.claude-sonnet-5',
+          max_tokens: 8000       // Validates: Requirement 4.3 - default max_tokens
         }
       },
       agent_tools: [],           // Validates: Requirement 4.3 - default empty array
@@ -823,6 +695,45 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   }
 
   // ============================================
+  // AAMP Inventory Endpoint (custom property on an external agent entry)
+  // ============================================
+
+  /** Sentinel the deployment writes when no inventory endpoint is configured. */
+  private static readonly AAMP_INVENTORY_ENDPOINT_UNSET = 'not defined';
+
+  /**
+   * True when this external agent entry carries the `aampInventoryEndpoint`
+   * property.
+   *
+   * The field is opt-in per entry: only entries whose config declares the
+   * property (the AAMP seller, set by the deploy) render the editor section, so
+   * it never clutters the editor for unrelated external agents. Presence is what
+   * gates it — including when the value is the "not defined" sentinel or an
+   * empty string an operator cleared.
+   */
+  hasAampInventoryEndpoint(entry: ExternalAgentConfig | null | undefined): boolean {
+    return !!entry &&
+      Object.prototype.hasOwnProperty.call(entry, 'aampInventoryEndpoint');
+  }
+
+  /**
+   * True when the endpoint is not actually configured (empty or the deploy's
+   * "not defined" sentinel), so the UI can state plainly that inventory
+   * discovery will fail rather than implying a working default.
+   */
+  isAampInventoryEndpointUnset(entry: ExternalAgentConfig | null | undefined): boolean {
+    if (!this.hasAampInventoryEndpoint(entry)) {
+      return false;
+    }
+    const value = (entry!.aampInventoryEndpoint || '').trim();
+    return (
+      value === '' ||
+      value.toLowerCase() ===
+        AgentManagementModalComponent.AAMP_INVENTORY_ENDPOINT_UNSET
+    );
+  }
+
+  // ============================================
   // Generate Agent from Prompt + Documents
   // ============================================
 
@@ -843,7 +754,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   onGenerateAgentFileAttach(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-    const allowedTypes = ['.txt', '.md', '.json', '.csv', '.xml', '.yaml', '.yml', '.log'];
+    const allowedTypes = ['.txt', '.md', '.json', '.csv', '.xml', '.yaml', '.yml', '.log', '.jpg', '.png'];
     Array.from(input.files).forEach(file => {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       if (!allowedTypes.includes(ext) && !file.type.startsWith('text/')) return;
@@ -853,7 +764,10 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
         this.generateAgentDocs.push({ name: file.name, content: reader.result as string });
         this.cdr.markForCheck();
       };
-      reader.readAsText(file);
+      if(ext.indexOf('.jpg')==-1&&ext.indexOf('.png')==-1)
+        reader.readAsText(file);
+      else
+        reader.readAsDataURL(file);
     });
     input.value = '';
   }

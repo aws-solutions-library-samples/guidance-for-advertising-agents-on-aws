@@ -30,6 +30,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# AAMP Phase 12 (IAB buyer & seller) deploy function lives in its own file to
+# keep this script manageable. It defines deploy_aamp_agents() which relies on
+# helpers/vars defined below (print_*, aws_cmd, PYTHON_CMD, etc.) at call time.
+source "${SCRIPT_DIR}/deploy_aamp_agents.sh"
+
 # Ensure we're working from the project root directory
 cd "$PROJECT_ROOT" || {
     echo "Error: Could not change to project root directory: $PROJECT_ROOT"
@@ -47,6 +52,9 @@ SKIP_CONFIRMATIONS="${SKIP_CONFIRMATIONS:-false}"
 RESUME_AT_STEP=1
 UNIQUE_ID="${UNIQUE_ID:-}"
 CLEAN_DEPLOYMENT=true
+# AAMP (Phase 12) deploy inputs — see scripts/deploy_aamp_agents.sh
+LOCAL_AAMP_PATH="${LOCAL_AAMP_PATH:-}"
+AAMP_BRANCH="${AAMP_BRANCH:-main}"
 CLEANUP_MODE=false
 
 # Colors for output
@@ -80,6 +88,16 @@ print_success() {
 # Python environment setup
 PYTHON_CMD="python3"
 VENV_PATH="${PROJECT_ROOT}/.venv-deployment"
+
+# AgentCore Starter Toolkit is pinned and installed INTO the deployment venv so
+# the `agentcore` CLI used here is a known-good version, independent of whatever
+# (possibly old) global `agentcore` happens to be on PATH. Override the pin with
+# AGENTCORE_TOOLKIT_VERSION=x.y.z if needed.
+AGENTCORE_TOOLKIT_VERSION="${AGENTCORE_TOOLKIT_VERSION:-0.3.9}"
+AGENTCORE_BIN="${VENV_PATH}/bin/agentcore"
+# The deploy subcommand was renamed launch -> deploy in newer toolkit versions;
+# detected at setup time against the pinned binary.
+AGENTCORE_DEPLOY_SUBCMD="deploy"
 
 # Function to setup Python environment with required dependencies
 setup_python_environment() {
@@ -117,6 +135,38 @@ setup_python_environment() {
     else
         print_status "✅ Python dependencies already available"
     fi
+
+    # Install the AgentCore Starter Toolkit (pinned) INTO the venv. The user's
+    # global `agentcore` may be an older toolkit that lacks `--deployment-type`,
+    # which breaks `agentcore configure`. Installing a pinned version here and
+    # invoking it via $AGENTCORE_BIN makes deployment deterministic.
+    local installed_toolkit_version=""
+    installed_toolkit_version=$("$AGENTCORE_BIN" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+    if [ "$installed_toolkit_version" != "$AGENTCORE_TOOLKIT_VERSION" ]; then
+        print_status "Installing AgentCore Starter Toolkit ${AGENTCORE_TOOLKIT_VERSION} into deployment venv..."
+        $PYTHON_CMD -m pip install --upgrade "bedrock-agentcore-starter-toolkit==${AGENTCORE_TOOLKIT_VERSION}"
+        if [ $? -ne 0 ]; then
+            print_error "Failed to install bedrock-agentcore-starter-toolkit==${AGENTCORE_TOOLKIT_VERSION} into the deployment venv"
+            exit 1
+        fi
+        print_success "✅ AgentCore Starter Toolkit ${AGENTCORE_TOOLKIT_VERSION} installed in venv"
+    else
+        print_status "✅ AgentCore Starter Toolkit ${AGENTCORE_TOOLKIT_VERSION} already present in venv"
+    fi
+
+    if [ ! -x "$AGENTCORE_BIN" ]; then
+        print_error "agentcore CLI not found in venv at: $AGENTCORE_BIN"
+        exit 1
+    fi
+
+    # Newer toolkit versions renamed `launch` -> `deploy`. Pick whichever the
+    # pinned binary actually supports so the call sites use the right verb.
+    if "$AGENTCORE_BIN" deploy --help >/dev/null 2>&1; then
+        AGENTCORE_DEPLOY_SUBCMD="deploy"
+    elif "$AGENTCORE_BIN" launch --help >/dev/null 2>&1; then
+        AGENTCORE_DEPLOY_SUBCMD="launch"
+    fi
+    print_status "Using AgentCore CLI: $AGENTCORE_BIN (deploy verb: $AGENTCORE_DEPLOY_SUBCMD)"
 }
 
 # Function to build AWS CLI command with optional profile
@@ -505,18 +555,23 @@ prepare_a2a_handler() {
         return 1
     fi
     
+    # Ensure the pinned AgentCore CLI is available in the venv before using it.
+    if [ ! -x "$AGENTCORE_BIN" ]; then
+        setup_python_environment
+    fi
+
     # Change to agent directory for agentcore configure command
     cd "$agent_dir" || {
         print_error "❌ Failed to change to agent directory: $agent_dir"
         return 1
     }
     
-    print_status "Executing: agentcore configure -e handler.py --protocol A2A"
+    print_status "Executing: $AGENTCORE_BIN configure -e handler.py --protocol A2A"
     
     # Execute agentcore configure command and capture output
     local configure_output
     local configure_exit_code
-    configure_output=$(agentcore configure -e handler.py --protocol A2A 2>&1)
+    configure_output=$("$AGENTCORE_BIN" configure -e handler.py --protocol A2A 2>&1)
     configure_exit_code=$?
     
     # Return to project root
@@ -1512,7 +1567,7 @@ patch_global_config_kb_ids() {
 # This is a separate step so it can run independently of knowledge base deployment
 # These configs are needed by AgentCore agents for instructions and visualizations
 upload_agent_configurations() {
-    print_step "Step 8: Uploading agent configuration folders to S3..."
+    print_step "Step 7: Uploading agent configuration folders to S3..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
@@ -1598,7 +1653,7 @@ upload_agent_configurations() {
 # Function to upload agent configurations to DynamoDB for faster agent creation
 # This is called after S3 upload and provides faster access for frequently used configs
 upload_agent_configurations_to_dynamodb() {
-    print_step "Step 9: Uploading agent configurations to DynamoDB (for faster access)..."
+    print_step "Step 8: Uploading agent configurations to DynamoDB (for faster access)..."
     
     local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
     local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
@@ -2215,6 +2270,45 @@ EOF
 create_agentcore_memory() {
     print_status "Creating shared AgentCore memory for all deployed agents..."
     
+    # CHECK IDEMPOTENCY: If memory ID already exists in SSM, skip creation
+    local ssm_param_name="/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id"
+    local existing_memory_id=""
+    
+    if [ -n "$AWS_PROFILE" ]; then
+        existing_memory_id=$(aws ssm get-parameter --name "$ssm_param_name" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    else
+        existing_memory_id=$(aws ssm get-parameter --name "$ssm_param_name" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+    fi
+    
+    if [ -n "$existing_memory_id" ] && [ "$existing_memory_id" != "None" ]; then
+        print_status "✅ Shared AgentCore memory already exists (from SSM): $existing_memory_id"
+        print_status "   Skipping memory creation (idempotent)"
+        return 0
+    fi
+    
+    # Also check the local memory record file
+    local memory_record_file="${PROJECT_ROOT}/.memory-record-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    if [ -f "$memory_record_file" ]; then
+        local file_memory_id=$($PYTHON_CMD -c "
+import json
+try:
+    with open('$memory_record_file', 'r') as f:
+        data = json.load(f)
+    print(data.get('memory_record_id', ''))
+except:
+    print('')
+" 2>/dev/null)
+        
+        if [ -n "$file_memory_id" ] && [ "$file_memory_id" != "" ]; then
+            print_status "✅ Shared AgentCore memory already exists (from local file): $file_memory_id"
+            print_status "   Storing in SSM for runtime retrieval..."
+            store_agentcore_memory_id_in_ssm "$file_memory_id"
+            return 0
+        fi
+    fi
+    
+    # No existing memory found — proceed with creation
+    
     # Setup Python environment with required dependencies
     setup_python_environment
     
@@ -2448,24 +2542,21 @@ deploy_agent_via_toolkit() {
     print_status "🔧 Deploying via AgentCore Starter Toolkit (no Docker required)"
     print_status "   Agent: $agent_name → $agentcore_agent_name"
     
-    # Check if agentcore CLI is installed
-    if ! command -v agentcore &> /dev/null; then
-        print_status "Installing AgentCore Starter Toolkit CLI..."
-        pip install bedrock-agentcore-starter-toolkit --quiet 2>/dev/null || {
-            print_error "Failed to install bedrock-agentcore-starter-toolkit"
-            print_error "Install manually: pip install bedrock-agentcore-starter-toolkit"
-            return 1
-        }
-        
-        # Verify installation
-        if ! command -v agentcore &> /dev/null; then
-            print_error "agentcore CLI not found after installation"
-            print_error "Ensure pip bin directory is in your PATH"
-            return 1
-        fi
+    # Ensure the pinned AgentCore Starter Toolkit CLI is present in the venv.
+    # setup_python_environment() installs it, but that function is skipped on
+    # some runs (e.g. when an existing unique-id file is reused), so ensure it
+    # here. setup_python_environment() is idempotent.
+    if [ ! -x "$AGENTCORE_BIN" ]; then
+        print_status "AgentCore CLI not present in venv yet — setting up Python environment..."
+        setup_python_environment
+    fi
+    if [ ! -x "$AGENTCORE_BIN" ]; then
+        print_error "agentcore CLI still not found in venv at: $AGENTCORE_BIN"
+        print_error "The pinned toolkit install may have failed; check pip output above."
+        return 1
     fi
     
-    print_status "✅ AgentCore CLI available: $(agentcore --version 2>/dev/null || echo 'installed')"
+    print_status "✅ AgentCore CLI available: $("$AGENTCORE_BIN" --version 2>/dev/null || echo 'installed')"
     
     # Determine AgentCore region
     local toolkit_region="$AWS_REGION"
@@ -2701,13 +2792,14 @@ print(arn)
         print_status "✅ Using execution role: $role_arn"
     fi
     
-    local configure_cmd="agentcore configure"
+    local configure_cmd="$AGENTCORE_BIN configure"
     configure_cmd="$configure_cmd --entrypoint handler.py"
     configure_cmd="$configure_cmd --name $runtime_name"
     configure_cmd="$configure_cmd --non-interactive"
     configure_cmd="$configure_cmd --region $toolkit_region"
     configure_cmd="$configure_cmd --execution-role $role_arn"
-    
+    configure_cmd="$configure_cmd --deployment-type container"
+
     if [ -f "${agent_dir}/requirements.txt" ]; then
         configure_cmd="$configure_cmd --requirements-file ${agent_dir}/requirements.txt"
     fi
@@ -2722,9 +2814,9 @@ print(arn)
     
     print_status "✅ Agent configured successfully"
     
-    # Run agentcore launch with environment variables
+    # Run agentcore deploy (older toolkit: launch) with environment variables
     print_status "Deploying agent via AgentCore CLI (CodeBuild)..."
-    local deploy_cmd="agentcore launch"
+    local deploy_cmd="$AGENTCORE_BIN $AGENTCORE_DEPLOY_SUBCMD"
     deploy_cmd="$deploy_cmd --agent $runtime_name"
     deploy_cmd="$deploy_cmd --auto-update-on-conflict"
     
@@ -2739,7 +2831,26 @@ print(arn)
     deploy_cmd="$deploy_cmd --env DOCKER_CONTAINER=1"
     deploy_cmd="$deploy_cmd --env PYTHONDONTWRITEBYTECODE=1"
     deploy_cmd="$deploy_cmd --env PYTHONPATH=/app/agentcore/shared"
-    
+
+    # KB RetrieveAndGenerate model. Current Claude models are INFERENCE_PROFILE-only
+    # (no ON_DEMAND), so this must be an account-scoped inference-profile ARN — the
+    # hardcoded foundation-model default in knowledge_base_helper.py is a decommissioned
+    # legacy model. Resolve the account id (profile-aware) to build the ARN.
+    local toolkit_account_id=""
+    if [ -n "$AWS_PROFILE" ]; then
+        toolkit_account_id=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
+    else
+        toolkit_account_id=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null || echo "")
+    fi
+    toolkit_account_id=$(echo "$toolkit_account_id" | tr -d '\n\r\t ')
+    if [ -n "$toolkit_account_id" ] && [ "$toolkit_account_id" != "None" ]; then
+        local kb_model_arn="arn:aws:bedrock:${toolkit_region}:${toolkit_account_id}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        deploy_cmd="$deploy_cmd --env KB_MODEL_ARN=$kb_model_arn"
+        print_status "KB generation model: $kb_model_arn"
+    else
+        print_warning "Could not resolve account id — KB_MODEL_ARN not set; KB retrieval will use the (legacy) default and likely fail"
+    fi
+
     if [ -n "$knowledgebases" ]; then
         deploy_cmd="$deploy_cmd --env KNOWLEDGEBASES=$knowledgebases"
     fi
@@ -2790,7 +2901,7 @@ print(arn)
         deploy_cmd="$deploy_cmd --env APPSYNC_CHANNEL_NAMESPACE=$appsync_channel_namespace"
     fi
     
-    print_status "Running: agentcore launch --agent $runtime_name --auto-update-on-conflict [+env vars]"
+    print_status "Running: $AGENTCORE_BIN $AGENTCORE_DEPLOY_SUBCMD --agent $runtime_name --auto-update-on-conflict [+env vars]"
     (cd "$agent_dir" && eval $deploy_cmd)
     
     if [ $? -ne 0 ]; then
@@ -2803,35 +2914,52 @@ print(arn)
     # Retrieve the runtime ARN from agentcore status and update tracking file
     print_status "Retrieving runtime information..."
     local status_output=""
-    status_output=$(cd "$agent_dir" && agentcore status --agent "$runtime_name" --verbose 2>/dev/null || echo "")
+    status_output=$(cd "$agent_dir" && "$AGENTCORE_BIN" status --agent "$runtime_name" --verbose 2>/dev/null || echo "")
     
-    # Get runtime ARN from AWS API
+    # Get runtime ARN from AWS API (with retry — the runtime may take a few seconds to appear)
     local deployed_runtime_id=""
-    if [ -n "$AWS_PROFILE" ]; then
-        deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --profile "$AWS_PROFILE" --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    for r in data.get('agentRuntimes',[]):
-        if r.get('agentRuntimeName') == '${runtime_name}':
-            print(r.get('agentRuntimeId',''))
-            break
-except: pass
-" 2>/dev/null)
-    else
-        deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    for r in data.get('agentRuntimes',[]):
-        if r.get('agentRuntimeName') == '${runtime_name}':
-            print(r.get('agentRuntimeId',''))
-            break
-except: pass
-" 2>/dev/null)
-    fi
+    local max_retries=5
+    local retry_delay=5
+    local attempt=0
     
-    deployed_runtime_id=$(echo "$deployed_runtime_id" | tr -d '\n\r\t ')
+    while [ $attempt -lt $max_retries ]; do
+        attempt=$((attempt + 1))
+        
+        if [ -n "$AWS_PROFILE" ]; then
+            deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --profile "$AWS_PROFILE" --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for r in data.get('agentRuntimes',[]):
+        if r.get('agentRuntimeName') == '${runtime_name}':
+            print(r.get('agentRuntimeId',''))
+            break
+except: pass
+" 2>/dev/null)
+        else
+            deployed_runtime_id=$(aws bedrock-agentcore-control list-agent-runtimes --region "$toolkit_region" --output json 2>/dev/null | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for r in data.get('agentRuntimes',[]):
+        if r.get('agentRuntimeName') == '${runtime_name}':
+            print(r.get('agentRuntimeId',''))
+            break
+except: pass
+" 2>/dev/null)
+        fi
+        
+        deployed_runtime_id=$(echo "$deployed_runtime_id" | tr -d '\n\r\t ')
+        
+        if [ -n "$deployed_runtime_id" ] && [ "$deployed_runtime_id" != "None" ]; then
+            break
+        fi
+        
+        if [ $attempt -lt $max_retries ]; then
+            print_status "Runtime not yet visible in API (attempt $attempt/$max_retries), waiting ${retry_delay}s..."
+            sleep $retry_delay
+        fi
+    done
     
     if [ -n "$deployed_runtime_id" ] && [ "$deployed_runtime_id" != "None" ]; then
         print_status "✅ Runtime ID: $deployed_runtime_id"
@@ -2912,7 +3040,7 @@ TOOLKIT_TRACKING_EOF
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 10: Deploying AgentCore agents (after MCP Gateway)..."
+    print_step "Step 9: Deploying AgentCore agents (after MCP Gateway)..."
     
     # Ensure ADCP Gateway URL is available (important for resume scenarios)
     ensure_adcp_gateway_url
@@ -3154,15 +3282,15 @@ EOF
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
-        print_success "🎉 Step 8 Complete: AgentCore agents have been deployed!"
+        print_success "🎉 Step 9 Complete: AgentCore agents have been deployed!"
         print_status "The following steps remain:"
-        print_status "  - Step 9: Generate AWS configuration"
+        print_status "  - Step 10: Generate AWS configuration"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
-            print_status "Deployment paused after Step 8. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 9 (UI Config)."
+            print_status "Deployment paused after Step 9. You can resume later by running the script again."
+            print_status "Current progress has been saved and the script will resume from Step 10 (UI Config)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
@@ -3281,7 +3409,7 @@ except:
 
 # Function to generate UI configuration
 generate_ui_config() {
-    print_step "Step 11: Generating UI configuration..."
+    print_step "Step 10: Generating UI configuration..."
     
     # Create assets directory
     ANGULAR_ASSETS_DIR="${PROJECT_ROOT}/bedrock-adtech-demo/src/assets"
@@ -4488,6 +4616,14 @@ parse_args() {
                 RESUME_AT_STEP="$2"
                 shift 2
                 ;;
+            --local-aamp)
+                LOCAL_AAMP_PATH="$2"
+                shift 2
+                ;;
+            --aamp-branch)
+                AAMP_BRANCH="$2"
+                shift 2
+                ;;
             --non-interactive)
                 INTERACTIVE_MODE=false
                 shift
@@ -4525,6 +4661,8 @@ show_usage() {
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
     echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
+    echo "  --local-aamp PATH        Use local IAB AAMP repos (dir containing seller-agent/ and buyer-agent/) instead of cloning"
+    echo "  --aamp-branch BRANCH     Branch to checkout in IAB repos when cloning (default: main)"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4536,8 +4674,8 @@ show_usage() {
     echo "  $0 --unique-id abc123                # Use specific unique ID"
     echo "  $0 --region us-east-1                # Deploy in specific region"
     echo "  $0 --resume-at 5                     # Resume from step 5"
-    echo "  $0 --resume-at 9                     # Resume from step 9 (DynamoDB upload)"
-    echo "  $0 --resume-at 8 --skip-confirmations # Resume from step 8 without update confirmations"
+    echo "  $0 --resume-at 9                     # Resume from step 9 (Deploy AgentCore agents)"
+    echo "  $0 --resume-at 8 --skip-confirmations # Resume from step 8 (DynamoDB upload) without update confirmations"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4666,7 +4804,7 @@ confirm_deployment_steps() {
 # Function to warm up agent runtimes by sending test prompts
 # This helps initialize the agent containers and reduces cold start latency
 warmup_agent_runtimes() {
-    print_step "Step 12: Warming up agent runtimes..."
+    print_step "Step 11: Warming up agent runtimes..."
     
     local global_config_file="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
     local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
@@ -4688,16 +4826,22 @@ warmup_agent_runtimes() {
     # Setup Python environment
     setup_python_environment
     
-    # Install bedrock-agentcore if not already installed
-    if ! $PYTHON_CMD -c "import bedrock_agentcore" 2>/dev/null; then
-        print_status "Installing bedrock-agentcore package for warmup..."
-        $PYTHON_CMD -m pip install bedrock-agentcore --quiet
+    # Warmup uses the AgentCore data-plane client (bedrock-agentcore
+    # invoke_agent_runtime) via boto3 — NOT the classic Bedrock Agents SDK.
+    # Ensure boto3 is new enough to expose that service client.
+    if ! $PYTHON_CMD -c "import boto3; boto3.client('bedrock-agentcore', region_name='${AWS_REGION:-us-east-1}')" 2>/dev/null; then
+        print_status "Upgrading boto3 to expose the AgentCore runtime client..."
+        $PYTHON_CMD -m pip install --upgrade boto3 botocore --quiet
     fi
     
     print_status "Reading agent configurations and sending warmup prompts..."
     print_status "This helps reduce cold start latency for first real requests."
     
-    # Use Python to extract agents and send warmup prompts
+    # Use Python to extract agents and send warmup prompts.
+    # Export the vars the heredoc reads via os.environ — they are plain shell
+    # variables otherwise and would be empty in the Python subprocess (which
+    # would make it look for ./.agentcore-agents--.json).
+    export STACK_PREFIX UNIQUE_ID AWS_REGION AWS_PROFILE PROJECT_ROOT
     local warmup_result
     warmup_result=$($PYTHON_CMD << 'WARMUP_SCRIPT'
 import json
@@ -4717,76 +4861,75 @@ global_config_file = f"{project_root}/agentcore/deployment/agent/global_configur
 agentcore_info_file = f"{project_root}/.agentcore-agents-{stack_prefix}-{unique_id}.json"
 
 def send_warmup_prompt(agent_name, runtime_arn, session_id):
-    """Send a simple warmup prompt to an agent"""
+    """Send a warmup prompt via the AgentCore runtime data-plane API.
+
+    Uses bedrock-agentcore invoke_agent_runtime EXCLUSIVELY — never the
+    classic Bedrock Agents (bedrock-agent-runtime) invoke_agent API. This
+    mirrors the production invoke path in
+    agent/shared/a2a_client_tools.py so warmup exercises the same code path
+    the runtimes actually serve.
+    """
+    # A real AgentCore runtime ARN is required to invoke. The legacy state
+    # format stored the agent name instead of an ARN; we cannot invoke that,
+    # so report it honestly rather than claiming a successful warmup.
+    if not isinstance(runtime_arn, str) or not runtime_arn.startswith(
+        "arn:aws:bedrock-agentcore:"
+    ):
+        print(
+            f"  ⚠️  {agent_name} skipped: no AgentCore runtime ARN ({runtime_arn!r})",
+            file=sys.stderr,
+        )
+        return False, agent_name
+
     try:
         import boto3
         from botocore.config import Config
-        
+
         # Create boto3 session
         if aws_profile:
             session = boto3.Session(profile_name=aws_profile)
         else:
             session = boto3.Session()
-        
-        # Create AgentCore runtime client
+
         config = Config(
             connect_timeout=30,
             read_timeout=120,
             retries={'max_attempts': 2}
         )
-        
+
+        # AgentCore data-plane client (NOT bedrock-agent-runtime).
         client = session.client(
-            'bedrock-agent-runtime',
+            'bedrock-agentcore',
             region_name=aws_region,
             config=config
         )
-        
-        # Simple warmup prompt
-        warmup_prompt = f"Hello, please respond with a brief acknowledgment that you are ready."
-        
+
+        payload = json.dumps(
+            {"prompt": "Hello, please respond with a brief acknowledgment that you are ready."}
+        ).encode("utf-8")
+
         print(f"  🔄 Warming up {agent_name}...", file=sys.stderr)
-        
-        # Invoke the agent with a simple prompt
-        response = client.invoke_agent(
-            agentId=runtime_arn.split('/')[-1] if '/' in runtime_arn else runtime_arn,
-            agentAliasId='TSTALIASID',  # Default test alias
-            sessionId=session_id,
-            inputText=warmup_prompt,
-            enableTrace=False
+
+        # AgentCore runtime invoke. runtimeSessionId must be 33-256 chars.
+        response = client.invoke_agent_runtime(
+            agentRuntimeArn=runtime_arn,
+            runtimeSessionId=session_id,
+            payload=payload,
+            contentType="application/json",
+            accept="application/json",
         )
-        
-        # Consume the response stream
-        for event in response.get('completion', []):
-            pass
-        
+
+        # Drain the response body so the runtime actually executes the turn.
+        body = response.get("response", response.get("body", b""))
+        if hasattr(body, "read"):
+            body.read()
+
         print(f"  ✅ {agent_name} warmed up successfully", file=sys.stderr)
         return True, agent_name
-        
+
     except Exception as e:
-        # Try alternative method using bedrock-agentcore SDK
-        try:
-            from bedrock_agentcore.runtime import RuntimeClient
-            
-            print(f"  🔄 Trying AgentCore SDK for {agent_name}...", file=sys.stderr)
-            
-            runtime_client = RuntimeClient(
-                runtime_name=runtime_arn,
-                region=aws_region
-            )
-            
-            # Send warmup message
-            response = runtime_client.invoke(
-                session_id=session_id,
-                prompt="Hello, please acknowledge you are ready.",
-                stream=False
-            )
-            
-            print(f"  ✅ {agent_name} warmed up via SDK", file=sys.stderr)
-            return True, agent_name
-            
-        except Exception as sdk_error:
-            print(f"  ⚠️  {agent_name} warmup skipped: {str(e)[:50]}", file=sys.stderr)
-            return False, agent_name
+        print(f"  ⚠️  {agent_name} warmup skipped: {str(e)[:80]}", file=sys.stderr)
+        return False, agent_name
 
 def main():
     try:
@@ -4837,7 +4980,8 @@ def main():
         
         # Process agents sequentially with delays to avoid rate limits
         for agent_name, runtime_arn in deployed_map.items():
-            session_id = f"warmup-{uuid.uuid4().hex[:8]}"
+            # AgentCore requires runtimeSessionId to be 33-256 chars.
+            session_id = f"warmup-{uuid.uuid4().hex}{uuid.uuid4().hex}"[:48]
             success, name = send_warmup_prompt(agent_name, runtime_arn, session_id)
             
             if success:
@@ -4889,6 +5033,140 @@ WARMUP_SCRIPT
         print_status "   Agents will still work but may have initial cold start latency"
     fi
     
+    return 0
+}
+
+# Function to optionally deploy the external A2A agents
+# Prompts the user at the end of deployment and, if accepted, runs
+# external-agents/deploy_external_agents.py for each external agent,
+# passing in the variables this script already knows (stack prefix, unique
+# id, region, profile, generated-content S3 bucket, and Cognito OAuth config).
+prompt_and_deploy_external_agents() {
+    local deploy_script="${PROJECT_ROOT}/external-agents/deploy_external_agents.py"
+
+    # Nothing to do if the deployer isn't present
+    if [ ! -f "$deploy_script" ]; then
+        return 0
+    fi
+
+    # Discover deployable external agents (subdirectories containing agentcore.json)
+    local external_agents=()
+    local agent_dir
+    for agent_dir in "${PROJECT_ROOT}/external-agents"/*/; do
+        if [ -f "${agent_dir}agentcore.json" ]; then
+            external_agents+=("$(basename "$agent_dir")")
+        fi
+    done
+
+    if [ ${#external_agents[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    echo ""
+    print_status "=========================================="
+    print_status "🔌 OPTIONAL: External A2A Agents"
+    print_status "=========================================="
+    print_status "Found ${#external_agents[@]} external agent(s): ${external_agents[*]}"
+    print_status "These deploy to their own AgentCore runtimes and are invoked over the A2A protocol."
+    print_warning "⚠️  Requires Docker (with buildx) running — external agents build ARM64 container images."
+
+    # Respect non-interactive / skip-confirmations: default to NOT deploying
+    if [ "$INTERACTIVE_MODE" != true ] || [ "$SKIP_CONFIRMATIONS" = true ]; then
+        print_status "Non-interactive mode: skipping external agent deployment."
+        print_status "Deploy later with:"
+        print_status "  python external-agents/deploy_external_agents.py --agent <Name> --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+        return 0
+    fi
+
+    printf "Deploy external A2A agents now? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        print_status "Skipping external agent deployment."
+        print_status "You can deploy them later with:"
+        print_status "  python external-agents/deploy_external_agents.py --agent <Name> --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+        return 0
+    fi
+
+    # Earlier steps (e.g. warmup) export AWS_PROFILE unconditionally, so when no
+    # profile is in use it leaks into the environment as an empty string. boto3
+    # and the AWS CLI then try to load a profile named "" and fail with
+    # "ProfileNotFound: The config profile () could not be found". Clear it so
+    # subprocesses fall back to the default credential chain.
+    if [ -z "${AWS_PROFILE:-}" ]; then
+        unset AWS_PROFILE
+    fi
+
+    # External agents build ARM64 images — Docker must be available and running
+    if ! command -v docker &> /dev/null || ! docker info &> /dev/null 2>&1; then
+        print_error "Docker is required to build external agents but is not installed/running."
+        print_error "Start Docker and re-run, or deploy the external agents manually later."
+        return 1
+    fi
+
+    # Ensure the deployment venv (with boto3) and $PYTHON_CMD are available
+    setup_python_environment
+
+    # Resolve the generated-content S3 bucket (used by S3-backed agents such as AdCreationAgent).
+    # Passing it is harmless for agents that don't need S3 — the deployer only
+    # grants bucket-scoped S3 access when an agent declares an S3 need.
+    local infra_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local content_bucket=$(get_stack_output "$infra_services_stack" "GeneratedContentBucketName")
+    if [ -n "$content_bucket" ] && [ "$content_bucket" != "None" ]; then
+        print_status "Generated-content S3 bucket: $content_bucket"
+    else
+        content_bucket=""
+        print_warning "⚠️  Could not resolve generated-content bucket — S3-backed agents (e.g. AdCreationAgent) may fail."
+    fi
+
+    # Resolve Cognito OAuth config for oauth-based external agents. setup_a2a_auth
+    # exports POOL_ID/CLIENT_ID/DISCOVERY_URL; the deployer reads the A2A_* env vars.
+    if setup_a2a_auth "external-agents"; then
+        export A2A_DISCOVERY_URL="$DISCOVERY_URL"
+        export A2A_CLIENT_ID="$CLIENT_ID"
+        export A2A_POOL_ID="$POOL_ID"
+        print_status "✅ Resolved Cognito OAuth config for external agents"
+    else
+        print_warning "⚠️  Could not resolve Cognito OAuth config — OAuth-based external agents may fail."
+        print_warning "   IAM-based agents (e.g. AdCreationAgent) will still deploy."
+    fi
+
+    local deployed=()
+    local failed=()
+
+    for agent_name in "${external_agents[@]}"; do
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_status "Deploying external agent: $agent_name"
+        print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        # Pass through the variables this script already knows
+        local cmd="$PYTHON_CMD \"$deploy_script\" --agent $agent_name --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+
+        if [ -n "$content_bucket" ]; then
+            cmd="$cmd --s3-bucket $content_bucket"
+        fi
+
+        if [ -n "$AWS_PROFILE" ]; then
+            cmd="$cmd --profile $AWS_PROFILE"
+        fi
+
+        print_status "Running: $cmd"
+        if eval "$cmd"; then
+            print_success "✅ External agent deployed: $agent_name"
+            deployed+=("$agent_name")
+        else
+            print_warning "⚠️  Failed to deploy external agent: $agent_name (continuing with others)"
+            failed+=("$agent_name")
+        fi
+    done
+
+    print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    print_status "External Agent Deployment Summary"
+    print_status "  Deployed (${#deployed[@]}): ${deployed[*]:-none}"
+    if [ ${#failed[@]} -gt 0 ]; then
+        print_warning "  Failed (${#failed[@]}): ${failed[*]}"
+    fi
+    print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
     return 0
 }
 
@@ -5019,6 +5297,20 @@ main() {
     if [ "$RESUME_AT_STEP" -le 11 ]; then
         warmup_agent_runtimes
     fi
+
+    # Phase 12: Deploy AAMP agents (IAB buyer & seller), resolve config from
+    # template with their runtime ARNs, upload to DynamoDB, and sync S3/CloudFront.
+    if [ "$RESUME_AT_STEP" -le 12 ]; then
+        deploy_aamp_agents
+    fi
+    
+    # Optional: deploy external A2A agents (prompts the user; passes variables automatically)
+    # --- TEMPORARILY BACKED OUT: AdCreationAgent + AdCPSellerAgent ---
+    # The external A2A agents (AdCreationAgent, AdCPSellerAgent) are temporarily
+    # disabled. The external-agents/ directory has also been renamed to
+    # _external-agents/ so discovery finds nothing. To restore: uncomment the
+    # call below AND rename _external-agents/ back to external-agents/.
+    # prompt_and_deploy_external_agents
     
     # Final summary
     echo ""

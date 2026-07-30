@@ -43,7 +43,13 @@ export class AgentVisualizationService {
       // ADCP-specific visualizations
       adcpInventoryData?: any;      // get_products results
       adcpMediaBuyData?: any;       // create_media_buy results
+      adcpMediaBuysData?: any;      // get_media_buys results
       adcpDeliveryData?: any;       // get_media_buy_delivery results
+      adcpUpdateData?: any;         // update_media_buy results
+      adcpContentStandardsData?: any; // get_content_standards results
+      adcpPropertyListData?: any;   // get_property_list results
+      adcpCalibrateData?: any;      // calibrate_content results
+      adcpGovernanceData?: any;     // check_governance results
       adcpSignalsData?: any;        // get_signals results
     }
   ): void {
@@ -61,7 +67,13 @@ export class AgentVisualizationService {
       visualData.decisionTreeData ||
       visualData.adcpInventoryData ||
       visualData.adcpMediaBuyData ||
+      visualData.adcpMediaBuysData ||
       visualData.adcpDeliveryData ||
+      visualData.adcpUpdateData ||
+      visualData.adcpContentStandardsData ||
+      visualData.adcpPropertyListData ||
+      visualData.adcpCalibrateData ||
+      visualData.adcpGovernanceData ||
       visualData.adcpSignalsData;
 
     if (!hasData) {
@@ -116,7 +128,16 @@ export class AgentVisualizationService {
       visualData.barChartData ||
       visualData.donutChartData ||
       visualData.timelineData ||
-      visualData.decisionTreeData
+      visualData.decisionTreeData ||
+      visualData.adcpInventoryData ||
+      visualData.adcpMediaBuyData ||
+      visualData.adcpMediaBuysData ||
+      visualData.adcpDeliveryData ||
+      visualData.adcpUpdateData ||
+      visualData.adcpContentStandardsData ||
+      visualData.adcpPropertyListData ||
+      visualData.adcpCalibrateData ||
+      visualData.adcpGovernanceData
     );
   }
 
@@ -151,6 +172,14 @@ export class AgentVisualizationService {
     if (visualData.timelineData) count++;
     if (visualData.decisionTreeData) count++;
     if (visualData.adcpInventoryData) count++;
+    if (visualData.adcpMediaBuyData) count++;
+    if (visualData.adcpMediaBuysData) count++;
+    if (visualData.adcpDeliveryData) count++;
+    if (visualData.adcpUpdateData) count++;
+    if (visualData.adcpContentStandardsData) count++;
+    if (visualData.adcpPropertyListData) count++;
+    if (visualData.adcpCalibrateData) count++;
+    if (visualData.adcpGovernanceData) count++;
 
     return count;
   }

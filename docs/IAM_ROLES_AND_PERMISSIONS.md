@@ -26,6 +26,14 @@ The ecosystem consists of several components that require specific IAM roles:
 │  │  • ECR Image Pull                                                     │  │
 │  │  • CloudWatch Logging                                                 │  │
 │  │  • X-Ray Tracing                                                      │  │
+│  │  • Invoke other AgentCore runtimes (account-wide, A2A to externals)   │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │ A2A (IAM/SigV4 or Cognito JWT)         │
+│                                    ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │        External Agent Execution Role(s) (independently deployed)      │  │
+│  │  • ECR Image Pull  • CloudWatch/X-Ray  • Bedrock Model Invocation      │  │
+│  │  • S3 or DynamoDB access (only if declared, scoped to that agent)     │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -91,7 +99,7 @@ The ecosystem consists of several components that require specific IAM roles:
 | Bedrock | `InvokeAgent`, `InvokeModel`, `GetAgent`, `ListAgents`, `GetKnowledgeBase`, `ListKnowledgeBases`, `Retrieve`, `RetrieveAndGenerate` | `arn:aws:bedrock:{region}:{account}:*`, `arn:aws:bedrock:*::foundation-model/*` | Invoke AI models and knowledge bases |
 | Bedrock AgentCore | `InvokeAgentRuntime`, `InvokeAgentRuntimeForUser`, `GetMemory`, `ListMemories`, `RetrieveMemoryRecords`, `GetAgentRuntime`, `ListAgentRuntimes` | `arn:aws:bedrock-agentcore:*:{account}:*` | Invoke agent runtimes and access memory |
 | S3 | `GetObject`, `PutObject`, `DeleteObject`, `ListBucket` | Data bucket, Generated content bucket | Upload/download files |
-| SSM | `GetParameter` | `/{stack-prefix}/*` | Read configuration parameters |
+| SSM | `GetParameter`, `PutParameter`, `DeleteParameter` | `/{stack-prefix}/*` | Read configuration parameters, and store/rotate/remove operator-pasted secrets (A2A bearer tokens, A2A/MCP OAuth credentials, and invocation-notification bearer tokens) written directly from the browser via the Agent Management UI |
 | DynamoDB | `GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan` | `{stack-prefix}-*` tables | Session and state management |
 | Lambda | `InvokeFunction` | `{stack-prefix}-*` functions | Invoke helper functions |
 | CloudWatch Logs | `CreateLogGroup`, `CreateLogStream`, `PutLogEvents` | `{stack-prefix}-*` log groups | Client-side logging |
@@ -126,6 +134,7 @@ The ecosystem consists of several components that require specific IAM roles:
 | Bedrock AgentCore Memory | `RetrieveMemoryRecords`, `ListMemoryRecords`, `CreateEvent`, `List*`, `Create*`, `Delete*`, `Update*`, `Start*`, `Stop*` | `arn:aws:bedrock-agentcore:{region}:{account}:memory/*` | Full memory management |
 | Bedrock AgentCore Gateway | `*Gateway*`, `*WorkloadIdentity`, `*CredentialProvider`, `*Token*`, `*Access*` | `arn:aws:bedrock-agentcore:*:{account}:*gateway*` | MCP Gateway access |
 | Bedrock AgentCore Gateway Invoke | `InvokeGateway`, `GetGateway`, `ListGateways`, `ListGatewayTargets`, `GetGatewayTarget` | `arn:aws:bedrock-agentcore:*:{account}:*` | Invoke any gateway on the account |
+| Bedrock AgentCore Runtime Invoke | `InvokeAgentRuntime`, `InvokeAgentRuntimeForUser` | `arn:aws:bedrock-agentcore:*:{account}:runtime/*`, `.../runtime/*/runtime-endpoint/*` | Invoke **other** AgentCore runtimes over A2A (e.g. `AdFabricAgent` → `AdCreationAgent`/`AAMPSellerAgent`). Scoped to an account-wide runtime *resource* wildcard (not a principal wildcard) so external agents work regardless of deploy order — see "External Agent Execution Roles" below |
 | Bedrock AgentCore Identity | `GetWorkloadAccessToken`, `GetWorkloadAccessTokenForJWT`, `GetWorkloadAccessTokenForUserId` | Workload identity directory | Agent identity tokens |
 | S3 | `GetObject`, `ListBucket`, `PutObject` | Data buckets, Generated content buckets | Read/write data |
 | KMS | `DescribeKey`, `CreateGrant`, `Decrypt`, `GenerateDataKey` | KMS keys (via AgentCore service) | Encryption for memory |
@@ -136,6 +145,51 @@ The ecosystem consists of several components that require specific IAM roles:
 | CloudWatch | `PutMetricData` | `arn:aws:cloudwatch:*:{account}:*:*` | Metrics publishing |
 | X-Ray | `PutTraceSegments`, `PutTelemetryRecords`, `GetSamplingRules`, `GetSamplingTargets` | `*` | Distributed tracing |
 | DynamoDB | `GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan`, `DescribeTable` | All tables | State persistence |
+
+---
+
+## 2a. External Agent Execution Roles
+
+**Role Name:** `AgentCoreExternal-{agent-name}-{region}`
+
+**Purpose:** Least-privilege execution role for standalone A2A agents deployed via `external-agents/deploy_external_agents.py` (e.g. `AdCreationAgent`, `AAMPSellerAgent`, `AdCPSellerAgent`). These are deployed independently of the main `scripts/deploy-ecosystem.sh` flow and may run in the same or a different account/region than the main stack — see [`external-agents/README.md`](../external-agents/README.md).
+
+**Trust Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Service": "bedrock-agentcore.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+**Permissions:**
+
+| Service | Actions | Resources | Purpose |
+|---------|---------|-----------|---------|
+| ECR | `GetAuthorizationToken` | `*` | Authenticate to ECR |
+| ECR | `BatchCheckLayerAvailability`, `GetDownloadUrlForLayer`, `BatchGetImage` | `arn:aws:ecr:{region}:{account}:repository/*` | Pull the agent's container image |
+| CloudWatch Logs | `CreateLogGroup`, `CreateLogStream`, `PutLogEvents` | `arn:aws:logs:{region}:{account}:*` | Agent logging |
+| X-Ray | `PutTraceSegments`, `PutTelemetryRecords`, `GetSamplingRules`, `GetSamplingTargets` | `*` | Distributed tracing |
+| CloudWatch | `PutMetricData` | `*` | Metrics publishing |
+| Bedrock AgentCore Identity | `GetWorkloadAccessToken`, `GetWorkloadAccessTokenForJWT`, `GetWorkloadAccessTokenForUserId` | `arn:aws:bedrock-agentcore:{region}:{account}:workload-identity-directory/default` (+ `/workload-identity/*`) | Agent identity tokens |
+| Bedrock | `InvokeModel`, `InvokeModelWithResponseStream` | `arn:aws:bedrock:*::foundation-model/*`, `arn:aws:bedrock:*:{account}:inference-profile/*` | AI model invocation |
+| S3 *(only if the agent declares an S3 need, e.g. `AdCreationAgent`)* | `GetObject`, `PutObject` | `arn:aws:s3:::{one-declared-bucket}/*` | Read/write only the single bucket the agent was deployed with — never a wildcard bucket |
+| DynamoDB *(only if the agent declares a `dynamodbStore`, e.g. `AdCPSellerAgent`)* | `GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan`, `BatchGetItem`, `BatchWriteItem` | The agent's own table ARNs + their `/index/*` — never a wildcard across all tables | Persist the agent's own state only |
+
+**Inbound authentication (how *other* agents reach this runtime):**
+
+| Type | Mechanism | Cross-account? |
+|---|---|---|
+| `iam` (default; used by `AdCreationAgent`) | Standard AgentCore IAM/SigV4 inbound auth — the caller's execution role needs `bedrock-agentcore:InvokeAgentRuntime` on this runtime's ARN (see the AgentCore Execution Role's `Bedrock AgentCore Runtime Invoke` statement above) | Same-account only, unless a resource-based policy is attached to the runtime granting a specific external account's role invoke access (never a wildcard principal) |
+| `oauth` (used by `AAMPSellerAgent`, `AdCPSellerAgent`) | The runtime is created with a Cognito `authorizerConfiguration` (`customJWTAuthorizer`) instead of IAM inbound auth — callers present a Cognito-issued JWT bearer token, validated against the configured discovery URL/client id | No cross-account IAM trust needed at all — the JWT authorizer validates independent of account boundaries |
+
+**Note on the UI's "Bearer Token" inbound option:** the Agent Management UI lets an operator store a static bearer token reference for an agent's *own* inbound A2A endpoint. This only applies to agents deployed via `deploy_external_agents.py`; it never modifies the shared AdFabric orchestrator runtime, and storing a token does **not** by itself enforce anything — enforcement is always the deploy-time `authorizerConfiguration` (the `oauth`/JWT path above). A pasted token is only honored inbound if it is itself a JWT the configured authorizer accepts.
 
 ---
 
@@ -411,6 +465,8 @@ The user/role deploying this architecture needs the following permissions:
 | `AccessDeniedException` on memory operations | Missing AgentCore memory permissions | Check execution role has memory permissions |
 | `AccessDeniedException` on `InvokeGateway` | Missing gateway invoke permission | Verify invoke role has correct gateway ARN |
 | ECR pull failures | Missing ECR permissions | Verify execution role has ECR access |
+| `AccessDeniedException` on `ssm:PutParameter`/`DeleteParameter` when storing a bearer token in the Agent Management UI | AuthenticatedRole only has `ssm:GetParameter` | Add `ssm:PutParameter`/`ssm:DeleteParameter` scoped to `/{stack-prefix}/*` (redeploy `infrastructure-core.yml`) |
+| `AccessDeniedException` on `InvokeAgentRuntime` when the main agent calls an external agent (A2A) | Missing `AgentCoreRuntimeInvoke` statement on the AgentCore Execution Role, or a cross-account `iam`-auth external agent with no resource-based policy | Redeploy with `deploy_agentcore_manual.py`'s updated policy; for cross-account, attach a resource-based policy on the external runtime granting the caller's role invoke access |
 
 ### IAM Propagation Delays
 

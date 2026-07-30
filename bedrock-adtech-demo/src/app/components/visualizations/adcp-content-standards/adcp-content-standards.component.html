@@ -1,0 +1,23 @@
+<div *ngIf="standardsData" class="adcp-content-standards">
+  <div class="standard-pill" *ngFor="let standard of standards; let i = index; trackBy: trackByName"
+       [class.expanded]="expandedIndex === i"
+       (click)="toggle(i)">
+    <div class="pill-header">
+      <span class="material-icons pill-icon">{{standard.icon}}</span>
+      <span class="pill-name">{{standard.name}}</span>
+      <span class="rule-count">{{standard.rules.length}} rule{{standard.rules.length !== 1 ? 's' : ''}}</span>
+      <span class="material-icons expand-icon">{{expandedIndex === i ? 'expand_less' : 'expand_more'}}</span>
+    </div>
+    <div *ngIf="expandedIndex === i" class="pill-panel" (click)="$event.stopPropagation()">
+      <div class="rule-row" *ngFor="let rule of standard.rules; trackBy: trackByRuleIndex">
+        <span class="material-icons rule-icon" [ngClass]="rule.severity">
+          {{rule.severity === 'error' ? 'cancel' : rule.severity === 'warning' ? 'warning' : 'info'}}
+        </span>
+        <div class="rule-content">
+          <span class="rule-name">{{rule.name}}</span>
+          <span *ngIf="rule.description" class="rule-desc">{{rule.description}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

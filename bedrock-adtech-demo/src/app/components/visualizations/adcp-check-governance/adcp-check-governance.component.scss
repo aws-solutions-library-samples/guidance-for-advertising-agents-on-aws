@@ -1,0 +1,130 @@
+.adcp-governance-banner {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 18px;
+  padding: 20px 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.glow-pass {
+    box-shadow:
+      inset 0 0 30px rgba(16, 185, 129, 0.12),
+      inset 0 0 60px rgba(16, 185, 129, 0.06),
+      0 4px 16px rgba(0, 0, 0, 0.05);
+    border-color: rgba(16, 185, 129, 0.2);
+
+    &:hover {
+      box-shadow:
+        inset 0 0 40px rgba(16, 185, 129, 0.2),
+        inset 0 0 80px rgba(16, 185, 129, 0.08),
+        0 8px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    .verdict-icon { color: #10b981; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5)); }
+    .verdict-text { color: #10b981; }
+  }
+
+  &.glow-hold {
+    box-shadow:
+      inset 0 0 30px rgba(245, 158, 11, 0.12),
+      inset 0 0 60px rgba(245, 158, 11, 0.06),
+      0 4px 16px rgba(0, 0, 0, 0.05);
+    border-color: rgba(245, 158, 11, 0.2);
+
+    &:hover {
+      box-shadow:
+        inset 0 0 40px rgba(245, 158, 11, 0.2),
+        inset 0 0 80px rgba(245, 158, 11, 0.08),
+        0 8px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    .verdict-icon { color: #f59e0b; filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5)); }
+    .verdict-text { color: #f59e0b; }
+  }
+
+  &.glow-fail {
+    box-shadow:
+      inset 0 0 30px rgba(239, 68, 68, 0.12),
+      inset 0 0 60px rgba(239, 68, 68, 0.06),
+      0 4px 16px rgba(0, 0, 0, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+
+    &:hover {
+      box-shadow:
+        inset 0 0 40px rgba(239, 68, 68, 0.2),
+        inset 0 0 80px rgba(239, 68, 68, 0.08),
+        0 8px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    .verdict-icon { color: #ef4444; filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.5)); }
+    .verdict-text { color: #ef4444; }
+  }
+
+  .banner-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+
+    .verdict-icon {
+      font-size: 28px;
+      transition: filter 0.3s ease;
+    }
+
+    .verdict-text {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .verdict-message {
+      flex: 1;
+      color: #6b7280;
+      font-size: 0.82rem;
+      margin-left: 4px;
+    }
+  }
+
+  .checks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(229, 231, 235, 0.4);
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      transition: background 0.2s ease;
+
+      &:hover { background: rgba(243, 244, 246, 0.5); }
+
+      .check-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+
+        &.check-pass { color: #10b981; }
+        &.check-fail { color: #ef4444; }
+        &.check-warn { color: #f59e0b; }
+      }
+
+      .check-name {
+        color: #1f2937;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+
+      .check-detail {
+        color: #9ca3af;
+        font-size: 0.72rem;
+        margin-left: auto;
+      }
+    }
+  }
+}

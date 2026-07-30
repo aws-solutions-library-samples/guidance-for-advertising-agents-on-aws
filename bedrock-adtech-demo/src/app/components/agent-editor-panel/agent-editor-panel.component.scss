@@ -499,6 +499,31 @@ $fuchsia-accent: #c300e0;
   }
 }
 
+// Stored-but-not-yet-active credential notice. Informational amber rather than
+// error red: nothing has failed, the change simply is not live until the agent
+// is saved. Mirrors the .token-error layout for consistency.
+.credential-pending-save-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: rgba(253, 168, 59, 0.1);
+  border: 1px solid rgba(253, 168, 59, 0.35);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #92400e;
+
+  .material-icons {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  strong { font-weight: 600; }
+}
+
 // Form Controls - Following frontend-styles.md
 .form-control {
   width: 100%;
@@ -1713,15 +1738,69 @@ $fuchsia-accent: #c300e0;
   }
 }
 
-.preview-data-section {
-  margin-bottom: 24px;
+.preview-live-render {
+  margin-bottom: 20px;
 
   h6 {
     margin: 0 0 12px 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #374151;
-    font-family: $font-family-ember;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .preview-visualization-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    background: #fafafa;
+    overflow: hidden;
+  }
+
+  .preview-fallback {
+    padding: 12px;
+
+    .preview-fallback-note {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+  }
+}
+
+.preview-json-details {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    background: #f9fafb;
+    user-select: none;
+
+    .material-icons {
+      font-size: 16px;
+    }
+
+    &:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+  }
+
+  .preview-json {
+    margin: 0;
+    border-radius: 0;
+    max-height: 250px;
   }
 }
 

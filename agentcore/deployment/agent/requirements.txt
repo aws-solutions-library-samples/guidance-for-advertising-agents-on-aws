@@ -42,4 +42,3 @@ requests_toolbelt
 requests_aws_sign
 websocket-client
 pydantic
-typing

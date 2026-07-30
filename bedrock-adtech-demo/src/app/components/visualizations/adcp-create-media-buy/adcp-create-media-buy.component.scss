@@ -1,0 +1,77 @@
+.adcp-create-media-buy-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 0 20px rgba(16, 185, 129, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    box-shadow:
+      inset 0 0 30px rgba(16, 185, 129, 0.18),
+      0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+
+  .chip-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .checkmark {
+      color: #10b981;
+      font-size: 20px;
+      filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.5));
+    }
+
+    .buy-id {
+      color: #1f2937;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .divider {
+      color: rgba(156, 163, 175, 0.5);
+      font-size: 0.8rem;
+    }
+
+    .budget {
+      color: #1f2937;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .impressions {
+      color: #6b7280;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+  }
+
+  .chip-sub {
+    color: #6b7280;
+    font-size: 0.78rem;
+    padding-left: 30px;
+  }
+
+  .chip-dates {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #9ca3af;
+    font-size: 0.72rem;
+    padding-left: 30px;
+
+    .material-icons {
+      font-size: 14px;
+    }
+  }
+}

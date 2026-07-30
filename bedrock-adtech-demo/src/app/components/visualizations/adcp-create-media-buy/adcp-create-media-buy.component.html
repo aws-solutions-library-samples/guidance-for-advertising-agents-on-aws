@@ -1,0 +1,15 @@
+<div *ngIf="mediaBuyData" class="adcp-create-media-buy-chip">
+  <div class="chip-inner">
+    <span class="checkmark material-icons">check_circle</span>
+    <span class="buy-id">{{data.mediaBuyId}}</span>
+    <span class="divider">|</span>
+    <span class="budget">{{formatCurrency(data.budget, data.currency)}}</span>
+    <span *ngIf="data.impressions" class="divider">|</span>
+    <span *ngIf="data.impressions" class="impressions">{{formatNumber(data.impressions)}} imp</span>
+  </div>
+  <div *ngIf="data.productName" class="chip-sub">{{data.productName}}</div>
+  <div *ngIf="data.startDate || data.endDate" class="chip-dates">
+    <span class="material-icons">date_range</span>
+    {{data.startDate}} — {{data.endDate}}
+  </div>
+</div>

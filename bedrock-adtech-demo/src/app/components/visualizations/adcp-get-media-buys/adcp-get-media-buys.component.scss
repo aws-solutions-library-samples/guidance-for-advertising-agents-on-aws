@@ -1,0 +1,132 @@
+.adcp-get-media-buys {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glass-row {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  border-radius: 14px;
+  padding: 14px 18px 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.glow-green {
+    box-shadow: inset 0 0 18px rgba(16, 185, 129, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+    &:hover { box-shadow: inset 0 0 28px rgba(16, 185, 129, 0.18), 0 6px 20px rgba(0, 0, 0, 0.08); border-color: rgba(16, 185, 129, 0.3); }
+  }
+  &.glow-amber {
+    box-shadow: inset 0 0 18px rgba(245, 158, 11, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+    &:hover { box-shadow: inset 0 0 28px rgba(245, 158, 11, 0.18), 0 6px 20px rgba(0, 0, 0, 0.08); border-color: rgba(245, 158, 11, 0.3); }
+  }
+  &.glow-grey {
+    box-shadow: inset 0 0 18px rgba(156, 163, 175, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+    &:hover { box-shadow: inset 0 0 28px rgba(156, 163, 175, 0.18), 0 6px 20px rgba(0, 0, 0, 0.08); border-color: rgba(156, 163, 175, 0.3); }
+  }
+
+  .row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .buy-identity {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+
+    .buy-name {
+      color: #1f2937;
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .buy-id {
+      color: #9ca3af;
+      font-size: 0.68rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+  }
+
+  .buy-budget {
+    text-align: right;
+    white-space: nowrap;
+
+    .spent {
+      color: #1f2937;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .of-total {
+      color: #9ca3af;
+      font-size: 0.78rem;
+      margin-left: 2px;
+    }
+  }
+
+  .buy-status {
+    .status-label {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(229, 231, 235, 0.5);
+      color: #6b7280;
+    }
+  }
+
+  .pacing-track {
+    height: 6px;
+    background: rgba(243, 244, 246, 0.8);
+    backdrop-filter: blur(8px);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+
+    .pacing-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &.glow-green {
+        background: linear-gradient(90deg, #10b981, #34d399);
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+      }
+      &.glow-amber {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+      }
+      &.glow-grey {
+        background: linear-gradient(90deg, #9ca3af, #d1d5db);
+        box-shadow: 0 0 8px rgba(156, 163, 175, 0.3);
+      }
+    }
+  }
+
+  .row-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .date-range {
+      color: #9ca3af;
+      font-size: 0.7rem;
+    }
+    .impressions {
+      color: #6b7280;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+  }
+}

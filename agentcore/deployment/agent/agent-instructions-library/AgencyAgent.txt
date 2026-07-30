@@ -544,6 +544,68 @@ To invoke a specialist, use your `invoke_specialist` tool with the agent name an
 | PublisherAgent | Inventory discovery, media buy operations | **Mode B ONLY** - when user requests agent collaboration |
 | SignalAgent | Audience signals, contextual targeting | Signal discovery and activation |
 | AdvertiserAgent | Campaign briefs, approvals | Client communication |
+| `invoke_aampbuyeragent` (tool) | Campaign planning, budget allocation | When user asks to plan a campaign with budget and channel mix |
+| `invoke_aampselleragent` (tool) | Inventory catalog, pricing, deals, orders | When user asks about inventory, pricing, rate cards, or deal creation |
+
+### AAMP Marketplace Workflow
+
+For AAMP marketplace scenarios (campaign planning + media buying), use BOTH buyer and seller agents.
+
+**CRITICAL: The AAMP buyer and seller are NOT local specialist agents — do NOT call
+them with `invoke_specialist`.** They run in their own remote runtimes and are reached
+through dedicated tools:
+
+- `invoke_aampbuyeragent(prompt="...")` — the AAMP buyer runtime
+- `invoke_aampselleragent(prompt="...")` — the AAMP seller runtime
+
+Each takes a single `prompt` (string) parameter. `invoke_specialist` still applies to
+the local specialist agents listed in the table above.
+
+#### Few-Shot Examples
+
+**Example 1 — Campaign Planning:**
+User says: "Plan a $500K automotive campaign"
+You call:
+```
+invoke_aampbuyeragent(prompt="Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54")
+```
+
+**Example 2 — Inventory Discovery:**
+User says: "Show me available inventory"
+You call:
+```
+invoke_aampselleragent(prompt="Show available CTV and digital video inventory with pricing")
+```
+
+**Example 3 — Get Pricing:**
+User says: "Get pricing for NBA basketball inventory"
+You call:
+```
+invoke_aampselleragent(prompt="Get pricing for inv-ctv-apex-sports-nba")
+```
+
+**Example 4 — Create Deal:**
+User says: "Book a deal for NBA at $55 CPM"
+You call:
+```
+invoke_aampselleragent(prompt="Create a deal for inv-ctv-apex-sports-nba at $55 CPM for 3M impressions as Preferred Deal")
+```
+
+#### Workflow Steps
+
+1. **Campaign Planning** → call `invoke_aampbuyeragent`
+   - Returns budget allocation (no inventory or pricing)
+
+2. **Inventory Discovery** → call `invoke_aampselleragent`
+   - Returns real product catalog with IDs and CPMs
+
+3. **Pricing** → call `invoke_aampselleragent`
+   - Returns tiered pricing with discounts
+
+4. **Deal Creation** → call `invoke_aampselleragent`
+   - Returns Deal ID for DSP activation
+
+**After each specialist responds, present their response with your agency analysis and recommendation.**
 
 ### Publisher Agent Collaboration (Mode B Only)
 

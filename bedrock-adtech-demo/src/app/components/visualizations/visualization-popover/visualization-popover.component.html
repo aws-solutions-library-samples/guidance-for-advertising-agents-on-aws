@@ -126,6 +126,78 @@
           </div>
           <app-adcp_get_products-visualization [inventoryData]="visualData.adcpInventoryData"></app-adcp_get_products-visualization>
         </div>
+
+        <!-- ADCP Create Media Buy -->
+        <div *ngIf="visualData.adcpMediaBuyData" class="visualization-section" [class.new-item]="isNewItem('adcpMediaBuy')">
+          <div class="section-header">
+            <span class="section-icon material-icons">shopping_cart_checkout</span>
+            <h4 class="section-title">Media Buy Confirmed</h4>
+          </div>
+          <app-adcp-create-media-buy [mediaBuyData]="visualData.adcpMediaBuyData"></app-adcp-create-media-buy>
+        </div>
+
+        <!-- ADCP Get Media Buys -->
+        <div *ngIf="visualData.adcpMediaBuysData" class="visualization-section" [class.new-item]="isNewItem('adcpMediaBuys')">
+          <div class="section-header">
+            <span class="section-icon material-icons">receipt_long</span>
+            <h4 class="section-title">Media Buys</h4>
+          </div>
+          <app-adcp-get-media-buys [mediaBuysData]="visualData.adcpMediaBuysData"></app-adcp-get-media-buys>
+        </div>
+
+        <!-- ADCP Media Buy Delivery -->
+        <div *ngIf="visualData.adcpDeliveryData" class="visualization-section" [class.new-item]="isNewItem('adcpDelivery')">
+          <div class="section-header">
+            <span class="section-icon material-icons">local_shipping</span>
+            <h4 class="section-title">Delivery Performance</h4>
+          </div>
+          <app-adcp-media-buy-delivery [deliveryData]="visualData.adcpDeliveryData"></app-adcp-media-buy-delivery>
+        </div>
+
+        <!-- ADCP Update Media Buy -->
+        <div *ngIf="visualData.adcpUpdateData" class="visualization-section" [class.new-item]="isNewItem('adcpUpdate')">
+          <div class="section-header">
+            <span class="section-icon material-icons">edit_note</span>
+            <h4 class="section-title">Media Buy Updated</h4>
+          </div>
+          <app-adcp-update-media-buy [updateData]="visualData.adcpUpdateData"></app-adcp-update-media-buy>
+        </div>
+
+        <!-- ADCP Content Standards -->
+        <div *ngIf="visualData.adcpContentStandardsData" class="visualization-section" [class.new-item]="isNewItem('adcpContentStandards')">
+          <div class="section-header">
+            <span class="section-icon material-icons">rule</span>
+            <h4 class="section-title">Content Standards</h4>
+          </div>
+          <app-adcp-content-standards [standardsData]="visualData.adcpContentStandardsData"></app-adcp-content-standards>
+        </div>
+
+        <!-- ADCP Property List -->
+        <div *ngIf="visualData.adcpPropertyListData" class="visualization-section" [class.new-item]="isNewItem('adcpPropertyList')">
+          <div class="section-header">
+            <span class="section-icon material-icons">domain</span>
+            <h4 class="section-title">Publisher Properties</h4>
+          </div>
+          <app-adcp-property-list [propertyData]="visualData.adcpPropertyListData"></app-adcp-property-list>
+        </div>
+
+        <!-- ADCP Calibrate Content -->
+        <div *ngIf="visualData.adcpCalibrateData" class="visualization-section" [class.new-item]="isNewItem('adcpCalibrate')">
+          <div class="section-header">
+            <span class="section-icon material-icons">tune</span>
+            <h4 class="section-title">Content Calibration</h4>
+          </div>
+          <app-adcp-calibrate-content [calibrationData]="visualData.adcpCalibrateData"></app-adcp-calibrate-content>
+        </div>
+
+        <!-- ADCP Check Governance -->
+        <div *ngIf="visualData.adcpGovernanceData" class="visualization-section" [class.new-item]="isNewItem('adcpGovernance')">
+          <div class="section-header">
+            <span class="section-icon material-icons">verified_user</span>
+            <h4 class="section-title">Governance Check</h4>
+          </div>
+          <app-adcp-check-governance [governanceData]="visualData.adcpGovernanceData"></app-adcp-check-governance>
+        </div>
       </div>
     </div>
 

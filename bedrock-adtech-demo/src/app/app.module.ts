@@ -24,6 +24,14 @@ import { DoubleHistogramVisualizationComponent } from './components/visualizatio
 import { BarChartVisualizationComponent } from './components/visualizations/bar-chart-visualization/bar-chart-visualization.component';
 import { DonutChartVisualizationComponent } from './components/visualizations/donut-chart-visualization/donut-chart-visualization.component';
 import { AdcpInventoryVisualizationComponent } from './components/visualizations/adcp_get_products-visualization/adcp_get_products-visualization.component';
+import { AdcpCreateMediaBuyComponent } from './components/visualizations/adcp-create-media-buy/adcp-create-media-buy.component';
+import { AdcpGetMediaBuysComponent } from './components/visualizations/adcp-get-media-buys/adcp-get-media-buys.component';
+import { AdcpMediaBuyDeliveryComponent } from './components/visualizations/adcp-media-buy-delivery/adcp-media-buy-delivery.component';
+import { AdcpUpdateMediaBuyComponent } from './components/visualizations/adcp-update-media-buy/adcp-update-media-buy.component';
+import { AdcpContentStandardsComponent } from './components/visualizations/adcp-content-standards/adcp-content-standards.component';
+import { AdcpPropertyListComponent } from './components/visualizations/adcp-property-list/adcp-property-list.component';
+import { AdcpCalibrateContentComponent } from './components/visualizations/adcp-calibrate-content/adcp-calibrate-content.component';
+import { AdcpCheckGovernanceComponent } from './components/visualizations/adcp-check-governance/adcp-check-governance.component';
 import { PresentationVisualizationComponent } from './components/visualizations/presentation-visualization/presentation-visualization.component';
 import { AgentConfigComponent } from './components/agent-config/agent-config.component';
 import { DemoModalComponent } from './components/demo-modal/demo-modal.component';
@@ -60,6 +68,14 @@ import { AppComponent } from './app.component';
     BarChartVisualizationComponent,
     DonutChartVisualizationComponent,
     AdcpInventoryVisualizationComponent,
+    AdcpCreateMediaBuyComponent,
+    AdcpGetMediaBuysComponent,
+    AdcpMediaBuyDeliveryComponent,
+    AdcpUpdateMediaBuyComponent,
+    AdcpContentStandardsComponent,
+    AdcpPropertyListComponent,
+    AdcpCalibrateContentComponent,
+    AdcpCheckGovernanceComponent,
     PresentationVisualizationComponent,
     AgentConfigComponent,
     DemoModalComponent,

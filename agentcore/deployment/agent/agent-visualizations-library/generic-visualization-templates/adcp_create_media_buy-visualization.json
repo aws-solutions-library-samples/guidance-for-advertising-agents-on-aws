@@ -1,0 +1,29 @@
+{
+  "templateId": "adcp_create_media_buy-visualization",
+  "visualizationType": "adcp_create_media_buy-visualization",
+  "description": "Display AdCP media buy confirmation from create_media_buy MCP tool calls. Frosted confirmation chip with green glow.",
+  "usage": "Wrap the create_media_buy response in <visualization-data type=\"adcp_create_media_buy-visualization\"> tags immediately after receiving the confirmation.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_create_media_buy-visualization (REQUIRED)",
+    "media_buy_id": "The media buy ID returned from the API",
+    "status": "Confirmation status (e.g., 'confirmed', 'pending')",
+    "budget": "Total budget amount (number)",
+    "currency": "Currency code (e.g., 'USD')",
+    "product_name": "Name of the product purchased",
+    "start_date": "Campaign start date",
+    "end_date": "Campaign end date",
+    "estimated_impressions": "Estimated impression count (number)"
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_create_media_buy-visualization",
+    "media_buy_id": "mb_2024_espn_001",
+    "status": "confirmed",
+    "budget": 50000,
+    "currency": "USD",
+    "product_name": "Premium Sports CTV - Live Events",
+    "start_date": "2024-07-01",
+    "end_date": "2024-07-31",
+    "estimated_impressions": 2500000
+  }
+}

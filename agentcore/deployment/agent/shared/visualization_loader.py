@@ -212,32 +212,38 @@ class VisualizationLoader:
     def load_template_data(self, agent_name: str, template_id: str) -> Optional[Dict[str, Any]]:
         """
         Load the data mapping for a specific agent template.
-        
+
         Priority:
         1. In-memory cache (if use_cache=True)
         2. DynamoDB AgentConfigTable (fastest)
         3. S3: configs/agent-visualizations-library/{agent_name}-{template_id}.json
         4. Local filesystem
-        
+        5. Fallback: generic template data mapping from
+           generic-visualization-templates/{template_id}.json (DynamoDB/S3/local)
+
+        The generic fallback allows agents that declare templates in their
+        visualization map to keep working even when no agent-specific mapping
+        has been authored yet — they just use the shared schema.
+
         Args:
             agent_name: Name of the agent (e.g., "AdLoadOptimizationAgent")
             template_id: Template ID (e.g., "metrics-visualization")
-            
+
         Returns:
             Dictionary containing the dataMapping field, or None if not found
         """
         global _template_data_cache
-        
+
         cache_key = f"{agent_name}:{template_id}"
-        
+
         # Check cache first
         if self.use_cache and cache_key in _template_data_cache:
             logger.debug(f"📦 VIZ_CACHE: Cache HIT for template data: {cache_key}")
             return _template_data_cache[cache_key]
-        
+
         data = None
         data_mapping = None
-        
+
         # Try DynamoDB AgentConfigTable first (fastest)
         _ensure_new_ddb_loader()
         if _ddb_load_viz_template:
@@ -247,7 +253,7 @@ class VisualizationLoader:
                 logger.info(f"✅ VIZ_LOADER: Loaded template {template_id} for {agent_name} from DynamoDB")
                 _template_data_cache[cache_key] = data_mapping
                 return data_mapping
-        
+
         # Try S3 second
         if self.s3_bucket:
             s3_key = f"{self.s3_prefix}/{agent_name}-{template_id}.json"
@@ -255,11 +261,11 @@ class VisualizationLoader:
             if data:
                 data_mapping = data.get("dataMapping")
                 logger.info(f"✅ VIZ_LOADER: Loaded template {template_id} for {agent_name} from S3")
-        
+
         # Fall back to local filesystem
         if data is None:
             template_path = os.path.join(self.base_dir, f"{agent_name}-{template_id}.json")
-            
+
             if os.path.exists(template_path):
                 try:
                     with open(template_path, 'r', encoding='utf-8') as f:
@@ -268,9 +274,18 @@ class VisualizationLoader:
                         logger.info(f"✅ VIZ_LOADER: Loaded template {template_id} for {agent_name} from local filesystem")
                 except Exception as e:
                     logger.error(f"❌ VIZ_LOADER: Error loading template data for {agent_name}/{template_id}: {e}")
+
+        # Final fallback: generic template schema (shared across agents)
+        if data_mapping is None:
+            generic = self.load_generic_template(template_id)
+            if generic:
+                data_mapping = generic.get("dataMapping", generic)
+                logger.info(
+                    f"✅ VIZ_LOADER: Using generic template schema {template_id} as fallback for {agent_name}"
+                )
             else:
-                logger.debug(f"⚠️ VIZ_LOADER: No template data found for {agent_name}/{template_id}")
-        
+                logger.debug(f"⚠️ VIZ_LOADER: No template data found for {agent_name}/{template_id} (no generic fallback)")
+
         # Cache the result (even if None)
         _template_data_cache[cache_key] = data_mapping
         return data_mapping

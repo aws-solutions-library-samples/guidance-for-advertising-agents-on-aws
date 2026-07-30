@@ -1,0 +1,24 @@
+{
+  "templateId": "adcp_get_property_list-visualization",
+  "visualizationType": "adcp_get_property_list-visualization",
+  "description": "Display AdCP publisher properties from get_property_list MCP tool calls. Frosted chip cluster with overflow.",
+  "usage": "Wrap the get_property_list response in <visualization-data type=\"adcp_get_property_list-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_get_property_list-visualization (REQUIRED)",
+    "properties": [
+      {
+        "domain": "Publisher domain (e.g., 'espn.com')",
+        "type": "Property type: 'ctv', 'video', 'display', 'audio'"
+      }
+    ]
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_get_property_list-visualization",
+    "properties": [
+      { "domain": "espn.com", "type": "ctv" },
+      { "domain": "foxsports.com", "type": "ctv" },
+      { "domain": "hulu.com", "type": "video" }
+    ]
+  }
+}

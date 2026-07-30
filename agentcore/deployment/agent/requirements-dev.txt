@@ -1,0 +1,16 @@
+# Development / test-only dependencies for the AgentCore agent package.
+#
+# Deliberately NOT in requirements.txt: these are not installed into the
+# runtime container image. Install locally before running the test suite:
+#
+#   pip install -r requirements-dev.txt
+#   python3 -m unittest discover -s shared -p 'test_*.py' -v
+#
+# Versions are pinned exactly for reproducible test runs.
+
+# Property-based testing framework. Provides custom strategies, automatic
+# shrinking of failing cases, and seed-based reproducibility (the seed is
+# printed on failure so a counterexample can be replayed verbatim).
+# Tests guard on its presence and skip when it is absent, so the suite still
+# runs without it — but the property-based coverage is then NOT exercised.
+hypothesis==6.140.3

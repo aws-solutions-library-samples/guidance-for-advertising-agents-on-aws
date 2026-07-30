@@ -39,7 +39,11 @@ from shared.adcp_tools import (
 
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
 from shared.mcp_tools import build_mcp_tools_for_agent
-from shared.a2a_client_tools import build_a2a_client_tools
+from shared.a2a_client_tools import (
+    build_a2a_client_tools,
+    _derive_runtime_session_id,
+    set_active_session_id as set_a2a_active_session_id,
+)
 # DynamoDB configuration loader for fast agent config access
 from shared.dynamodb_config_loader import (
     load_agent_instructions as ddb_load_instructions,
@@ -49,6 +53,8 @@ from shared.dynamodb_config_loader import (
     preload_all_configs as ddb_preload_all,
     get_agent_config_table_name,
     clear_config_cache as ddb_clear_cache,
+    check_global_config_freshness as ddb_check_config_freshness,
+    get_cached_global_config_revision as ddb_cached_config_revision,
 )
 import re
 import json
@@ -635,6 +641,18 @@ def clear_instructions_cache(agent_name: Optional[str] = None):
         logger.info(f"🗑️ INSTRUCTIONS: Cleared all instructions cache")
 
 
+def _config_staleness_check_enabled() -> bool:
+    """Whether each invocation should verify its config against DynamoDB.
+
+    Enabled by default. Set CONFIG_STALENESS_CHECK_ENABLED to a false-y value
+    ("0", "false", "no", "off") to disable the per-invocation probe — the probe
+    is one projected GetItem, but this provides an operational escape hatch if
+    it ever needs to be turned off without a redeploy of new code.
+    """
+    raw = os.environ.get("CONFIG_STALENESS_CHECK_ENABLED", "true").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
 def refresh_all_caches(force_reinitialize: bool = False) -> Dict[str, Any]:
     """
     Refresh all configuration caches to load the latest data from DynamoDB/S3.
@@ -831,6 +849,89 @@ def get_agent_config(agent_name):
     if not GLOBAL_CONFIG:
         GLOBAL_CONFIG = load_configs("global_configuration.json")
     return GLOBAL_CONFIG.get("agent_configs", {}).get(agent_name, {})
+
+
+def _invoke_external_runtime(
+    agent_name: str,
+    agent_config: dict,
+    runtime_arn: str,
+    payload: bytes,
+    runtime_session_id: str,
+) -> str:
+    """Invoke an external AgentCore runtime, honoring the agent's inbound auth.
+
+    Agents that own their own runtime (e.g. the IAB AAMP seller/buyer) declare
+    how callers must authenticate to them via the AGENT-LEVEL ``a2a_auth_type``
+    field — this is the inbound authorizer their runtime was actually deployed
+    with, not an ``external_agent_configs`` entry (those describe A2A peers the
+    Strands runtime invokes as tools).
+
+    - ``oauth``: the runtime is fronted by a Cognito JWT authorizer, so SigV4
+      would be rejected. Mint a bearer from the stored inbound credentials and
+      POST to the HTTPS data-plane endpoint (same path the UI uses).
+    - ``iam``/``none``: SigV4 ``invoke_agent_runtime``.
+
+    Returns the raw response body text. Raises on transport/auth failure so the
+    caller surfaces an explicit error instead of a fabricated answer.
+    """
+    region = os.environ.get("AWS_REGION", "us-west-2")
+    auth_type = (agent_config.get("a2a_auth_type") or "none").lower()
+
+    if auth_type == "oauth":
+        # Reuse the same OAuth invoke path as the A2A tool builder so the two
+        # never drift (credential resolution, bearer minting, session header).
+        from shared.a2a_client_tools import (
+            _invoke_agentcore_oauth,
+            _resolve_oauth_ssm_path,
+        )
+
+        creds = agent_config.get("a2a_oauth_credentials") or {}
+        # _resolve_oauth_ssm_path understands both an explicit ssmPath and the
+        # repo's /{STACK_PREFIX}/a2a-inbound-tokens/{UNIQUE_ID}/{name} convention.
+        ssm_path = creds.get("ssmPath") or _resolve_oauth_ssm_path(
+            {"name": agent_name, "oauthCredentials": creds}
+        )
+        client_id = agent_config.get("cognitoClientId") or os.environ.get(
+            "A2A_CLIENT_ID", ""
+        )
+        logger.info(
+            f"🔐 TOOL: {agent_name} runtime is OAuth-protected — invoking with a "
+            f"Cognito bearer (ssm={'set' if ssm_path else 'unresolved'})"
+        )
+        body, err = _invoke_agentcore_oauth(
+            arn=runtime_arn,
+            region=region,
+            payload=payload,
+            ssm_path=ssm_path,
+            client_id=client_id,
+            session_id=runtime_session_id,
+        )
+        if err:
+            # Fail closed and loudly — never silently fall back to SigV4, which
+            # would misreport an auth misconfiguration as a working call.
+            raise RuntimeError(f"OAuth invocation failed: {err}")
+        return body
+
+    from botocore.config import Config
+
+    agentcore_client = boto3.client(
+        "bedrock-agentcore",
+        region_name=region,
+        config=Config(read_timeout=300, connect_timeout=10),
+    )
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=runtime_arn,
+        payload=payload,
+        contentType="application/json",
+        accept="application/json",
+        runtimeSessionId=runtime_session_id,
+    )
+    response_body = response.get("response", response.get("body", b""))
+    if hasattr(response_body, "read"):
+        response_body = response_body.read()
+    if isinstance(response_body, bytes):
+        response_body = response_body.decode("utf-8")
+    return response_body
 
 
 def get_collaborator_agent_model_inputs(agent_name, orchestrator_name):
@@ -1243,6 +1344,94 @@ def get_runtime_arn_and_auth_config(agent_name: str):
 #         return f"Error: {error_msg}"
 
 
+def _sanitize_external_response(text: str, agent_name: str = "") -> str:
+    """Sanitize responses from external runtimes before returning to the orchestrator.
+
+    Strips:
+    - <thinking>...</thinking> blocks (CrewAI internal reasoning)
+    - <visualization-data>...</visualization-data> blocks (seller viz tags)
+    - Raw KB retrieval metadata (S3 URIs, chunk IDs, source metadata)
+    - Raw JSON objects that should be formatted as prose
+    """
+    import re
+
+    if not text:
+        return text
+
+    # Strip <thinking>...</thinking> blocks
+    text = re.sub(r'<thinking>.*?</thinking>\s*', '', text, flags=re.DOTALL)
+
+    # Strip <visualization-data>...</visualization-data> blocks
+    text = re.sub(r'<visualization-data[^>]*>.*?</visualization-data>\s*', '', text, flags=re.DOTALL)
+
+    # Strip raw KB retrieval metadata blocks (S3 URIs, chunk IDs)
+    # These appear as JSON with x-amz-bedrock-kb-* keys
+    text = re.sub(
+        r'\{[^}]*"x-amz-bedrock-kb-[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+
+    # Strip retrievedReferences blocks with S3 locations
+    text = re.sub(
+        r',?\s*"retrievedReferences"\s*:\s*\[.*?\]\s*',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+
+    # Strip location/metadata blocks with s3Location URIs
+    text = re.sub(
+        r',?\s*"location"\s*:\s*\{[^}]*"s3Location"[^}]*\}[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+
+    # Strip "metadata": {"x-amz-bedrock-kb-*": ...} blocks
+    text = re.sub(
+        r',?\s*"metadata"\s*:\s*\{[^}]*"x-amz-bedrock-kb-[^}]*\}',
+        '',
+        text,
+        flags=re.DOTALL
+    )
+
+    # If the entire response is a raw JSON object (common with BuyerCrewAgent),
+    # try to extract meaningful content
+    stripped = text.strip()
+    if stripped.startswith('{') and stripped.endswith('}'):
+        try:
+            parsed = json.loads(stripped)
+            # Check if it's a buyer-style campaign plan JSON
+            if 'campaign_name' in parsed or 'total_budget' in parsed:
+                # Format as readable summary
+                parts = []
+                if parsed.get('campaign_name'):
+                    # Truncate long campaign names (often the full prompt is stuffed in)
+                    name = parsed['campaign_name'][:80]
+                    parts.append(f"**Campaign:** {name}")
+                if parsed.get('total_budget'):
+                    parts.append(f"**Budget:** ${parsed['total_budget']:,.0f}")
+                if parsed.get('flight'):
+                    parts.append(f"**Flight:** {parsed['flight']}")
+                if parsed.get('status'):
+                    parts.append(f"**Status:** {parsed['status']}")
+                if parsed.get('audience_coverage'):
+                    cov = parsed['audience_coverage']
+                    cov_parts = [f"{k}: {v}%" for k, v in cov.items()]
+                    parts.append(f"**Audience Coverage:** {', '.join(cov_parts)}")
+                if parts:
+                    text = '\n'.join(parts)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass  # Not valid JSON or unexpected structure, leave as-is
+
+    # Clean up excessive whitespace from stripping
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
+
+
 @tool
 def invoke_specialist_with_RAG(
     agent_prompt: str, agent_name: str, is_collaborator: bool = True
@@ -1251,6 +1440,56 @@ def invoke_specialist_with_RAG(
     global collected_sources
     global GLOBAL_CONFIG
 
+    # ── Shortcut: If the agent has a runtime_arn, call the runtime directly ──
+    # External runtimes (e.g., AAMPSellerAgent, AAMPBuyerAgent) have their
+    # own tools and don't need local RAG. Route directly to the external runtime.
+    agent_config = get_agent_config(agent_name)
+    runtime_arn = agent_config.get("runtime_arn", "")
+
+    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+        logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
+        try:
+            logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
+
+            payload = json.dumps({
+                "prompt": agent_prompt,
+                "routing_mode": "crew",
+            }).encode("utf-8")
+
+            # Use one stable runtimeSessionId for the whole front-end conversation,
+            # derived identically to shared/a2a_client_tools.py so the SAME session id
+            # is sent regardless of whether the runtime is invoked here or via A2A
+            # tools. This gives the external buyer/seller runtimes continuity across
+            # turns (AgentCore keys its session per-runtime on this id).
+            # Auth follows the agent's own a2a_auth_type (oauth bearer vs SigV4).
+            response_body = _invoke_external_runtime(
+                agent_name=agent_name,
+                agent_config=agent_config,
+                runtime_arn=runtime_arn,
+                payload=payload,
+                runtime_session_id=_derive_runtime_session_id(
+                    orchestrator_instance.session_id
+                ),
+            )
+
+            try:
+                parsed = json.loads(response_body)
+                result_text = parsed.get("response", response_body)
+            except json.JSONDecodeError:
+                result_text = response_body
+
+            # Sanitize external runtime response
+            result_text = _sanitize_external_response(str(result_text), agent_name)
+
+            logger.info(f"✅ TOOL: Direct runtime invoke succeeded for {agent_name} ({len(str(result_text))} chars)")
+
+            return f"<agent-message agent='{agent_name}'>{result_text}</agent-message>"
+
+        except Exception as e:
+            logger.error(f"❌ TOOL: Direct runtime invoke failed for {agent_name}: {e}")
+            return f"<agent-message agent='{agent_name}'>Error invoking {agent_name} runtime: {e}</agent-message>"
+
+    # ── Standard path: Create a local Strands agent with RAG tools ──
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id
@@ -1294,7 +1533,59 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
     global orchestrator_instance
     
     logger.info(f"🔧 TOOL: Invoking specialist agent: {agent_name}")
-    
+
+    # ── Shortcut: If the agent has a runtime_arn, call the runtime directly ──
+    # This avoids creating a proxy Strands agent that would need A2A tools.
+    # The runtime handles the request end-to-end (e.g., CrewAI crew with tools).
+    # When A2A is available, this path is skipped (runtime_arn would be empty).
+    agent_config = get_agent_config(agent_name)
+    runtime_arn = agent_config.get("runtime_arn", "")
+
+    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+        logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
+        try:
+            # Pass the prompt directly to the runtime
+            logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
+
+            payload = json.dumps({
+                "prompt": agent_prompt,
+                "routing_mode": "crew",
+            }).encode("utf-8")
+
+            # Use one stable runtimeSessionId for the whole front-end conversation,
+            # derived identically to shared/a2a_client_tools.py so the SAME session id
+            # is sent regardless of whether the runtime is invoked here or via A2A
+            # tools. This gives the external buyer/seller runtimes continuity across
+            # turns (AgentCore keys its session per-runtime on this id).
+            # Auth follows the agent's own a2a_auth_type (oauth bearer vs SigV4).
+            response_body = _invoke_external_runtime(
+                agent_name=agent_name,
+                agent_config=agent_config,
+                runtime_arn=runtime_arn,
+                payload=payload,
+                runtime_session_id=_derive_runtime_session_id(
+                    orchestrator_instance.session_id
+                ),
+            )
+
+            # Extract the response content
+            try:
+                parsed = json.loads(response_body)
+                result_text = parsed.get("response", response_body)
+            except json.JSONDecodeError:
+                result_text = response_body
+
+            logger.info(f"✅ TOOL: Direct runtime invoke succeeded for {agent_name} ({len(str(result_text))} chars)")
+
+            # Sanitize external runtime response
+            result_text = _sanitize_external_response(str(result_text), agent_name)
+
+            return f"<agent-message agent='{agent_name}'>{result_text}</agent-message>"
+
+        except Exception as e:
+            logger.error(f"❌ TOOL: Direct runtime invoke failed for {agent_name}: {e}")
+            return f"<agent-message agent='{agent_name}'>Error invoking {agent_name} runtime: {e}</agent-message>"
+
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id
@@ -1583,8 +1874,13 @@ def build_tools_for_agent(agent_name: str) -> list:
         tools.extend(mcp_tools)
         logger.info(f"🔌 BUILD_TOOLS: Added {len(mcp_tools)} MCP tool providers for {agent_name}")
     
-    # Build A2A client tools from external_agent_configs
-    a2a_tools = build_a2a_client_tools(agent_name, agent_config)
+    # Build A2A client tools from external_agent_configs. Pass the front-end
+    # session id (set on the orchestrator singleton for this invocation) so
+    # external AgentCore runtimes are invoked with a stable runtimeSessionId
+    # and keep conversation continuity across turns.
+    a2a_tools = build_a2a_client_tools(
+        agent_name, agent_config, session_id=orchestrator_instance.session_id
+    )
     if a2a_tools:
         tools.extend(a2a_tools)
         logger.info(f"🔗 BUILD_TOOLS: Added {len(a2a_tools)} A2A client tool provider(s) for {agent_name}")
@@ -1608,10 +1904,9 @@ def create_agent(agent_name, conversation_context, is_collaborator):
 
     model = BedrockModel(
         model_id=model_inputs.get(
-            "model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+            "model_id", "global.anthropic.claude-sonnet-5"
         ),
         max_tokens=model_inputs.get("max_tokens", 8000),
-        temperature=model_inputs.get("temperature", 0.8),
         cache_prompt="default",
         cache_tools="default",
     )
@@ -1795,9 +2090,8 @@ class GenericAgent:
                 "external_agents": [],
                 "model_inputs": {
                     f"{agent_name}": {
-                        "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-                        "max_tokens": 12000,
-                        "temperature": 0.3
+                        "model_id": "global.anthropic.claude-sonnet-5",
+                        "max_tokens": 12000
                     }
                 },
             }
@@ -1807,22 +2101,19 @@ class GenericAgent:
             model_inputs = config.get("model_inputs", {}).get(agent_name, {})
         except Exception as e:
             model_inputs = {
-                "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-                "max_tokens": 12000,
-                "temperature": 0.3
+                "model_id": "global.anthropic.claude-sonnet-5",
+                "max_tokens": 12000
                 }
 
         try:
             model = BedrockModel(
                 model_id=model_inputs.get(
-                    "model_id", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+                    "model_id", "global.anthropic.claude-sonnet-5"
                 ),
                 max_tokens=model_inputs.get("max_tokens", 12000),
                 cache_prompt="default",
                 cache_tools="default",
             )
-            if model_inputs.get("temperature"):
-                model.temperature = model_inputs.get("temperature")
         except Exception as e:
             logger.error(f"✗ Failed to create Bedrock model: {e}")
             import traceback
@@ -2071,7 +2362,57 @@ async def agent_invocation(payload, context):
                 _flush_log(f"❌ AGENT_INVOCATION: Cache refresh failed: {refresh_err}", "ERROR")
                 # Continue with the request even if cache refresh fails
                 # The agent will use whatever cached data is available
-        
+
+        # ============================================
+        # SELF-HEALING STALE-CONFIG CHECK
+        # ============================================
+        # An explicit refresh (above) is delivered by a single InvokeAgentRuntime
+        # call, so it only reaches ONE runtime instance. Every other warm instance
+        # keeps the in-process config snapshot it loaded at container start, and
+        # create_orchestrator() builds tools — including the A2A client tools and
+        # their auth — from that snapshot. That is how a freshly saved
+        # external_agent_configs entry can be silently ignored: the agent object is
+        # rebuilt, but from stale config.
+        #
+        # So each invocation compares this process's config revision against
+        # DynamoDB via a single projected GetItem that reads only the revision
+        # attribute (not the config body). On drift, reload and drop the cached
+        # agent so it is rebuilt from current config.
+        elif _config_staleness_check_enabled():
+            try:
+                freshness = ddb_check_config_freshness()
+                if freshness["known"] and freshness["stale"]:
+                    _flush_log(
+                        f"🔄 AGENT_INVOCATION: Global config changed "
+                        f"(cached revision {freshness['cached_revision']} -> "
+                        f"{freshness['remote_revision']}) — reloading before serving"
+                    )
+                    refresh_stats = refresh_all_caches(force_reinitialize=False)
+                    agent = None
+                    _flush_log(
+                        f"🔄 AGENT_INVOCATION: Reloaded "
+                        f"{refresh_stats.get('items_reloaded', {}).get('agent_configs_found', 0)} "
+                        f"agent configs; agent dropped so tools rebuild from current config"
+                    )
+                elif not freshness["known"]:
+                    # Could not determine drift. Say so rather than implying the
+                    # cached config was verified as current; serve from cache
+                    # because failing the invocation would be worse than
+                    # potentially using a config that is at most one edit behind.
+                    _flush_log(
+                        f"⚠️ AGENT_INVOCATION: Could not verify config freshness "
+                        f"({freshness['error']}) — serving cached config, staleness unknown",
+                        "WARNING",
+                    )
+            except Exception as staleness_err:
+                # A probe must never break an invocation.
+                _flush_log(
+                    f"⚠️ AGENT_INVOCATION: Config freshness check errored "
+                    f"({type(staleness_err).__name__}) — serving cached config, "
+                    f"staleness unknown",
+                    "WARNING",
+                )
+
         # Process the prompt - it can be a string or a list of content blocks
         raw_prompt = payload.get("prompt")
         media = payload.get("media", {})
@@ -2295,7 +2636,15 @@ async def agent_invocation(payload, context):
                             _flush_log(f"⚠️ Failed to retrieve/inject conversation history: {hist_err}", "WARNING")
                 
                 _flush_log(f"♻️ Agent reused for {agent_name} with session {session_id}")
-        
+
+        # Publish the live conversation's session id to the A2A tools before any of
+        # them can run. Tools are built once and reused across turns (and across
+        # conversations, since a warm agent is reused), so they resolve this at call
+        # time instead of trusting the id captured at build time. Set
+        # unconditionally — assigning "" when there is no session id prevents a
+        # previous invocation's id leaking into this one on a warm instance.
+        set_a2a_active_session_id(session_id or "")
+
         if session_id:
             try:
                 context_token = set_session_context(session_id)

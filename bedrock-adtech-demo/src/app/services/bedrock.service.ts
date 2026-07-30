@@ -4,6 +4,7 @@ import { AwsConfigService } from './aws-config.service';
 import { AgentConfigService } from './agent-config.service';
 import { AgentDynamoDBService } from './agent-dynamodb.service';
 import { SessionManagerService } from './session-manager.service';
+import { NotifyDispatchService } from './notify-dispatch.service';
 import { TextUtils } from '../utils/text-utils';
 import type { NodeJsClient, SdkStream, StreamingBlobPayloadOutputTypes } from "@smithy/types";
 import { BedrockAgentCoreControlClient, ListMemoriesCommand } from '@aws-sdk/client-bedrock-agentcore-control';
@@ -158,7 +159,8 @@ export class BedrockService {
     private awsConfig: AwsConfigService,
     private agentConfig: AgentConfigService,
     private agentDynamoDBService: AgentDynamoDBService,
-    private sessionManager: SessionManagerService
+    private sessionManager: SessionManagerService,
+    private notifyDispatch: NotifyDispatchService
   ) {
     this.initializeClient();
     this.initializeMemoryRecordId();
@@ -592,7 +594,6 @@ Example format:
           max_new_tokens: 4000,
           max_tokens_to_sample: 4000,
           max_tokens: 4000,
-          temperature: 0.7,
           top_p: 0.9
         }
       };
@@ -702,6 +703,13 @@ Example format:
       // Debug: log agent auth properties for routing decisions
       console.log(`🔀 Agent routing for ${resolvedAgent.name}: is_a2a=${resolvedAgent.is_a2a}, a2a_auth_type=${resolvedAgent.a2a_auth_type}, runtimeArn=${resolvedAgent.runtimeArn ? 'set' : 'unset'}`);
 
+      // Fire-and-forget invocation notification hook (independent of A2A/is_a2a
+      // above). Never awaited, never blocks routing, never affects the agent's
+      // execution. See spec: a2a-invocation-notify-hook.
+      if (resolvedAgent.notify_on_invocation) {
+        this.dispatchInvocationNotification(resolvedAgent, query, sessionId, directMentionTarget, attachedFiles);
+      }
+
       // Determine the effective auth type — check the enriched agent first,
       // then fall back to looking up the agent's config directly from the global config
       // (the enriched agent may not have a2a_auth_type if the deployed agent name
@@ -729,10 +737,16 @@ Example format:
         }
       }
 
-      // Route to A2A JSON-RPC if agent is configured as A2A
+      // Route to A2A JSON-RPC if agent is configured as A2A.
+      // Pass the RESOLVED auth type through: `resolvedAgent.a2a_auth_type` alone
+      // is unreliable here (enrichment drops it when the deployed agent name
+      // doesn't match the agent_configs key), and this branch is evaluated
+      // BEFORE the oauth branch below — so without threading it, an
+      // A2A + OAuth agent would authenticate as IAM/none and never mint a
+      // bearer from its stored SSM credentials.
       if (resolvedAgent.is_a2a && resolvedAgent.runtimeArn) {
-        console.log(`🔗 A2A agent detected: ${resolvedAgent.name}, routing via JSON-RPC to ${resolvedAgent.runtimeArn}`);
-        return this.invokeA2aAgentStreamInternal(resolvedAgent, query, observer, sessionId);
+        console.log(`🔗 A2A agent detected: ${resolvedAgent.name}, routing via JSON-RPC to ${resolvedAgent.runtimeArn} (auth=${effectiveAuthType || 'none'})`);
+        return this.invokeA2aAgentStreamInternal(resolvedAgent, query, observer, sessionId, effectiveAuthType);
       }
 
       // Route OAuth-authenticated agents through direct HTTP with bearer token
@@ -748,6 +762,59 @@ Example format:
     catch (error) {
       console.error('Error in streaming agent invocation:', error);
       //observer.error(error);
+    }
+  }
+
+  /**
+   * Build the canonical invocation payload for the notification hook and
+   * dispatch it (fire-and-forget, never awaited by the caller). This is the
+   * single hook point reachable from every downstream routing branch
+   * (is_a2a / oauth / default AgentCore), so the notification fires exactly
+   * once per qualifying invocation regardless of which transport ultimately
+   * carries the request. See spec: a2a-invocation-notify-hook.
+   */
+  private dispatchInvocationNotification(
+    resolvedAgent: EnrichedAgent,
+    query: string,
+    sessionId: string,
+    directMentionTarget?: string | null,
+    attachedFiles?: AttachedFile[]
+  ): void {
+    try {
+      const invocationPayload: Record<string, any> = {
+        prompt: query,
+        session_id: sessionId,
+        user_id: 'anonymous',
+        memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId(),
+        agent_name: resolvedAgent.name,
+        direct_mention_target: directMentionTarget,
+        session_metadata: {
+          agent_name: resolvedAgent.name,
+          agent_type: resolvedAgent.agentType,
+          timestamp: new Date().toISOString(),
+          session_id: sessionId,
+          memory_id: this.memoryRecordId || this.awsConfig.getMemoryRecordId()
+        },
+        context: attachedFiles && attachedFiles.length > 0 ? { attachedFiles } : {},
+        media: attachedFiles && attachedFiles.length > 0 ? {
+          type: 'file',
+          format: this.getFormatCode(attachedFiles[0]),
+          data: attachedFiles[0].base64Content
+        } : {}
+      };
+
+      // Best-effort: use the real signed-in user id when available without
+      // delaying/blocking dispatch on it.
+      getCurrentUser().then(currentUser => {
+        invocationPayload['user_id'] = currentUser?.signInDetails?.loginId || 'anonymous';
+      }).catch(() => {
+        // Non-fatal — 'anonymous' fallback already set above
+      }).finally(() => {
+        this.notifyDispatch.dispatchIfConfigured(resolvedAgent, { sessionId, invocationPayload });
+      });
+    } catch (error) {
+      // Never let notification construction affect the agent invocation.
+      console.warn(`⚠️ Failed to build invocation notification payload for ${resolvedAgent.name}:`, error);
     }
   }
 
@@ -1609,7 +1676,7 @@ Example format:
 
       // Use the Converse API for direct model interaction
       const command = new ConverseCommand({
-        modelId: `${this.awsConfig.getConfig()?.aws.region.split('-')[0]}.anthropic.claude-sonnet-4-20250514-v1:0`,
+        modelId: 'global.anthropic.claude-sonnet-5',
         messages: [
           {
             role: 'user',
@@ -1621,8 +1688,8 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: 8000,
-          temperature: 0.7        }
+          maxTokens: 8000
+        }
       });
 
       const response = await this.bedrockRuntimeClient.send(command);
@@ -1690,8 +1757,7 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: 8000,
-          temperature: 0.3,
+          maxTokens: 8000
         }
       });
 
@@ -1742,9 +1808,9 @@ Example format:
   }
 
   /**
-   * Invoke Claude Opus 4.5 for AI-assisted content generation
+   * Invoke Claude Opus 4.8 for AI-assisted content generation
    * Used for generating agent instructions and visualization mappings
-   * @param prompt The prompt to send to Claude Opus 4.5
+   * @param prompt The prompt to send to Claude Opus 4.8
    * @param maxTokens Maximum tokens for the response (default: 8000)
    * @returns The generated text content
    */
@@ -1759,9 +1825,9 @@ Example format:
         throw new Error('Bedrock Runtime client not initialized');
       }
 
-      // Use the Converse API for Claude Opus 4.5
+      // Use the Converse API for Claude Opus 5
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-opus-4-6-v1',
+        modelId: 'global.anthropic.claude-opus-5',
         messages: [
           {
             role: 'user',
@@ -1773,14 +1839,14 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: maxTokens,
-          temperature: 0.7        }
+          maxTokens: maxTokens
+        }
       });
 
       const response = await this.bedrockRuntimeClient.send(command);
 
       if (!response.output?.message?.content) {
-        throw new Error('No content received from Claude Opus 4.6');
+        throw new Error('No content received from Claude Opus 4.8');
       }
 
       // Extract the text content from the response
@@ -1792,7 +1858,7 @@ Example format:
       return textContent;
 
     } catch (error) {
-      console.error('Error invoking Claude Opus 4.6:', error);
+      console.error('Error invoking Claude Opus 4.8:', error);
 
       // Check for expired token specifically
       const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
@@ -1850,8 +1916,8 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens: maxTokens,
-          temperature: 0.7        }
+          maxTokens: maxTokens
+        }
       });
 
       const response = await this.bedrockRuntimeClient.send(command);
@@ -1902,8 +1968,7 @@ Example format:
           }
         ],
         inferenceConfig: {
-          maxTokens,
-          temperature: 0.5
+          maxTokens
         }
       });
 
@@ -2214,9 +2279,14 @@ Example format:
     resolvedAgent: EnrichedAgent,
     query: string,
     observer: any,
-    sessionId: string
+    sessionId: string,
+    resolvedAuthType?: 'none' | 'oauth' | 'iam' | 'bearer'
   ): Promise<void> {
     try {
+      // Prefer the auth type resolved by the caller (which falls back to the
+      // agent's global config when enrichment dropped the field) over the
+      // enriched agent's own value, which may be missing or stale.
+      const authType = resolvedAuthType || resolvedAgent.a2a_auth_type || 'none';
       const runtimeArn = resolvedAgent.runtimeArn!;
       const agentName = resolvedAgent.name || resolvedAgent.agentType;
 
@@ -2254,9 +2324,14 @@ Example format:
         'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId
       };
 
-      if (resolvedAgent.a2a_auth_type === 'oauth') {
-        // For A2A agents with OAuth, acquire bearer token via Cognito IDP REST API
+      if (authType === 'oauth') {
+        // For A2A agents with OAuth, acquire bearer token via Cognito IDP REST API.
+        // This is required: the runtime is fronted by a Cognito JWT authorizer, so
+        // an unauthenticated (or SigV4) request is rejected. If we cannot mint a
+        // bearer we fail closed with an explicit reason rather than sending the
+        // request without credentials and reporting an opaque HTTP failure.
         console.log(`🔑 A2A OAuth auth for ${agentName} — acquiring bearer token`);
+        let authFailure: string | null = null;
         try {
           const credentialsJson = await this.agentDynamoDBService.getA2AInboundOAuthCredentials(agentName);
           if (credentialsJson) {
@@ -2281,20 +2356,33 @@ Example format:
                 if (accessToken) {
                   headers['Authorization'] = `Bearer ${accessToken}`;
                   console.log(`✅ A2A OAuth bearer token acquired for ${agentName}`);
+                } else {
+                  authFailure = 'Cognito returned no access token';
                 }
               } else {
-                console.warn(`⚠️ Cognito auth failed (${tokenResponse.status}) for ${agentName}`);
+                authFailure = `Cognito authentication failed (HTTP ${tokenResponse.status})`;
               }
             } else {
-              console.warn(`⚠️ Stored credentials missing client_id/username/password for ${agentName}`);
+              authFailure = 'stored credentials are missing client_id/username/password';
             }
           } else {
-            console.warn(`⚠️ No OAuth credentials found in SSM for ${agentName}`);
+            authFailure = `no OAuth credentials found in Parameter Store for "${agentName}"`;
           }
         } catch (authErr) {
-          console.warn(`⚠️ Failed to acquire OAuth token for A2A call to ${agentName}:`, authErr);
+          // Never surface the credential values themselves.
+          authFailure = `token acquisition error (${(authErr as Error)?.name || 'unknown'})`;
         }
-      } else if (resolvedAgent.a2a_auth_type === 'iam') {
+
+        if (authFailure) {
+          const msg =
+            `Cannot call A2A agent "${agentName}": this agent's endpoint requires an ` +
+            `OAuth bearer token, but ${authFailure}. Store the inbound credentials via ` +
+            `the agent's Inbound Authentication settings and try again.`;
+          console.error(`❌ ${msg}`);
+          observer.error(new Error(msg));
+          return;
+        }
+      } else if (authType === 'iam') {
         // For IAM, sign the request with SigV4
         try {
           const session = await this.awsConfig.getCachedAuthSession();
@@ -2312,6 +2400,19 @@ Example format:
         } catch (authErr) {
           console.warn(`⚠️ Failed to get IAM credentials for A2A call:`, authErr);
         }
+      } else if (authType === 'bearer') {
+        // Inbound "Bearer Token" is not wired for this caller path: there is no
+        // retrieval of an agent's own inbound token here, so proceeding would
+        // send the request with NO credentials while the UI reports the agent as
+        // bearer-protected. Fail closed and say so, rather than silently making
+        // an unauthenticated call.
+        const msg =
+          `Cannot call A2A agent "${agentName}": its inbound authentication is set to ` +
+          `Bearer Token, which this caller cannot supply. Use OAuth (Cognito) or IAM ` +
+          `inbound authentication for agents invoked from here.`;
+        console.error(`❌ ${msg}`);
+        observer.error(new Error(msg));
+        return;
       }
       // authType 'none' — no auth headers needed
 
@@ -2319,7 +2420,7 @@ Example format:
         method: jsonRpcRequest.method,
         id: jsonRpcRequest.id,
         sessionId,
-        authType: resolvedAgent.a2a_auth_type || 'none'
+        authType
       });
 
       // Send the JSON-RPC request
@@ -2583,6 +2684,34 @@ Example format:
                 const chunk = decoder.decode(value, { stream: true });
                 //console.log('🔍 Raw AgentCore chunk:', chunk);
 
+                // Handle non-SSE responses (plain text/JSON from non-Strands agents like AAMP)
+                // These don't have 'data: ' prefix — they're raw response payloads
+                if (!chunk.includes('data: ') && chunk.trim().length > 0) {
+                  let plainText = chunk.trim();
+                  // Unescape JSON-encoded string (wrapped in quotes)
+                  if (plainText.startsWith('"') && plainText.endsWith('"')) {
+                    try { plainText = JSON.parse(plainText); } catch { /* use as-is */ }
+                  }
+                  // Try parsing as JSON object with response field
+                  try {
+                    const parsed = JSON.parse(plainText);
+                    if (parsed?.response) {
+                      plainText = typeof parsed.response === 'string' ? parsed.response : (parsed.response?.text || JSON.stringify(parsed.response));
+                    }
+                  } catch { /* not JSON object, use as-is */ }
+
+                  if (plainText.length > 5) {
+                    observer.next({
+                      type: 'chunk',
+                      data: plainText,
+                      timestamp: new Date(),
+                      agentName: resolvedAgent.name || resolvedAgent.id,
+                      messageType: 'final-response'
+                    });
+                  }
+                  continue;
+                }
+
                 // Process each line in the chunk (Server-Sent Events format)
                 const lines = chunk.split('\n');
                 for (const line of lines) {
@@ -2591,8 +2720,26 @@ Example format:
                     let dataContent = line.substring(6); // Remove 'data: ' prefix
                     // Skip Python object representations and non-JSON data
                     if (dataContent.includes('<strands.agent.agent.Agent object') ||
-                      dataContent.includes('event_loop_cycle_id') ||
-                      !dataContent.trim().startsWith('{')) {
+                      dataContent.includes('event_loop_cycle_id')) {
+                      continue;
+                    }
+
+                    // Handle non-JSON responses (plain strings from non-Strands agents like AAMP)
+                    if (!dataContent.trim().startsWith('{') && !dataContent.trim().startsWith('[')) {
+                      let plainText = dataContent.trim();
+                      // Unescape JSON-encoded strings (wrapped in quotes)
+                      if (plainText.startsWith('"') && plainText.endsWith('"')) {
+                        try { plainText = JSON.parse(plainText); } catch { /* use as-is */ }
+                      }
+                      if (plainText.length > 10) {
+                        observer.next({
+                          type: 'chunk',
+                          data: plainText,
+                          timestamp: new Date(),
+                          agentName: resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'final-response'
+                        });
+                      }
                       continue;
                     }
 
@@ -2626,6 +2773,21 @@ Example format:
 
                       if (isExternalAgent) console.log('🔍 Parsed External Agent event:', eventData);
                       //console.log('🔍 Parsed AgentCore event:', dataContent.substring(0, 300));
+
+                      // Handle non-Strands agent responses (e.g., AAMP buyer/seller using BedrockAgentCoreApp)
+                      // These return {"response": "...", "metadata": {...}} directly, not Strands streaming events
+                      if (eventData.response && !eventData.event && !eventData.message) {
+                        const responseText = eventData.response?.text || (typeof eventData.response === 'string' ? eventData.response : JSON.stringify(eventData.response, null, 2));
+                        console.log('✅ Non-Strands agent response detected, emitting as final-response');
+                        observer.next({
+                          type: 'chunk',
+                          data: responseText,
+                          timestamp: new Date(),
+                          agentName: resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'final-response'
+                        });
+                        continue;
+                      }
 
                       // Handle Strands StreamEvent format from AgentCore
                       if (eventData.event) {

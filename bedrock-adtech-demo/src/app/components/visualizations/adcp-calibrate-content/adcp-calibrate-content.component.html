@@ -1,0 +1,25 @@
+<div *ngIf="calibrationData" class="adcp-calibrate-tile">
+  <div *ngIf="overallScore" class="overall-score">
+    <span class="score-value">{{overallScore | number:'1.0-1'}}</span>
+    <span class="score-label">Overall Score</span>
+  </div>
+
+  <!-- Segmented bar -->
+  <div class="segmented-bar">
+    <div class="segment" *ngFor="let seg of segments; trackBy: trackByName"
+         [style.width.%]="seg.pct"
+         [style.background]="seg.bg"
+         [style.box-shadow]="seg.glow"
+         [title]="seg.name + ': ' + seg.score">
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="segment-legend">
+    <div class="legend-item" *ngFor="let seg of segments; trackBy: trackByName">
+      <span class="legend-dot" [style.background]="seg.labelColor"></span>
+      <span class="legend-name">{{seg.name}}</span>
+      <span class="legend-score">{{seg.score}}</span>
+    </div>
+  </div>
+</div>

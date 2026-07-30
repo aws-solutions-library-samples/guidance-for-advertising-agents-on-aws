@@ -102,14 +102,6 @@
 
   <!-- Chat Interface -->
   <div class="chat-container">
-<div style="display: flex; flex-direction: row; gap:7px;">
-<button class="session-refresh-btn" (click)="refreshSession()" title="Start a new session">
-          <span class="material-icons">refresh</span>
-        </button>
-        <span class="session-id-label" [title]="getFullSessionId()" (click)="copySessionId()">
-          <span class="material-icons">fingerprint</span>
-          {{getFullSessionId()}}
-        </span></div>
     <!-- Chat Header with Export and Clear Buttons -->
     <!-- <div class="chat-header">
       <div class="chat-info">
@@ -406,9 +398,9 @@
     <!-- View mode toggle bar — shown on messages with visualizations -->
     <div class="view-mode-toggles" *ngIf="formatted.visualData && hasAnyVisualizationData(formatted.visualData)">
       <button class="view-toggle-btn"
-        [class.active]="getViewMode(message.id) === 'text-only'"
-        (click)="setViewMode(message.id, 'text-only')"
-        title="Text only">
+        [class.active]="getViewMode(message.id) === 'text-visuals'"
+        (click)="setViewMode(message.id, 'text-visuals')"
+        title="Full Text + Visuals">
         <span class="material-icons">article</span>
       </button>
       <button class="view-toggle-btn"
@@ -417,16 +409,10 @@
         title="Summary + Visuals">
         <span class="material-icons">dashboard</span>
       </button>
-      <button class="view-toggle-btn"
-        [class.active]="getViewMode(message.id) === 'visuals-only'"
-        (click)="setViewMode(message.id, 'visuals-only')"
-        title="Visuals only">
-        <span class="material-icons">bar_chart</span>
-      </button>
     </div>
 
-    <!-- Text-only mode OR messages without visualization data: show finalContent -->
-    <div *ngIf="formatted.finalContent && formatted.finalContent.trim() && (!formatted.visualData || !hasAnyVisualizationData(formatted.visualData) || getViewMode(message.id) === 'text-only')" class="message-text"
+    <!-- Full text: shown when no visualizations OR in text-visuals mode -->
+    <div *ngIf="formatted.finalContent && formatted.finalContent.trim() && (!formatted.visualData || !hasAnyVisualizationData(formatted.visualData) || getViewMode(message.id) === 'text-visuals')" class="message-text"
       [class.thinking-in-progress]="formatted.isThinking"
       [class.reasoning-content]="message.data?.contentType === 'reasoning'||message.data?.contentType === 'rationale'||message.data?.contentType === 'thinking'"
       [class.tool-agent-response]="message.data?.contentType === 'tool-agent'"
@@ -437,14 +423,14 @@
       </markdown>
     </div>
 
-    <!-- Summary + Visuals mode: show summary at top -->
+    <!-- Summary + Visuals mode: show summary at top instead of full text -->
     <div *ngIf="formatted.visualData && hasAnyVisualizationData(formatted.visualData) && getViewMode(message.id) === 'summary-visuals' && formatted.summary" class="message-text summary-text">
       <markdown [data]="formatted.summary" ngPreserveWhitespaces>
       </markdown>
     </div>
 
-    <!-- Render visual data components if available (shown in summary-visuals and visuals-only modes) -->
-    <div *ngIf="formatted.visualData && hasAnyVisualizationData(formatted.visualData) && (getViewMode(message.id) === 'summary-visuals' || getViewMode(message.id) === 'visuals-only')" class="visual-components">
+    <!-- Render visual data components if available (shown in both modes when visualizations exist) -->
+    <div *ngIf="formatted.visualData && hasAnyVisualizationData(formatted.visualData)" class="visual-components">
 
       <!-- Metrics Visualization -->
       <app-metrics-visualization *ngIf="formatted.visualData.metricData" [metricData]="formatted.visualData.metricData">

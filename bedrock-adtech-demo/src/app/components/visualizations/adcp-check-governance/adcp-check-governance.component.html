@@ -1,0 +1,16 @@
+<div *ngIf="governanceData" class="adcp-governance-banner" [ngClass]="glowClass">
+  <div class="banner-top">
+    <span class="material-icons verdict-icon">{{verdictIcon}}</span>
+    <span class="verdict-text">{{verdict}}</span>
+    <span *ngIf="message" class="verdict-message">{{message}}</span>
+  </div>
+  <div *ngIf="checks.length" class="checks-list">
+    <div class="check-item" *ngFor="let check of checks; trackBy: trackByIndex">
+      <span class="material-icons check-icon" [ngClass]="getCheckClass(check.status)">
+        {{getCheckIcon(check.status)}}
+      </span>
+      <span class="check-name">{{check.name}}</span>
+      <span *ngIf="check.detail" class="check-detail">{{check.detail}}</span>
+    </div>
+  </div>
+</div>

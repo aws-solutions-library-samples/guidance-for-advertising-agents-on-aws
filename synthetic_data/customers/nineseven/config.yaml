@@ -1,0 +1,299 @@
+# Nine-Seven JV (Australia) — A4A Demo Config
+# Generated: 2026-06-04
+# Status: Active
+
+customer_id: nineseven
+display_name: "Nine-Seven JV (Australia)"
+market: AU
+currency: AUD
+geo_targets: "AU,NZ"
+
+publishers:
+  - id: nine
+    name: "Nine Entertainment"
+    domain: "9now.com.au"
+    properties:
+      - name: "9Now Sport CTV"
+        type: ctv
+        description: "Live NRL, Australian Open, Olympics on connected TV"
+      - name: "9Now BVOD"
+        type: bvod
+        description: "Catch-up: MAFS, The Block, LEGO Masters, NRL replay"
+      - name: "Stan Basic with Ads"
+        type: svod_ads
+        description: "NEW Jun 2026 — $9.99/month, EPL, Stan Originals, premium drama"
+  - id: seven
+    name: "Seven West Media"
+    domain: "7plus.com.au"
+    properties:
+      - name: "7plus Sport CTV"
+        type: ctv
+        description: "Live AFL, BBL cricket, Test cricket, Commonwealth Games"
+      - name: "7plus BVOD"
+        type: bvod
+        description: "Catch-up: Home & Away, Farmer, Australian Idol, The Voice"
+
+content_properties:
+  - id: nrl-live
+    name: "NRL Live (Regular + State of Origin + Finals)"
+    publisher: nine
+    property: "9Now Sport CTV"
+    type: live_sport
+    iab_category: "IAB17|IAB17-12"
+    format_types: "video_standard_30s,video_standard_15s,video_standard_60s"
+    floor_cpm: 45
+    avg_cpm: 55
+    ceiling_cpm: 65
+    estimated_daily_impressions: 1800000
+    estimated_daily_reach: 620000
+    audience_composition: "male_25_54:0.65,sports_enthusiasts:0.91,hhi_100k_plus:0.38"
+    peak_months: [Mar, Apr, May, Jun, Jul, Aug, Sep, Oct]
+    peak_viewers: "4.2M (State of Origin)"
+    description: "Australia's #1 rugby league. 14M annual reach."
+
+  - id: australian-open
+    name: "Australian Open Tennis"
+    publisher: nine
+    property: "9Now Sport CTV"
+    type: live_sport
+    iab_category: "IAB17|IAB17-18"
+    floor_cpm: 55
+    avg_cpm: 62
+    ceiling_cpm: 75
+    estimated_daily_impressions: 2200000
+    estimated_daily_reach: 750000
+    audience_composition: "adults_25_54:0.58,hhi_150k_plus:0.42,luxury:0.35"
+    peak_months: [Jan]
+    peak_viewers: "23M cumulative over 2 weeks"
+    description: "Premium luxury brand environment. Grand Slams on Stan Sport."
+
+  - id: afl-live
+    name: "AFL Live (Regular + Finals + Grand Final)"
+    publisher: seven
+    property: "7plus Sport CTV"
+    type: live_sport
+    iab_category: "IAB17|IAB17-1"
+    floor_cpm: 55
+    avg_cpm: 65
+    ceiling_cpm: 80
+    estimated_daily_impressions: 2800000
+    estimated_daily_reach: 950000
+    audience_composition: "male_25_54:0.58,sports:0.88,families:0.42,hhi_75k_plus:0.52"
+    peak_months: [Mar, Apr, May, Jun, Jul, Aug, Sep]
+    peak_viewers: "6M (Grand Final — AU's #1 TV event)"
+    description: "$4.5B deal through 2031. Australia's biggest sport."
+
+  - id: bbl-cricket
+    name: "BBL T20 Cricket"
+    publisher: seven
+    property: "7plus Sport CTV"
+    type: live_sport
+    iab_category: "IAB17|IAB17-6"
+    floor_cpm: 38
+    avg_cpm: 48
+    ceiling_cpm: 52
+    estimated_daily_impressions: 1500000
+    estimated_daily_reach: 520000
+    audience_composition: "male_25_54:0.55,sports:0.82,families:0.45,grocery:0.48"
+    peak_months: [Dec, Jan, Feb]
+    peak_viewers: "3.8M unique across season"
+    description: "34 matches on Seven. Summer tentpole. Family-friendly."
+
+  - id: test-cricket
+    name: "Test Cricket (incl. Ashes)"
+    publisher: seven
+    property: "7plus Sport CTV"
+    type: live_sport
+    iab_category: "IAB17|IAB17-6"
+    floor_cpm: 40
+    avg_cpm: 52
+    ceiling_cpm: 60
+    estimated_daily_impressions: 1200000
+    estimated_daily_reach: 420000
+    audience_composition: "male_35_64:0.62,hhi_100k_plus:0.45,sports:0.75"
+    peak_months: [Nov, Dec, Jan]
+    peak_viewers: "3.2M (Boxing Day Test)"
+    description: "All home Tests. 5-day format, extended sessions."
+
+  - id: stan-ads
+    name: "Stan Basic with Ads (Premium Drama + Sport)"
+    publisher: nine
+    property: "Stan Basic with Ads"
+    type: svod_premium
+    iab_category: "IAB1"
+    format_types: "video_standard_30s,video_standard_15s"
+    floor_cpm: 48
+    avg_cpm: 58
+    ceiling_cpm: 70
+    estimated_daily_impressions: 800000
+    estimated_daily_reach: 280000
+    audience_composition: "adults_18_39:0.55,hhi_150k_plus:0.48,streaming_power:0.72"
+    peak_months: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+    peak_viewers: "4.2M registered users"
+    description: "First-ever ads on Stan. Light load (4 min/hr). Launched Jun 2026."
+
+audiences:
+  - id: afl-fans
+    name: "AFL Enthusiasts 18-54"
+    description: "7plus Sport viewers watching 3+ AFL matches per round, footy tipping participants"
+    size: 5500000
+    segment_type: FIRST_PARTY
+    data_provider: "Nine-Seven JV (7plus)"
+    iab_taxonomy_id: "6.1.2"
+
+  - id: nrl-fans
+    name: "NRL Enthusiasts 25-54"
+    description: "9Now NRL viewers, State of Origin engaged, fantasy NRL"
+    size: 4200000
+    segment_type: FIRST_PARTY
+    data_provider: "Nine-Seven JV (Nine)"
+    iab_taxonomy_id: "6.1.2"
+
+  - id: cricket-viewers
+    name: "Cricket Viewers BBL+Tests"
+    description: "7plus cricket viewers, Cricket AU app users, Big Bash fantasy"
+    size: 4800000
+    segment_type: FIRST_PARTY
+    data_provider: "Nine-Seven JV (7plus)"
+    iab_taxonomy_id: "6.1.2"
+
+  - id: grocery-buyers
+    name: "Grocery Buyers Premium $200+/wk"
+    description: "Flybuys/Quantium linked, weekly $200+ grocery spend"
+    size: 4200000
+    segment_type: THIRD_PARTY
+    data_provider: "Quantium/Flybuys"
+    iab_taxonomy_id: "6.6.1"
+
+  - id: auto-intenders
+    name: "Auto Intenders AU"
+    description: "carsales.com.au in-market, Redbook research, LiveRamp matched"
+    size: 2800000
+    segment_type: THIRD_PARTY
+    data_provider: "LiveRamp AU / carsales"
+    iab_taxonomy_id: "6.6.1"
+
+advertisers:
+  - id: woolworths
+    name: "Woolworths Group"
+    industry: grocery_retail
+    agency: "OMD Australia"
+    annual_media_spend: "180M"
+    preferred_dsp: "The Trade Desk,DV360"
+
+  - id: cub
+    name: "Carlton & United Breweries"
+    industry: beverages_alcohol
+    agency: "Carat Australia"
+    annual_media_spend: "85M"
+    preferred_dsp: "The Trade Desk"
+
+  - id: commbank
+    name: "Commonwealth Bank"
+    industry: banking_finance
+    agency: "GroupM Australia"
+    annual_media_spend: "120M"
+    preferred_dsp: "DV360"
+
+  - id: toyota-au
+    name: "Toyota Australia"
+    industry: automotive
+    agency: "OMD Australia"
+    annual_media_spend: "95M"
+    preferred_dsp: "The Trade Desk"
+
+  - id: telstra
+    name: "Telstra"
+    industry: telecommunications
+    agency: "GroupM Australia"
+    annual_media_spend: "200M"
+    preferred_dsp: "The Trade Desk,DV360"
+
+campaigns:
+  - id: woolworths-bbl-summer
+    advertiser: woolworths
+    name: "Woolworths Fresh Food BBL Summer 2026"
+    objective: brand_awareness
+    budget: 200000
+    content_alignment: bbl-cricket
+    target_audience: grocery-buyers
+    start_date: "2026-01-05"
+    end_date: "2026-02-15"
+
+  - id: vb-state-of-origin
+    advertiser: cub
+    name: "VB State of Origin 2026"
+    objective: brand_awareness
+    budget: 350000
+    content_alignment: nrl-live
+    target_audience: nrl-fans
+    start_date: "2026-06-01"
+    end_date: "2026-07-15"
+
+  - id: commbank-afl-finals
+    advertiser: commbank
+    name: "CBA AFL Finals 2026"
+    objective: consideration
+    budget: 500000
+    content_alignment: afl-live
+    target_audience: afl-fans
+    start_date: "2026-09-01"
+    end_date: "2026-09-28"
+
+  - id: toyota-australian-open
+    advertiser: toyota-au
+    name: "Toyota Hilux Australian Open 2026"
+    objective: consideration
+    budget: 400000
+    content_alignment: australian-open
+    target_audience: auto-intenders
+    start_date: "2026-01-13"
+    end_date: "2026-01-26"
+
+  - id: telstra-jv-always-on
+    advertiser: telstra
+    name: "Telstra JV Sports Always-On 2026"
+    objective: brand_awareness
+    budget: 600000
+    content_alignment: nrl-live  # cross-network
+    target_audience: afl-fans
+    start_date: "2026-03-01"
+    end_date: "2026-09-30"
+
+demo_scenarios:
+  - title: "BBL Cricket - CPG Media Plan"
+    agent: MediaPlanningAgent
+    prompt: "What premium BBL T20 inventory is available on 7plus Sport for a CPG brand targeting grocery buyers during the January Big Bash window? Budget is $200K across BVOD and linear Seven."
+    why_it_resonates: "BBL is Seven's summer tentpole. Shows planning against actual sports calendar."
+
+  - title: "NRL State of Origin - Alcohol Brand"
+    agent: MediaPlanningAgent
+    prompt: "Build a media plan for a $350K beer campaign targeting males 25-54 during the NRL State of Origin series in June. Include 9Now CTV pre-roll + linear Channel 9 in-break spots."
+    why_it_resonates: "State of Origin is Nine's highest-rating sport event."
+
+  - title: "AFL Grand Final - Yield Optimization"
+    agent: YieldOptimizationAgent
+    prompt: "The AFL Grand Final on Seven is projected to reach 6M viewers. How should we optimize ad load and floor pricing for the 7plus Sport simulcast? Balance premium sponsorship make-goods against programmatic demand."
+    why_it_resonates: "AFL GF is Australia's biggest annual TV event."
+
+  - title: "Stan Ad Tier - Pricing Strategy"
+    agent: YieldOptimizationAgent
+    prompt: "We just launched Stan Basic with Ads at $9.99/month. Recommend initial floor pricing for premium drama audiences vs live sport audiences. What should starting CPM floors be?"
+    why_it_resonates: "Stan ads is brand new (Jun 2026) — greenfield pricing."
+
+  - title: "JV Cross-Network Combined Reach"
+    agent: MediaPlanningAgent
+    prompt: "A major telco wants to reach 5M unique Australians aged 18-49 across both Nine and Seven. Build a combined JV media plan at $500K using NRL + AFL + Cricket deduplicated across both networks."
+    why_it_resonates: "This IS the JV value proposition — combined addressable audience."
+
+corrections:
+  - wrong: "Nine has cricket"
+    right: "Cricket is Seven's — moved from Nine in 2018"
+  - wrong: "Seven has the Olympics"
+    right: "Olympics are Nine's — moved from Seven in 2023, exclusive through 2032"
+  - wrong: "Bluey is on Nine or Seven"
+    right: "Bluey is ABC (Ludo Studio) — not part of the JV"
+  - wrong: "Stan has always had ads"
+    right: "Stan ad tier launched June 2026 — first-ever advertising on Stan"
+  - wrong: "AFL is on Nine"
+    right: "AFL is Seven's — $4.5B deal through 2031"

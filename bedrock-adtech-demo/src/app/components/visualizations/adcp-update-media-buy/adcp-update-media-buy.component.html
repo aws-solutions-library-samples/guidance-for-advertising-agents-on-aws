@@ -1,0 +1,16 @@
+<div *ngIf="updateData" class="adcp-update-media-buy">
+  <div *ngIf="mediaBuyId" class="update-header">
+    <span class="material-icons">edit_note</span>
+    <span class="buy-id">{{mediaBuyId}}</span>
+  </div>
+  <div class="change-chips">
+    <div class="change-chip" *ngFor="let change of changes; trackBy: trackByField">
+      <span class="field-label">{{formatLabel(change.field)}}</span>
+      <div class="value-row">
+        <span class="old-value">{{change.oldValue}}</span>
+        <span class="arrow material-icons">arrow_forward</span>
+        <span class="new-value">{{change.newValue}}</span>
+      </div>
+    </div>
+  </div>
+</div>

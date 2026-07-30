@@ -1,0 +1,15 @@
+<div *ngIf="propertyData" class="adcp-property-list">
+  <div class="chip-cluster">
+    <div class="property-chip" *ngFor="let prop of visibleProperties; trackBy: trackByDomain">
+      <span class="material-icons chip-icon">{{prop.icon}}</span>
+      <span class="chip-domain">{{prop.domain}}</span>
+      <span *ngIf="prop.type" class="chip-type">{{prop.type}}</span>
+    </div>
+    <div *ngIf="overflowCount > 0" class="property-chip overflow-chip" (click)="toggleShowAll()">
+      <span class="overflow-label">+{{overflowCount}} more</span>
+    </div>
+    <div *ngIf="showAll && allProperties.length > maxVisible" class="property-chip overflow-chip" (click)="toggleShowAll()">
+      <span class="overflow-label">Show less</span>
+    </div>
+  </div>
+</div>

@@ -587,6 +587,26 @@
           </div>
         </div>
 
+        <!-- AAMP Inventory Endpoint (only for entries that carry the property) -->
+        <div class="a2a-form-section" *ngIf="hasAampInventoryEndpoint(a2aAgent)">
+          <h6><span class="material-icons">inventory_2</span> AAMP Inventory Endpoint</h6>
+          <div class="a2a-form-group">
+            <label>OpenDirect Base URL</label>
+            <input type="text" class="form-control" [(ngModel)]="a2aAgent.aampInventoryEndpoint"
+              placeholder="https://your-opendirect-host/api/v2.1"
+              aria-describedby="aamp-inventory-endpoint-hint">
+            <span class="field-hint" id="aamp-inventory-endpoint-hint">
+              Base URL of the OpenDirect 2.1 API the AAMP agents query for inventory
+              discovery. No inventory endpoint ships with this deployment, so discovery
+              does not work until you set one here.
+            </span>
+            <div class="token-error" *ngIf="isAampInventoryEndpointUnset(a2aAgent)" role="status">
+              <span class="material-icons">warning_amber</span>
+              Not configured — inventory discovery will fail until a reachable endpoint is set.
+            </div>
+          </div>
+        </div>
+
         <!-- Authentication -->
         <div class="a2a-form-section auth-section">
           <h6><span class="material-icons">vpn_key</span> Authentication</h6>
@@ -610,6 +630,82 @@
             <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'iam'"
               (click)="editorPanel.setA2aAuthType(a2aAgent, 'iam')">
               <span class="material-icons">security</span> AWS IAM
+            </div>
+            <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'bearer'"
+              (click)="editorPanel.setA2aAuthType(a2aAgent, 'bearer')">
+              <span class="material-icons">key</span> Bearer Token
+            </div>
+          </div>
+
+          <!-- Bearer Token Config (verbatim static token — works with non-AWS peers) -->
+          <div class="oauth-credentials-config" *ngIf="editorPanel.getA2aAuthType(a2aAgent) === 'bearer'">
+            <!-- Token status indicator -->
+            <div class="credential-status-indicator" *ngIf="!editorPanel.a2aBearerTokenEditing && !editorPanel.a2aBearerTokenPending">
+              <div class="credential-status stored" *ngIf="a2aAgent.bearerToken?.hasToken">
+                <span class="material-icons">check_circle</span>
+                <span>Token stored</span>
+              </div>
+              <div class="credential-status not-stored" *ngIf="!a2aAgent.bearerToken?.hasToken">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>Not stored</span>
+              </div>
+            </div>
+            <!-- Expiry warning (only when a stored token's expiry is in the past) -->
+            <div class="token-error" *ngIf="a2aAgent.bearerToken?.hasToken && editorPanel.isBearerTokenExpired(a2aAgent.bearerToken?.expiresAt)">
+              <span class="material-icons">error_outline</span>
+              Token expired ({{ a2aAgent.bearerToken?.expiresAt | date:'medium' }}). Paste a new one.
+            </div>
+            <!-- Token already stored — show actions -->
+            <div class="token-status" *ngIf="a2aAgent.bearerToken?.hasToken && !editorPanel.a2aBearerTokenEditing">
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="editorPanel.a2aBearerTokenEditing = true">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="editorPanel.removeA2aBearerToken()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
+            </div>
+            <!-- Token input (new or editing) -->
+            <div class="credentials-input-group" *ngIf="!a2aAgent.bearerToken?.hasToken || editorPanel.a2aBearerTokenEditing">
+              <div class="credential-field">
+                <label>Token <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="editorPanel.a2aBearerTokenVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="editorPanel.a2aBearerTokenValue" placeholder="Paste bearer token..."
+                    autocomplete="off" spellcheck="false">
+                  <button class="toggle-visibility-btn" (click)="editorPanel.a2aBearerTokenVisible = !editorPanel.a2aBearerTokenVisible"
+                    type="button" [title]="editorPanel.a2aBearerTokenVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ editorPanel.a2aBearerTokenVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="credential-field">
+                <label>Expiry <span class="optional-hint">(optional)</span></label>
+                <input type="datetime-local" class="form-control" [(ngModel)]="editorPanel.a2aBearerTokenExpiry"
+                  autocomplete="off">
+              </div>
+              <span class="field-hint token-hint">
+                <span class="material-icons">info_outline</span>
+                The token is stored encrypted in AWS SSM and sent verbatim as
+                <code>Authorization: Bearer &lt;token&gt;</code>. It is not refreshed — set an optional expiry to be
+                warned when it lapses, then paste a replacement. Works with peers hosted anywhere.
+              </span>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="editorPanel.saveA2aBearerToken()"
+                  [disabled]="editorPanel.a2aBearerTokenSaving || !editorPanel.a2aBearerTokenValue.trim()">
+                  <span class="material-icons">{{ editorPanel.a2aBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ editorPanel.a2aBearerTokenSaving ? 'Saving...' : 'Save Token' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="editorPanel.a2aBearerTokenEditing"
+                  (click)="editorPanel.a2aBearerTokenEditing = false; editorPanel.a2aBearerTokenValue = ''; editorPanel.a2aBearerTokenExpiry = ''">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="editorPanel.a2aEditorError">
+                <span class="material-icons">error_outline</span>
+                {{ editorPanel.a2aEditorError }}
+              </div>
             </div>
           </div>
 
@@ -640,6 +736,11 @@
             <!-- Credentials input (new or editing) -->
             <div class="credentials-input-group" *ngIf="(!a2aAgent.oauthCredentials?.hasCredentials && !a2aAgent.oauthToken?.hasToken) || editorPanel.a2aOAuthCredentialsEditing || editorPanel.a2aOAuthCredentialsPending">
               <div class="credential-field">
+                <label>Auth Client ID <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aOAuthClientId"
+                  placeholder="Cognito App Client ID" autocomplete="off">
+              </div>
+              <div class="credential-field">
                 <label>Username <span class="required">*</span></label>
                 <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aOAuthUsername"
                   placeholder="Enter username..." autocomplete="off">
@@ -662,12 +763,12 @@
               </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="editorPanel.saveA2aOAuthCredentials()"
-                  [disabled]="editorPanel.a2aOAuthCredentialsSaving || !editorPanel.a2aOAuthUsername.trim() || !editorPanel.a2aOAuthPassword.trim()">
+                  [disabled]="editorPanel.a2aOAuthCredentialsSaving || !editorPanel.a2aOAuthClientId.trim() || !editorPanel.a2aOAuthUsername.trim() || !editorPanel.a2aOAuthPassword.trim()">
                   <span class="material-icons">{{ editorPanel.a2aOAuthCredentialsSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ editorPanel.a2aOAuthCredentialsSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>
                 <button class="nova-button secondary small" *ngIf="editorPanel.a2aOAuthCredentialsEditing"
-                  (click)="editorPanel.a2aOAuthCredentialsEditing = false; editorPanel.a2aOAuthUsername = ''; editorPanel.a2aOAuthPassword = ''">
+                  (click)="editorPanel.a2aOAuthCredentialsEditing = false; editorPanel.a2aOAuthClientId = ''; editorPanel.a2aOAuthUsername = ''; editorPanel.a2aOAuthPassword = ''">
                   Cancel
                 </button>
               </div>
@@ -748,10 +849,10 @@
           <label class="doc-attach-label" [class.disabled]="isGeneratingAgent">
             <span class="material-icons">attach_file</span>
             Attach reference documents
-            <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log"
+            <input type="file" multiple accept=".txt,.md,.json,.csv,.xml,.yaml,.yml,.log, .jpg"
               (change)="onGenerateAgentFileAttach($event)" [disabled]="isGeneratingAgent" hidden>
           </label>
-          <span class="doc-attach-hint">Text files up to 512KB (.txt, .md, .json, .csv, .yaml)</span>
+          <span class="doc-attach-hint">Files up to 512KB (.txt, .md, .json, .csv, .yaml, .jpg)</span>
         </div>
         <div class="attached-docs" *ngIf="generateAgentDocs.length">
           <div class="attached-doc-chip" *ngFor="let doc of generateAgentDocs; let i = index">

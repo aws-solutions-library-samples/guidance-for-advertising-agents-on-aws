@@ -28,7 +28,15 @@ export class VisualizationAnalyzerService {
 
   /**
    * Main entry point — analyzes agent response text against visualization templates
-   * using Claude Haiku 4.5 and returns structured visualization data + summary.
+   * using a two-phase approach with Claude Haiku 4.5:
+   *
+   * Phase 1 (Selection): Send only template IDs + usage descriptions to Haiku,
+   *   ask which templates are relevant for the response. This avoids flooding
+   *   the token limit with full schemas.
+   *
+   * Phase 2 (Generation): For each selected template, send the full schema
+   *   individually and generate visualization data one at a time.
+   *
    * Returns null if agent has no templates, if Claude fails, or if response JSON is invalid.
    */
   async analyzeResponse(
@@ -50,22 +58,48 @@ export class VisualizationAnalyzerService {
         return null;
       }
 
-      // 3. Construct the prompt for Claude Haiku 4.5
-      const prompt = this.buildAnalysisPrompt(responseText, templateSchemas);
+      // 3. PHASE 1: Ask Haiku which templates are relevant (lightweight — descriptions only)
+      console.log(`VisualizationAnalyzer: Phase 1 — selecting relevant templates from ${templateSchemas.length} candidates for ${agentName}`);
+      const selectionResult = await this.selectRelevantTemplates(responseText, templateSchemas);
 
-      // 4. Call Claude Haiku 4.5
-      console.log(`VisualizationAnalyzer: Invoking Claude Haiku 4.5 for ${agentName} with ${templateSchemas.length} templates`);
-      const claudeResponse = await this.bedrockService.invokeClaudeHaiku(prompt);
-
-      // 5. Parse the response into VisualizationAnalysisResult
-      const result = this.parseClaudeResponse(claudeResponse, responseText);
-      if (!result) {
-        console.warn(`VisualizationAnalyzer: Failed to parse Claude response for ${agentName}`);
-        return null;
+      if (!selectionResult || selectionResult.selectedTemplateIds.length === 0) {
+        console.log(`VisualizationAnalyzer: No templates selected for ${agentName}, returning summary only`);
+        return {
+          summary: selectionResult?.summary || '',
+          visualizations: [],
+          originalText: responseText,
+          questions: selectionResult?.questions || []
+        };
       }
 
-      console.log(`✅ VisualizationAnalyzer: Generated ${result.visualizations.length} visualizations for ${agentName}`);
-      return result;
+      // Filter to only selected templates
+      const selectedSchemas = templateSchemas.filter(
+        t => selectionResult.selectedTemplateIds.includes(t.templateId)
+      );
+      console.log(`VisualizationAnalyzer: Phase 1 selected ${selectedSchemas.length} templates: ${selectionResult.selectedTemplateIds.join(', ')}`);
+
+      // 4. PHASE 2: Generate visualization data for each selected template individually
+      console.log(`VisualizationAnalyzer: Phase 2 — generating data for ${selectedSchemas.length} templates`);
+      const visualizations: { visualizationType: string; templateId: string; data: any }[] = [];
+
+      for (const schema of selectedSchemas) {
+        try {
+          const vizData = await this.generateVisualizationForTemplate(responseText, schema);
+          if (vizData) {
+            visualizations.push(vizData);
+          }
+        } catch (err) {
+          console.warn(`⚠️ VisualizationAnalyzer: Failed to generate data for ${schema.templateId}:`, err);
+        }
+      }
+
+      console.log(`✅ VisualizationAnalyzer: Generated ${visualizations.length} visualizations for ${agentName}`);
+      return {
+        summary: selectionResult.summary,
+        visualizations,
+        originalText: responseText,
+        questions: selectionResult.questions || []
+      };
 
     } catch (error) {
       console.error(`❌ VisualizationAnalyzer: Analysis failed for ${agentName}:`, error);
@@ -74,7 +108,139 @@ export class VisualizationAnalyzerService {
   }
 
   /**
+   * Phase 1: Ask Haiku which templates are relevant for the given response text.
+   * Only sends template IDs and usage descriptions — NOT full schemas.
+   * Also extracts a summary and questions from the response.
+   */
+  private async selectRelevantTemplates(
+    responseText: string,
+    templateSchemas: { templateId: string; usage: string; schema: any }[]
+  ): Promise<{ selectedTemplateIds: string[]; summary: string; questions: string[] } | null> {
+    const templateList = templateSchemas.map((t, i) =>
+      `${i + 1}. templateId: "${t.templateId}" — ${t.usage}`
+    ).join('\n');
+
+    const prompt = `You are a visualization selection engine. Given an agent response and a list of available visualization templates (with their usage descriptions), determine which templates are appropriate to visualize the data in the response. Your ONLY output is a single JSON object.
+
+## Agent Response Text
+${responseText}
+
+## Available Templates
+${templateList}
+
+## Output Format
+Return ONLY a JSON object — no other text:
+{
+  "selectedTemplateIds": ["templateId1", "templateId2"],
+  "summary": "1-2 sentence summary of the agent response.",
+  "questions": ["Any user-directed questions extracted from the response"]
+}
+
+## Rules
+- Select ONLY templates whose usage description matches data actually present in the response.
+- Select at most 3 templates — prefer the most informative ones.
+- If no template fits the response data, return an empty selectedTemplateIds array.
+- Summary: 1-2 sentences max.
+- Questions: extract questions directed at the user that require a response. Exclude rhetorical questions. Return empty array if none.
+- The first character of your response MUST be { and the last must be }.`;
+
+    try {
+      const claudeResponse = await this.bedrockService.invokeClaudeHaiku(prompt, 1000);
+      const jsonStr = this.extractJsonFromResponse(claudeResponse);
+      if (!jsonStr) return null;
+
+      const parsed = JSON.parse(jsonStr);
+      const selectedTemplateIds: string[] = Array.isArray(parsed.selectedTemplateIds)
+        ? parsed.selectedTemplateIds.filter((id: any) => typeof id === 'string')
+        : [];
+      const summary: string = typeof parsed.summary === 'string' ? parsed.summary : '';
+      const questions: string[] = Array.isArray(parsed.questions)
+        ? parsed.questions.filter((q: any) => typeof q === 'string' && q.trim().length > 0)
+        : [];
+
+      return { selectedTemplateIds, summary, questions };
+    } catch (error) {
+      console.error('VisualizationAnalyzer: Phase 1 selection failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Phase 2: Generate visualization data for a single template.
+   * Sends the full schema for ONE template at a time to avoid token flooding.
+   */
+  private async generateVisualizationForTemplate(
+    responseText: string,
+    template: { templateId: string; usage: string; schema: any }
+  ): Promise<{ visualizationType: string; templateId: string; data: any } | null> {
+    const prompt = `You are a data extraction engine for a dashboard visualization card. Your ONLY output is a single JSON object. Extract ONLY key numbers and short labels from the agent response. This data will render in a small UI card — brevity is critical.
+
+## Agent Response Text
+${responseText}
+
+## Template to Populate
+Template ID: ${template.templateId}
+Usage: ${template.usage}
+Schema:
+\`\`\`json
+${JSON.stringify(template.schema, null, 2)}
+\`\`\`
+
+## Output Format
+Return ONLY a JSON object — no other text:
+{
+  "visualizationType": "from template schema",
+  "templateId": "${template.templateId}",
+  "data": { ... populated template data ... }
+}
+
+## ABSOLUTE RULES
+- Your ENTIRE response must be a single valid JSON object.
+- Do NOT wrap it in markdown code blocks.
+- The first character MUST be { and the last must be }.
+- Each insight/recommendation/risk: MAX 8 WORDS.
+- Labels and names: 2-4 words max.
+- No narrative text. Numbers and short phrases only.
+- Max 5 allocation items.
+- Max 4 metric cards.
+- Max 2 insights, 2 recommendations, 2 risks per item.
+- Max 3 subMetrics per metric card.
+- "insights", "risks", "recommendations", "items", "metrics", "subMetrics", "allocations", "channels", "segments" → ALWAYS arrays.
+- percentage, budget, value, score → numbers, not strings.
+- Do NOT put "visualizationType" or "templateId" inside "data".
+- Extract real values from the response text — no placeholders.`;
+
+    try {
+      const claudeResponse = await this.bedrockService.invokeClaudeHaiku(prompt, 4000);
+      const jsonStr = this.extractJsonFromResponse(claudeResponse);
+      if (!jsonStr) return null;
+
+      const parsed = JSON.parse(jsonStr);
+
+      if (!parsed.data || !parsed.templateId) return null;
+
+      return {
+        visualizationType: parsed.visualizationType || parsed.data?.visualizationType || template.templateId,
+        templateId: parsed.templateId,
+        data: this.normalizeVisualizationData(parsed.data)
+      };
+    } catch (error) {
+      console.error(`VisualizationAnalyzer: Phase 2 generation failed for ${template.templateId}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Retrieve full template schemas from DynamoDB for each template in the mapping.
+   *
+   * Lookup falls back through two tiers per template:
+   *   1. Agent-specific template at `VIZ_TEMPLATE#{agentName}` / `{templateId}`.
+   *   2. Generic template at `VIZ_TEMPLATE#_GENERIC` / `{templateId}` —
+   *      already handled inside `getVisualizationTemplate`.
+   *
+   * If both miss, the template is skipped with a warning. This prevents a single
+   * missing mapping (common after a template-id rename or partial upload) from
+   * nuking the entire visualization pipeline for that agent.
    */
   private async retrieveTemplateSchemas(
     agentName: string,
@@ -84,6 +250,8 @@ export class VisualizationAnalyzerService {
 
     for (const template of templates) {
       try {
+        // getVisualizationTemplate already falls back to VIZ_TEMPLATE#_GENERIC
+        // when the agent-specific record is missing.
         const templateData = await this.agentDynamoDBService.getVisualizationTemplate(
           agentName,
           template.templateId
@@ -97,6 +265,11 @@ export class VisualizationAnalyzerService {
             usage: template.usage,
             schema
           });
+        } else {
+          console.warn(
+            `⚠️ VisualizationAnalyzer: No template ${template.templateId} found for ${agentName} ` +
+            `(checked agent-specific and generic). Skipping this template.`
+          );
         }
       } catch (error) {
         console.warn(`⚠️ VisualizationAnalyzer: Failed to retrieve template ${template.templateId}:`, error);
@@ -107,91 +280,75 @@ export class VisualizationAnalyzerService {
   }
 
   /**
-   * Build the analysis prompt for Claude Haiku 4.5.
-   * Includes the response text, all template schemas, and instructions
-   * to produce a ≤5-sentence summary and structured visualization JSON.
+   * @deprecated Use the two-phase approach (selectRelevantTemplates + generateVisualizationForTemplate) instead.
+   * This single-prompt method can exceed Haiku's token limit when many templates are configured.
+   * Kept for reference only.
    */
-  /**
-     * Build the analysis prompt for Claude Haiku 4.5.
-     * Includes the response text, all template schemas, and instructions
-     * to produce a ≤5-sentence summary and structured visualization JSON.
-     */
-    /**
-       * Build the analysis prompt for Claude Haiku 4.5.
-       * Emphasizes extreme brevity — visualization cards must be scannable at a glance.
-       */
-      buildAnalysisPrompt(
-        responseText: string,
-        templateSchemas: { templateId: string; usage: string; schema: any }[]
-      ): string {
-        const templateDescriptions = templateSchemas.map((t, i) => {
-          return `### Template ${i + 1}: ${t.templateId}
-    Usage: ${t.usage}
-    Schema:
-    \`\`\`json
-    ${JSON.stringify(t.schema, null, 2)}
-    \`\`\``;
-        }).join('\n\n');
+  buildAnalysisPrompt(
+    responseText: string,
+    templateSchemas: { templateId: string; usage: string; schema: any }[]
+  ): string {
+    const templateDescriptions = templateSchemas.map((t, i) => {
+      return `### Template ${i + 1}: ${t.templateId}
+Usage: ${t.usage}
+Schema:
+\`\`\`json
+${JSON.stringify(t.schema, null, 2)}
+\`\`\``;
+    }).join('\n\n');
 
-        return `You are a data extraction engine for dashboard visualization cards. Your ONLY output is a single JSON object. Do NOT include any explanation, commentary, or text outside the JSON. Extract ONLY key numbers and short labels from the agent response. This data will render in small UI cards — brevity is critical.
+    return `You are a data extraction engine for dashboard visualization cards. Your ONLY output is a single JSON object. Do NOT include any explanation, commentary, or text outside the JSON. Extract ONLY key numbers and short labels from the agent response. This data will render in small UI cards — brevity is critical.
 
-    ## Agent Response Text
-    ${responseText}
+## Agent Response Text
+${responseText}
 
-    ## Available Visualization Templates
-    ${templateDescriptions}
+## Available Visualization Templates
+${templateDescriptions}
 
-    ## Output Format
-    Return ONLY a JSON object — absolutely no other text before or after it:
+## Output Format
+Return ONLY a JSON object — absolutely no other text before or after it:
+{
+  "summary": "1-2 sentence summary.",
+  "visualizations": [
     {
-      "summary": "1-2 sentence summary.",
-      "visualizations": [
-        {
-          "visualizationType": "from template schema",
-          "templateId": "the templateId",
-          "data": { ... populated template data ... }
-        }
-      ],
-      "questions": ["What budget range would you prefer?", "Should we prioritize reach or frequency?"]
+      "visualizationType": "from template schema",
+      "templateId": "the templateId",
+      "data": { ... populated template data ... }
     }
+  ],
+  "questions": ["What budget range would you prefer?", "Should we prioritize reach or frequency?"]
+}
 
-    ## Question Detection
-    - Extract questions from the agent response that are directed at the user and require a response.
-    - Exclude rhetorical questions, self-referential questions, and questions the agent answers itself.
-    - Return each question as a standalone string in the "questions" array.
-    - If no user-directed questions exist, return an empty array.
+## ABSOLUTE RULES — VIOLATING ANY OF THESE IS A FAILURE
 
-    ## ABSOLUTE RULES — VIOLATING ANY OF THESE IS A FAILURE
+### Output format (most important)
+- Your ENTIRE response must be a single valid JSON object.
+- Do NOT wrap it in markdown code blocks.
+- Do NOT include any text before or after the JSON.
+- The first character of your response MUST be { and the last must be }.
 
-    ### Output format (most important)
-    - Your ENTIRE response must be a single valid JSON object.
-    - Do NOT wrap it in markdown code blocks.
-    - Do NOT include any text before or after the JSON.
-    - The first character of your response MUST be { and the last must be }.
+### Brevity
+- Summary: 1-2 sentences max.
+- Each insight/recommendation/risk: MAX 8 WORDS.
+- Labels and names: 2-4 words max.
+- No narrative text anywhere. Numbers and short phrases only.
 
-    ### Brevity
-    - Summary: 1-2 sentences max.
-    - Each insight/recommendation/risk: MAX 8 WORDS. Example: "Increase mobile bid by 15%". NOT: "Based on the analysis of current performance metrics, we recommend increasing the mobile channel bid adjustment by approximately 15% to capture additional impression share."
-    - Labels and names: 2-4 words max. Example: "CTV Premium". NOT: "Connected TV Premium Streaming Inventory Segment".
-    - No narrative text anywhere. Numbers and short phrases only.
+### Limits
+- Max 5 allocation items per visualization.
+- Max 4 metric cards per visualization.
+- Max 2 insights, 2 recommendations, 2 risks per item.
+- Max 3 subMetrics per metric card.
 
-    ### Limits
-    - Max 5 allocation items per visualization.
-    - Max 4 metric cards per visualization.
-    - Max 2 insights, 2 recommendations, 2 risks per item.
-    - Max 3 subMetrics per metric card.
+### Types
+- "insights", "risks", "recommendations", "items", "metrics", "subMetrics", "allocations", "channels", "segments" → ALWAYS arrays, NEVER strings.
+- percentage, budget, value, score → numbers, not strings.
+- Do NOT put "visualizationType" or "templateId" inside "data".
 
-    ### Types
-    - "insights", "risks", "recommendations", "items", "metrics", "subMetrics", "allocations", "channels", "segments" → ALWAYS arrays, NEVER strings.
-    - Single value → wrap in array: ["value"].
-    - percentage, budget, value, score → numbers, not strings.
-    - Do NOT put "visualizationType" or "templateId" inside "data".
-
-    ### Content
-    - Extract real values from the response text — no placeholders.
-    - Only include templates that have enough data to populate.
-    - Empty visualizations array if nothing fits.`;
-      }
+### Content
+- Extract real values from the response text — no placeholders.
+- Only include templates that have enough data to populate.
+- Empty visualizations array if nothing fits.`;
+  }
 
   /**
    * Parse Claude Haiku 4.5 response into a VisualizationAnalysisResult.

@@ -1678,6 +1678,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     this.initializeChat();
     this.updateAvailableAgents();
 
+    // Listen for session refresh requests from the header button
+    this.activeSubscriptions.add(
+      this.sessionManager.sessionRefresh$.subscribe(() => this.refreshSession())
+    );
+
     // Session initialization is now controlled by parent component via autoCreateSession input
     // Do NOT create session here - wait for parent to determine if existing session should be continued
 
@@ -2022,7 +2027,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // View mode methods for per-message toggle (text-only, summary-visuals, visuals-only)
   getViewMode(messageId: string): ViewMode {
-    return this.messageViewModes.get(messageId) || 'summary-visuals';
+    return this.messageViewModes.get(messageId) || 'text-visuals';
   }
 
   setViewMode(messageId: string, mode: ViewMode): void {
@@ -4714,6 +4719,35 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       return text.replace(/\\n/g, '\n');
     };
 
+    // ── Early handling for raw JSON responses (e.g. AAMP agents) ──
+    // Detect JSON error objects and format them as user-friendly markdown.
+    // Also extract the "response" field from JSON wrapper objects.
+    const rawText = finalResponse || message.text || '';
+    const trimmed = rawText.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        // Error response — show a friendly message instead of raw JSON
+        if (parsed.error) {
+          const friendlyContent = `⚠️ **Agent Error**\n\n${parsed.error}` +
+            (parsed.detail ? `\n\n<details><summary>Details</summary>\n\n\`\`\`\n${parsed.detail}\n\`\`\`\n</details>` : '');
+          // Update both message.text and finalResponse so the rest of the pipeline sees clean text
+          message.text = friendlyContent;
+          if (message.data) {
+            message.data.finalResponse = friendlyContent;
+          }
+        } else if (parsed.response && typeof parsed.response === 'string') {
+          // Wrapped response — unwrap it
+          message.text = parsed.response;
+          if (message.data) {
+            message.data.finalResponse = parsed.response;
+          }
+        }
+      } catch {
+        // Not valid JSON — continue with normal processing
+      }
+    }
+
     // If still thinking, show thinking history + current trace + thinking indicator
     if (isThinking) {
       const rawThinkingContent = thinkingHistory.length > 0
@@ -6512,12 +6546,21 @@ ${formattedJson}
         // stop the session and route to an agent if tool-use was triggered.
         console.log('🎤 Voice turn complete — stopping session and routing');
 
+        // Guard: if we already processed turn-complete, ignore duplicates
+        if (!this.isVoiceSessionActive && !this.isRecording) {
+          console.log('🎤 Voice turn-complete: already processed, ignoring duplicate');
+          break;
+        }
+
+        // Capture the accumulated response text before stopping (stopVoiceRecording resets it)
+        const finalSonicText = this.sonicResponseText;
+
         // Persist the Nova Sonic message to storage so it survives across renders
         this.saveMessagesToStorage();
 
         // Use browser TTS as fallback if no audio was received
-        if (this.sonicResponseText && this.sonicAudioQueue.length === 0) {
-          this.speakWithBrowserTTS(this.sonicResponseText);
+        if (finalSonicText && this.sonicAudioQueue.length === 0) {
+          this.speakWithBrowserTTS(finalSonicText);
         }
 
         this.stopVoiceRecording();
@@ -6530,7 +6573,7 @@ ${formattedJson}
         } else if (this.lastVoiceQuery) {
           // Fallback: model didn't use the tool, try to match an agent from the response text
           console.log('🎤 Voice fallback: no tool-use event, attempting agent match from response text');
-          const matchedAgent = this.tryMatchAgentFromText(this.sonicResponseText);
+          const matchedAgent = this.tryMatchAgentFromText(finalSonicText);
           if (matchedAgent) {
             console.log(`🎤 Voice fallback: matched agent "${matchedAgent}" from response text`);
             this.handleVoiceAgentRouting(matchedAgent, this.lastVoiceQuery);
@@ -6566,7 +6609,8 @@ ${formattedJson}
         } else if (this.lastVoiceQuery) {
           // Fallback: model didn't use the tool, try to match an agent from the response text
           console.log('🎤 Voice complete fallback: no tool-use event, attempting agent match from response text');
-          const matchedAgent = this.tryMatchAgentFromText(this.sonicResponseText);
+          const finalText = this.sonicResponseText;
+          const matchedAgent = this.tryMatchAgentFromText(finalText);
           if (matchedAgent) {
             console.log(`🎤 Voice complete fallback: matched agent "${matchedAgent}" from response text`);
             this.stopVoiceRecording();
@@ -6675,8 +6719,10 @@ ${formattedJson}
     this.lastAgent = resolvedAgent;
     this.selectedAgentForMessage = resolvedAgent;
 
-    // Clear the input field
+    // Clear the input field and show typing indicator immediately so the user
+    // sees the "..." bubble while the routed agent is being invoked
     this.currentMessage = '';
+    this.isLoading = true;
     this.changeDetectorRef.detectChanges();
     console.log(query)
     // Invoke the agent directly — the user message already exists from the

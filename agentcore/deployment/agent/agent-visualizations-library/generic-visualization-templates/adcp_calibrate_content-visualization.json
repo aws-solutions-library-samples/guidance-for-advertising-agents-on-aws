@@ -1,0 +1,26 @@
+{
+  "templateId": "adcp_calibrate_content-visualization",
+  "visualizationType": "adcp_calibrate_content-visualization",
+  "description": "Display AdCP content calibration results from calibrate_content MCP tool calls. Glass tile with glowing segmented bar.",
+  "usage": "Wrap the calibrate_content response in <visualization-data type=\"adcp_calibrate_content-visualization\"> tags.",
+  "immediateOutput": true,
+  "dataMapping": {
+    "visualizationType": "adcp_calibrate_content-visualization (REQUIRED)",
+    "overall_score": "Overall calibration score (number)",
+    "segments": [
+      {
+        "name": "Segment/category name (e.g., 'Brand Alignment', 'Audience Fit')",
+        "score": "Score value (number)"
+      }
+    ]
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_calibrate_content-visualization",
+    "overall_score": 8.4,
+    "segments": [
+      { "name": "Brand Alignment", "score": 9.2 },
+      { "name": "Audience Fit", "score": 8.1 },
+      { "name": "Context Safety", "score": 7.8 }
+    ]
+  }
+}

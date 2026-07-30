@@ -135,18 +135,32 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   editingA2aAgentIndex: number = -1;
   a2aEditorError: string | null = null;
   a2aBearerTokenValue: string = '';
+  a2aBearerTokenExpiry: string = '';
   a2aBearerTokenSaving: boolean = false;
   a2aBearerTokenPending: boolean = false;
   a2aBearerTokenEditing: boolean = false;
   a2aBearerTokenVisible: boolean = false;
 
-  // A2A OAuth credentials state (username/password)
+  // A2A OAuth credentials state (client id / username / password)
+  a2aOAuthClientId: string = '';
   a2aOAuthUsername: string = '';
   a2aOAuthPassword: string = '';
   a2aOAuthPasswordVisible: boolean = false;
   a2aOAuthCredentialsSaving: boolean = false;
   a2aOAuthCredentialsPending: boolean = false;
   a2aOAuthCredentialsEditing: boolean = false;
+
+  /**
+   * Names of external A2A entries whose credential was written to Parameter
+   * Store but whose config reference has not been persisted yet.
+   *
+   * Credential writes hit SSM immediately, whereas the entry config is staged on
+   * `editingAgent` and only persisted when the agent itself is saved. Until that
+   * save happens the runtime cannot see the entry, so the credential is inert —
+   * and abandoning the editor leaves an orphaned parameter. This set drives an
+   * explicit warning so a stored credential is never mistaken for an active one.
+   */
+  a2aCredentialsAwaitingAgentSave = new Set<string>();
 
   // MCP OAuth credentials state (username/password)
   mcpOAuthUsername: string = '';
@@ -164,6 +178,25 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   inboundA2aOAuthSaving: boolean = false;
   inboundA2aOAuthEditing: boolean = false;
   inboundA2aOAuthError: string | null = null;
+
+  // Inbound A2A Bearer Token state (self-deployed agents only). Enforcement is
+  // done by the deploy-time runtime authorizer, not this app — the UI only
+  // stores a reference + optional expiry and states this honestly.
+  inboundA2aBearerTokenValue: string = '';
+  inboundA2aBearerTokenExpiry: string = '';
+  inboundA2aBearerTokenSaving: boolean = false;
+  inboundA2aBearerTokenEditing: boolean = false;
+  inboundA2aBearerTokenVisible: boolean = false;
+
+  // Invocation Notification hook state (independent of A2A above — fires a
+  // fire-and-forget webhook every time this agent is invoked with a real user
+  // prompt). See spec: a2a-invocation-notify-hook.
+  notifyEditorError: string | null = null;
+  notifyBearerTokenValue: string = '';
+  notifyBearerTokenExpiry: string = '';
+  notifyBearerTokenSaving: boolean = false;
+  notifyBearerTokenEditing: boolean = false;
+  notifyBearerTokenVisible: boolean = false;
 
   @Output() a2aEditorOpened = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
   @Output() a2aEditorClosed = new EventEmitter<void>();
@@ -192,6 +225,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // ============================================
 
   private initializeForm(): void {
+    // Pending-activation warnings belong to the agent currently being edited, so
+    // reset them whenever a different agent is loaded into the form.
+    this.a2aCredentialsAwaitingAgentSave.clear();
     if (this.agent) {
       this.editingAgent = JSON.parse(JSON.stringify(this.agent));
       this.editingAgent.agent_id = this.editingAgent.agent_id || '';
@@ -211,10 +247,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.editingAgent.runtime_arn = this.editingAgent.runtime_arn || '';
       this.editingAgent.knowledge_base = this.editingAgent.knowledge_base || '';
       this.editingAgent.instructions = this.editingAgent.instructions || '';
+      this.editingAgent.notify_on_invocation = this.editingAgent.notify_on_invocation || undefined;
 
       if (!this.editingAgent.model_inputs || Object.keys(this.editingAgent.model_inputs).length === 0) {
         this.editingAgent.model_inputs = {
-          default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
+          default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
         };
       }
 
@@ -251,6 +288,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.editingA2aAgent = null;
     this.editingA2aAgentIndex = -1;
     this.a2aEditorError = null;
+    this.notifyEditorError = null;
+    this.notifyBearerTokenValue = '';
+    this.notifyBearerTokenExpiry = '';
+    this.notifyBearerTokenEditing = false;
+    this.notifyBearerTokenSaving = false;
+    this.notifyBearerTokenVisible = false;
     this.runtimeArnDropdownOpen = false;
     this.runtimeArnFilter = '';
     this.kbDropdownOpen = false;
@@ -282,7 +325,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       agent_id: '', agent_name: '', agent_display_name: '', team_name: '',
       agent_description: '', tool_agent_names: [], external_agents: [],
       model_inputs: {
-        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
       },
       agent_tools: [], injectable_values: {}, instructions: '', color: '#6842ff',
       mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: '',
@@ -340,11 +383,6 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       } else if (modelInputs.max_tokens < 100 || modelInputs.max_tokens > 200000) {
         this.validationErrors.set('max_tokens', 'Max tokens must be between 100 and 200,000');
       }
-      if (modelInputs.temperature === undefined || modelInputs.temperature === null) {
-        this.validationErrors.set('temperature', 'Temperature is required');
-      } else if (modelInputs.temperature < 0 || modelInputs.temperature > 1) {
-        this.validationErrors.set('temperature', 'Temperature must be between 0 and 1');
-      }
     }
 
     // Validate external A2A agent ARNs are non-empty
@@ -353,6 +391,16 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         .filter(agent => !agent.arn?.trim());
       if (emptyArnAgents.length > 0) {
         this.validationErrors.set('external_agent_arn', `${emptyArnAgents.length} external A2A agent(s) missing ARN`);
+      }
+    }
+
+    // Validate the invocation-notification endpoint, if configured
+    if (this.editingAgent.notify_on_invocation) {
+      const endpoint = this.editingAgent.notify_on_invocation.endpoint?.trim();
+      if (!endpoint) {
+        this.validationErrors.set('notify_endpoint', 'Endpoint URL is required when Invocation Notification is configured');
+      } else if (!this.isValidHttpsUrl(endpoint)) {
+        this.validationErrors.set('notify_endpoint', 'Endpoint URL must be a valid https:// URL');
       }
     }
 
@@ -413,24 +461,28 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.showDeleteConfirm = false;
   }
 
-  getDefaultModelInputs(): { model_id: string; max_tokens: number; temperature: number; top_p?: number } | null {
+  getDefaultModelInputs(): { model_id: string; max_tokens: number; top_p?: number } | null {
     if (!this.editingAgent.model_inputs) return null;
     if (this.editingAgent.model_inputs['default']) return this.editingAgent.model_inputs['default'];
     const keys = Object.keys(this.editingAgent.model_inputs);
     return keys.length > 0 ? this.editingAgent.model_inputs[keys[0]] : null;
   }
 
-  updateModelInput(field: 'model_id' | 'max_tokens' | 'temperature', value: string | number): void {
+  // `temperature` is intentionally not an accepted field: the models used here
+  // deprecated it, and passing it caused the request to be rejected (the model
+  // returned a default placeholder instead of a real completion). Model
+  // defaults are used instead.
+  updateModelInput(field: 'model_id' | 'max_tokens' | 'top_p', value: string | number): void {
     if (!this.editingAgent.model_inputs) {
       this.editingAgent.model_inputs = {
-        default: { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }
+        default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
       };
     }
     let key = 'default';
     if (!this.editingAgent.model_inputs['default']) {
       const keys = Object.keys(this.editingAgent.model_inputs);
       if (keys.length > 0) { key = keys[0]; }
-      else { this.editingAgent.model_inputs['default'] = { model_id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', max_tokens: 8000, temperature: 0.3 }; }
+      else { this.editingAgent.model_inputs['default'] = { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }; }
     }
     (this.editingAgent.model_inputs[key] as any)[field] = value;
   }
@@ -745,7 +797,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     try {
       const parsed = JSON.parse(this.mcpServerJsonText);
       if (!parsed.id || !parsed.name || !parsed.transport) throw new Error('Invalid structure. Required: id, name, transport');
-      if (!['stdio', 'http', 'sse'].includes(parsed.transport)) throw new Error('Transport must be one of: stdio, http, sse');
+      if (!['stdio', 'http', 'sse',"streamable_http"].includes(parsed.transport)) throw new Error('Transport must be one of: stdio, http, sse');
       this.editingMcpServer = parsed;
       this.mcpServerJsonError = null;
     } catch (error: any) {
@@ -902,6 +954,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.a2aBearerTokenPending = false;
     this.a2aBearerTokenEditing = false;
     this.a2aBearerTokenVisible = false;
+    this.a2aOAuthClientId = '';
     this.a2aOAuthUsername = '';
     this.a2aOAuthPassword = '';
     this.a2aOAuthPasswordVisible = false;
@@ -931,10 +984,20 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
     // If OAuth credentials were entered, store them in SSM before saving
     if (this.a2aOAuthUsername.trim() && this.a2aOAuthPassword.trim() && this.editingAgent.agent_name) {
+      // The runtime needs the Cognito app client id to mint a bearer token, so
+      // require it whenever OAuth credentials are being stored.
+      if (!this.a2aOAuthClientId.trim()) {
+        this.a2aEditorError = 'Auth Client ID is required when storing OAuth credentials.';
+        return;
+      }
       this.a2aOAuthCredentialsSaving = true;
       this.cdr.markForCheck();
 
-      const credentialsJson = JSON.stringify({ username: this.a2aOAuthUsername.trim(), password: this.a2aOAuthPassword.trim() });
+      const credentialsJson = JSON.stringify({
+        client_id: this.a2aOAuthClientId.trim(),
+        username: this.a2aOAuthUsername.trim(),
+        password: this.a2aOAuthPassword.trim()
+      });
       this.agentDynamoDBService.storeA2AOAuthToken(
         this.editingAgent.agent_name,
         this.editingA2aAgent.id,
@@ -958,6 +1021,31 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
   }
 
+  /**
+   * Record that an external entry's credential is in Parameter Store but its
+   * config reference has not been persisted yet.
+   */
+  private markA2aCredentialAwaitingAgentSave(entry: ExternalAgentConfig): void {
+    const key = entry.name?.trim() || entry.id;
+    if (key) {
+      this.a2aCredentialsAwaitingAgentSave.add(key);
+    }
+  }
+
+  /**
+   * Whether any external-agent credential has been stored but not yet activated
+   * by saving the agent. Drives the warning banner; reflects real staged state
+   * only — it is never set speculatively.
+   */
+  hasA2aCredentialsAwaitingAgentSave(): boolean {
+    return this.a2aCredentialsAwaitingAgentSave.size > 0;
+  }
+
+  /** Entry names whose stored credential is not yet active, for display. */
+  getA2aCredentialsAwaitingAgentSave(): string[] {
+    return Array.from(this.a2aCredentialsAwaitingAgentSave).sort();
+  }
+
   private finalizeA2aAgentSave(): void {
     if (!this.editingA2aAgent || this.editingA2aAgentIndex < 0) return;
     if (!this.editingAgent.external_agent_configs) this.editingAgent.external_agent_configs = [];
@@ -970,22 +1058,41 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   async saveA2aBearerToken(): Promise<void> {
     if (!this.editingA2aAgent || !this.a2aBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
 
+    // Validate the optional expiry before storing (SECURITY-05). Empty is
+    // allowed (non-expiring); a provided value must parse as a valid date.
+    const expiryRaw = this.a2aBearerTokenExpiry.trim();
+    let expiresAt: string | undefined;
+    if (expiryRaw) {
+      const parsed = new Date(expiryRaw);
+      if (isNaN(parsed.getTime())) {
+        this.a2aEditorError = 'Expiry must be a valid date/time or left empty.';
+        this.cdr.markForCheck();
+        return;
+      }
+      expiresAt = parsed.toISOString();
+    }
+
     this.a2aBearerTokenSaving = true;
     this.a2aEditorError = null;
     this.cdr.markForCheck();
 
     try {
-      const ssmPath = await this.agentDynamoDBService.storeA2AOAuthToken(
+      // Verbatim static token — stored as SecureString, never routed through
+      // the Cognito/OAuth credential path (works against non-AWS peers).
+      const ssmPath = await this.agentDynamoDBService.storeA2ABearerToken(
         this.editingAgent.agent_name,
         this.editingA2aAgent.id,
         this.a2aBearerTokenValue.trim()
       );
 
-      this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.editingA2aAgent.bearerToken = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      // Same staging gap as the OAuth path: token is stored, reference is not yet.
+      this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
       this.a2aBearerTokenValue = '';
       this.a2aBearerTokenEditing = false;
       this.a2aBearerTokenPending = false;
     } catch (error: any) {
+      // error.message never contains the token value (see storeA2ABearerToken).
       console.error('Error saving A2A bearer token:', error);
       this.a2aEditorError = error.message || 'Failed to store token.';
     } finally {
@@ -994,7 +1101,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
   }
 
-  /** Remove the OAuth bearer token from SSM for an A2A agent */
+  /** Remove the static Bearer Token from SSM for an A2A external agent */
   async removeA2aBearerToken(): Promise<void> {
     if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
 
@@ -1003,19 +1110,171 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.cdr.markForCheck();
 
     try {
-      await this.agentDynamoDBService.deleteA2AOAuthToken(
+      await this.agentDynamoDBService.deleteA2ABearerToken(
         this.editingAgent.agent_name,
         this.editingA2aAgent.id
       );
-      this.editingA2aAgent.oauthToken = undefined;
+      this.editingA2aAgent.bearerToken = undefined;
+      // Same as the OAuth removal: the removal is only live once the agent saves.
+      this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
       this.a2aBearerTokenPending = false;
       this.a2aBearerTokenEditing = false;
       this.a2aBearerTokenValue = '';
+      this.a2aBearerTokenExpiry = '';
     } catch (error: any) {
-      console.error('Error removing A2A OAuth token:', error);
+      console.error('Error removing A2A bearer token:', error);
       this.a2aEditorError = error.message || 'Failed to remove token.';
     } finally {
       this.a2aBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Pure display helper for Bearer Token expiry awareness (Req 5). Returns
+   * true only when an expiry is set AND is in the past. No expiry set means
+   * non-expiring (no warning). This reads the stored value only — it does not
+   * fabricate a token-health status.
+   */
+  isBearerTokenExpired(expiresAt?: string): boolean {
+    if (!expiresAt) return false;
+    const t = new Date(expiresAt).getTime();
+    if (isNaN(t)) return false;
+    return t < Date.now();
+  }
+
+  // ============================================
+  // Invocation Notification hook (independent of A2A above)
+  // ============================================
+
+  /**
+   * Enable the notify_on_invocation section for this agent with sensible
+   * defaults (Requirement 6.1/6.2). No-op if already enabled.
+   */
+  enableNotifyOnInvocation(): void {
+    if (this.editingAgent.notify_on_invocation) return;
+    this.editingAgent.notify_on_invocation = { endpoint: '', auth_type: 'none' };
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Remove the notify_on_invocation config entirely, cleaning up any stored
+   * bearer token in SSM first.
+   */
+  async disableNotifyOnInvocation(): Promise<void> {
+    if (!this.editingAgent.notify_on_invocation) return;
+    if (this.editingAgent.notify_on_invocation.bearer_token?.hasToken && this.editingAgent.agent_name) {
+      try {
+        await this.agentDynamoDBService.deleteNotifyBearerToken(this.editingAgent.agent_name);
+      } catch (err) {
+        console.warn('⚠️ Failed to clean up notify bearer token on disable:', err);
+      }
+    }
+    this.editingAgent.notify_on_invocation = undefined;
+    this.notifyEditorError = null;
+    this.notifyBearerTokenValue = '';
+    this.notifyBearerTokenExpiry = '';
+    this.notifyBearerTokenEditing = false;
+    this.cdr.markForCheck();
+  }
+
+  /** Set the auth type for the invocation-notification hook */
+  setNotifyAuthType(type: 'none' | 'iam' | 'bearer'): void {
+    if (!this.editingAgent.notify_on_invocation) return;
+    this.editingAgent.notify_on_invocation.auth_type = type;
+    if (type !== 'bearer') {
+      // Clear the in-memory pasted value only — a previously stored token
+      // reference is left intact, matching the A2A bearer pattern.
+      this.notifyBearerTokenValue = '';
+      this.notifyBearerTokenExpiry = '';
+      this.notifyBearerTokenEditing = false;
+      this.notifyBearerTokenVisible = false;
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Basic https:// URL validation shared by validate() and the endpoint field's blur handler. */
+  private isValidHttpsUrl(value: string): boolean {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Validate the endpoint field on blur and set/clear the field-level error. */
+  validateNotifyEndpoint(): void {
+    const endpoint = this.editingAgent.notify_on_invocation?.endpoint?.trim();
+    if (!endpoint) {
+      this.validationErrors.delete('notify_endpoint');
+      return;
+    }
+    if (!this.isValidHttpsUrl(endpoint)) {
+      this.validationErrors.set('notify_endpoint', 'Endpoint URL must be a valid https:// URL');
+    } else {
+      this.validationErrors.delete('notify_endpoint');
+    }
+  }
+
+  /** Save a bearer token to SSM for the invocation-notification hook. */
+  async saveNotifyBearerToken(): Promise<void> {
+    if (!this.editingAgent.notify_on_invocation || !this.notifyBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
+
+    const expiryRaw = this.notifyBearerTokenExpiry.trim();
+    let expiresAt: string | undefined;
+    if (expiryRaw) {
+      const parsed = new Date(expiryRaw);
+      if (isNaN(parsed.getTime())) {
+        this.notifyEditorError = 'Expiry must be a valid date/time or left empty.';
+        this.cdr.markForCheck();
+        return;
+      }
+      expiresAt = parsed.toISOString();
+    }
+
+    this.notifyBearerTokenSaving = true;
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const ssmPath = await this.agentDynamoDBService.storeNotifyBearerToken(
+        this.editingAgent.agent_name,
+        this.notifyBearerTokenValue.trim()
+      );
+
+      this.editingAgent.notify_on_invocation.bearer_token = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      this.notifyBearerTokenValue = '';
+      this.notifyBearerTokenEditing = false;
+    } catch (error: any) {
+      // error.message never contains the token value (see storeNotifyBearerToken).
+      console.error('Error saving notify bearer token:', error);
+      this.notifyEditorError = error.message || 'Failed to store token.';
+    } finally {
+      this.notifyBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove the stored bearer token for the invocation-notification hook. */
+  async removeNotifyBearerToken(): Promise<void> {
+    if (!this.editingAgent.notify_on_invocation || !this.editingAgent.agent_name) return;
+
+    this.notifyBearerTokenSaving = true;
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteNotifyBearerToken(this.editingAgent.agent_name);
+      this.editingAgent.notify_on_invocation.bearer_token = undefined;
+      this.notifyBearerTokenEditing = false;
+      this.notifyBearerTokenValue = '';
+      this.notifyBearerTokenExpiry = '';
+    } catch (error: any) {
+      console.error('Error removing notify bearer token:', error);
+      this.notifyEditorError = error.message || 'Failed to remove token.';
+    } finally {
+      this.notifyBearerTokenSaving = false;
       this.cdr.markForCheck();
     }
   }
@@ -1025,16 +1284,31 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     return this.generateA2aAgentId();
   }
 
-  /** Save A2A OAuth credentials (username/password) to SSM as JSON */
+  /** Save A2A OAuth credentials (client id / username / password) to SSM as JSON */
   async saveA2aOAuthCredentials(): Promise<void> {
-    if (!this.editingA2aAgent || !this.a2aOAuthUsername.trim() || !this.a2aOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+
+    const clientId = this.a2aOAuthClientId.trim();
+    const username = this.a2aOAuthUsername.trim();
+    const password = this.a2aOAuthPassword.trim();
+
+    // All three are required to mint a Cognito bearer token at runtime.
+    const missing: string[] = [];
+    if (!clientId) missing.push('Auth Client ID');
+    if (!username) missing.push('Username');
+    if (!password) missing.push('Password');
+    if (missing.length > 0) {
+      this.a2aEditorError = `Please fill in: ${missing.join(', ')}.`;
+      this.cdr.markForCheck();
+      return;
+    }
 
     this.a2aOAuthCredentialsSaving = true;
     this.a2aEditorError = null;
     this.cdr.markForCheck();
 
     try {
-      const credentialsJson = JSON.stringify({ username: this.a2aOAuthUsername.trim(), password: this.a2aOAuthPassword.trim() });
+      const credentialsJson = JSON.stringify({ client_id: clientId, username, password });
       const ssmPath = await this.agentDynamoDBService.storeA2AOAuthToken(
         this.editingAgent.agent_name,
         this.editingA2aAgent.id,
@@ -1043,6 +1317,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
       this.editingA2aAgent.oauthCredentials = { hasCredentials: true, ssmPath: ssmPath || undefined };
       this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      // The secret is now in Parameter Store, but the entry that points at it is
+      // still only staged on editingAgent — flag it until the agent is saved.
+      this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
+      this.a2aOAuthClientId = '';
       this.a2aOAuthUsername = '';
       this.a2aOAuthPassword = '';
       this.a2aOAuthCredentialsEditing = false;
@@ -1071,8 +1349,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
       this.editingA2aAgent.oauthCredentials = undefined;
       this.editingA2aAgent.oauthToken = undefined;
+      // The parameter is gone but the persisted config may still reference it, so
+      // the agent must be saved for the removal to take effect too.
+      this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
       this.a2aOAuthCredentialsPending = false;
       this.a2aOAuthCredentialsEditing = false;
+      this.a2aOAuthClientId = '';
       this.a2aOAuthUsername = '';
       this.a2aOAuthPassword = '';
     } catch (error: any) {
@@ -1088,9 +1370,70 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // Inbound A2A OAuth Credential Methods
   // ============================================
 
+  /**
+   * Enter "update" mode for inbound A2A OAuth credentials.
+   *
+   * Pre-populates the client_id and username inputs from what's currently stored
+   * in SSM so the user can change only the value they care about without having
+   * to re-type the others. The password is intentionally left blank — SSM returns
+   * it, but forcing the user to re-enter it is both safer and keeps the Save
+   * button from firing a no-op write.
+   *
+   * On SSM read failure we still open the editor with blank fields so the user
+   * isn't stuck.
+   */
+  async beginInboundA2aOAuthUpdate(): Promise<void> {
+    this.inboundA2aOAuthError = null;
+    this.inboundA2aOAuthTokenEndpoint = '';
+    this.inboundA2aOAuthUsername = '';
+    this.inboundA2aOAuthPassword = '';
+    this.inboundA2aOAuthEditing = true;
+    this.cdr.markForCheck();
+
+    if (!this.editingAgent.agent_name) return;
+
+    try {
+      const existing = await this.agentDynamoDBService.getA2AInboundOAuthCredentials(
+        this.editingAgent.agent_name
+      );
+      if (existing) {
+        try {
+          const parsed = JSON.parse(existing);
+          this.inboundA2aOAuthTokenEndpoint = parsed.client_id || '';
+          this.inboundA2aOAuthUsername = parsed.username || '';
+          // Leave password blank — user must re-enter to confirm intent
+          this.cdr.markForCheck();
+        } catch (parseErr) {
+          console.warn('Stored inbound A2A credentials are not valid JSON:', parseErr);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not pre-populate inbound A2A credentials:', err);
+    }
+  }
+
   /** Save inbound A2A OAuth credentials (client_id, username, password) to SSM for this agent's own A2A endpoint */
   async saveInboundA2aOAuthCredentials(): Promise<void> {
-    if (!this.inboundA2aOAuthTokenEndpoint.trim() || !this.inboundA2aOAuthUsername.trim() || !this.inboundA2aOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+    if (!this.editingAgent.agent_name) {
+      this.inboundA2aOAuthError = 'Agent name is required before saving credentials.';
+      return;
+    }
+
+    const clientId = this.inboundA2aOAuthTokenEndpoint.trim();
+    const username = this.inboundA2aOAuthUsername.trim();
+    const password = this.inboundA2aOAuthPassword.trim();
+
+    // Surface missing fields instead of silently no-oping. The runtime
+    // needs all three to acquire a Cognito bearer token.
+    const missing: string[] = [];
+    if (!clientId) missing.push('Auth Client ID');
+    if (!username) missing.push('Username');
+    if (!password) missing.push('Password');
+    if (missing.length > 0) {
+      this.inboundA2aOAuthError = `Please fill in: ${missing.join(', ')}. All three fields are required to update credentials.`;
+      this.cdr.markForCheck();
+      return;
+    }
 
     this.inboundA2aOAuthSaving = true;
     this.inboundA2aOAuthError = null;
@@ -1098,9 +1441,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
     try {
       const credentialsJson = JSON.stringify({
-        client_id: this.inboundA2aOAuthTokenEndpoint.trim(),
-        username: this.inboundA2aOAuthUsername.trim(),
-        password: this.inboundA2aOAuthPassword.trim()
+        client_id: clientId,
+        username: username,
+        password: password
       });
       const ssmPath = await this.agentDynamoDBService.storeA2AInboundOAuthCredentials(
         this.editingAgent.agent_name,
@@ -1141,6 +1484,85 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.inboundA2aOAuthError = error.message || 'Failed to remove credentials.';
     } finally {
       this.inboundA2aOAuthSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // ============================================
+  // Inbound A2A Bearer Token Methods (self-deployed agents only)
+  // ============================================
+  //
+  // These persist a reference + optional expiry and store the verbatim token
+  // in the inbound SSM SecureString path. They do NOT enforce inbound auth —
+  // that is the deploy-time runtime authorizer's job (see deploy_external_agents.py).
+  // The UI copy states this honestly and never claims a config is "enforced"
+  // that the authorizer cannot validate.
+
+  /** Save the inbound static Bearer Token to SSM for this agent's own A2A endpoint */
+  async saveInboundA2aBearerToken(): Promise<void> {
+    if (!this.editingAgent.agent_name) {
+      this.inboundA2aOAuthError = 'Agent name is required before saving a token.';
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.inboundA2aBearerTokenValue.trim()) return;
+
+    // Validate optional expiry (SECURITY-05). Empty = non-expiring.
+    const expiryRaw = this.inboundA2aBearerTokenExpiry.trim();
+    let expiresAt: string | undefined;
+    if (expiryRaw) {
+      const parsed = new Date(expiryRaw);
+      if (isNaN(parsed.getTime())) {
+        this.inboundA2aOAuthError = 'Expiry must be a valid date/time or left empty.';
+        this.cdr.markForCheck();
+        return;
+      }
+      expiresAt = parsed.toISOString();
+    }
+
+    this.inboundA2aBearerTokenSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      // Reuse the inbound SecureString path scheme/helper (Req 4.4).
+      const ssmPath = await this.agentDynamoDBService.storeA2AInboundOAuthCredentials(
+        this.editingAgent.agent_name,
+        this.inboundA2aBearerTokenValue.trim()
+      );
+
+      this.editingAgent.a2a_bearer_token = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      this.inboundA2aBearerTokenValue = '';
+      this.inboundA2aBearerTokenExpiry = '';
+      this.inboundA2aBearerTokenEditing = false;
+    } catch (error: any) {
+      console.error('Error saving inbound A2A bearer token:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to store token.';
+    } finally {
+      this.inboundA2aBearerTokenSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Remove the inbound static Bearer Token from SSM */
+  async removeInboundA2aBearerToken(): Promise<void> {
+    if (!this.editingAgent.agent_name) return;
+
+    this.inboundA2aBearerTokenSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AInboundOAuthCredentials(this.editingAgent.agent_name);
+      this.editingAgent.a2a_bearer_token = undefined;
+      this.inboundA2aBearerTokenEditing = false;
+      this.inboundA2aBearerTokenValue = '';
+      this.inboundA2aBearerTokenExpiry = '';
+    } catch (error: any) {
+      console.error('Error removing inbound A2A bearer token:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to remove token.';
+    } finally {
+      this.inboundA2aBearerTokenSaving = false;
       this.cdr.markForCheck();
     }
   }
@@ -1220,14 +1642,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   /** Set the A2A auth type (none or bearer) */
-  setA2aAuthType(agent: ExternalAgentConfig, type: 'none' | 'oauth' | 'iam'): void {
+  setA2aAuthType(agent: ExternalAgentConfig, type: 'none' | 'oauth' | 'iam' | 'bearer'): void {
     agent.authType = type;
     switch (type) {
       case 'none':
         agent.awsAuth = undefined;
-        this.a2aBearerTokenPending = false;
-        this.a2aBearerTokenEditing = false;
-        this.a2aBearerTokenValue = '';
+        this.clearA2aBearerFormState();
         this.a2aOAuthUsername = '';
         this.a2aOAuthPassword = '';
         this.a2aOAuthCredentialsPending = false;
@@ -1235,24 +1655,53 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         break;
       case 'oauth':
         agent.awsAuth = undefined;
+        // Switching away from bearer: clear the in-memory pasted value only —
+        // a previously stored token reference is left intact (Req 1.5).
+        this.clearA2aBearerFormState();
         if (!agent.oauthCredentials?.hasCredentials) {
           this.a2aOAuthCredentialsPending = true;
         }
         break;
       case 'iam':
         agent.awsAuth = { region: 'us-east-1', service: 'bedrock-agentcore' };
+        this.clearA2aBearerFormState();
         this.a2aOAuthCredentialsPending = false;
         this.a2aOAuthCredentialsEditing = false;
         this.a2aOAuthUsername = '';
         this.a2aOAuthPassword = '';
         break;
+      case 'bearer':
+        // Verbatim static token — no AWS identity. Clear OAuth/IAM state.
+        agent.awsAuth = undefined;
+        this.a2aOAuthUsername = '';
+        this.a2aOAuthPassword = '';
+        this.a2aOAuthCredentialsPending = false;
+        this.a2aOAuthCredentialsEditing = false;
+        if (!agent.bearerToken?.hasToken) {
+          this.a2aBearerTokenPending = true;
+        }
+        break;
     }
   }
 
+  /**
+   * Clear the in-memory bearer form fields (pasted value, expiry, edit/pending
+   * flags) without touching a stored `bearerToken` reference. Used when
+   * switching auth types (Req 1.5).
+   */
+  private clearA2aBearerFormState(): void {
+    this.a2aBearerTokenPending = false;
+    this.a2aBearerTokenEditing = false;
+    this.a2aBearerTokenValue = '';
+    this.a2aBearerTokenExpiry = '';
+    this.a2aBearerTokenVisible = false;
+  }
+
   /** Get the effective A2A auth type from the agent config */
-  getA2aAuthType(agent: ExternalAgentConfig): 'none' | 'oauth' | 'iam' {
+  getA2aAuthType(agent: ExternalAgentConfig): 'none' | 'oauth' | 'iam' | 'bearer' {
     if (agent.authType) return agent.authType;
     if (agent.awsAuth) return 'iam';
+    if (agent.bearerToken?.hasToken) return 'bearer';
     if (agent.oauthToken?.hasToken || agent.oauthCredentials?.hasCredentials) return 'oauth';
     return 'none';
   }
@@ -1497,6 +1946,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       if (this.visualizationMappings && this.editingAgent.agent_name) {
         this.saveVisualizationMappings();
       }
+      // Persisting the agent is what publishes staged external-entry configs (and
+      // therefore activates any credential already written to Parameter Store),
+      // so the awaiting-save warning is cleared here and only here.
+      this.a2aCredentialsAwaitingAgentSave.clear();
       this.onSave.emit(this.editingAgent);
     }
   }

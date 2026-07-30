@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { v4 } from 'uuid';
 
 export interface SessionInfo {
@@ -28,8 +28,22 @@ export class SessionManagerService {
   private readonly SESSION_EXPIRY_HOURS = 24;
 
   public session$: Observable<SessionInfo | null> = this.sessionSubject.asObservable();
-  
+
+  // Emits when a UI surface (e.g. the header button) requests a fresh session.
+  // The active chat interface listens to this and performs the full reset.
+  private sessionRefreshSubject = new Subject<void>();
+  public sessionRefresh$: Observable<void> = this.sessionRefreshSubject.asObservable();
+
   constructor() {
+  }
+
+  /**
+   * Request that the active chat interface start a brand-new session and
+   * clear its conversation state. Used by the header refresh button so the
+   * chat-local reset logic stays in the chat interface.
+   */
+  requestSessionRefresh(): void {
+    this.sessionRefreshSubject.next();
   }
 
   /**

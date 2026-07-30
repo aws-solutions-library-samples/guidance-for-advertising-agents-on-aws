@@ -66,7 +66,7 @@ class A2ATokenManager:
         return self._cognito_client
 
     def get_bearer_token(
-        self, ssm_path: str, pool_id: str, client_id: str
+        self, ssm_path: str, pool_id: str = "", client_id: str = ""
     ) -> Tuple[Optional[str], Optional[str]]:
         """Get a valid bearer token, refreshing from Cognito if needed.
 
@@ -74,10 +74,19 @@ class A2ATokenManager:
         returns it immediately. Otherwise fetches credentials from SSM and
         acquires a fresh token from Cognito.
 
+        The SSM credential JSON uses the same schema the UI writes when an
+        operator enables A2A on an agent's Inbound Authentication settings:
+        ``{"client_id": ..., "username": ..., "password": ...}``. When the
+        JSON embeds a ``client_id`` it takes precedence, so callers don't need
+        to thread the client id separately (the ``client_id`` argument is only
+        a fallback).
+
         Args:
             ssm_path: SSM Parameter Store path containing the credentials JSON.
-            pool_id: Cognito User Pool ID.
-            client_id: Cognito App Client ID.
+            pool_id: Cognito User Pool ID (unused by USER_PASSWORD_AUTH; kept
+                for backwards compatibility).
+            client_id: Fallback Cognito App Client ID if not embedded in the
+                stored credentials.
 
         Returns:
             A tuple of (token, error). On success error is None.
@@ -89,14 +98,23 @@ class A2ATokenManager:
             logger.debug("🔑 A2A_AUTH: Using cached bearer token")
             return cached.token, None  # noqa: S105
 
-        # Fetch credentials from SSM
-        username, password, err = self._fetch_credentials_from_ssm(ssm_path)
+        # Fetch credentials from SSM (username, password, embedded client_id)
+        username, password, embedded_client_id, err = self._fetch_credentials_from_ssm(
+            ssm_path
+        )
         if err is not None:
             return None, err
 
+        effective_client_id = embedded_client_id or client_id
+        if not effective_client_id:
+            return None, (
+                "A2A authentication failed — no Cognito client id available "
+                "(set it in the stored credentials or the agent config)"
+            )
+
         # Acquire token from Cognito
         token, expires_in, err = self._acquire_token(
-            username, password, pool_id, client_id
+            username, password, pool_id, effective_client_id
         )
         if err is not None:
             return None, err
@@ -112,14 +130,15 @@ class A2ATokenManager:
 
     def _fetch_credentials_from_ssm(
         self, ssm_path: str
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        """Retrieve username/password JSON from SSM SecureString.
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """Retrieve username/password/client_id JSON from SSM SecureString.
 
         Args:
             ssm_path: The SSM parameter path storing the credentials.
 
         Returns:
-            A tuple of (username, password, error). On success error is None.
+            A tuple of (username, password, client_id, error). ``client_id`` is
+            None when not embedded in the stored JSON. On success error is None.
         """
         try:
             response = self.ssm_client.get_parameter(
@@ -129,21 +148,22 @@ class A2ATokenManager:
             creds = json.loads(value)
             username = creds.get("username")
             password = creds.get("password")
+            client_id = creds.get("client_id") or creds.get("clientId")
             if not username or not password:
                 logger.error(
                     "❌ A2A_AUTH: Credentials missing required fields",
                 )
-                return None, None, (
+                return None, None, None, (
                     "A2A authentication failed — credential format invalid at the configured path"
                 )
-            return username, password, None
+            return username, password, client_id, None
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             logger.error(
                 "❌ A2A_AUTH: SSM retrieval failed — %s",
                 error_code,
             )
-            return None, None, (
+            return None, None, None, (
                 f"A2A authentication failed — could not retrieve credentials from parameter store ({error_code})"
             )
         except (json.JSONDecodeError, KeyError) as e:
@@ -151,14 +171,14 @@ class A2ATokenManager:
                 "❌ A2A_AUTH: Failed to parse credentials — %s",
                 type(e).__name__,
             )
-            return None, None, (
+            return None, None, None, (
                 "A2A authentication failed — credential format invalid at the configured path"
             )
         except Exception:
             logger.error(
                 "❌ A2A_AUTH: Unexpected error retrieving credentials",
             )
-            return None, None, (
+            return None, None, None, (
                 "A2A authentication failed — unexpected error retrieving credentials"
             )
 

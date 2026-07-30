@@ -1,0 +1,28 @@
+<div *ngIf="deliveryData" class="adcp-delivery-tile">
+  <div class="kpi-row">
+    <div class="kpi-card" *ngFor="let kpi of kpis">
+      <span class="material-icons kpi-icon">{{kpi.icon}}</span>
+      <span class="kpi-value">{{kpi.value}}</span>
+      <span class="kpi-label">{{kpi.label}}</span>
+    </div>
+  </div>
+  <div *ngIf="sparklinePath" class="sparkline-container">
+    <svg [attr.viewBox]="'0 0 ' + sparklineWidth + ' ' + sparklineHeight" preserveAspectRatio="none" class="sparkline-svg">
+      <defs>
+        <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#6842ff" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#fda83b" stop-opacity="0.8"/>
+        </linearGradient>
+        <filter id="sparkGlow">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <path [attr.d]="sparklinePath" fill="none" stroke="url(#sparkGrad)" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" filter="url(#sparkGlow)"/>
+    </svg>
+  </div>
+</div>

@@ -40,7 +40,11 @@ interface NovaSonicSessionEvent {
   };
 }
 
-const NOVA_SONIC_MODEL_ID = 'amazon.nova-sonic-v1:0';
+// Nova 2 Sonic (GA, Dec 2025) supersedes the now-Legacy nova-sonic-v1:0.
+// It uses the same InvokeModelWithBidirectionalStream API and 16k-in/24k-out
+// PCM audio config; validate the bidirectional event schema against Nova 2 if
+// voice behavior regresses.
+const NOVA_SONIC_MODEL_ID = 'amazon.nova-2-sonic-v1:0';
 const AUDIO_SAMPLE_RATE = 16000; // Input: 16kHz PCM mono
 const AUDIO_OUTPUT_SAMPLE_RATE = 24000; // Output: 24kHz PCM mono
 const SESSION_TIMEOUT_MS = 30000;
@@ -75,6 +79,7 @@ export class NovaSonicService {
   private pendingToolUse: { toolUseId: string; agentName: string; query: string } | null = null;  // Stash tool-use until contentEnd
   private toolResultSent = false;  // True after we send a tool result back on the stream
   private awaitingPostToolResponse = false;  // True while waiting for the model's post-tool spoken response to finish
+  private turnCompleteEmitted = false;  // Guard against emitting turn-complete more than once per turn
 
   constructor(private awsConfig: AwsConfigService) {
     this.initializeClient();
@@ -283,6 +288,7 @@ export class NovaSonicService {
     this.inputEventQueue = [];
     this.inputDone = false;
     this.inputResolve = null;
+    this.turnCompleteEmitted = false;
 
     // Generate IDs for the session protocol
     this.promptId = this.generateId('prompt');
@@ -362,8 +368,7 @@ export class NovaSonicService {
         sessionStart: {
           inferenceConfiguration: {
             maxTokens: 1024,
-            topP: 0.9,
-            temperature: 0.7
+            topP: 0.9 
           }
         }
       }
@@ -635,14 +640,20 @@ export class NovaSonicService {
               console.log('🔧 NovaSonicService: Post-tool response complete (contentEnd stopReason=' + stopReason + ') — emitting turn-complete');
               this.awaitingPostToolResponse = false;
               this.toolResultSent = false;
-              this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
+              if (!this.turnCompleteEmitted) {
+                this.turnCompleteEmitted = true;
+                this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
+              }
             }
           }
         }
 
         if (evt.completionEnd) {
           console.log('🔧 NovaSonicService: completionEnd received — model turn complete');
-          this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
+          if (!this.turnCompleteEmitted) {
+            this.turnCompleteEmitted = true;
+            this.emitEvent({ type: 'turn-complete', text: '', timestamp: new Date() });
+          }
         }
       }
     } catch (error) {
@@ -856,6 +867,7 @@ export class NovaSonicService {
     this.pendingToolContentName = '';
     this.toolResultSent = false;
     this.awaitingPostToolResponse = false;
+    this.turnCompleteEmitted = false;
 
     // Clear timeout
     if (this.timeoutTimer) {

@@ -170,9 +170,8 @@ def analyze_extracted_text(text: str, doc_type: str) -> str:
     """Analyze extracted text using Bedrock"""
     try:
         model = BedrockModel(
-            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id="global.anthropic.claude-sonnet-5",
             max_tokens=8000,
-            temperature=0.5,
         )
         analysisAgent = Agent(
             model=model,
@@ -199,9 +198,8 @@ def process_pdf_with_vision(content: bytes, filename: str) -> str:
         base64_pdf = base64.b64encode(content).decode("utf-8")
 
         model = BedrockModel(
-            model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            model_id="global.anthropic.claude-sonnet-5",
             max_tokens=8000,
-            temperature=0.5,
         )
         analysisAgent = Agent(
             model=model,
@@ -412,7 +410,7 @@ def process_single_image_with_vision(image, page_num: int, doc_type: str) -> str
                 doc_type = 'jpeg'
             prompt = "Analyze this image. If it appears to be a document, extract ALL visible text and describe any visual elements, charts, or diagrams. If it appears to be visual imagery or a creative asset for an ad campaign, return a detailed description of what the image depicts, also noting sentiment, mood, and artistic techniques."
             response = bedrock_runtime.converse(
-                modelId="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                modelId="global.anthropic.claude-sonnet-5",
                 messages=[
                     {
                         "role": "user",
@@ -422,7 +420,7 @@ def process_single_image_with_vision(image, page_num: int, doc_type: str) -> str
                         ],
                     }
                 ],
-                inferenceConfig={"maxTokens": 12000, "temperature": 0.8},
+                inferenceConfig={"maxTokens": 12000},
             )
         else:
             # Convert PIL Image to bytes
@@ -433,7 +431,7 @@ def process_single_image_with_vision(image, page_num: int, doc_type: str) -> str
             prompt = f"Analyze this {doc_type} page/slide {page_num}. Extract ALL visible text and describe any visual elements, charts, or diagrams."
 
             response = bedrock_runtime.converse(
-                modelId="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                modelId="global.anthropic.claude-sonnet-5",
                 messages=[
                     {
                         "role": "user",
@@ -443,7 +441,7 @@ def process_single_image_with_vision(image, page_num: int, doc_type: str) -> str
                         ],
                     }
                 ],
-                inferenceConfig={"maxTokens": 12000, "temperature": 0.1},
+                inferenceConfig={"maxTokens": 12000},
             )
 
         response_text = ""

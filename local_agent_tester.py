@@ -146,8 +146,8 @@ def test_agent(agent_name, query, verbose=False):
             configured_model = agent.model.model_id
             # Map unavailable models to available ones for local testing
             model_fallbacks = {
-                "global.anthropic.claude-sonnet-4-5-20250929-v1:0": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-                "us.anthropic.claude-sonnet-4-20250514-v1:0": "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+                "global.anthropic.claude-sonnet-5": "global.anthropic.claude-sonnet-5",
+                "us.anthropic.claude-sonnet-4-20250514-v1:0": "global.anthropic.claude-sonnet-5"
             }
             
             if configured_model in model_fallbacks:

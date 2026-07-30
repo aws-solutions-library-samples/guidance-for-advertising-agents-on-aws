@@ -163,7 +163,17 @@ export class AgentConfigService implements OnInit {
 
     // First, process all deployed agents (filter out AdFabricAgent)
     const mainAgents = deployedAgents
-      .filter(agent => agent.status === 'active' && !agent.agentType.toLowerCase().includes('adfabricagent'))
+      .filter(agent => {
+        const typeLower = agent.agentType.toLowerCase();
+        if (agent.status !== 'active') return false;
+        if (typeLower.includes('adfabricagent')) return false;
+        // Filter out raw AAMP runtime agents (e.g. a4a_aamp_seller_..._http /
+        // normalized AampSellerAgent). They are represented as config-based
+        // AAMPSellerAgent/AAMPBuyerAgent entries, so the raw runtime
+        // discovery entries would otherwise appear as duplicates.
+        if (typeLower.includes('_aamp_') || typeLower.includes('aamp')) return false;
+        return true;
+      })
       .map((deployedAgent, index) => {
         // Try to find matching config (optional - graceful fallback if not found)
         const configKey = agentConfig ? this.findConfigKey(deployedAgent.agentType, agentConfig) : null;
@@ -349,6 +359,10 @@ export class AgentConfigService implements OnInit {
           // Override runtime_arn from agent config if set (A2A agents may have their own endpoint)
           if (config.runtime_arn) {
             mainAgent.runtimeArn = config.runtime_arn;
+          }
+          // Propagate the invocation-notification hook config (independent of A2A)
+          if (config.notify_on_invocation) {
+            (mainAgent as any).notify_on_invocation = config.notify_on_invocation;
           }
         }
       }

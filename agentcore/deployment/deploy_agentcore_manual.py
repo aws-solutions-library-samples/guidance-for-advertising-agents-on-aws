@@ -651,6 +651,27 @@ class ManualAgentCoreDeployer:
                     "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
                 },
                 {
+                    # Allow this agent to invoke OTHER AgentCore runtimes over
+                    # A2A (e.g. AdFabricAgent -> AdCreationAgent / AdCPSellerAgent).
+                    # Scoped to account-level runtime resources so it covers
+                    # external agents regardless of deploy order — otherwise the
+                    # runtime ARNs would have to be appended to this role after
+                    # every external-agent deployment. External runtimes live in
+                    # the same account, so a wildcard on the runtime resource type
+                    # (not a wildcard principal) is the least-privilege choice
+                    # that avoids ordering coupling.
+                    "Sid": "AgentCoreRuntimeInvoke",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:InvokeAgentRuntime",
+                        "bedrock-agentcore:InvokeAgentRuntimeForUser",
+                    ],
+                    "Resource": [
+                        f"arn:aws:bedrock-agentcore:*:{account_id}:runtime/*",
+                        f"arn:aws:bedrock-agentcore:*:{account_id}:runtime/*/runtime-endpoint/*",
+                    ],
+                },
+                {
                     "Sid": "AgentCoreMemory",
                     "Effect": "Allow",
                     "Action": [
