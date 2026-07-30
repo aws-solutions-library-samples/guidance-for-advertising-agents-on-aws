@@ -1,0 +1,166 @@
+<mxfile host="Electron">
+  <diagram id="aaa-arch-v2" name="Architecture">
+    <mxGraphModel dx="1258" dy="824" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2600" pageHeight="1700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="1700" width="2600" as="geometry" />
+        </mxCell>
+        <mxCell id="title" parent="1" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=15;spacing=8;fontColor=#232F3E;" value="&lt;b&gt;Guidance for Advertising Agents on AWS — Reference Architecture&lt;/b&gt;&lt;br&gt;Amazon Bedrock AgentCore · 31 agents / 8 teams · July 2026" vertex="1">
+          <mxGeometry height="64" width="540" x="40" y="28" as="geometry" />
+        </mxCell>
+        <mxCell id="legendEdges" parent="1" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fillColor=#FFFFFF;strokeColor=#B0B7C3;fontSize=11;spacing=8;fontColor=#232F3E;" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br&gt;──── synchronous request path&lt;br&gt;- - - - asynchronous / optional path&lt;br&gt;&amp;#9312;&amp;#9313;&amp;#9314; steps match the numbered flow (lower right)" vertex="1">
+          <mxGeometry height="110" width="240" x="40" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.user" value="Business User" vertex="1">
+          <mxGeometry height="78" width="78" x="100" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="browser" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.client" value="Browser&lt;br&gt;Angular SPA" vertex="1">
+          <mxGeometry height="78" width="78" x="100" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="browserNote" parent="1" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#5A6C86;spacing=4;" value="After sign-in the SPA holds Cognito Identity Pool credentials and calls AgentCore Runtime, Bedrock and DynamoDB directly — there is no API Gateway or app server in the request path." vertex="1">
+          <mxGeometry height="130" width="240" x="40" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="cloud" parent="1" style="sketch=0;points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;dropTarget=1;" value="AWS Cloud" vertex="1">
+          <mxGeometry height="1440" width="2250" x="300" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="region" parent="cloud" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;dashed=1;dropTarget=1;" value="Region" vertex="1">
+          <mxGeometry height="1360" width="2190" x="30" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="g0" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Browser-side AWS calls" vertex="1">
+          <mxGeometry height="430" width="250" x="50" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="cognito" parent="g0" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cognito" value="Amazon Cognito&lt;br&gt;User Pool + Identity Pool" vertex="1">
+          <mxGeometry height="78" width="78" x="66" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="novasonic" parent="g0" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock" value="Amazon Bedrock&lt;br&gt;Nova 2 Sonic — voice" vertex="1">
+          <mxGeometry height="78" width="78" x="66" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="g1" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Static Web Delivery" vertex="1">
+          <mxGeometry height="210" width="590" x="360" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="waf" parent="g1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.waf" value="AWS WAF&lt;br&gt;common rule set" vertex="1">
+          <mxGeometry height="78" width="78" x="50" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudfront" parent="g1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront" value="Amazon CloudFront" vertex="1">
+          <mxGeometry height="78" width="78" x="270" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s3ui" parent="g1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3" value="Amazon S3&lt;br&gt;UI bucket (OAC)" vertex="1">
+          <mxGeometry height="78" width="78" x="490" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="g4" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Amazon Bedrock — Foundation Models" vertex="1">
+          <mxGeometry height="210" width="440" x="1010" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="claude" parent="g4" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock" value="Claude Sonnet 5&lt;br&gt;Haiku 4.5 — reasoning" vertex="1">
+          <mxGeometry height="78" width="78" x="50" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="novacanvas" parent="g4" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock" value="Nova Canvas&lt;br&gt;SD 3.5 — images" vertex="1">
+          <mxGeometry height="78" width="78" x="270" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="g5" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Knowledge Retrieval (RAG)" vertex="1">
+          <mxGeometry height="210" width="640" x="1510" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s3data" parent="g5" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3" value="Amazon S3&lt;br&gt;KB source data" vertex="1">
+          <mxGeometry height="78" width="78" x="50" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="kb" parent="g5" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock" value="Bedrock Knowledge Bases&lt;br&gt;Titan Text Embeddings v2" vertex="1">
+          <mxGeometry height="78" width="78" x="270" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aoss" parent="g5" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticsearch_service" value="OpenSearch Serverless&lt;br&gt;vector collection" vertex="1">
+          <mxGeometry height="78" width="78" x="490" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="g2" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#01A88D;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=13;fontColor=#01A88D;container=1;dropTarget=1;" value="Amazon Bedrock AgentCore" vertex="1">
+          <mxGeometry height="470" width="690" x="360" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="runtimebox" parent="g2" style="whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B0B7C3;rounded=1;arcSize=4;container=1;dropTarget=1;" value="" vertex="1">
+          <mxGeometry height="250" width="640" x="25" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="acicon" parent="runtimebox" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore" value="AgentCore Runtime" vertex="1">
+          <mxGeometry height="78" width="78" x="30" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rttext" parent="runtimebox" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#232F3E;spacing=2;" value="&lt;b&gt;Containerized Strands agents&lt;/b&gt;&lt;br&gt;AdFabricAgent routes intent, then agents call each other through&lt;br&gt;invoke_specialist / invoke_specialist_with_RAG — a call graph, not a tier.&lt;br&gt;&lt;br&gt;&lt;b&gt;31 agents · 8 teams&lt;/b&gt;&lt;br&gt;Media Strategy &amp;amp; Planning (7) · Agentic Advertising Ecosystem (7)&lt;br&gt;Publisher Revenue Operations (6) · Creative Strategy (3)&lt;br&gt;Programmatic Trading (3) · Audience &amp;amp; Consumer Intelligence (2)&lt;br&gt;Market &amp;amp; Event Intelligence (2) · Orchestration (1)" vertex="1">
+          <mxGeometry height="205" width="455" x="165" y="25" as="geometry" />
+        </mxCell>
+        <mxCell id="memory" parent="g2" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore" value="AgentCore Memory&lt;br&gt;short-term + summary / semantic" vertex="1">
+          <mxGeometry height="78" width="78" x="70" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway" parent="g2" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore" value="AgentCore Gateway&lt;br&gt;MCP over IAM SigV4" vertex="1">
+          <mxGeometry height="78" width="78" x="440" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="g3" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Configuration &amp; State" vertex="1">
+          <mxGeometry height="470" width="390" x="1120" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="ddbcfg" parent="g3" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb" value="DynamoDB — AgentConfig&lt;br&gt;instructions · cards · global config" vertex="1">
+          <mxGeometry height="78" width="78" x="40" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ddbviz" parent="g3" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb" value="DynamoDB — Visualizations&lt;br&gt;maps + templates" vertex="1">
+          <mxGeometry height="78" width="78" x="260" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ssm" parent="g3" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.systems_manager" value="Systems Manager&lt;br&gt;Parameter Store" vertex="1">
+          <mxGeometry height="78" width="78" x="40" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ddbimg" parent="g3" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb" value="DynamoDB — ImageStatus&lt;br&gt;async job state" vertex="1">
+          <mxGeometry height="78" width="78" x="260" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="g3note" parent="g3" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#5A6C86;spacing=2;" value="DynamoDB is the primary config source; S3 and the bundled file are fallback only. The Agent Management UI writes here directly, so edits apply without redeploying." vertex="1">
+          <mxGeometry height="60" width="330" x="30" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="g8" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="External Agent Runtimes — A2A" vertex="1">
+          <mxGeometry height="470" width="580" x="1570" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="g8note" parent="g8" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#5A6C86;spacing=2;" value="IAB Tech Lab AAMP marketplace agents, each in its own AgentCore HTTP runtime. AgencyAgent reaches them as external_agent_configs entries: JSON-RPC 2.0 to the AgentCore invocations endpoint with a Cognito OAuth bearer (SigV4 and static bearer also supported)." vertex="1">
+          <mxGeometry height="90" width="500" x="40" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="seller" parent="g8" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore" value="AAMP Seller Agent&lt;br&gt;inventory · pricing · deals" vertex="1">
+          <mxGeometry height="78" width="78" x="90" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="buyer" parent="g8" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore" value="AAMP Buyer Agent&lt;br&gt;campaign plan · budget split" vertex="1">
+          <mxGeometry height="78" width="78" x="330" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="g6" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="MCP Tool Targets (behind AgentCore Gateway)" vertex="1">
+          <mxGeometry height="380" width="590" x="360" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="ladcp" parent="g6" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda" value="Lambda&lt;br&gt;AdCP tools" vertex="1">
+          <mxGeometry height="78" width="78" x="50" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="la4a" parent="g6" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda" value="Lambda&lt;br&gt;agents-as-tools" vertex="1">
+          <mxGeometry height="78" width="78" x="270" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="laud" parent="g6" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda" value="Lambda&lt;br&gt;audience taxonomy" vertex="1">
+          <mxGeometry height="78" width="78" x="490" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="g6note" parent="g6" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#5A6C86;spacing=2;" value="&lt;b&gt;AdCP tools&lt;/b&gt; — Ad Context Protocol: get_products, create_media_buy, get_media_buy_delivery, get_signals, activate_signal (served from bundled synthetic ecosystem data).&lt;br&gt;&lt;b&gt;agents-as-tools&lt;/b&gt; — exposes the fleet itself over MCP: list_agents, get_agent_schema, invoke_agent, for external MCP clients.&lt;br&gt;&lt;b&gt;audience taxonomy&lt;/b&gt; — taxonomy search and TQL predicate build / validate / count." vertex="1">
+          <mxGeometry height="160" width="540" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="g7" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Creative Generation (asynchronous)" vertex="1">
+          <mxGeometry height="380" width="580" x="1010" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="lcig" parent="g7" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda" value="Lambda&lt;br&gt;image request" vertex="1">
+          <mxGeometry height="78" width="78" x="50" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="laip" parent="g7" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda" value="Lambda&lt;br&gt;async processor" vertex="1">
+          <mxGeometry height="78" width="78" x="270" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s3gen" parent="g7" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3" value="Amazon S3&lt;br&gt;generated content" vertex="1">
+          <mxGeometry height="78" width="78" x="490" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="g7note" parent="g7" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#5A6C86;spacing=2;" value="The agent tool returns immediately: the request Lambda writes a pending row and fires the processor asynchronously. The processor calls the Bedrock image model, stores the PNG, and flips the job row to complete; the UI gallery then reads it with a presigned URL." vertex="1">
+          <mxGeometry height="100" width="500" x="50" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="g9" parent="region" style="whiteSpace=wrap;html=1;fillColor=none;strokeColor=#5A6C86;dashed=1;dashPattern=8 8;verticalAlign=top;align=center;fontSize=12;fontColor=#5A6C86;container=1;dropTarget=1;" value="Observability &amp; Access" vertex="1">
+          <mxGeometry height="380" width="250" x="50" y="845" as="geometry" />
+        </mxCell>
+        <mxCell id="cw" parent="g9" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch_2" value="Amazon CloudWatch&lt;br&gt;logs · metrics · traces" vertex="1">
+          <mxGeometry height="78" width="78" x="66" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="iam" parent="g9" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.role" value="IAM roles&lt;br&gt;per-runtime · gateway · Cognito" vertex="1">
+          <mxGeometry height="78" width="78" x="66" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="flowpanel" parent="region" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fillColor=#FFFFFF;strokeColor=#B0B7C3;fontSize=11;spacing=8;fontColor=#232F3E;" value="&lt;b&gt;Numbered flow&lt;/b&gt;&lt;br&gt;&amp;#9312; Browser loads the Angular app through CloudFront (WAF-protected).&lt;br&gt;&amp;#9313; CloudFront reads the private S3 UI bucket via Origin Access Control.&lt;br&gt;&amp;#9314; User signs in to the Cognito User Pool; the Identity Pool returns scoped temporary credentials.&lt;br&gt;&amp;#9315; The SPA calls InvokeAgentRuntime (SigV4) on the AgentCore Runtime.&lt;br&gt;&amp;#9316; The runtime loads instructions, agent cards and global config from DynamoDB.&lt;br&gt;&amp;#9317; Agents reason with Claude on Amazon Bedrock.&lt;br&gt;&amp;#9318; Session context is written to and read from AgentCore Memory.&lt;br&gt;&amp;#9319; Tool calls go through the AgentCore Gateway over MCP to Lambda targets.&lt;br&gt;&amp;#9320; RAG queries hit the Bedrock knowledge base backed by OpenSearch Serverless.&lt;br&gt;&amp;#9321; AgencyAgent invokes the AAMP buyer and seller runtimes over A2A JSON-RPC.&lt;br&gt;&amp;#9322; Creative requests fan out to the asynchronous image pipeline.&lt;br&gt;&amp;#9323; Voice runs browser-to-Bedrock: a bidirectional Nova 2 Sonic stream." vertex="1">
+          <mxGeometry height="380" width="500" x="1650" y="845" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
