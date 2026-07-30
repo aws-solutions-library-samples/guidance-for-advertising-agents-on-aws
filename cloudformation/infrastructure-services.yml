@@ -179,6 +179,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - s3:*
+                Resource: "*"
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
@@ -193,13 +201,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:GetItem
+                  - dynamodb:*
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: !GetAtt GeneratedContentTable.Arn
+                Resource: "*"
 
   # Async Image Processor Lambda Function
   AsyncImageProcessorFunction:
@@ -249,14 +257,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:GetItem
+                  - dynamodb:*
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: !GetAtt GeneratedContentTable.Arn
-
+                Resource: "*"
   # Creative Image Generator Lambda Function
   CreativeImageGeneratorLambda:
     Type: AWS::Lambda::Function
