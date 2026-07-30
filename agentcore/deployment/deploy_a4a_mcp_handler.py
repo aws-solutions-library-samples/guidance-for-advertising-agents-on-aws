@@ -1837,7 +1837,11 @@ class TargetSchemaUpdater:
         if results["gateways_failed"]:
             logger.warning(f"Failed: {len(results['gateways_failed'])} gateway(s)")
             for fail in results["gateways_failed"]:
-                logger.warning(f"  - {fail['gateway']}: {fail['reason']}")
+                raw_gateway = str(fail.get("gateway", "unknown"))
+                masked_gateway = f"***{raw_gateway[-4:]}" if len(raw_gateway) > 4 else "***"
+                raw_reason = str(fail.get("reason", "unknown"))
+                safe_reason = raw_reason if raw_reason in {"target_not_found", "unknown"} else "operation_failed"
+                logger.warning(f"  - {masked_gateway}: {safe_reason}")
 
         results["status"] = "success" if results["gateways_updated"] else "all_failed"
         return results
