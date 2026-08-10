@@ -2930,6 +2930,29 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'final-response':
               case 'tool-result':
               case 'response':
+                // Skip sources JSON that leaked into the text stream — these are handled
+                // by the dedicated 'sources-update' / 'knowledge-base-sources' handlers
+                if (messageText && typeof messageText === 'string') {
+                  try {
+                    const parsed = JSON.parse(messageText);
+                    if (parsed && (
+                      (parsed.type === 'sources' && parsed.sources) ||
+                      (parsed.type === 'sources' && typeof parsed.sources === 'object')
+                    )) {
+                      console.log('⚠️ Filtering out sources JSON from final-response text');
+                      break;
+                    }
+                  } catch (_) { /* not JSON — check for raw citation fragments */ }
+                  // Also filter out raw KB citation metadata that leaked into text
+                  if (messageText.includes('"ResponseMetadata"') && messageText.includes('"citations"') && messageText.includes('"retrievedReferences"')) {
+                    console.log('⚠️ Filtering out raw KB citation metadata from text');
+                    break;
+                  }
+                  if (messageText.includes('"sessionId"') && messageText.includes('"x-amz-bedrock-kb-source-uri"')) {
+                    console.log('⚠️ Filtering out raw KB source metadata from text');
+                    break;
+                  }
+                }
                 // Always create a new message for final responses - don't update existing ones
                 messageText = this.removeLastFinalResponseText(agentName, messageText);
                 const finalResponseMessage: Message = {

@@ -204,8 +204,9 @@ def load_agent_instructions(agent_name: str, use_cache: bool = True) -> Optional
     item = _get_item(pk, sk, consistent_read=not use_cache)
     if item:
         content = item.get("content", "")
+        updated_at = item.get("updated_at", "unknown")
         _config_cache[cache_key] = content
-        logger.info(f"✅ DDB_LOADER: Loaded instructions for {agent_name} ({len(content)} chars)")
+        logger.info(f"✅ DDB_LOADER: Loaded instructions for {agent_name} ({len(content)} chars, updated_at={updated_at})")
         return content
     
     logger.debug(f"⚠️ DDB_LOADER: No instructions found for {agent_name}")

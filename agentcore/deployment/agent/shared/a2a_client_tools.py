@@ -130,7 +130,7 @@ def build_a2a_client_tools(agent_name: str, agent_config: dict) -> List:
 
             # Create the provider with timeout-enabled httpx args
             provider = A2AClientToolProvider(
-                agent_url=arn,
+                known_agent_urls=[arn],
                 httpx_client_args=httpx_args,
             )
 

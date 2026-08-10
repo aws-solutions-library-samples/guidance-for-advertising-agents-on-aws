@@ -135,8 +135,15 @@ export class MetricsVisualizationComponent implements OnChanges {
       // SIMPLE FORMAT: Check for simple label/value format
       const hasSimpleProps = !!(firstMetric.label && (firstMetric.value !== undefined));
 
-      // Return true if it's standardized format OR generic format OR legacy structured format (but not simple format)
-      return hasStandardizedFormat || hasGenericFormat || (hasLegacyStructuredProps && !hasSimpleProps);
+      // Also treat primaryLabel + actualValue (Haiku output format) as simple
+      // when there are no sub-arrays (items, metrics, subMetrics)
+      const hasHaikuSimpleProps = !!(firstMetric.primaryLabel && firstMetric.actualValue && !firstMetric.items && !firstMetric.subMetrics);
+
+      // If it has simple label/value props or Haiku simple props, always treat as simple format
+      if (hasSimpleProps || hasHaikuSimpleProps) return false;
+
+      // Return true if it's standardized format OR generic format OR legacy structured format
+      return hasStandardizedFormat || hasGenericFormat || hasLegacyStructuredProps;
     }
 
     return false;
