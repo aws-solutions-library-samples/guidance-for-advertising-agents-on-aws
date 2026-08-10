@@ -12,10 +12,10 @@
       "publication_date": "2025-05-18T08:30:00Z"
     },
     {
-      "url": "https://www.nytimes.com/politics/2025/05/senate-infrastructure-bill",
+      "url": "https://www.metrotimes.com/politics/2025/05/senate-infrastructure-bill",
       "title": "Senate Passes $1.2 Trillion Infrastructure Bill After Months of Negotiation",
       "content": "WASHINGTON — After months of tense negotiations, the Senate passed a $1.2 trillion infrastructure bill on Tuesday with bipartisan support, marking a significant legislative victory for the administration.\n\nThe bill, which passed 68-32, includes $550 billion in new federal spending over five years for roads, bridges, public transit, railways, broadband, water, and power infrastructure.\n\n'This is what can happen when both parties come together to do something that will fundamentally change the country for the better,' the President said in remarks from the White House Rose Garden.\n\nThe legislation represents the largest federal investment in public transit in history and the most significant investment in passenger rail since the creation of Amtrak. It also includes $65 billion to expand high-speed internet access and $55 billion for clean drinking water.\n\nCritics on both sides of the aisle expressed concerns. Some progressives argued the package doesn't go far enough to address climate change, while some conservatives criticized the price tag and raised concerns about adding to the national debt.\n\n'We're spending money we don't have on things we don't need,' said Senator James Lankford (R-Oklahoma), who voted against the bill.\n\nThe legislation now moves to the House, where it faces an uncertain future as progressive Democrats have threatened to withhold support unless it's paired with a larger social spending package.",
-      "domain": "nytimes.com",
+      "domain": "metrotimes.com",
       "categories": ["IAB11", "IAB11-4"],
       "named_entities": ["Senate", "White House", "James Lankford", "Amtrak"],
       "sentiment": "neutral",
@@ -45,10 +45,10 @@
       "publication_date": "2025-05-16T10:15:00Z"
     },
     {
-      "url": "https://www.cnn.com/world/middle-east-peace-talks-2025",
+      "url": "https://www.claritynews.com/world/middle-east-peace-talks-2025",
       "title": "Middle East Peace Talks Stall as Tensions Rise in Region",
       "content": "CAIRO — Peace negotiations between regional powers broke down on Wednesday after three days of talks in Cairo, raising concerns about escalating tensions in the Middle East.\n\nDiplomats from twelve nations had gathered in the Egyptian capital with hopes of establishing a framework for regional cooperation and security, but fundamental disagreements over border security and resource sharing proved insurmountable.\n\n'We came to the table with sincere intentions to find common ground,' said Egypt's Foreign Minister in a press conference following the talks. 'While we didn't achieve the breakthrough we hoped for, the dialogue remains open.'\n\nThe failure to reach an agreement comes amid increasing military activities along contested borders and growing concerns about proxy conflicts that have devastated several countries in the region.\n\nInternational observers expressed disappointment at the outcome. The UN Secretary-General urged parties to 'exercise maximum restraint and return to meaningful dialogue as soon as possible.'\n\nU.S. officials, who had played a key role in bringing parties to the negotiating table, indicated they would continue diplomatic efforts despite the setback.\n\n'Peace is never easy, but it remains the only viable path forward,' said the U.S. Special Envoy for Middle East Peace. 'We remain committed to supporting a diplomatic solution that addresses the legitimate security concerns of all parties.'\n\nRegional stock markets reacted negatively to the news, with major indices falling between 2-4% on concerns about potential disruptions to oil supplies and trade routes.\n\nAnalysts warn that the collapse of talks could embolden hardliners on all sides and potentially lead to increased military confrontations in the coming months.",
-      "domain": "cnn.com",
+      "domain": "claritynews.com",
       "categories": ["IAB11", "IAB11-1"],
       "named_entities": ["Cairo", "Egypt", "Middle East", "UN Secretary-General", "U.S. Special Envoy for Middle East Peace"],
       "sentiment": "negative",

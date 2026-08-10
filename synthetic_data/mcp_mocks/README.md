@@ -108,8 +108,8 @@ creative_formats ──> (referenced by products and creatives)
 ### ARTF Containers in Bid Path
 - artf_001 (LiveRamp Identity Enrichment) - audienceSegmentation
 - artf_002 (UID2 Token Resolution) - audienceSegmentation
-- artf_004 (IAS Pre-Bid Safety) - metadataEnhancement
-- artf_005 (DoubleVerify Authentic Pre-Bid) - metadataEnhancement
+- artf_004 (AdShield Pre-Bid Safety) - metadataEnhancement
+- artf_005 (DualCheck Authentic Pre-Bid) - metadataEnhancement
 - artf_007 (Peer39 Contextual) - metadataEnhancement
 
 ### Measurement Studies
@@ -148,7 +148,7 @@ creative_formats ──> (referenced by products and creatives)
 | Intent | Example Containers | CSV Reference |
 |--------|-------------------|---------------|
 | `audienceSegmentation` | LiveRamp, UID2, ID5, Oracle | artf_containers.csv |
-| `metadataEnhancement` | IAS, DoubleVerify, Human, Peer39, Scope3 | artf_containers.csv |
+| `metadataEnhancement` | AdShield, DualCheck, Human, Peer39, Scope3 | artf_containers.csv |
 | `bidValuation` | Chalice | artf_containers.csv |
-| `auctionOrchestration` | Index Exchange | artf_containers.csv |
-| `dynamicDealCuration` | Magnite | artf_containers.csv |
+| `auctionOrchestration` | Apex Exchange | artf_containers.csv |
+| `dynamicDealCuration` | Magnetar | artf_containers.csv |

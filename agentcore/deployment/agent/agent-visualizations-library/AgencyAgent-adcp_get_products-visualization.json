@@ -12,8 +12,8 @@
       {
         "product_id": "Unique product identifier (e.g., prod_espn_ctv_001)",
         "product_name": "Product display name",
-        "publisher_name": "Publisher name (e.g., ESPN, Fox Sports)",
-        "property_name": "Property name (e.g., ESPN+, Hulu)",
+        "publisher_name": "Publisher name (e.g., SportsPulse, Fox Sports)",
+        "property_name": "Property name (e.g., SportsPulse+, Hulu)",
         "channel": "Channel type: 'ctv', 'online_video', 'display', 'audio', 'dooh'",
         "cpm_usd": "CPM price in USD (number)",
         "min_spend_usd": "Minimum spend requirement in USD (number)",
@@ -41,8 +41,8 @@
       {
         "product_id": "prod_espn_ctv_001",
         "product_name": "Premium Sports CTV - Live Events",
-        "publisher_name": "ESPN",
-        "property_name": "ESPN+",
+        "publisher_name": "SportsPulse",
+        "property_name": "SportsPulse+",
         "channel": "ctv",
         "cpm_usd": 42.5,
         "min_spend_usd": 10000.0,

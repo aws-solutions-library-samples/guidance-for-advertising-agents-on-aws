@@ -173,3 +173,6 @@ demo-guides
 docs/agents_for_advertising_demo.mov
 docs/demo.mov
 agentcore/deployment/agent/Dockerfile
+.ads-gw*
+docs/agents_for_advertising_demo.mov
+docs/demo.mov

@@ -247,7 +247,7 @@
         "displayPremium": {
           "percentage": 20,
           "rationale": "Broad reach, cost efficiency, awareness building",
-          "bestPublishers": ["The Guardian", "Le Monde", "Spiegel Online"]
+          "bestPublishers": ["The Sentinel", "Le Monde", "Spiegel Online"]
         },
         "socialInteractive": {
           "percentage": 10,

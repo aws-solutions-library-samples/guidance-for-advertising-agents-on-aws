@@ -94,7 +94,7 @@ def test_direct_handlers():
     print("\n6. Testing verify_brand_safety...")
     result = handle_verify_brand_safety(
         properties=[
-            {"url": "espn.com"},
+            {"url": "sportspulse.com"},
             {"url": "youtube.com"},
             {"url": "unknown-site.com"}
         ],

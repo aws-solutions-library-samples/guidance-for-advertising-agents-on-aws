@@ -370,9 +370,10 @@ class KnowledgeBaseHelper:
 
             # Get the foundation model ARN for generation
             # Default to Claude 3 Haiku for cost-effective generation
+            # Use self.region so the ARN matches the deployment region
             model_arn = os.environ.get(
                 "KB_MODEL_ARN",
-                "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+                f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
             )
 
             # Create bedrock agent runtime client

@@ -72,7 +72,7 @@
             "category": "Premium Editorial",
             "description": "High-quality journalism, thought leadership",
             "reasoning": "Associates brand with quality and authority",
-            "examples": ["The Guardian", "Le Monde", "Spiegel", "Financial Times"]
+            "examples": ["The Sentinel", "Le Monde", "Spiegel", "Financial Times"]
           }
         ],
         "acceptable": [
@@ -100,7 +100,7 @@
             "Brand safety controls"
           ],
           "examples": [
-            "BBC", "The Guardian", "Le Monde", "Spiegel Online",
+            "BBC", "The Sentinel", "Le Monde", "Spiegel Online",
             "Vogue", "Harper's Bazaar", "Conde Nast Digital",
             "Food Network", "Arte", "National Geographic"
           ],
