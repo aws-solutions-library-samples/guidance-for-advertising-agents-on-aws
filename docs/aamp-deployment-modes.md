@@ -87,7 +87,7 @@ All steps route through AgencyAgent. Both buyer and seller agent bubbles are vis
 
 ## Configuration Resolution
 
-The `global_configuration.template.json` contains `${AAMP_SELLER_HTTP_RUNTIME_ARN}` and `${AAMP_BUYER_HTTP_RUNTIME_ARN}` placeholders. These are resolved by `scripts/resolve_config.py` from the `.aamp-runtime-*.json` file produced during AAMP runtime deployment (Phase 12 of `deploy-ecosystem.sh`).
+The `global_configuration.template.json` contains `${AAMP_SELLER_HTTP_RUNTIME_ARN}` and `${AAMP_BUYER_HTTP_RUNTIME_ARN}` placeholders. These are resolved by `scripts/resolve_config.py` from the `.aamp-runtime-*.json` file produced during AAMP runtime deployment (Phase 9 of `deploy-ecosystem.sh`, which is optional and opt-in — see [AAMP Agents in the README](../README.md#9-aamp-agents-optional)).
 
 ```bash
 # Resolve template → config
@@ -108,7 +108,27 @@ python scripts/upload_tab_configs_to_dynamodb.py \
 
 ## Deployment
 
-### IAB Runtimes (Phase 12)
+### Runtime name length
+
+AAMP runtime names are capped at 26 characters by `_aamp_runtime_name()` in
+`scripts/deploy_aamp_agents.sh`. The AgentCore toolkit derives CloudWatch Logs
+delivery names from the runtime's memory id, and the longest one it builds —
+`<runtime>_mem-<10-char id>-traces-destination` — has to fit the 60-character
+limit on `PutDeliveryDestination`. Going over does not fail the deploy: the memory
+is created and active, but traces delivery is skipped with a
+`ValidationException` about `name`.
+
+The helper shortens the descriptive words first (`buyer` → `buy`, `seller` →
+`sell`, then drops `_aamp`), and only trims the stack prefix or unique id as a
+last resort, always keeping the role marker so buyer and seller cannot collapse
+to the same name. It prints what it changed. Stack prefix and unique id lengths
+are what drive this, so a longer prefix is what pushes a name over.
+
+### IAB Runtimes (Phase 9, optional)
+
+`deploy-ecosystem.sh` runs this for you when you opt in to Phase 9
+(`--deploy-aamp`, or answering `y` at the prompt). The commands below are the
+equivalent manual steps.
 
 ```bash
 # Seller
@@ -123,7 +143,7 @@ bash infra/aws/agentcore/deploy.sh --mode http --name ${PREFIX}_aamp_buyer_${ID}
 ### Guidance Agent
 
 ```bash
-bash scripts/deploy-ecosystem.sh --resume-at 9 --skip-confirmations \
+bash scripts/deploy-ecosystem.sh --resume-at 8 --skip-confirmations \
   --profile ${PROFILE} --region ${REGION} --unique-id ${ID} --stack-prefix ${PREFIX}
 ```
 

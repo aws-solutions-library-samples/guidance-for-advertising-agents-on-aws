@@ -231,18 +231,45 @@ export interface EnrichedAgent {
   teamName?: string; // Team this agent belongs to
   orchestratorAgent?: string; // For collaborators, which agent orchestrates them
 
-  // A2A protocol support
-  is_a2a?: boolean; // Whether this agent uses A2A JSON-RPC protocol
-  a2a_auth_type?: 'none' | 'oauth' | 'iam' | 'bearer'; // Auth type for A2A endpoint
+  // Invocation: protocol, endpoint, and auth are independent of each other.
+  // The transport is derived from them — see services/agent-invocation-plan.ts.
+  /** Where the agent runs. `external` agents are invoked at their own endpoint. */
+  agent_hosting?: 'adfabric' | 'external';
+  /** Request envelope: A2A JSON-RPC 2.0 or plain HTTP JSON. */
+  agent_protocol?: 'a2a' | 'http';
+  /** AgentCore runtime ARN or absolute agent URL. Takes precedence over runtimeArn. */
+  agent_endpoint?: string;
+  /** @deprecated Superseded by agent_protocol + agent_hosting; still read for older configs. */
+  is_a2a?: boolean;
+  /**
+   * Auth type for the A2A endpoint. 'oauth' is Cognito USER_PASSWORD_AUTH;
+   * 'oauth_m2m' is the OAuth 2.0 client-credentials grant against any provider.
+   */
+  a2a_auth_type?: 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer';
+  /** Non-secret reference to client-credentials material stored in SSM. */
+  a2a_oauth_client_credentials?: {
+    hasCredentials: boolean;
+    ssmPath?: string;
+    tokenUrl?: string;
+    scope?: string;
+    audience?: string;
+  };
 
   // Invocation notification hook (independent of A2A/is_a2a above)
   notify_on_invocation?: {
     endpoint: string;
-    auth_type: 'none' | 'iam' | 'bearer';
+    auth_type: 'none' | 'iam' | 'bearer' | 'oauth_m2m';
     bearer_token?: {
       hasToken: boolean;
       ssmPath?: string;
       expiresAt?: string;
+    };
+    oauth_client_credentials?: {
+      hasCredentials: boolean;
+      ssmPath?: string;
+      tokenUrl?: string;
+      scope?: string;
+      audience?: string;
     };
   };
 }

@@ -17,6 +17,67 @@ from mcp import stdio_client, StdioServerParameters
 logger = logging.getLogger(__name__)
 
 
+# Module-level token manager so minted bearers are cached across the repeated
+# client creations that happen as agents are built during a warm invocation.
+_TOKEN_MANAGER = None
+
+
+def _get_token_manager():
+    global _TOKEN_MANAGER
+    if _TOKEN_MANAGER is None:
+        from shared.a2a_auth import A2ATokenManager
+
+        _TOKEN_MANAGER = A2ATokenManager()
+    return _TOKEN_MANAGER
+
+
+def _resolve_client_credentials_bearer(server_config: dict) -> Optional[str]:
+    """Mint a bearer token for an MCP server's OAuth client credentials.
+
+    The credential document lives in an SSM SecureString written by the UI; the
+    server config keeps only the parameter path. Returns None when the path is
+    missing or the exchange fails, so the caller can fail closed rather than
+    connecting unauthenticated.
+    """
+    server_name = server_config.get("name", "unknown")
+    ref = server_config.get("oauthClientCredentials") or {}
+    ssm_path = ref.get("ssmPath") or ""
+
+    if not ssm_path:
+        logger.error(
+            f"❌ MCP_TOOLS: OAuth M2M selected for '{server_name}' but no credential "
+            f"path is recorded — store the Client ID, Client Secret, and Token URL "
+            f"in the server's Authentication settings"
+        )
+        return None
+
+    token, err = _get_token_manager().get_bearer_token(ssm_path)
+    if err or not token:
+        # get_bearer_token already logged the cause without credential values.
+        logger.error(
+            f"❌ MCP_TOOLS: Could not acquire an OAuth M2M token for '{server_name}'"
+        )
+        return None
+
+    logger.info(f"🔐 MCP_TOOLS: Acquired OAuth M2M bearer token for '{server_name}'")
+    return token
+
+
+def _uses_client_credentials(server_config: dict) -> bool:
+    """Whether this server is configured for the OAuth client-credentials mode.
+
+    Prefers the explicit `authType` discriminator. Server records written before
+    that field existed cannot have this mode selected, but are still recognised
+    from the credential reference alone.
+    """
+    auth_type = (server_config.get("authType") or "").lower()
+    if auth_type:
+        return auth_type == "oauth_m2m"
+    return bool(
+        (server_config.get("oauthClientCredentials") or {}).get("hasCredentials")
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -163,6 +224,16 @@ def _create_http(server_config: dict, prefix: str, tool_filters: dict) -> Option
     logger.info(f"   Custom Headers: {list(headers.keys()) if headers else 'None'}")
     logger.info(f"   Prefix: '{prefix}' | Tool filters: {bool(tool_filters)}")
 
+    # OAuth client-credentials: exchange the stored client id/secret for an
+    # access token and add it as a bearer. Fail closed if the exchange does not
+    # succeed — connecting without the header would present this server as
+    # reachable-but-unauthorized instead of misconfigured.
+    if _uses_client_credentials(server_config):
+        token = _resolve_client_credentials_bearer(server_config)
+        if not token:
+            return None
+        headers = {**headers, "Authorization": f"Bearer {token}"}
+
     mcp_client_kwargs: Dict = {}
     if prefix:
         mcp_client_kwargs["prefix"] = prefix
@@ -221,6 +292,16 @@ def _create_sse(server_config: dict, prefix: str, tool_filters: dict) -> Optiona
 
     if not url:
         logger.error("❌ MCP_TOOLS: sse transport requires 'url' field")
+        return None
+
+    if _uses_client_credentials(server_config):
+        # sse_client is created without headers here, so a minted bearer could
+        # not be attached. Fail closed rather than connecting unauthenticated.
+        logger.error(
+            f"❌ MCP_TOOLS: OAuth M2M is configured for '{server_config.get('name', 'unknown')}' "
+            f"but the SSE transport in this runtime does not carry auth headers. "
+            f"Use the HTTP transport for this server."
+        )
         return None
 
     logger.info(f"🔌 MCP_TOOLS: Creating SSE MCP client: {url}")

@@ -374,9 +374,14 @@ invoke_specialist(
 3. **Synthesize insights** from multiple specialists into unified recommendations
 4. **Focus on substance** - avoid meta-commentary about coordination
 
-### AdCP MCP Gateway
+### AdCP
 
-The AdCP MCP Gateway provides protocol-compliant tools for advertising operations:
+AdCP is served by the AdCP-compliant reference agents `AdCPBuyerAgent` and `AdCPSellerAgent`, which speak it
+over A2A rather than as MCP tool calls. The AdCP MCP Gateway that previously exposed the operations below as
+callable tools has been removed, so no agent holds them as tools. Route inventory and signal work to the owning
+specialist agent instead.
+
+Operations covered by AdCP:
 
 - **get_products**: Discover publisher inventory
 - **get_signals**: Discover audience segments

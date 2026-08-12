@@ -6,7 +6,8 @@ Exposes 3 MCP tools:
   - get_agent_schema: Static input schema for a named agent
   - invoke_agent: InvokeAgentRuntime → raw text response
 
-This Lambda follows the same handler pattern as adcp_mcp_handler.py (Target 1).
+This Lambda follows the MCP gateway target handler pattern: a tool_name plus
+arguments payload dispatched to a per-tool handler.
 It reads from the same DynamoDB AgentConfigTable and invokes the same AgentCore
 HTTP runtime — zero agent logic duplication.
 

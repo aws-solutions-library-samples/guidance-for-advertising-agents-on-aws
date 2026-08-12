@@ -271,14 +271,16 @@ The deployment process uses a single comprehensive script that handles all infra
 3. **Phase 3**: Deploy Lambda functions and migrate visualization data
 4. **Phase 4**: Deploy knowledge bases with organized data sources
 5. **Phase 5**: Sync data sources (start ingestion jobs)
-6. **Phase 6**: Deploy AdCP MCP Gateway for agent collaboration
-7. **Phase 7**: Upload agent configurations to S3
-8. **Phase 8**: Upload agent configurations to DynamoDB
-9. **Phase 9**: Deploy AgentCore agents
+6. **Phase 6**: Upload agent configurations to S3
+7. **Phase 7**: Upload agent configurations to DynamoDB
+8. **Phase 8**: Deploy AgentCore agents
+9. **Phase 9**: Deploy AAMP agents _(**optional, opt-in** — you are prompted; see [AAMP Agents](#9-aamp-agents-optional))_
 10. **Phase 10**: Generate UI configuration
 11. **Phase 11**: Warm up agent runtimes _(runs last — after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
 
 > **Note:** Between Phase 10 and Phase 11 the script runs the **optional, opt-in external A2A agents** step (it prompts in interactive mode and is skipped with `--skip-confirmations`). It is not one of the 11 numbered phases — see [External Agents (A2A)](#7-external-agents-a2a). Warmup (Phase 11) deliberately runs after it.
+
+> **Note:** Phase 9 is where the AdCP MCP Gateway used to sit. The gateway has been **removed** — AdCP is served by the AdCP-compliant reference agents `AdCPBuyerAgent` and `AdCPSellerAgent` instead, and nothing in the deployment provisions, configures, or looks for a gateway. `--cleanup` still removes a gateway left over from a deployment made before the removal. The successor agents are not yet a working default — see [what ships today](#adcp-migration-status).
 
 ### Prerequisites Setup
 
@@ -369,10 +371,10 @@ The deployment script automatically handles:
 - **Phase 3**: Deploy Lambda functions and migrate visualization data
 - **Phase 4**: Deploy knowledge bases with organized data sources
 - **Phase 5**: Sync data sources (start ingestion jobs)
-- **Phase 6**: Deploy AdCP MCP Gateway for agent collaboration
-- **Phase 7**: Upload agent configurations to S3
-- **Phase 8**: Upload agent configurations to DynamoDB
-- **Phase 9**: Deploy AgentCore agents
+- **Phase 6**: Upload agent configurations to S3
+- **Phase 7**: Upload agent configurations to DynamoDB
+- **Phase 8**: Deploy AgentCore agents
+- **Phase 9**: Deploy AAMP agents _(optional, opt-in — skipped by `--skip-confirmations`)_
 - **Phase 10**: Generate UI configuration
 - **Phase 11**: Warm up agent runtimes _(runs last, after the optional external A2A agents step)_
 
@@ -385,10 +387,10 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 3: Deploy Lambda functions and migrate visualization data
 # Phase 4: Deploy knowledge bases with organized data sources
 # Phase 5: Sync data sources (start ingestion jobs)
-# Phase 6: Deploy AdCP MCP Gateway for agent collaboration
-# Phase 7: Upload agent configurations to S3
-# Phase 8: Upload agent configurations to DynamoDB
-# Phase 9: Deploy AgentCore agents
+# Phase 6: Upload agent configurations to S3
+# Phase 7: Upload agent configurations to DynamoDB
+# Phase 8: Deploy AgentCore agents
+# Phase 9: Deploy AAMP agents (optional, opt-in — add --deploy-aamp to include it)
 # Phase 10: Generate UI configuration
 # Phase 11: Warm up agent runtimes (runs last, after the optional external A2A agents step)
 
@@ -702,94 +704,28 @@ aws cognito-idp admin-create-user \
 
 ### 2. External API Integration
 
-  **AdCP MCP Gateway (Ad Context Protocol):**
-  The ecosystem includes an AdCP MCP Gateway that provides standardized advertising protocol tools for agent collaboration. The gateway is automatically deployed in Phase 6 and consists of:
-
-  **Gateway Components:**
-  - **MCP Gateway**: Amazon Bedrock AgentCore MCP Gateway that handles authentication, routing, and protocol translation
-  - **Lambda Target**: AWS Lambda function (`{stack-prefix}-adcp-handler-{unique-id}`) that implements the AdCP protocol handlers
-  - **Gateway Target**: Configuration that connects the MCP Gateway to the Lambda function with tool schema definitions
-
-  **AdCP Protocol Tools (8 tools):**
-  | Tool | Description |
-  |------|-------------|
-  | `get_products` | Discover available advertising products/inventory matching criteria |
-  | `get_signals` | Get available audience signals and targeting data |
-  | `activate_signal` | Activate an audience signal on a decisioning platform |
-  | `create_media_buy` | Create a media buy with specified packages |
-  | `get_media_buy_delivery` | Get delivery status and metrics for a media buy |
-  | `verify_brand_safety` | Verify brand safety for a list of properties/URLs |
-  | `resolve_audience_reach` | Resolve audience reach across channels |
-  | `configure_brand_lift_study` | Configure a brand lift or measurement study |
-
-  **Gateway Architecture:**
+  **AdCP (Ad Context Protocol):**
+  AdCP is served by the AdCP-compliant reference agents `AdCPBuyerAgent` and `AdCPSellerAgent`, which speak
+  AdCP as peer agents over A2A:
   ```
-  Agent → adcp_tools.py → HTTP → MCP Gateway → Lambda Target → AdCP Protocol Handlers
-                                      ↓
-                              Gateway Target (tool schema)
+  Agent → A2A (OAuth bearer) → AdCPBuyerAgent / AdCPSellerAgent → AdCP
   ```
 
-  **Environment Variables (auto-configured during deployment):**
-  | Variable | Description |
-  |----------|-------------|
-  | `ADCP_USE_MCP` | Enable MCP integration (default: true). Set to "false" to use fallback mock data |
-  | `ADCP_GATEWAY_URL` | AgentCore Gateway URL (e.g., `https://{gateway-id}.gateway.bedrock-agentcore.{region}.amazonaws.com/mcp`) |
+  > **The AdCP MCP Gateway has been removed.** Earlier versions provisioned an AgentCore MCP Gateway plus an
+  > `adcp-handler` Lambda that exposed AdCP as MCP tool calls. No deployment phase creates them, and
+  > `deploy-ecosystem.sh` no longer looks for or configures a gateway. `--cleanup` still tears down a gateway
+  > left behind by a deployment made before the removal, so those resources do not keep billing.
 
-  **Manual Gateway Deployment (if needed):**
-  ```bash
-  # Deploy AdCP Gateway manually
-  python agentcore/deployment/deploy_adcp_gateway.py \
-    --stack-prefix a4a \
-    --unique-id abc123 \
-    --region us-east-1 \
-    --profile agnts4ad
+  <a id="adcp-migration-status"></a>
+  **What ships today:**
 
-  # Deploy only Lambda target to existing gateway
-  python agentcore/deployment/deploy_adcp_gateway.py \
-    --stack-prefix a4a \
-    --unique-id abc123 \
-    --region us-east-1 \
-    --profile agnts4ad \
-    --target-only
-  ```
+  | | Status in this repository |
+  |---|---|
+  | `AdCPBuyerAgent` | Registered in `global_configuration.json` as an A2A agent (`agent_protocol: 'a2a'`, `a2a_auth_type: 'oauth'`) whose endpoint points at a runtime hosted **outside this stack**. It carries no instructions and no tools — it is a pointer to an endpoint you supply. The committed ARN belongs to the authoring account, so it will not resolve in yours until you replace it and populate the inbound token at its `a2a_oauth_credentials.ssmPath`. |
+  | `AdCPSellerAgent` | Deployable by `external-agents/deploy_external_agents.py --agent AdCPSellerAgent`, but `external-agents/AdCPSellerAgent/` is in `.gitignore` — the source is not tracked here, so a clean checkout has the deployer and nothing to deploy. Its design and task surface are documented in [`external-agents/README.md`](external-agents/README.md#adcp-seller-agent). Wiring into `PublisherAgent` is pending buyer-side AdCP client support. |
 
-  **Verify Gateway Deployment:**
-  ```bash
-  # List MCP Gateways
-  aws bedrock-agentcore-control list-gateways --region us-east-1 --profile agnts4ad
-
-  # Get gateway details
-  aws bedrock-agentcore-control get-gateway \
-    --gateway-identifier {gateway-id} \
-    --region us-east-1 \
-    --profile agnts4ad
-
-  # List gateway targets
-  aws bedrock-agentcore-control list-gateway-targets \
-    --gateway-identifier {gateway-id} \
-    --region us-east-1 \
-    --profile agnts4ad
-  ```
-
-  **Testing the Gateway:**
-  ```bash
-  # Test Lambda function directly
-  aws lambda invoke \
-    --function-name a4a-adcp-handler-abc123 \
-    --payload '{"tool_name": "get_products", "arguments": {"channels": ["ctv"]}}' \
-    --region us-east-1 \
-    --profile agnts4ad \
-    /tmp/response.json && cat /tmp/response.json
-
-  # Test local MCP server
-  cd synthetic_data/mcp_mocks
-  python test_adcp_server.py
-
-  # Test MCP server with SSE transport
-  python adcp_mcp_server.py --transport sse --port 8080
-  ```
-
-  For the AdCP tool implementations, see `agentcore/deployment/agent/shared/adcp_tools.py` and `agentcore/deployment/agent/shared/adcp_mcp_client.py`.
+  Neither reference agent is a working default yet. Until they are, this repository has no end-to-end AdCP
+  path — the gateway that previously provided one is gone.
 
   **WeatherImpactAnalysis Agent API Key:**
   The WeatherImpactAnalysis agent integrates with Visual Crossing Weather API to provide weather-based campaign insights. By default, the agent works with US locations, but for international locations, you'll need to configure a valid API key.
@@ -1011,15 +947,32 @@ aws cognito-idp admin-create-user \
   can find the table. See [`external-agents/README.md`](external-agents/README.md)
   for inbound-auth details, cross-account notes, and the full flag reference.
 
-  **Note:** Three reference external agents currently ship in this repo:
-  `AdCreationAgent` and `AAMPSellerAgent` (both described above and fully
-  wired into the main agent graph), plus `AdCPSellerAgent` — a fully
-  [AdCP 3.1](https://docs.adcontextprotocol.org)-compliant sell-side agent
-  whose runtimes deploy and are independently testable, but end-to-end
-  wiring into `PublisherAgent` is pending buyer-side AdCP client support.
+  **Note — what is actually tracked in git:** `external-agents/` tracks only
+  `README.md` and `deploy_external_agents.py`. The per-agent source directories
+  (`external-agents/AdCreationAgent/`, `external-agents/SellerAgent/`,
+  `external-agents/AdCPSellerAgent/`) are listed in `.gitignore`, so a clean
+  checkout has the deployer but nothing for it to deploy — `--agent <Name>`
+  names a directory you must supply. Three reference agents are *designed for*
+  this mechanism: `AdCreationAgent` and `AAMPSellerAgent` (described above,
+  wired into the main agent graph), plus `AdCPSellerAgent`, a
+  [AdCP 3.1](https://docs.adcontextprotocol.org)-compliant sell-side agent.
+  End-to-end wiring of `AdCPSellerAgent` into `PublisherAgent` is pending
+  buyer-side AdCP client support.
 
-  **Deployment is opt-in — external agents (including AAMP) do NOT deploy
-  automatically.** The main `scripts/deploy-ecosystem.sh` never provisions
+  > **AdCP agents.** `AdCPSellerAgent`, together with `AdCPBuyerAgent` (a
+  > config-only pointer in `global_configuration.json`), is what replaced the
+  > removed [AdCP MCP Gateway](#2-external-api-integration). Neither is a working
+  > default yet — see [what ships today](#adcp-migration-status).
+
+  > **Don't confuse this with Phase 9.** The `AAMPSellerAgent` described here is
+  > a reference **external agent** that lives in this repo under
+  > `external-agents/`. It is unrelated to **Phase 9**, which deploys the
+  > upstream **IAB Tech Lab AAMP buyer and seller** agents from the IAB repos —
+  > see [AAMP Agents](#9-aamp-agents-optional). Both are optional and opt-in,
+  > but they are separate features deployed by separate code paths.
+
+  **Deployment is opt-in — external agents (including `AAMPSellerAgent`) do NOT
+  deploy automatically.** The main `scripts/deploy-ecosystem.sh` never provisions
   them as part of its standard 11 phases; you deploy them as a separate,
   explicit step. Specifically:
   - **Standard / documented deploy** (`--skip-confirmations true`, or any
@@ -1102,6 +1055,53 @@ aws cognito-idp admin-create-user \
   these charges and delete parameters/secrets for connections you remove (see
   Cleanup). Prefer IAM (SigV4) auth where possible — it uses the browser
   session's temporary credentials and stores no secret at all.
+
+### 9. AAMP Agents (Optional)
+
+  **What they are:**
+  **Phase 9** of `scripts/deploy-ecosystem.sh` deploys the [IAB Tech Lab AAMP](https://iabtechlab.com)
+  buyer and seller agents to their own AgentCore runtimes and registers their
+  runtime ARNs with the `AAMPBuyerAgent` / `AAMPSellerAgent` entries in this
+  stack's agent configuration. The agents come from the upstream IAB repos, which
+  the phase clones (or reads locally via `--local-aamp`).
+
+  This is distinct from the `AAMPSellerAgent` reference **external agent** in
+  [`external-agents/`](#7-external-agents-a2a) — different code, different
+  deploy path.
+
+  **It is opt-in.** The phase does nothing unless you ask for it:
+
+  | How you run the script | What Phase 9 does |
+  | --- | --- |
+  | Interactive (no `--skip-confirmations`) | Prompts `Deploy the AAMP agents now? (y/N)` — default **No** |
+  | Non-interactive / `--skip-confirmations` | **Skipped**, printing the command to run it later |
+  | `--deploy-aamp` | Deploys without prompting |
+  | `--skip-aamp` | Skips without prompting |
+
+  Skipping is safe — no later phase depends on these agents. The rest of the
+  deployment, including the UI, works without them; the AAMP agent entries simply
+  have no runtime to call.
+
+  **Deploy it on its own** (after a completed deployment):
+  ```bash
+  ./scripts/deploy-ecosystem.sh \
+    --resume-at 9 --deploy-aamp \
+    --stack-prefix a4a --unique-id abc123 \
+    --region us-east-1 --profile agnts4ad
+  ```
+  Resuming at 9 also re-runs Phase 10 (UI config) and Phase 11 (warmup), which is
+  what makes the newly deployed AAMP runtimes visible in the UI.
+
+  **Useful flags:**
+  | Flag | Purpose |
+  | --- | --- |
+  | `--deploy-aamp` / `--skip-aamp` | Decide the phase without being prompted |
+  | `--local-aamp PATH` | Use local IAB repos (a directory containing `seller-agent/` and `buyer-agent/`) instead of cloning |
+  | `--aamp-branch BRANCH` | Branch to clone the IAB repos at (default: `main`) |
+
+  **⚠️ Cost note:** this provisions **two additional AgentCore runtimes** beyond
+  the ones in the standard deployment. They are not included in the cost estimate
+  in the [Cost](#cost) section above.
 
 ## Next Steps 
 
@@ -1221,7 +1221,9 @@ The deployment script includes comprehensive cleanup functionality:
 
 The automated cleanup removes:
 - **AgentCore containers and runtimes**
-- **AdCP MCP Gateway resources:**
+- **Legacy AdCP MCP Gateway resources** — the gateway was [removed](#adcp-migration-status) and is no longer
+  created, so these exist only on stacks deployed before the removal. Cleanup still deletes them so they stop
+  billing:
   - MCP Gateway and all associated gateway targets
   - Lambda function (`{stack-prefix}-adcp-handler-{unique-id}`)
   - IAM role (`{stack-prefix}-adcp-lambda-role-{unique-id}`)
@@ -1284,7 +1286,8 @@ aws bedrock-agent list-knowledge-bases --region us-east-1 --profile agnts4ad
 
 ### 3. Manual Gateway Cleanup (if needed)
 
-If you need to manually clean up the AdCP MCP Gateway resources:
+The AdCP MCP Gateway was [removed](#adcp-migration-status), so no current deployment has these resources.
+Use this only for a stack created before the removal, if the automated cleanup did not reach it:
 
 ```bash
 # 1. List gateways to find the gateway ID
@@ -1352,7 +1355,7 @@ aws ssm delete-parameter \
 
 **Issue: AgentCore container build failures**
 - **Symptom**: Docker build fails during AgentCore deployment
-- **Resolution**: Ensure Docker is installed and running, check ECR permissions. Resume deploy script at step 6.
+- **Resolution**: Ensure Docker is installed and running, check ECR permissions. Resume deploy script at step 8.
 - **Command**: `docker --version` and verify ECR push permissions
 
 **Issue: Knowledge base creation failures**

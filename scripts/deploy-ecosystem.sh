@@ -30,9 +30,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# AAMP Phase 12 (IAB buyer & seller) deploy function lives in its own file to
-# keep this script manageable. It defines deploy_aamp_agents() which relies on
-# helpers/vars defined below (print_*, aws_cmd, PYTHON_CMD, etc.) at call time.
+# AAMP Phase 9 (optional; IAB buyer & seller) deploy function lives in its own
+# file to keep this script manageable. It defines deploy_aamp_agents() which
+# relies on helpers/vars defined below (print_*, aws_cmd, PYTHON_CMD, etc.) at
+# call time. The phase is opt-in — see prompt_and_deploy_aamp_agents().
 source "${SCRIPT_DIR}/deploy_aamp_agents.sh"
 
 # Ensure we're working from the project root directory
@@ -52,9 +53,12 @@ SKIP_CONFIRMATIONS="${SKIP_CONFIRMATIONS:-false}"
 RESUME_AT_STEP=1
 UNIQUE_ID="${UNIQUE_ID:-}"
 CLEAN_DEPLOYMENT=true
-# AAMP (Phase 12) deploy inputs — see scripts/deploy_aamp_agents.sh
+# AAMP (Phase 9, optional) deploy inputs — see scripts/deploy_aamp_agents.sh
 LOCAL_AAMP_PATH="${LOCAL_AAMP_PATH:-}"
 AAMP_BRANCH="${AAMP_BRANCH:-main}"
+# Whether to run the optional AAMP phase. "true"/"false" decide outright;
+# empty means ask in interactive mode and skip otherwise.
+DEPLOY_AAMP="${DEPLOY_AAMP:-}"
 CLEANUP_MODE=false
 
 # Colors for output
@@ -1547,7 +1551,7 @@ deploy_lambda_functions() {
 # naming pattern <stack-prefix>-<value>-<unique-id> to look up real KB IDs via
 # the Bedrock API. This avoids mutating the local global_configuration.json file.
 patch_global_config_kb_ids() {
-    print_status "Knowledge base ID resolution will happen at DynamoDB upload time (Step 9)..."
+    print_status "Knowledge base ID resolution will happen at DynamoDB upload time (Step 7)..."
     print_status "  KB naming pattern: ${STACK_PREFIX}-<kb-name>-${UNIQUE_ID}"
     print_status "  The local global_configuration.json will NOT be modified."
     
@@ -1567,7 +1571,7 @@ patch_global_config_kb_ids() {
 # This is a separate step so it can run independently of knowledge base deployment
 # These configs are needed by AgentCore agents for instructions and visualizations
 upload_agent_configurations() {
-    print_step "Step 7: Uploading agent configuration folders to S3..."
+    print_step "Step 6: Uploading agent configuration folders to S3..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
@@ -1653,7 +1657,7 @@ upload_agent_configurations() {
 # Function to upload agent configurations to DynamoDB for faster agent creation
 # This is called after S3 upload and provides faster access for frequently used configs
 upload_agent_configurations_to_dynamodb() {
-    print_step "Step 8: Uploading agent configurations to DynamoDB (for faster access)..."
+    print_step "Step 7: Uploading agent configurations to DynamoDB (for faster access)..."
     
     local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
     local config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
@@ -2421,117 +2425,6 @@ store_agentcore_memory_id_in_ssm() {
     fi
 }
 
-# Function to ensure ADCP Gateway URL is available (for resume scenarios)
-# Looks up existing gateway by name pattern and ensures SSM parameter exists
-ensure_adcp_gateway_url() {
-    print_status "Checking for existing AdCP MCP Gateway..."
-    
-    # First check if ADCP_GATEWAY_URL is already set
-    if [ -n "$ADCP_GATEWAY_URL" ]; then
-        print_status "  ✅ ADCP_GATEWAY_URL already set: $ADCP_GATEWAY_URL"
-        return 0
-    fi
-    
-    # Try to get from SSM first (fastest)
-    local ssm_param_name="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
-    local gateway_url=""
-    
-    gateway_url=$(aws_cmd ssm get-parameter \
-        --name "$ssm_param_name" \
-        --region "$AWS_REGION" \
-        --query 'Parameter.Value' \
-        --output text 2>/dev/null || echo "")
-    
-    if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
-        export ADCP_GATEWAY_URL="$gateway_url"
-        print_status "  ✅ Found gateway URL in SSM: $gateway_url"
-        return 0
-    fi
-    
-    # SSM parameter doesn't exist, try to find the gateway via AWS API
-    print_status "  SSM parameter not found, looking up gateway via AWS API..."
-    
-    local gateway_name="${STACK_PREFIX}-ads-gw-${UNIQUE_ID}"
-    
-    # Use AWS CLI to list gateways and find ours
-    local gateway_info
-    gateway_info=$(aws_cmd bedrock-agentcore-control list-gateways \
-        --region "$AWS_REGION" \
-        --output json 2>/dev/null || echo "{}")
-    
-    if [ -n "$gateway_info" ] && [ "$gateway_info" != "{}" ]; then
-        # Parse the gateway list to find our gateway
-        gateway_url=$(echo "$gateway_info" | $PYTHON_CMD -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    gateway_name = '${gateway_name}'
-    for gw in data.get('items', []):
-        if gw.get('name') == gateway_name:
-            print(gw.get('gatewayUrl', ''))
-            break
-except:
-    pass
-" 2>/dev/null || echo "")
-        
-        if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
-            export ADCP_GATEWAY_URL="$gateway_url"
-            print_status "  ✅ Found existing gateway: $gateway_url"
-            
-            # Store in SSM for future use
-            if aws_cmd ssm put-parameter \
-                --name "$ssm_param_name" \
-                --value "$gateway_url" \
-                --type "String" \
-                --overwrite \
-                --region "$AWS_REGION" > /dev/null 2>&1; then
-                print_status "  ✅ Stored gateway URL in SSM: $ssm_param_name"
-            fi
-            return 0
-        fi
-    fi
-    
-    # Check local tracking file as last resort
-    local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
-    if [ -f "$gateway_info_file" ]; then
-        gateway_url=$(cat "$gateway_info_file" | $PYTHON_CMD -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    url = data.get('gateway_result', {}).get('gateway_url') or data.get('gateway_url')
-    if url:
-        print(url)
-except:
-    # Try parsing as log output
-    import re
-    content = sys.stdin.read()
-    match = re.search(r'Gateway URL: (https://[^\s]+)', content)
-    if match:
-        print(match.group(1))
-" 2>/dev/null || echo "")
-        
-        if [ -n "$gateway_url" ] && [ "$gateway_url" != "None" ]; then
-            export ADCP_GATEWAY_URL="$gateway_url"
-            print_status "  ✅ Found gateway URL in local file: $gateway_url"
-            
-            # Store in SSM for future use
-            if aws_cmd ssm put-parameter \
-                --name "$ssm_param_name" \
-                --value "$gateway_url" \
-                --type "String" \
-                --overwrite \
-                --region "$AWS_REGION" > /dev/null 2>&1; then
-                print_status "  ✅ Stored gateway URL in SSM: $ssm_param_name"
-            fi
-            return 0
-        fi
-    fi
-    
-    print_warning "  ⚠️  Could not find existing AdCP Gateway"
-    print_warning "  Agents will use fallback local tools for AdCP"
-    return 1
-}
-
 deploy_agent_via_toolkit() {
     # Deploy an AgentCore agent using the AgentCore Starter Toolkit CLI (no Docker required)
     # Uses CodeBuild-based deployment: agentcore configure + agentcore launch
@@ -2626,23 +2519,7 @@ except: print('')
 " 2>/dev/null)
     fi
     
-    # Get AdCP Gateway URL
-    local adcp_gateway_url="${ADCP_GATEWAY_URL:-}"
-    if [ -z "$adcp_gateway_url" ]; then
-        local gw_param="/${STACK_PREFIX}/adcp_gateway/${UNIQUE_ID}"
-        if [ -n "$AWS_PROFILE" ]; then
-            adcp_gateway_url=$(aws ssm get-parameter --name "$gw_param" --region "$AWS_REGION" --profile "$AWS_PROFILE" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
-        else
-            adcp_gateway_url=$(aws ssm get-parameter --name "$gw_param" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null || echo "")
-        fi
-    fi
-    
-    if [ -n "$adcp_gateway_url" ] && [ "$adcp_gateway_url" != "None" ]; then
-        print_status "✅ AdCP Gateway URL: $adcp_gateway_url"
-    else
-        print_warning "AdCP Gateway URL not found - agents will use fallback local tools"
-        adcp_gateway_url=""
-    fi
+
     
     # Get or create execution role
     print_status "Checking for existing execution role..."
@@ -2859,11 +2736,7 @@ print(arn)
         deploy_cmd="$deploy_cmd --env RUNTIMES=$runtimes"
     fi
     
-    if [ -n "$adcp_gateway_url" ] && [ "$adcp_gateway_url" != "None" ]; then
-        deploy_cmd="$deploy_cmd --env ADCP_GATEWAY_URL=$adcp_gateway_url"
-        deploy_cmd="$deploy_cmd --env ADCP_USE_MCP=true"
-    fi
-    
+
     # Visualizations table and AppSync config (from CloudFormation infrastructure-services stack)
     local infra_services_stack="${STACK_PREFIX}-infrastructure-services"
     local viz_table_name=""
@@ -3040,10 +2913,8 @@ TOOLKIT_TRACKING_EOF
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 9: Deploying AgentCore agents (after MCP Gateway)..."
+    print_step "Step 8: Deploying AgentCore agents (after config upload)..."
     
-    # Ensure ADCP Gateway URL is available (important for resume scenarios)
-    ensure_adcp_gateway_url
     
     local agentcore_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
     
@@ -3282,129 +3153,22 @@ EOF
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
-        print_success "🎉 Step 9 Complete: AgentCore agents have been deployed!"
+        print_success "🎉 Step 8 Complete: AgentCore agents have been deployed!"
         print_status "The following steps remain:"
+        print_status "  - Step 9: Deploy AAMP agents (optional — you will be asked)"
         print_status "  - Step 10: Generate AWS configuration"
+        print_status "  - Step 11: Warm up agent runtimes"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
-            print_status "Deployment paused after Step 9. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 10 (UI Config)."
+            print_status "Deployment paused after Step 8. You can resume later by running the script again."
+            print_status "Current progress has been saved and the script will resume from Step 9 (AAMP agents)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
         echo ""
     fi
-}
-
-# Function to deploy AdCP MCP Gateway for agent collaboration
-# NOTE: This must run BEFORE AgentCore agents so the gateway URL is available
-deploy_adcp_mcp_gateway() {
-    print_step "Step 6: Deploying AdCP MCP Gateway for agent collaboration..."
-    
-    local deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_adcp_gateway.py"
-    
-    if [ ! -f "$deploy_script" ]; then
-        print_warning "AdCP Gateway deployment script not found: $deploy_script"
-        print_warning "Skipping AdCP MCP Gateway deployment"
-        return 0
-    fi
-    
-    # Setup Python environment
-    setup_python_environment
-    
-    print_status "Deploying AdCP MCP Gateway..."
-    print_status "  Stack Prefix: $STACK_PREFIX"
-    print_status "  Unique ID: $UNIQUE_ID"
-    print_status "  Region: $AWS_REGION"
-    print_status "  AWS Profile: ${AWS_PROFILE:-default}"
-    
-    # Export AWS environment variables for Python subprocess
-    export AWS_DEFAULT_REGION="$AWS_REGION"
-    if [ -n "$AWS_PROFILE" ]; then
-        export AWS_PROFILE="$AWS_PROFILE"
-    fi
-    
-    # Build command
-    local deploy_cmd="$PYTHON_CMD $deploy_script --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
-    
-    if [ -n "$AWS_PROFILE" ]; then
-        deploy_cmd="$deploy_cmd --profile $AWS_PROFILE"
-    fi
-    
-    print_status "Executing: $deploy_cmd"
-    
-    # Execute deployment - capture stdout (JSON) and stderr (logs) separately
-    local json_output_file=$(mktemp)
-    local log_output_file=$(mktemp)
-    local deploy_exit_code
-    
-    set +e  # Temporarily disable exit on error
-    eval "$deploy_cmd" > "$json_output_file" 2> "$log_output_file"
-    deploy_exit_code=$?
-    set -e  # Re-enable exit on error
-    
-    # Show logs
-    if [ -s "$log_output_file" ]; then
-        cat "$log_output_file"
-    fi
-    
-    local json_output=$(cat "$json_output_file")
-    local log_output=$(cat "$log_output_file")
-    
-    # Clean up temp files
-    rm -f "$json_output_file" "$log_output_file"
-    
-    if [ $deploy_exit_code -eq 0 ]; then
-        print_success "✅ AdCP MCP Gateway deployed successfully"
-        
-        # Extract gateway URL from JSON output for export to AgentCore deployment
-        local gateway_url=""
-        if [ -n "$json_output" ]; then
-            gateway_url=$(echo "$json_output" | $PYTHON_CMD -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    url = data.get('gateway_result', {}).get('gateway_url') or data.get('gateway_url')
-    if url:
-        print(url)
-except:
-    pass
-" 2>/dev/null || echo "")
-        fi
-        
-        if [ -n "$gateway_url" ] && [ "$gateway_url" != "null" ]; then
-            print_status "  Gateway URL: $gateway_url"
-            
-            # Export gateway URL for AgentCore deployment to use
-            export ADCP_GATEWAY_URL="$gateway_url"
-            print_status "  ✅ Exported ADCP_GATEWAY_URL for AgentCore agents"
-            
-            # Note: SSM storage is now handled by the Python script directly
-        else
-            print_warning "  ⚠️  Could not extract gateway URL from deployment output"
-            print_warning "  AgentCore agents will use fallback local tools"
-        fi
-        
-        # Save deployment output to file
-        local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
-        if [ -n "$json_output" ]; then
-            echo "$json_output" > "$gateway_info_file"
-        else
-            echo "$log_output" > "$gateway_info_file"
-        fi
-        print_status "  Deployment info saved to: $gateway_info_file"
-        
-    else
-        print_warning "⚠️  AdCP MCP Gateway deployment had issues (exit code: $deploy_exit_code)"
-        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "$log_output"
-        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print_warning "Continuing with deployment - agents will use fallback local tools"
-    fi
-    
-    return 0
 }
 
 # Function to generate UI configuration
@@ -3663,7 +3427,7 @@ cleanup_ecosystem() {
         print_warning "⚠️  AgentCore cleanup had some issues, but continuing with deployment cleanup..."
     fi
     
-    # Step 2: Clean up AdCP MCP Gateway
+    # Step 2: Remove any AdCP MCP Gateway left over from a pre-removal deployment
     cleanup_adcp_gateway
     
     # Step 3: Delete data sources
@@ -3694,7 +3458,11 @@ cleanup_ecosystem() {
     print_status "All resources have been successfully removed."
 }
 
-# Function to cleanup AdCP MCP Gateway
+# Tear down an AdCP MCP Gateway, its handler Lambda, IAM role, and SSM parameter.
+#
+# The gateway has been removed from this project, so nothing creates these any
+# more. This runs on cleanup regardless, because a stack deployed before the
+# removal still has them and they would otherwise be left billing.
 cleanup_adcp_gateway() {
     print_step "2. Cleaning up AdCP MCP Gateway..."
     
@@ -4624,6 +4392,14 @@ parse_args() {
                 AAMP_BRANCH="$2"
                 shift 2
                 ;;
+            --deploy-aamp)
+                DEPLOY_AAMP=true
+                shift
+                ;;
+            --skip-aamp)
+                DEPLOY_AAMP=false
+                shift
+                ;;
             --non-interactive)
                 INTERACTIVE_MODE=false
                 shift
@@ -4660,9 +4436,11 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-11)"
     echo "  --local-aamp PATH        Use local IAB AAMP repos (dir containing seller-agent/ and buyer-agent/) instead of cloning"
     echo "  --aamp-branch BRANCH     Branch to checkout in IAB repos when cloning (default: main)"
+    echo "  --deploy-aamp            Deploy the optional AAMP agents (Phase 9) without prompting"
+    echo "  --skip-aamp              Skip the optional AAMP agents (Phase 9) without prompting"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4674,8 +4452,9 @@ show_usage() {
     echo "  $0 --unique-id abc123                # Use specific unique ID"
     echo "  $0 --region us-east-1                # Deploy in specific region"
     echo "  $0 --resume-at 5                     # Resume from step 5"
-    echo "  $0 --resume-at 9                     # Resume from step 9 (Deploy AgentCore agents)"
-    echo "  $0 --resume-at 8 --skip-confirmations # Resume from step 8 (DynamoDB upload) without update confirmations"
+    echo "  $0 --resume-at 8                     # Resume from step 8 (Deploy AgentCore agents)"
+    echo "  $0 --resume-at 7 --skip-confirmations # Resume from step 7 (DynamoDB upload) without update confirmations"
+    echo "  $0 --resume-at 9 --deploy-aamp       # Deploy just the optional AAMP agents (then UI + warmup)"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4754,10 +4533,10 @@ confirm_deployment_steps() {
         "Phase 3: Deploy Lambda functions and migrate visualization data"
         "Phase 4: Deploy knowledge bases with organized data sources"
         "Phase 5: Sync data sources (start ingestion jobs)"
-        "Phase 6: Deploy AdCP MCP Gateway for agent collaboration"
-        "Phase 7: Upload agent configurations to S3"
-        "Phase 8: Upload agent configurations to DynamoDB"
-        "Phase 9: Deploy AgentCore agents"
+        "Phase 6: Upload agent configurations to S3"
+        "Phase 7: Upload agent configurations to DynamoDB"
+        "Phase 8: Deploy AgentCore agents"
+        "Phase 9: Deploy AAMP agents (optional — you will be asked)"
         "Phase 10: Generate UI configuration"
         "Phase 11: Warmup agent runtimes"
     )
@@ -4860,7 +4639,104 @@ project_root = os.environ.get('PROJECT_ROOT', '.')
 global_config_file = f"{project_root}/agentcore/deployment/agent/global_configuration.json"
 agentcore_info_file = f"{project_root}/.agentcore-agents-{stack_prefix}-{unique_id}.json"
 
-def send_warmup_prompt(agent_name, runtime_arn, session_id):
+WARMUP_PROMPT = "Hello, please respond with a brief acknowledgment that you are ready."
+
+
+def load_oauth_runtime_map():
+    """Map runtime ARN -> SSM path holding that runtime's inbound credentials.
+
+    Runtimes created with a Cognito JWT authorizer reject SigV4
+    invoke_agent_runtime with AccessDeniedException; they need an
+    `Authorization: Bearer` token instead. The AAMP runtimes are deployed that
+    way by default (AAMP_INBOUND_AUTH=oauth), and the per-agent credentials live
+    at the same /{prefix}/a2a-inbound-tokens/{uid}/{AgentName} path the runtime
+    handler uses.
+    """
+    aamp_file = f"{project_root}/.aamp-runtime-{stack_prefix}-{unique_id}.json"
+    if not os.path.exists(aamp_file):
+        return {}
+    try:
+        with open(aamp_file, "r") as f:
+            aamp = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        print(f"  ⚠️  Could not read {aamp_file}: {e}", file=sys.stderr)
+        return {}
+
+    mapping = {}
+    for logical_name, entry in (aamp.get("agents") or {}).items():
+        arn = (entry or {}).get("runtime_arn")
+        if arn:
+            mapping[arn] = f"/{stack_prefix}/a2a-inbound-tokens/{unique_id}/{logical_name}"
+    return mapping
+
+
+def warmup_via_bearer(agent_name, runtime_arn, session_id, ssm_path):
+    """Warm up an OAuth-protected runtime using a Cognito bearer token.
+
+    Reuses A2ATokenManager from the agent runtime so the token exchange here is
+    the same one the agents use, rather than a second implementation that can
+    drift from it.
+    """
+    try:
+        try:
+            import requests
+        except ImportError:
+            print(
+                f"  ⚠️  {agent_name} warmup skipped: the `requests` package is needed for "
+                f"OAuth warmup (pip install requests)",
+                file=sys.stderr,
+            )
+            return False, agent_name
+        from urllib.parse import quote
+
+        shared_dir = os.path.join(project_root, "agentcore", "deployment", "agent", "shared")
+        if shared_dir not in sys.path:
+            sys.path.insert(0, shared_dir)
+        from a2a_auth import A2ATokenManager
+
+        if aws_profile:
+            os.environ.setdefault("AWS_PROFILE", aws_profile)
+
+        token, err = A2ATokenManager(region=aws_region).get_bearer_token(ssm_path)
+        if err or not token:
+            print(
+                f"  ⚠️  {agent_name} warmup skipped: no bearer token from {ssm_path}"
+                f"{' (' + str(err)[:60] + ')' if err else ''}",
+                file=sys.stderr,
+            )
+            return False, agent_name
+
+        endpoint = (
+            f"https://bedrock-agentcore.{aws_region}.amazonaws.com/runtimes/"
+            f"{quote(runtime_arn, safe='')}/invocations?qualifier=DEFAULT"
+        )
+        resp = requests.post(
+            endpoint,
+            data=json.dumps({"prompt": WARMUP_PROMPT}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+                "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
+            },
+            timeout=120,
+        )
+        if resp.status_code >= 400:
+            # Never echo the response body — it can carry request detail.
+            print(
+                f"  ⚠️  {agent_name} warmup skipped: OAuth invoke returned HTTP {resp.status_code}",
+                file=sys.stderr,
+            )
+            return False, agent_name
+
+        print(f"  ✅ {agent_name} warmed up successfully (OAuth bearer)", file=sys.stderr)
+        return True, agent_name
+
+    except Exception as e:  # noqa: BLE001
+        print(f"  ⚠️  {agent_name} warmup skipped: {str(e)[:80]}", file=sys.stderr)
+        return False, agent_name
+
+
+def send_warmup_prompt(agent_name, runtime_arn, session_id, oauth_ssm_path=None):
     """Send a warmup prompt via the AgentCore runtime data-plane API.
 
     Uses bedrock-agentcore invoke_agent_runtime EXCLUSIVELY — never the
@@ -4868,6 +4744,9 @@ def send_warmup_prompt(agent_name, runtime_arn, session_id):
     mirrors the production invoke path in
     agent/shared/a2a_client_tools.py so warmup exercises the same code path
     the runtimes actually serve.
+
+    Runtimes fronted by a Cognito JWT authorizer are invoked over HTTPS with a
+    bearer token instead, since SigV4 is rejected for those.
     """
     # A real AgentCore runtime ARN is required to invoke. The legacy state
     # format stored the agent name instead of an ARN; we cannot invoke that,
@@ -4880,6 +4759,10 @@ def send_warmup_prompt(agent_name, runtime_arn, session_id):
             file=sys.stderr,
         )
         return False, agent_name
+
+    if oauth_ssm_path:
+        print(f"  🔄 Warming up {agent_name} (OAuth)...", file=sys.stderr)
+        return warmup_via_bearer(agent_name, runtime_arn, session_id, oauth_ssm_path)
 
     try:
         import boto3
@@ -4928,7 +4811,19 @@ def send_warmup_prompt(agent_name, runtime_arn, session_id):
         return True, agent_name
 
     except Exception as e:
-        print(f"  ⚠️  {agent_name} warmup skipped: {str(e)[:80]}", file=sys.stderr)
+        detail = str(e)
+        if "AccessDeniedException" in detail:
+            # The usual cause is a JWT authorizer on the runtime, which rejects
+            # SigV4. Name it so the fix is obvious.
+            print(
+                f"  ⚠️  {agent_name} warmup skipped: SigV4 invoke denied. If this runtime "
+                f"uses a Cognito JWT authorizer, its inbound credentials must be stored at "
+                f"/{stack_prefix}/a2a-inbound-tokens/{unique_id}/<AgentName> for warmup to "
+                f"use a bearer token.",
+                file=sys.stderr,
+            )
+        else:
+            print(f"  ⚠️  {agent_name} warmup skipped: {detail[:80]}", file=sys.stderr)
         return False, agent_name
 
 def main():
@@ -4978,11 +4873,21 @@ def main():
         successful = 0
         failed = 0
         
+        # Runtimes behind a Cognito JWT authorizer need a bearer token, not SigV4.
+        oauth_runtimes = load_oauth_runtime_map()
+        if oauth_runtimes:
+            print(
+                f"Found {len(oauth_runtimes)} OAuth-protected runtime(s) to warm up with a bearer token",
+                file=sys.stderr,
+            )
+
         # Process agents sequentially with delays to avoid rate limits
         for agent_name, runtime_arn in deployed_map.items():
             # AgentCore requires runtimeSessionId to be 33-256 chars.
             session_id = f"warmup-{uuid.uuid4().hex}{uuid.uuid4().hex}"[:48]
-            success, name = send_warmup_prompt(agent_name, runtime_arn, session_id)
+            success, name = send_warmup_prompt(
+                agent_name, runtime_arn, session_id, oauth_runtimes.get(runtime_arn)
+            )
             
             if success:
                 successful += 1
@@ -5034,6 +4939,54 @@ WARMUP_SCRIPT
     fi
     
     return 0
+}
+
+# Phase 9 (optional): deploy the IAB AAMP buyer & seller agents.
+#
+# Gates deploy_aamp_agents() behind an explicit choice, because the phase clones
+# the IAB repos (or reads --local-aamp) and provisions two additional AgentCore
+# runtimes that add to cost. Precedence: --deploy-aamp/--skip-aamp win outright;
+# otherwise interactive runs are asked and non-interactive runs skip, matching
+# how the external A2A agents step behaves.
+prompt_and_deploy_aamp_agents() {
+    if [ "$DEPLOY_AAMP" = "false" ]; then
+        print_status "⏭️  Step 9: Skipping AAMP agents (--skip-aamp)."
+        return 0
+    fi
+
+    if [ "$DEPLOY_AAMP" != "true" ]; then
+        echo ""
+        print_status "=========================================="
+        print_status "🤝 STEP 9 (OPTIONAL): IAB AAMP Agents"
+        print_status "=========================================="
+        print_status "Deploys the IAB Tech Lab AAMP buyer and seller agents to their own"
+        print_status "AgentCore runtimes and registers them with the AAMP agents in this stack."
+        if [ -n "$LOCAL_AAMP_PATH" ]; then
+            print_status "  Source: local repos at $LOCAL_AAMP_PATH"
+        else
+            print_status "  Source: clones the IAB seller-agent and buyer-agent repos (branch: $AAMP_BRANCH)"
+        fi
+        print_warning "⚠️  Provisions two additional AgentCore runtimes, which add to cost."
+        print_status "Skipping is safe — the rest of the deployment does not depend on these agents."
+
+        if [ "$INTERACTIVE_MODE" != true ] || [ "$SKIP_CONFIRMATIONS" = true ]; then
+            print_status "Non-interactive mode: skipping AAMP agents."
+            print_status "Deploy later with:"
+            print_status "  $0 --resume-at 9 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+
+        printf "Deploy the AAMP agents now? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            print_status "Skipping AAMP agents."
+            print_status "You can deploy them later with:"
+            print_status "  $0 --resume-at 9 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+    fi
+
+    deploy_aamp_agents
 }
 
 # Function to optionally deploy the external A2A agents
@@ -5221,12 +5174,18 @@ main() {
     # Phase 3: Deploy Lambda functions and migrate visualization data
     # Phase 4: Deploy knowledge bases with organized data sources
     # Phase 5: Sync data sources (start ingestion jobs)
-    # Phase 6: Deploy AdCP MCP Gateway for agent collaboration (BEFORE agents!)
-    # Phase 7: Upload agent configurations to S3
-    # Phase 8: Upload agent configurations to DynamoDB
-    # Phase 9: Deploy AgentCore agents (uses gateway URLs from step 6)
+    # Phase 6: Upload agent configurations to S3
+    # Phase 7: Upload agent configurations to DynamoDB
+    # Phase 8: Deploy AgentCore agents
+    # Phase 9: Deploy AAMP agents (optional, opt-in)
     # Phase 10: Generate UI configuration
     # Phase 11: Warm up agent runtimes with test prompts
+    #
+    # Phase 9 is where the AdCP MCP Gateway used to sit. The gateway has been
+    # removed: AdCP is served by the AdCP-compliant reference agents
+    # AdCPBuyerAgent and AdCPSellerAgent instead. cleanup_adcp_gateway() is the
+    # only gateway code left, so `--cleanup` still tears down a gateway left over
+    # from an older deployment.
     
     # Pre-deployment validation
     if [ "$RESUME_AT_STEP" -le 1 ]; then
@@ -5264,11 +5223,6 @@ main() {
     fi
     
     if [ "$RESUME_AT_STEP" -le 6 ]; then
-        # Deploy AdCP MCP Gateway FIRST so agents can use it
-        deploy_adcp_mcp_gateway
-    fi
-    
-    if [ "$RESUME_AT_STEP" -le 7 ]; then
         # Patch global_configuration.json with real KB IDs from Step 4
         patch_global_config_kb_ids
         
@@ -5277,7 +5231,7 @@ main() {
         upload_agent_configurations
     fi
     
-    if [ "$RESUME_AT_STEP" -le 8 ]; then
+    if [ "$RESUME_AT_STEP" -le 7 ]; then
         # Upload to DynamoDB for faster access (S3 remains as fallback)
         upload_agent_configurations_to_dynamodb
         
@@ -5285,9 +5239,17 @@ main() {
         upload_tab_configurations_to_dynamodb
     fi
     
-    if [ "$RESUME_AT_STEP" -le 9 ]; then
-        # Deploy AgentCore agents AFTER configs are uploaded and gateway is available
+    if [ "$RESUME_AT_STEP" -le 8 ]; then
+        # Deploy AgentCore agents AFTER configs are uploaded
         detect_and_deploy_agentcore_agents
+    fi
+
+    # Phase 9 (optional): deploy the AAMP agents (IAB buyer & seller), resolve
+    # config from template with their runtime ARNs, and upload to DynamoDB.
+    # Runs before the UI config is generated so a deployed AAMP pair is picked up
+    # by the UI build in Phase 10.
+    if [ "$RESUME_AT_STEP" -le 9 ]; then
+        prompt_and_deploy_aamp_agents
     fi
     
     if [ "$RESUME_AT_STEP" -le 10 ]; then
@@ -5296,12 +5258,6 @@ main() {
     
     if [ "$RESUME_AT_STEP" -le 11 ]; then
         warmup_agent_runtimes
-    fi
-
-    # Phase 12: Deploy AAMP agents (IAB buyer & seller), resolve config from
-    # template with their runtime ARNs, upload to DynamoDB, and sync S3/CloudFront.
-    if [ "$RESUME_AT_STEP" -le 12 ]; then
-        deploy_aamp_agents
     fi
     
     # Optional: deploy external A2A agents (prompts the user; passes variables automatically)
@@ -5328,10 +5284,12 @@ main() {
     print_status "  ✅ Visualization Data: Migrated to DynamoDB for AgentCore agents"
     print_status "  ✅ Agent Runtimes: Warmed up for faster response times"
     
-    # Check if AdCP Gateway was deployed
-    local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
-    if [ -f "$gateway_info_file" ]; then
-        print_status "  ✅ AdCP MCP Gateway: Deployed for agent collaboration"
+    # AAMP agents are optional (Step 9) — report only what was actually deployed
+    local aamp_runtime_file="${PROJECT_ROOT}/.aamp-runtime-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    if [ -f "$aamp_runtime_file" ]; then
+        print_status "  ✅ AAMP Agents: Deployed (IAB buyer & seller runtimes)"
+    else
+        print_status "  ⏭️  AAMP Agents: Not deployed (optional Step 9 — re-run with --resume-at 9 --deploy-aamp)"
     fi
 
     # Check if AgentCore agents were actually deployed by looking at the file

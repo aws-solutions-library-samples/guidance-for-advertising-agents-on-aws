@@ -2,9 +2,31 @@ import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChange
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AgentConfiguration, MCPServerConfig, ExternalAgentConfig } from '../agent-management-modal/agent-management-modal.component';
 import { KnowledgeBaseInfo } from '../../models/application-models';
-import { AgentDynamoDBService, VisualizationMapping } from '../../services/agent-dynamodb.service';
+import {
+  AgentDynamoDBService,
+  VisualizationMapping,
+  InstructionVersionSummary,
+  INSTRUCTION_LIVE_SK
+} from '../../services/agent-dynamodb.service';
 import { BedrockService } from '../../services/bedrock.service';
 import { AwsConfigService } from '../../services/aws-config.service';
+import {
+  OAuthClientCredentialsInput,
+  OAuthClientCredentialsRef,
+  buildClientCredentialsDocument,
+  clearClientCredentialsTokenCache,
+  parseClientCredentialsDocument
+} from '../../services/oauth-client-credentials';
+import {
+  AgentProtocol,
+  classifyEndpoint,
+  describeInvocationPlan,
+  planInvocation,
+  resolveAgentEndpoint,
+  resolveAgentProtocol,
+  resolveEntryEndpoint,
+  resolveEntryProtocol
+} from '../../services/agent-invocation-plan';
 import { marked } from 'marked';
 
 // Extracted modules
@@ -56,6 +78,17 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // Visualization mappings state
   visualizationMappings: VisualizationMapping | null = null;
   isLoadingMappings: boolean = false;
+
+  // Instruction version state. `selectedInstructionVersionSk` holds a sort key,
+  // using the live pointer's key for the "current" option.
+  readonly liveInstructionSk = INSTRUCTION_LIVE_SK;
+  instructionVersions: InstructionVersionSummary[] = [];
+  selectedInstructionVersionSk: string = INSTRUCTION_LIVE_SK;
+  liveInstructionVersion: number | null = null;
+  liveInstructionUpdatedAt: string | null = null;
+  isLoadingInstructionVersions: boolean = false;
+  isLoadingInstructionVersion: boolean = false;
+  instructionVersionError: string | null = null;
 
   // Constants exposed to template
   availableTemplates = AVAILABLE_TEMPLATES;
@@ -198,6 +231,57 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   notifyBearerTokenEditing: boolean = false;
   notifyBearerTokenVisible: boolean = false;
 
+  // ============================================
+  // OAuth 2.0 client-credentials (machine-to-machine) form state
+  // ============================================
+  //
+  // One block per auth surface, matching the existing per-surface state above.
+  // The client secret is held here only until it is written to SSM, then
+  // cleared; the config keeps a non-secret reference (token URL, scope,
+  // audience, parameter path).
+
+  // (A) Inbound auth for this agent's own endpoint
+  inboundM2mClientId: string = '';
+  inboundM2mClientSecret: string = '';
+  inboundM2mTokenUrl: string = '';
+  inboundM2mScope: string = '';
+  inboundM2mAudience: string = '';
+  inboundM2mSecretVisible: boolean = false;
+  inboundM2mSaving: boolean = false;
+  inboundM2mEditing: boolean = false;
+
+  // (B) Outbound auth per external A2A peer
+  a2aM2mClientId: string = '';
+  a2aM2mClientSecret: string = '';
+  a2aM2mTokenUrl: string = '';
+  a2aM2mScope: string = '';
+  a2aM2mAudience: string = '';
+  a2aM2mSecretVisible: boolean = false;
+  a2aM2mSaving: boolean = false;
+  a2aM2mEditing: boolean = false;
+  a2aM2mPending: boolean = false;
+
+  // (C) MCP server auth
+  mcpM2mClientId: string = '';
+  mcpM2mClientSecret: string = '';
+  mcpM2mTokenUrl: string = '';
+  mcpM2mScope: string = '';
+  mcpM2mAudience: string = '';
+  mcpM2mSecretVisible: boolean = false;
+  mcpM2mSaving: boolean = false;
+  mcpM2mEditing: boolean = false;
+  mcpM2mPending: boolean = false;
+
+  // (D) Invocation-notification webhook auth
+  notifyM2mClientId: string = '';
+  notifyM2mClientSecret: string = '';
+  notifyM2mTokenUrl: string = '';
+  notifyM2mScope: string = '';
+  notifyM2mAudience: string = '';
+  notifyM2mSecretVisible: boolean = false;
+  notifyM2mSaving: boolean = false;
+  notifyM2mEditing: boolean = false;
+
   @Output() a2aEditorOpened = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
   @Output() a2aEditorClosed = new EventEmitter<void>();
   @Output() a2aEditorSaved = new EventEmitter<{ agent: ExternalAgentConfig; index: number }>();
@@ -243,6 +327,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.editingAgent.mcp_servers = this.editingAgent.mcp_servers || [];
       this.editingAgent.external_agent_configs = this.editingAgent.external_agent_configs || [];
       this.editingAgent.is_a2a = this.editingAgent.is_a2a ?? false;
+      // Hosting, protocol, and endpoint are independent. Seed each from the
+      // record, falling back to what the old is_a2a flag implied.
+      this.editingAgent.agent_hosting =
+        this.editingAgent.agent_hosting || (this.editingAgent.is_a2a ? 'external' : 'adfabric');
+      this.editingAgent.agent_protocol =
+        this.editingAgent.agent_protocol || (this.editingAgent.is_a2a ? 'a2a' : 'http');
+      this.editingAgent.agent_endpoint = this.editingAgent.agent_endpoint || '';
       this.editingAgent.a2a_auth_type = this.editingAgent.a2a_auth_type || 'none';
       this.editingAgent.runtime_arn = this.editingAgent.runtime_arn || '';
       this.editingAgent.knowledge_base = this.editingAgent.knowledge_base || '';
@@ -257,11 +348,20 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
       if (!this.isNew && this.agent.agent_name) {
         this.loadVisualizationMappings(this.agent.agent_name);
+        this.loadInstructionVersions(this.agent.agent_name);
       }
     } else {
       this.editingAgent = this.createEmptyAgent();
       this.visualizationMappings = null;
     }
+
+    this.instructionVersions = [];
+    this.selectedInstructionVersionSk = INSTRUCTION_LIVE_SK;
+    this.liveInstructionVersion = null;
+    this.liveInstructionUpdatedAt = null;
+    this.isLoadingInstructionVersions = false;
+    this.isLoadingInstructionVersion = false;
+    this.instructionVersionError = null;
 
     this.validationErrors.clear();
     this.isMarkdownPreview = false;
@@ -292,6 +392,20 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.notifyBearerTokenValue = '';
     this.notifyBearerTokenExpiry = '';
     this.notifyBearerTokenEditing = false;
+    this.clearInboundM2mFormState();
+    this.clearNotifyM2mFormState();
+    this.inboundM2mSaving = false;
+    this.notifyM2mSaving = false;
+    // Seed the non-secret fields from the config so the forms show what is
+    // stored without reading SSM. Secrets stay blank until explicitly updated.
+    const inboundM2m = this.editingAgent.a2a_oauth_client_credentials;
+    this.inboundM2mTokenUrl = inboundM2m?.tokenUrl || '';
+    this.inboundM2mScope = inboundM2m?.scope || '';
+    this.inboundM2mAudience = inboundM2m?.audience || '';
+    const notifyM2m = this.editingAgent.notify_on_invocation?.oauth_client_credentials;
+    this.notifyM2mTokenUrl = notifyM2m?.tokenUrl || '';
+    this.notifyM2mScope = notifyM2m?.scope || '';
+    this.notifyM2mAudience = notifyM2m?.audience || '';
     this.notifyBearerTokenSaving = false;
     this.notifyBearerTokenVisible = false;
     this.runtimeArnDropdownOpen = false;
@@ -300,6 +414,104 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.kbFilterText = '';
     this.loadKnowledgeBases();
     this.cdr.markForCheck();
+  }
+
+  // ============================================
+  // Instruction Versions
+  // ============================================
+
+  private async loadInstructionVersions(agentName: string): Promise<void> {
+    this.isLoadingInstructionVersions = true;
+    this.instructionVersionError = null;
+    this.cdr.markForCheck();
+    try {
+      const history = await this.agentDynamoDBService.getInstructionVersionHistory(agentName);
+      this.instructionVersions = history.versions;
+      this.liveInstructionVersion = history.live.version;
+      this.liveInstructionUpdatedAt = history.live.updatedAt || null;
+      this.selectedInstructionVersionSk = INSTRUCTION_LIVE_SK;
+    } catch (error) {
+      console.error('Error loading instruction versions:', error);
+      this.instructionVersionError = 'Could not load version history.';
+    } finally {
+      this.isLoadingInstructionVersions = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Load the selected version's text into the editor.
+   *
+   * Assigns onto `editingAgent` rather than reassigning the `agent` input, since
+   * that would re-run initializeForm() and discard the selection.
+   */
+  async onInstructionVersionChange(sk: string): Promise<void> {
+    const agentName = this.editingAgent.agent_name;
+    if (!agentName || !sk) return;
+
+    this.selectedInstructionVersionSk = sk;
+    this.isLoadingInstructionVersion = true;
+    this.instructionVersionError = null;
+    this.cdr.markForCheck();
+
+    try {
+      const content = await this.agentDynamoDBService.getAgentInstructionsAtVersion(agentName, sk);
+      if (content === null) {
+        this.instructionVersionError = 'That version could not be loaded.';
+        return;
+      }
+      this.editingAgent.instructions = content;
+      // Drop the memoised render so Preview reflects the version just loaded.
+      this._lastRenderedInstructions = '';
+      this.renderedInstructionsHtml = null;
+      if (this.isMarkdownPreview) this.renderInstructionsMarkdown();
+    } catch (error) {
+      console.error('Error loading instruction version:', error);
+      this.instructionVersionError = 'That version could not be loaded.';
+    } finally {
+      this.isLoadingInstructionVersion = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /** True when the editor is showing a snapshot rather than the live record. */
+  get isViewingHistoricInstructionVersion(): boolean {
+    return this.selectedInstructionVersionSk !== INSTRUCTION_LIVE_SK;
+  }
+
+  get liveInstructionOptionLabel(): string {
+    const when = this.formatInstructionTimestamp(this.liveInstructionUpdatedAt);
+    if (this.liveInstructionVersion !== null) {
+      return `Current — v${this.liveInstructionVersion}${when ? ` · ${when}` : ''}`;
+    }
+    // No version attribute on the live record, so it cannot be tied to a
+    // snapshot. Say so instead of implying it is one.
+    return `Current — not versioned${when ? ` · ${when}` : ''}`;
+  }
+
+  instructionVersionLabel(version: InstructionVersionSummary): string {
+    const parts = [`v${version.version}`];
+    const when = this.formatInstructionTimestamp(version.updatedAt);
+    if (when) parts.push(when);
+    if (version.author) parts.push(version.author);
+    if (typeof version.contentLength === 'number') {
+      parts.push(`${Math.max(1, Math.round(version.contentLength / 1024))} KB`);
+    }
+    return parts.join(' · ');
+  }
+
+  get selectedInstructionVersionLabel(): string {
+    const match = this.instructionVersions.find(v => v.sk === this.selectedInstructionVersionSk);
+    return match ? `v${match.version}` : 'this version';
+  }
+
+  private formatInstructionTimestamp(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
   }
 
   private async loadVisualizationMappings(agentName: string): Promise<void> {
@@ -329,6 +541,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       },
       agent_tools: [], injectable_values: {}, instructions: '', color: '#6842ff',
       mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: '',
+      agent_hosting: 'adfabric', agent_protocol: 'http', agent_endpoint: '',
       is_a2a: false,
       a2a_auth_type: 'none'
     };
@@ -731,6 +944,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.mcpOAuthCredentialsSaving = false;
     this.mcpOAuthCredentialsPending = false;
     this.mcpOAuthCredentialsEditing = false;
+    this.clearMcpM2mFormState();
+    this.mcpM2mSaving = false;
+    // Show the stored token URL/scope/audience without a round trip to SSM; the
+    // client secret stays blank until the operator chooses to update it.
+    this.mcpM2mTokenUrl = this.editingMcpServer?.oauthClientCredentials?.tokenUrl || '';
+    this.mcpM2mScope = this.editingMcpServer?.oauthClientCredentials?.scope || '';
+    this.mcpM2mAudience = this.editingMcpServer?.oauthClientCredentials?.audience || '';
     this.mcpEditorOpened.emit({ server: this.editingMcpServer!, index });
   }
 
@@ -745,6 +965,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.mcpBearerTokenPending = false;
     this.mcpBearerTokenEditing = false;
     this.mcpBearerTokenVisible = false;
+    this.clearMcpM2mFormState();
+    this.mcpM2mSaving = false;
     this.mcpEditorClosed.emit();
   }
 
@@ -756,6 +978,17 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
     if ((this.editingMcpServer.transport === 'http' || this.editingMcpServer.transport === 'sse') && !this.editingMcpServer.url?.trim()) {
       this.mcpServerJsonError = 'URL is required for HTTP/SSE transport'; return;
+    }
+
+    // Client-credentials entered but not yet written to SSM. Stop rather than
+    // saving a server whose auth mode points at a parameter that was never
+    // created, which would fail at connect time with no indication why.
+    if (this.getMcpAuthType(this.editingMcpServer) === 'oauth_m2m' &&
+        this.mcpM2mClientSecret.trim() &&
+        !this.mcpM2mSaving) {
+      this.mcpServerJsonError = 'Click "Save Credentials" to store the client credentials first.';
+      this.cdr.markForCheck();
+      return;
     }
 
     // If OAuth credentials were entered, store them in SSM before saving
@@ -771,6 +1004,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       ).then(ssmPath => {
         if (ssmPath && this.editingMcpServer) {
           this.editingMcpServer.oauthToken = { hasToken: true, ssmPath };
+          this.editingMcpServer.authType = 'bearer';
+          this.editingMcpServer.oauthClientCredentials = undefined;
         }
         this.finalizeMcpServerSave();
       }).catch(err => {
@@ -908,6 +1143,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       id: this.generateA2aAgentId(),
       name: '',
       arn: '',
+      endpoint: '',
+      protocol: 'a2a',
       isA2A: true,
       description: '',
       enabled: true,
@@ -961,6 +1198,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.a2aOAuthCredentialsSaving = false;
     this.a2aOAuthCredentialsPending = false;
     this.a2aOAuthCredentialsEditing = false;
+    this.clearA2aM2mFormState();
+    this.a2aM2mSaving = false;
+    // Show the stored token URL/scope/audience without a round trip to SSM; the
+    // client secret stays blank until the operator chooses to update it.
+    this.a2aM2mTokenUrl = this.editingA2aAgent?.oauthClientCredentials?.tokenUrl || '';
+    this.a2aM2mScope = this.editingA2aAgent?.oauthClientCredentials?.scope || '';
+    this.a2aM2mAudience = this.editingA2aAgent?.oauthClientCredentials?.audience || '';
     this.a2aEditorOpened.emit({ agent: this.editingA2aAgent!, index });
   }
 
@@ -974,13 +1218,32 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.a2aBearerTokenPending = false;
     this.a2aBearerTokenEditing = false;
     this.a2aBearerTokenVisible = false;
+    this.clearA2aM2mFormState();
+    this.a2aM2mSaving = false;
     this.a2aEditorClosed.emit();
   }
 
   saveA2aAgentChanges(): void {
     if (!this.editingA2aAgent || this.editingA2aAgentIndex < 0) return;
     if (!this.editingA2aAgent.name?.trim()) { this.a2aEditorError = 'Agent name is required'; return; }
-    if (!this.editingA2aAgent.arn?.trim()) { this.a2aEditorError = 'Agent ARN is required'; return; }
+    const entryEndpoint = resolveEntryEndpoint(this.editingA2aAgent);
+    if (entryEndpoint.kind === 'none') {
+      this.a2aEditorError = entryEndpoint.value
+        ? 'Endpoint must be an AgentCore runtime ARN (arn:...) or an absolute URL (https://...).'
+        : 'Agent endpoint is required.';
+      return;
+    }
+
+    // Client-credentials entered but not yet written to SSM. Stop rather than
+    // saving an entry whose auth mode points at a parameter that was never
+    // created, which would fail at invoke time with no indication why.
+    if (this.getA2aAuthType(this.editingA2aAgent) === 'oauth_m2m' &&
+        this.a2aM2mClientSecret.trim() &&
+        !this.a2aM2mSaving) {
+      this.a2aEditorError = 'Click "Save Credentials" to store the client credentials first.';
+      this.cdr.markForCheck();
+      return;
+    }
 
     // If OAuth credentials were entered, store them in SSM before saving
     if (this.a2aOAuthUsername.trim() && this.a2aOAuthPassword.trim() && this.editingAgent.agent_name) {
@@ -1006,6 +1269,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         if (ssmPath && this.editingA2aAgent) {
           this.editingA2aAgent.oauthCredentials = { hasCredentials: true, ssmPath };
           this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath };
+          this.editingA2aAgent.oauthClientCredentials = undefined;
         }
         this.finalizeA2aAgentSave();
       }).catch(err => {
@@ -1086,6 +1350,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingA2aAgent.bearerToken = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      // The parameter now holds a static token, so a client-credentials
+      // reference to the same path would misreport what is stored.
+      this.editingA2aAgent.oauthClientCredentials = undefined;
       // Same staging gap as the OAuth path: token is stored, reference is not yet.
       this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
       this.a2aBearerTokenValue = '';
@@ -1163,11 +1430,16 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
    */
   async disableNotifyOnInvocation(): Promise<void> {
     if (!this.editingAgent.notify_on_invocation) return;
-    if (this.editingAgent.notify_on_invocation.bearer_token?.hasToken && this.editingAgent.agent_name) {
+    // Both credential modes share the notify parameter path, so either one
+    // being stored means there is a parameter to clean up.
+    const hasStoredCredential =
+      this.editingAgent.notify_on_invocation.bearer_token?.hasToken ||
+      this.editingAgent.notify_on_invocation.oauth_client_credentials?.hasCredentials;
+    if (hasStoredCredential && this.editingAgent.agent_name) {
       try {
         await this.agentDynamoDBService.deleteNotifyBearerToken(this.editingAgent.agent_name);
       } catch (err) {
-        console.warn('⚠️ Failed to clean up notify bearer token on disable:', err);
+        console.warn('⚠️ Failed to clean up notify credential on disable:', err);
       }
     }
     this.editingAgent.notify_on_invocation = undefined;
@@ -1175,11 +1447,12 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.notifyBearerTokenValue = '';
     this.notifyBearerTokenExpiry = '';
     this.notifyBearerTokenEditing = false;
+    this.clearNotifyM2mFormState();
     this.cdr.markForCheck();
   }
 
   /** Set the auth type for the invocation-notification hook */
-  setNotifyAuthType(type: 'none' | 'iam' | 'bearer'): void {
+  setNotifyAuthType(type: 'none' | 'iam' | 'bearer' | 'oauth_m2m'): void {
     if (!this.editingAgent.notify_on_invocation) return;
     this.editingAgent.notify_on_invocation.auth_type = type;
     if (type !== 'bearer') {
@@ -1190,7 +1463,123 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.notifyBearerTokenEditing = false;
       this.notifyBearerTokenVisible = false;
     }
+    if (type !== 'oauth_m2m') {
+      this.clearNotifyM2mFormState();
+    }
+    this.notifyEditorError = null;
     this.cdr.markForCheck();
+  }
+
+  /**
+   * Abandon an in-progress notify client-credentials edit, restoring the
+   * displayed non-secret values from the stored reference.
+   */
+  cancelNotifyClientCredentialsEdit(): void {
+    const stored = this.editingAgent.notify_on_invocation?.oauth_client_credentials;
+    this.clearNotifyM2mFormState();
+    this.notifyM2mTokenUrl = stored?.tokenUrl || '';
+    this.notifyM2mScope = stored?.scope || '';
+    this.notifyM2mAudience = stored?.audience || '';
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Clear the notify client-credentials form fields, leaving any stored reference. */
+  private clearNotifyM2mFormState(): void {
+    this.notifyM2mEditing = false;
+    this.notifyM2mClientId = '';
+    this.notifyM2mClientSecret = '';
+    this.notifyM2mTokenUrl = '';
+    this.notifyM2mScope = '';
+    this.notifyM2mAudience = '';
+    this.notifyM2mSecretVisible = false;
+  }
+
+  /**
+   * Store the notification hook's client-credentials document in SSM (the same
+   * notify parameter path the bearer mode uses) and record the reference.
+   */
+  async saveNotifyClientCredentials(): Promise<void> {
+    if (!this.editingAgent.notify_on_invocation) return;
+    if (!this.editingAgent.agent_name) {
+      this.notifyEditorError = 'Agent name is required before saving credentials.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const notifyConfig = this.editingAgent.notify_on_invocation;
+    this.notifyM2mSaving = true;
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      notifyConfig.oauth_client_credentials = await this.persistClientCredentials(
+        {
+          clientId: this.notifyM2mClientId,
+          clientSecret: this.notifyM2mClientSecret,
+          tokenUrl: this.notifyM2mTokenUrl,
+          scope: this.notifyM2mScope,
+          audience: this.notifyM2mAudience
+        },
+        doc => this.agentDynamoDBService.storeNotifyBearerToken(this.editingAgent.agent_name, doc)
+      );
+      // The notify path now holds a client-credentials document, so the static
+      // bearer reference no longer describes it.
+      notifyConfig.bearer_token = undefined;
+      this.notifyM2mClientSecret = '';
+      this.notifyM2mEditing = false;
+    } catch (error: any) {
+      console.error('Error saving notify client credentials:', error);
+      this.notifyEditorError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.notifyM2mSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Load the notification hook's stored client-credentials document for an update. */
+  async beginNotifyClientCredentialsUpdate(): Promise<void> {
+    this.notifyM2mEditing = true;
+    this.notifyM2mClientSecret = '';
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+
+    if (!this.editingAgent.agent_name) return;
+
+    const existing = await this.prefillClientCredentialsForm(
+      () => this.agentDynamoDBService.getNotifyBearerToken(this.editingAgent.agent_name)
+    );
+    const stored = this.editingAgent.notify_on_invocation?.oauth_client_credentials;
+    this.notifyM2mClientId = existing.clientId ?? this.notifyM2mClientId;
+    this.notifyM2mTokenUrl = existing.tokenUrl ?? stored?.tokenUrl ?? '';
+    this.notifyM2mScope = existing.scope ?? stored?.scope ?? '';
+    this.notifyM2mAudience = existing.audience ?? stored?.audience ?? '';
+    this.cdr.markForCheck();
+  }
+
+  /** Remove the notification hook's client-credentials document from SSM. */
+  async removeNotifyClientCredentials(): Promise<void> {
+    if (!this.editingAgent.notify_on_invocation || !this.editingAgent.agent_name) return;
+
+    const notifyConfig = this.editingAgent.notify_on_invocation;
+    this.notifyM2mSaving = true;
+    this.notifyEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteNotifyBearerToken(this.editingAgent.agent_name);
+      if (notifyConfig.oauth_client_credentials?.ssmPath) {
+        clearClientCredentialsTokenCache(notifyConfig.oauth_client_credentials.ssmPath);
+      }
+      notifyConfig.oauth_client_credentials = undefined;
+      this.clearNotifyM2mFormState();
+    } catch (error: any) {
+      console.error('Error removing notify client credentials:', error);
+      this.notifyEditorError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.notifyM2mSaving = false;
+      this.cdr.markForCheck();
+    }
   }
 
   /** Basic https:// URL validation shared by validate() and the endpoint field's blur handler. */
@@ -1244,6 +1633,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingAgent.notify_on_invocation.bearer_token = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      // The notify parameter now holds a static token, so a client-credentials
+      // reference to the same path would misreport what is stored.
+      this.editingAgent.notify_on_invocation.oauth_client_credentials = undefined;
       this.notifyBearerTokenValue = '';
       this.notifyBearerTokenEditing = false;
     } catch (error: any) {
@@ -1317,6 +1709,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
       this.editingA2aAgent.oauthCredentials = { hasCredentials: true, ssmPath: ssmPath || undefined };
       this.editingA2aAgent.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      // The parameter now holds a username/password document, so a
+      // client-credentials reference to the same path would misreport what is
+      // stored.
+      this.editingA2aAgent.oauthClientCredentials = undefined;
       // The secret is now in Parameter Store, but the entry that points at it is
       // still only staged on editingAgent — flag it until the agent is saved.
       this.markA2aCredentialAwaitingAgentSave(this.editingA2aAgent);
@@ -1362,6 +1758,101 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.a2aEditorError = error.message || 'Failed to remove credentials.';
     } finally {
       this.a2aOAuthCredentialsSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Store the external A2A peer's client-credentials document in SSM (the same
+   * outbound parameter path the username/password mode uses) and record the
+   * reference on the entry.
+   */
+  async saveA2aClientCredentials(): Promise<void> {
+    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+
+    const entry = this.editingA2aAgent;
+    this.a2aM2mSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      entry.oauthClientCredentials = await this.persistClientCredentials(
+        {
+          clientId: this.a2aM2mClientId,
+          clientSecret: this.a2aM2mClientSecret,
+          tokenUrl: this.a2aM2mTokenUrl,
+          scope: this.a2aM2mScope,
+          audience: this.a2aM2mAudience
+        },
+        doc => this.agentDynamoDBService.storeA2AOAuthToken(
+          this.editingAgent.agent_name, entry.id, doc
+        )
+      );
+      entry.authType = 'oauth_m2m';
+      // Both modes share the parameter path, so the username/password and static
+      // bearer references must not keep pointing at a document they no longer describe.
+      entry.oauthCredentials = undefined;
+      entry.oauthToken = undefined;
+      entry.bearerToken = undefined;
+      // Same staging gap as the other credential modes: the secret is in
+      // Parameter Store, the entry that points at it is not persisted yet.
+      this.markA2aCredentialAwaitingAgentSave(entry);
+      this.a2aM2mClientSecret = '';
+      this.a2aM2mEditing = false;
+      this.a2aM2mPending = false;
+    } catch (error: any) {
+      console.error('Error saving A2A client credentials:', error);
+      this.a2aEditorError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.a2aM2mSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Load the stored external A2A client-credentials document for an update. */
+  async beginA2aClientCredentialsUpdate(): Promise<void> {
+    if (!this.editingA2aAgent) return;
+    const entry = this.editingA2aAgent;
+
+    this.a2aM2mEditing = true;
+    this.a2aM2mClientSecret = '';
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    if (!this.editingAgent.agent_name) return;
+
+    const existing = await this.prefillClientCredentialsForm(
+      () => this.agentDynamoDBService.getA2AOAuthToken(this.editingAgent.agent_name, entry.id)
+    );
+    this.a2aM2mClientId = existing.clientId ?? this.a2aM2mClientId;
+    this.a2aM2mTokenUrl = existing.tokenUrl ?? entry.oauthClientCredentials?.tokenUrl ?? '';
+    this.a2aM2mScope = existing.scope ?? entry.oauthClientCredentials?.scope ?? '';
+    this.a2aM2mAudience = existing.audience ?? entry.oauthClientCredentials?.audience ?? '';
+    this.cdr.markForCheck();
+  }
+
+  /** Remove the external A2A peer's client-credentials document from SSM. */
+  async removeA2aClientCredentials(): Promise<void> {
+    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+
+    const entry = this.editingA2aAgent;
+    this.a2aM2mSaving = true;
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AOAuthToken(this.editingAgent.agent_name, entry.id);
+      if (entry.oauthClientCredentials?.ssmPath) {
+        clearClientCredentialsTokenCache(entry.oauthClientCredentials.ssmPath);
+      }
+      entry.oauthClientCredentials = undefined;
+      this.markA2aCredentialAwaitingAgentSave(entry);
+      this.clearA2aM2mFormState();
+    } catch (error: any) {
+      console.error('Error removing A2A client credentials:', error);
+      this.a2aEditorError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.a2aM2mSaving = false;
       this.cdr.markForCheck();
     }
   }
@@ -1451,6 +1942,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingAgent.a2a_oauth_credentials = { hasCredentials: true, ssmPath: ssmPath || undefined };
+      // The inbound parameter now holds a username/password document, so a
+      // client-credentials reference to the same path would misreport what is
+      // stored.
+      this.editingAgent.a2a_oauth_client_credentials = undefined;
       this.inboundA2aOAuthTokenEndpoint = '';
       this.inboundA2aOAuthUsername = '';
       this.inboundA2aOAuthPassword = '';
@@ -1484,6 +1979,146 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       this.inboundA2aOAuthError = error.message || 'Failed to remove credentials.';
     } finally {
       this.inboundA2aOAuthSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Select the inbound auth mode for this agent's own endpoint, clearing the
+   * in-memory form fields of the modes not selected. Stored credential
+   * references are left alone, matching the outbound editors.
+   */
+  setInboundAuthType(type: 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer'): void {
+    this.editingAgent.a2a_auth_type = type;
+    this.inboundA2aOAuthError = null;
+
+    if (type !== 'oauth') {
+      this.inboundA2aOAuthEditing = false;
+      this.inboundA2aOAuthTokenEndpoint = '';
+      this.inboundA2aOAuthUsername = '';
+      this.inboundA2aOAuthPassword = '';
+    }
+    if (type !== 'oauth_m2m') {
+      this.clearInboundM2mFormState();
+    }
+    if (type !== 'bearer') {
+      this.inboundA2aBearerTokenEditing = false;
+      this.inboundA2aBearerTokenValue = '';
+      this.inboundA2aBearerTokenExpiry = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Abandon an in-progress inbound client-credentials edit, restoring the
+   * displayed non-secret values from the stored reference.
+   */
+  cancelInboundClientCredentialsEdit(): void {
+    const stored = this.editingAgent.a2a_oauth_client_credentials;
+    this.clearInboundM2mFormState();
+    this.inboundM2mTokenUrl = stored?.tokenUrl || '';
+    this.inboundM2mScope = stored?.scope || '';
+    this.inboundM2mAudience = stored?.audience || '';
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Clear the inbound client-credentials form fields, leaving any stored reference. */
+  private clearInboundM2mFormState(): void {
+    this.inboundM2mEditing = false;
+    this.inboundM2mClientId = '';
+    this.inboundM2mClientSecret = '';
+    this.inboundM2mTokenUrl = '';
+    this.inboundM2mScope = '';
+    this.inboundM2mAudience = '';
+    this.inboundM2mSecretVisible = false;
+  }
+
+  /**
+   * Store this agent's inbound client-credentials document in SSM (the same
+   * inbound parameter path the username/password mode uses) and record the
+   * reference.
+   */
+  async saveInboundClientCredentials(): Promise<void> {
+    if (!this.editingAgent.agent_name) {
+      this.inboundA2aOAuthError = 'Agent name is required before saving credentials.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.inboundM2mSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      this.editingAgent.a2a_oauth_client_credentials = await this.persistClientCredentials(
+        {
+          clientId: this.inboundM2mClientId,
+          clientSecret: this.inboundM2mClientSecret,
+          tokenUrl: this.inboundM2mTokenUrl,
+          scope: this.inboundM2mScope,
+          audience: this.inboundM2mAudience
+        },
+        doc => this.agentDynamoDBService.storeA2AInboundOAuthCredentials(
+          this.editingAgent.agent_name, doc
+        )
+      );
+      // The inbound path now holds a client-credentials document, so the
+      // username/password and static-token references no longer describe it.
+      this.editingAgent.a2a_oauth_credentials = undefined;
+      this.editingAgent.a2a_bearer_token = undefined;
+      this.inboundM2mClientSecret = '';
+      this.inboundM2mEditing = false;
+    } catch (error: any) {
+      console.error('Error saving inbound client credentials:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.inboundM2mSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Load this agent's stored inbound client-credentials document for an update. */
+  async beginInboundClientCredentialsUpdate(): Promise<void> {
+    this.inboundM2mEditing = true;
+    this.inboundM2mClientSecret = '';
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    if (!this.editingAgent.agent_name) return;
+
+    const existing = await this.prefillClientCredentialsForm(
+      () => this.agentDynamoDBService.getA2AInboundOAuthCredentials(this.editingAgent.agent_name)
+    );
+    const stored = this.editingAgent.a2a_oauth_client_credentials;
+    this.inboundM2mClientId = existing.clientId ?? this.inboundM2mClientId;
+    this.inboundM2mTokenUrl = existing.tokenUrl ?? stored?.tokenUrl ?? '';
+    this.inboundM2mScope = existing.scope ?? stored?.scope ?? '';
+    this.inboundM2mAudience = existing.audience ?? stored?.audience ?? '';
+    this.cdr.markForCheck();
+  }
+
+  /** Remove this agent's inbound client-credentials document from SSM. */
+  async removeInboundClientCredentials(): Promise<void> {
+    if (!this.editingAgent.agent_name) return;
+
+    this.inboundM2mSaving = true;
+    this.inboundA2aOAuthError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteA2AInboundOAuthCredentials(this.editingAgent.agent_name);
+      const ssmPath = this.editingAgent.a2a_oauth_client_credentials?.ssmPath;
+      if (ssmPath) {
+        clearClientCredentialsTokenCache(ssmPath);
+      }
+      this.editingAgent.a2a_oauth_client_credentials = undefined;
+      this.clearInboundM2mFormState();
+    } catch (error: any) {
+      console.error('Error removing inbound client credentials:', error);
+      this.inboundA2aOAuthError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.inboundM2mSaving = false;
       this.cdr.markForCheck();
     }
   }
@@ -1532,6 +2167,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingAgent.a2a_bearer_token = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      // The inbound parameter now holds a static token, so a client-credentials
+      // reference to the same path would misreport what is stored.
+      this.editingAgent.a2a_oauth_client_credentials = undefined;
       this.inboundA2aBearerTokenValue = '';
       this.inboundA2aBearerTokenExpiry = '';
       this.inboundA2aBearerTokenEditing = false;
@@ -1584,6 +2222,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.editingMcpServer.authType = 'bearer';
+      // The parameter now holds a username/password document, so a
+      // client-credentials reference to the same path would misreport what is
+      // stored.
+      this.editingMcpServer.oauthClientCredentials = undefined;
       this.mcpOAuthUsername = '';
       this.mcpOAuthPassword = '';
       this.mcpOAuthCredentialsEditing = false;
@@ -1641,8 +2284,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.toggleA2aAgentEnabled(index);
   }
 
-  /** Set the A2A auth type (none or bearer) */
-  setA2aAuthType(agent: ExternalAgentConfig, type: 'none' | 'oauth' | 'iam' | 'bearer'): void {
+  /** Set the A2A auth type (none, oauth, oauth_m2m, iam or bearer) */
+  setA2aAuthType(agent: ExternalAgentConfig, type: 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer'): void {
     agent.authType = type;
     switch (type) {
       case 'none':
@@ -1652,19 +2295,36 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.a2aOAuthPassword = '';
         this.a2aOAuthCredentialsPending = false;
         this.a2aOAuthCredentialsEditing = false;
+        this.clearA2aM2mFormState();
         break;
       case 'oauth':
         agent.awsAuth = undefined;
         // Switching away from bearer: clear the in-memory pasted value only —
         // a previously stored token reference is left intact (Req 1.5).
         this.clearA2aBearerFormState();
+        this.clearA2aM2mFormState();
         if (!agent.oauthCredentials?.hasCredentials) {
           this.a2aOAuthCredentialsPending = true;
+        }
+        break;
+      case 'oauth_m2m':
+        // Client-credentials grant against the peer's own token endpoint — no
+        // AWS identity and no Cognito user, so clear the IAM and
+        // username/password state.
+        agent.awsAuth = undefined;
+        this.clearA2aBearerFormState();
+        this.a2aOAuthUsername = '';
+        this.a2aOAuthPassword = '';
+        this.a2aOAuthCredentialsPending = false;
+        this.a2aOAuthCredentialsEditing = false;
+        if (!agent.oauthClientCredentials?.hasCredentials) {
+          this.a2aM2mPending = true;
         }
         break;
       case 'iam':
         agent.awsAuth = { region: 'us-east-1', service: 'bedrock-agentcore' };
         this.clearA2aBearerFormState();
+        this.clearA2aM2mFormState();
         this.a2aOAuthCredentialsPending = false;
         this.a2aOAuthCredentialsEditing = false;
         this.a2aOAuthUsername = '';
@@ -1677,11 +2337,42 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.a2aOAuthPassword = '';
         this.a2aOAuthCredentialsPending = false;
         this.a2aOAuthCredentialsEditing = false;
+        this.clearA2aM2mFormState();
         if (!agent.bearerToken?.hasToken) {
           this.a2aBearerTokenPending = true;
         }
         break;
     }
+  }
+
+  /**
+   * Abandon an in-progress external A2A client-credentials edit, restoring the
+   * displayed non-secret values from the stored reference.
+   */
+  cancelA2aClientCredentialsEdit(): void {
+    const stored = this.editingA2aAgent?.oauthClientCredentials;
+    this.clearA2aM2mFormState();
+    this.a2aM2mTokenUrl = stored?.tokenUrl || '';
+    this.a2aM2mScope = stored?.scope || '';
+    this.a2aM2mAudience = stored?.audience || '';
+    this.a2aEditorError = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Clear the in-memory client-credentials fields for the external A2A editor
+   * without touching a stored `oauthClientCredentials` reference, matching how
+   * `clearA2aBearerFormState` treats a stored token.
+   */
+  private clearA2aM2mFormState(): void {
+    this.a2aM2mPending = false;
+    this.a2aM2mEditing = false;
+    this.a2aM2mClientId = '';
+    this.a2aM2mClientSecret = '';
+    this.a2aM2mTokenUrl = '';
+    this.a2aM2mScope = '';
+    this.a2aM2mAudience = '';
+    this.a2aM2mSecretVisible = false;
   }
 
   /**
@@ -1697,13 +2388,163 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.a2aBearerTokenVisible = false;
   }
 
+  // ============================================
+  // External peer protocol / endpoint (independent of its auth mode)
+  // ============================================
+
+  /** Effective wire protocol for an external peer entry. */
+  getEntryProtocol(entry: ExternalAgentConfig): AgentProtocol {
+    return resolveEntryProtocol(entry);
+  }
+
+  /** Select the peer's wire protocol. Does not affect its endpoint or auth mode. */
+  setEntryProtocol(entry: ExternalAgentConfig, protocol: AgentProtocol): void {
+    entry.protocol = protocol;
+    // Keep the deprecated flag consistent for consumers still reading it.
+    entry.isA2A = protocol === 'a2a';
+    this.cdr.markForCheck();
+  }
+
+  /** Current endpoint for display — `endpoint`, falling back to `arn`. */
+  getEntryEndpoint(entry: ExternalAgentConfig): string {
+    return resolveEntryEndpoint(entry).value;
+  }
+
+  /**
+   * Record the peer's endpoint. An ARN is mirrored into `arn` because the
+   * runtime's tool builder and the deployment scripts still read that field; a
+   * URL has no ARN equivalent, so `arn` is cleared rather than left stale.
+   */
+  setEntryEndpoint(entry: ExternalAgentConfig, value: string): void {
+    entry.endpoint = value;
+    const classified = classifyEndpoint(value);
+    entry.arn = classified.kind === 'arn' ? classified.value : '';
+    this.cdr.markForCheck();
+  }
+
+  /** Plain-language description of how this peer will actually be invoked. */
+  describeEntryInvocation(entry: ExternalAgentConfig): string {
+    return describeInvocationPlan(planInvocation({
+      endpoint: resolveEntryEndpoint(entry),
+      protocol: this.getEntryProtocol(entry),
+      authType: this.getA2aAuthType(entry),
+      region: entry.awsAuth?.region || this.awsConfigService.getRegion()
+    }));
+  }
+
   /** Get the effective A2A auth type from the agent config */
-  getA2aAuthType(agent: ExternalAgentConfig): 'none' | 'oauth' | 'iam' | 'bearer' {
+  getA2aAuthType(agent: ExternalAgentConfig): 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer' {
     if (agent.authType) return agent.authType;
     if (agent.awsAuth) return 'iam';
+    if (agent.oauthClientCredentials?.hasCredentials) return 'oauth_m2m';
     if (agent.bearerToken?.hasToken) return 'bearer';
     if (agent.oauthToken?.hasToken || agent.oauthCredentials?.hasCredentials) return 'oauth';
     return 'none';
+  }
+
+  /**
+   * Display label for an auth mode, used by the list-row badges so a new mode
+   * cannot fall through to a neighbouring mode's label.
+   */
+  getAuthTypeLabel(type: string | undefined): string {
+    switch (type) {
+      case 'oauth': return 'OAuth';
+      case 'oauth_m2m': return 'OAuth M2M';
+      case 'iam':
+      case 'aws_iam': return 'IAM';
+      case 'bearer': return 'Bearer Token';
+      default: return 'None';
+    }
+  }
+
+  /**
+   * Effective MCP auth mode. Older server records predate the `authType`
+   * discriminator, so fall back to inferring it from whichever credential
+   * field is populated.
+   */
+  getMcpAuthType(server: MCPServerConfig): 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m' {
+    if (server.authType) return server.authType;
+    if (server.awsAuth) return 'aws_iam';
+    if (server.oauthClientCredentials?.hasCredentials) return 'oauth_m2m';
+    if (server.oauthToken?.hasToken) return 'bearer';
+    return 'none';
+  }
+
+  /** True when the MCP OAuth (username/password) chip should read as selected. */
+  isMcpOAuthSelected(server: MCPServerConfig): boolean {
+    return this.getMcpAuthType(server) === 'bearer' || this.mcpOAuthCredentialsPending;
+  }
+
+  /** True when the MCP client-credentials chip should read as selected. */
+  isMcpM2mSelected(server: MCPServerConfig): boolean {
+    return this.getMcpAuthType(server) === 'oauth_m2m' || this.mcpM2mPending;
+  }
+
+  /** True when the MCP "None" chip should read as selected. */
+  isMcpNoAuthSelected(server: MCPServerConfig): boolean {
+    return this.getMcpAuthType(server) === 'none' &&
+      !this.mcpOAuthCredentialsPending &&
+      !this.mcpM2mPending;
+  }
+
+  // ============================================
+  // Shared client-credentials persistence
+  // ============================================
+
+  /**
+   * Validate the operator's client-credentials input, write the secret document
+   * to SSM through `store`, and return the non-secret reference to record on
+   * the config.
+   *
+   * `store` is the surface's existing SSM writer, so the document lands on the
+   * parameter path that surface already uses. Throws on invalid input or a
+   * failed write; neither the client secret nor the built document appears in
+   * the thrown message.
+   */
+  private async persistClientCredentials(
+    input: OAuthClientCredentialsInput,
+    store: (document: string) => Promise<string | null>
+  ): Promise<OAuthClientCredentialsRef> {
+    const document = buildClientCredentialsDocument(input);
+    const ssmPath = await store(document);
+
+    // A token minted from the previous credentials would outlive this update,
+    // so drop it and let the next call mint from what was just stored.
+    if (ssmPath) {
+      clearClientCredentialsTokenCache(ssmPath);
+    }
+
+    return {
+      hasCredentials: true,
+      ssmPath: ssmPath || undefined,
+      tokenUrl: input.tokenUrl.trim(),
+      scope: input.scope?.trim() || undefined,
+      audience: input.audience?.trim() || undefined
+    };
+  }
+
+  /**
+   * Load a stored client-credentials document into the given form fields for an
+   * update. The client secret is deliberately left blank so the operator has to
+   * re-enter it, which also prevents an accidental Save from rewriting the
+   * parameter with a value nobody confirmed.
+   */
+  private async prefillClientCredentialsForm(
+    read: () => Promise<string | null>
+  ): Promise<Partial<OAuthClientCredentialsInput>> {
+    try {
+      const doc = parseClientCredentialsDocument(await read());
+      if (!doc) return {};
+      return {
+        clientId: doc.client_id,
+        tokenUrl: doc.token_url,
+        scope: doc.scope || '',
+        audience: doc.audience || ''
+      };
+    } catch (err) {
+      console.warn('Could not pre-populate client-credentials form:', err);
+      return {};
+    }
   }
 
   // ============================================
@@ -1711,7 +2552,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // ============================================
 
   /** Switch authentication type for an MCP server */
-  setMcpAuthType(server: MCPServerConfig, authType: 'none' | 'bearer' | 'aws_iam'): void {
+  setMcpAuthType(server: MCPServerConfig, authType: 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m'): void {
+    // Record the choice explicitly. 'bearer' and 'oauth_m2m' both end up sending
+    // an Authorization header, so the mode can no longer be inferred from which
+    // credential field happens to be set.
+    server.authType = authType;
     switch (authType) {
       case 'none':
         server.awsAuth = undefined;
@@ -1722,11 +2567,26 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.mcpOAuthPassword = '';
         this.mcpOAuthCredentialsPending = false;
         this.mcpOAuthCredentialsEditing = false;
+        this.clearMcpM2mFormState();
         break;
       case 'bearer':
         server.awsAuth = undefined;
+        this.clearMcpM2mFormState();
         if (!server.oauthToken?.hasToken) {
           this.mcpOAuthCredentialsPending = true;
+        }
+        break;
+      case 'oauth_m2m':
+        server.awsAuth = undefined;
+        this.mcpBearerTokenPending = false;
+        this.mcpBearerTokenEditing = false;
+        this.mcpBearerTokenValue = '';
+        this.mcpOAuthUsername = '';
+        this.mcpOAuthPassword = '';
+        this.mcpOAuthCredentialsPending = false;
+        this.mcpOAuthCredentialsEditing = false;
+        if (!server.oauthClientCredentials?.hasCredentials) {
+          this.mcpM2mPending = true;
         }
         break;
       case 'aws_iam':
@@ -1738,9 +2598,125 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.mcpOAuthPassword = '';
         this.mcpOAuthCredentialsPending = false;
         this.mcpOAuthCredentialsEditing = false;
+        this.clearMcpM2mFormState();
         break;
     }
     this.updateMcpServerJsonFromForm();
+  }
+
+  /**
+   * Abandon an in-progress MCP client-credentials edit, restoring the displayed
+   * non-secret values from the stored reference.
+   */
+  cancelMcpClientCredentialsEdit(): void {
+    const stored = this.editingMcpServer?.oauthClientCredentials;
+    this.clearMcpM2mFormState();
+    this.mcpM2mTokenUrl = stored?.tokenUrl || '';
+    this.mcpM2mScope = stored?.scope || '';
+    this.mcpM2mAudience = stored?.audience || '';
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Clear the MCP client-credentials form fields, leaving any stored reference. */
+  private clearMcpM2mFormState(): void {
+    this.mcpM2mPending = false;
+    this.mcpM2mEditing = false;
+    this.mcpM2mClientId = '';
+    this.mcpM2mClientSecret = '';
+    this.mcpM2mTokenUrl = '';
+    this.mcpM2mScope = '';
+    this.mcpM2mAudience = '';
+    this.mcpM2mSecretVisible = false;
+  }
+
+  /**
+   * Store the MCP server's client-credentials document in SSM (same parameter
+   * path the username/password mode uses) and record the reference.
+   */
+  async saveMcpClientCredentials(): Promise<void> {
+    if (!this.editingMcpServer || !this.editingAgent.agent_name) return;
+
+    const server = this.editingMcpServer;
+    this.mcpM2mSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      server.oauthClientCredentials = await this.persistClientCredentials(
+        {
+          clientId: this.mcpM2mClientId,
+          clientSecret: this.mcpM2mClientSecret,
+          tokenUrl: this.mcpM2mTokenUrl,
+          scope: this.mcpM2mScope,
+          audience: this.mcpM2mAudience
+        },
+        doc => this.agentDynamoDBService.storeMcpOAuthToken(
+          this.editingAgent.agent_name, server.id, doc
+        )
+      );
+      server.authType = 'oauth_m2m';
+      // The username/password reference would otherwise still point at the same
+      // parameter, which now holds a client-credentials document.
+      server.oauthToken = undefined;
+      this.mcpM2mClientSecret = '';
+      this.mcpM2mEditing = false;
+      this.mcpM2mPending = false;
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error saving MCP client credentials:', error);
+      this.mcpServerJsonError = error.message || 'Failed to store credentials.';
+    } finally {
+      this.mcpM2mSaving = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Load the stored MCP client-credentials document for an update. */
+  async beginMcpClientCredentialsUpdate(): Promise<void> {
+    if (!this.editingMcpServer) return;
+    const server = this.editingMcpServer;
+
+    this.mcpM2mEditing = true;
+    this.mcpM2mClientSecret = '';
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    if (!this.editingAgent.agent_name) return;
+
+    const existing = await this.prefillClientCredentialsForm(
+      () => this.agentDynamoDBService.getMcpOAuthToken(this.editingAgent.agent_name, server.id)
+    );
+    this.mcpM2mClientId = existing.clientId ?? this.mcpM2mClientId;
+    this.mcpM2mTokenUrl = existing.tokenUrl ?? server.oauthClientCredentials?.tokenUrl ?? '';
+    this.mcpM2mScope = existing.scope ?? server.oauthClientCredentials?.scope ?? '';
+    this.mcpM2mAudience = existing.audience ?? server.oauthClientCredentials?.audience ?? '';
+    this.cdr.markForCheck();
+  }
+
+  /** Remove the MCP server's client-credentials document from SSM. */
+  async removeMcpClientCredentials(server: MCPServerConfig): Promise<void> {
+    if (!server || !this.editingAgent.agent_name) return;
+
+    this.mcpM2mSaving = true;
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    try {
+      await this.agentDynamoDBService.deleteMcpOAuthToken(this.editingAgent.agent_name, server.id);
+      if (server.oauthClientCredentials?.ssmPath) {
+        clearClientCredentialsTokenCache(server.oauthClientCredentials.ssmPath);
+      }
+      server.oauthClientCredentials = undefined;
+      this.clearMcpM2mFormState();
+      this.updateMcpServerJsonFromForm();
+    } catch (error: any) {
+      console.error('Error removing MCP client credentials:', error);
+      this.mcpServerJsonError = error.message || 'Failed to remove credentials.';
+    } finally {
+      this.mcpM2mSaving = false;
+      this.cdr.markForCheck();
+    }
   }
 
   /** Remove the OAuth bearer token from SSM and clear the config */
@@ -1786,6 +2762,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       );
 
       this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      // The parameter now holds a static token, so a client-credentials
+      // reference to the same path would misreport what is stored.
+      this.editingMcpServer.oauthClientCredentials = undefined;
       this.mcpBearerTokenValue = '';
       this.mcpBearerTokenEditing = false;
       this.mcpBearerTokenPending = false;
@@ -1803,8 +2782,111 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // AI Generation Methods (delegates to helpers)
   // ============================================
 
-  /** True when the agent uses an external runtime (not blank, not the AdFabricAgent default) */
+  // ============================================
+  // Hosting / protocol / endpoint (three independent settings)
+  // ============================================
+
+  /**
+   * True when the agent runs outside the AdFabric runtime, so the behaviour
+   * settings configured here (model, instructions, tools, knowledge base) do not
+   * apply to it.
+   *
+   * Reads `agent_hosting`, falling back to the old `is_a2a` flag, which was
+   * doubling as this flag.
+   */
+  get isExternalAgent(): boolean {
+    if (this.editingAgent.agent_hosting) {
+      return this.editingAgent.agent_hosting === 'external';
+    }
+    return !!this.editingAgent.is_a2a;
+  }
+
+  /** Select where the agent runs. */
+  setAgentHosting(hosting: 'adfabric' | 'external'): void {
+    this.editingAgent.agent_hosting = hosting;
+    // Keep the deprecated flag consistent for any consumer still reading it.
+    // It only ever meant "external and speaks A2A".
+    this.editingAgent.is_a2a = hosting === 'external' && this.getAgentProtocol() === 'a2a';
+    this.cdr.markForCheck();
+  }
+
+  /** Effective wire protocol for this agent. */
+  getAgentProtocol(): AgentProtocol {
+    return resolveAgentProtocol(this.editingAgent);
+  }
+
+  /** Select the wire protocol. Does not affect the endpoint or the auth mode. */
+  setAgentProtocol(protocol: AgentProtocol): void {
+    this.editingAgent.agent_protocol = protocol;
+    this.editingAgent.is_a2a = this.isExternalAgent && protocol === 'a2a';
+    this.cdr.markForCheck();
+  }
+
+  /** Whether inbound auth applies: we call an external agent, or ours is exposed via A2A. */
+  get showInboundAuthSection(): boolean {
+    return this.isExternalAgent || this.getAgentProtocol() === 'a2a';
+  }
+
+  /** Current endpoint for display — `agent_endpoint`, falling back to `runtime_arn`. */
+  get agentEndpointValue(): string {
+    return resolveAgentEndpoint(this.editingAgent).value;
+  }
+
+  /**
+   * Record the endpoint. An ARN is mirrored into `runtime_arn` because other
+   * consumers (the deployment scripts and the agent list built in
+   * aws-config.service) still read that field; a URL has no ARN equivalent, so
+   * `runtime_arn` is cleared to avoid leaving a stale ARN behind it.
+   */
+  onAgentEndpointInput(value: string): void {
+    this.editingAgent.agent_endpoint = value;
+    const classified = classifyEndpoint(value);
+    if (classified.kind === 'arn') {
+      this.editingAgent.runtime_arn = classified.value;
+    } else if (classified.kind === 'url') {
+      this.editingAgent.runtime_arn = '';
+    }
+    this.runtimeArnFilter = value;
+  }
+
+  /** What kind of endpoint is currently entered, for the inline badge. */
+  get agentEndpointKind(): 'arn' | 'url' | 'none' {
+    return classifyEndpoint(this.agentEndpointValue).kind;
+  }
+
+  /**
+   * Plain-language description of how this agent will actually be invoked, so
+   * the derived transport is visible instead of having to be inferred from the
+   * combination of protocol, endpoint, and auth mode.
+   */
+  get invocationPlanDescription(): string {
+    return describeInvocationPlan(planInvocation({
+      endpoint: resolveAgentEndpoint(this.editingAgent),
+      protocol: this.getAgentProtocol(),
+      authType: this.editingAgent.a2a_auth_type || 'none',
+      region: this.awsConfigService.getRegion()
+    }));
+  }
+
+  /** True when the current combination cannot be invoked at all. */
+  get hasInvocationPlanProblem(): boolean {
+    return !!planInvocation({
+      endpoint: resolveAgentEndpoint(this.editingAgent),
+      protocol: this.getAgentProtocol(),
+      authType: this.editingAgent.a2a_auth_type || 'none',
+      region: this.awsConfigService.getRegion()
+    }).problem;
+  }
+
+  /**
+   * True when the agent's behaviour is owned by something other than the shared
+   * AdFabric runtime: an explicit `external` hosting choice, a URL endpoint, or
+   * a runtime ARN that is not the AdFabric default.
+   */
   get isExternalRuntime(): boolean {
+    if (this.isExternalAgent) return true;
+    const endpoint = classifyEndpoint(this.editingAgent.agent_endpoint);
+    if (endpoint.kind === 'url') return true;
     const arn = this.editingAgent.runtime_arn?.trim();
     return !!arn && !!this.defaultRuntimeArn && arn !== this.defaultRuntimeArn;
   }
@@ -2005,7 +3087,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   selectRuntimeArn(arn: string): void {
-    this.editingAgent.runtime_arn = arn;
+    // Route through the endpoint setter so picking a known ARN and typing one
+    // land in the same place.
+    this.onAgentEndpointInput(arn);
     this.runtimeArnDropdownOpen = false;
     this.runtimeArnFilter = '';
   }
@@ -2017,6 +3101,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   clearRuntimeArn(): void {
+    this.editingAgent.agent_endpoint = '';
     this.editingAgent.runtime_arn = '';
     this.runtimeArnFilter = '';
     this.runtimeArnDropdownOpen = false;

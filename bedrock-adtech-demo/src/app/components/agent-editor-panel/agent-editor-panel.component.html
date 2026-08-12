@@ -92,40 +92,115 @@
         <span class="char-count">{{ (editingAgent.agent_description || '').length }}/1024</span>
       </div>
 
-      <!-- A2A Protocol Toggle -->
+      <!-- Hosting: decides whether the behaviour settings below apply at all -->
       <div class="form-group">
-        <div class="a2a-toggle-row">
-          <label class="toggle-label" for="is_a2a">
-            <span class="material-icons toggle-icon">share</span>
-            Enable A2A Protocol
-          </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="is_a2a" [(ngModel)]="editingAgent.is_a2a" [disabled]="isLoading">
-            <span class="toggle-slider"></span>
-          </label>
+        <label class="config-label">Hosting</label>
+        <span class="field-hint">Where this agent runs. An external agent is invoked at its own endpoint, so its
+          model, instructions, tools, and knowledge base are managed wherever it is hosted.</span>
+        <div class="auth-type-options">
+          <div class="auth-type-option" [class.selected]="!isExternalAgent"
+            (click)="setAgentHosting('adfabric')">
+            <span class="material-icons">hub</span> AdFabric-hosted
+          </div>
+          <div class="auth-type-option" [class.selected]="isExternalAgent"
+            (click)="setAgentHosting('external')">
+            <span class="material-icons">public</span> External agent
+          </div>
         </div>
-        <span class="field-hint">Expose this agent via the A2A (Agent-to-Agent) JSON-RPC protocol for cross-agent
-          communication.</span>
+      </div>
 
-        <!-- A2A Server Auth Type (shown when is_a2a is enabled) -->
-        <div class="a2a-server-auth-config" *ngIf="editingAgent.is_a2a">
-          <label class="config-label">Inbound Authentication</label>
-          <span class="field-hint">How other agents authenticate when calling this agent's A2A endpoint.</span>
+      <!-- Protocol: request envelope only. Independent of endpoint and auth. -->
+      <div class="form-group">
+        <label class="config-label">Invocation Protocol</label>
+        <span class="field-hint">Which wire format to use when calling this agent. This chooses the request
+          envelope only — it does not decide the endpoint type or the credentials.</span>
+        <div class="auth-type-options">
+          <div class="auth-type-option" [class.selected]="getAgentProtocol() === 'http'"
+            (click)="setAgentProtocol('http')">
+            <span class="material-icons">swap_horiz</span> HTTP
+          </div>
+          <div class="auth-type-option" [class.selected]="getAgentProtocol() === 'a2a'"
+            (click)="setAgentProtocol('a2a')">
+            <span class="material-icons">share</span> A2A (JSON-RPC 2.0)
+          </div>
+        </div>
+      </div>
+
+      <!-- Endpoint: AgentCore runtime ARN or any agent URL -->
+      <div class="form-group">
+        <label class="config-label" for="agent_endpoint">Agent Endpoint</label>
+        <span class="field-hint">An AgentCore runtime ARN (<code>arn:aws:bedrock-agentcore:...</code>) or an
+          absolute agent URL (<code>https://...</code>). A URL lets this agent be something other than an
+          AgentCore runtime.</span>
+        <div class="runtime-arn-combobox" [class.open]="runtimeArnDropdownOpen">
+          <div class="combobox-input-wrapper">
+            <span class="material-icons combobox-icon">
+              {{ agentEndpointKind === 'url' ? 'link' : 'cloud_queue' }}
+            </span>
+            <input type="text" id="agent_endpoint" class="form-control combobox-input"
+              [ngModel]="agentEndpointValue" (ngModelChange)="onAgentEndpointInput($event)"
+              (focus)="toggleRuntimeArnDropdown()" (blur)="closeRuntimeArnDropdown()" [disabled]="isLoading"
+              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/... or https://my-agent.example.com/invoke"
+              autocomplete="off">
+            <button class="combobox-clear-btn" *ngIf="agentEndpointValue" (click)="clearRuntimeArn()"
+              [disabled]="isLoading" type="button" title="Clear">
+              <span class="material-icons">close</span>
+            </button>
+            <button class="combobox-toggle-btn" (click)="toggleRuntimeArnDropdown()" [disabled]="isLoading"
+              type="button" title="Pick a known runtime ARN">
+              <span class="material-icons">{{ runtimeArnDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+          </div>
+          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length > 0">
+            <div class="combobox-option" *ngFor="let arn of getFilteredRuntimeArns()"
+              (mousedown)="selectRuntimeArn(arn)">
+              <span class="material-icons option-icon">cloud_queue</span>
+              <span class="option-arn">{{ arn }}</span>
+            </div>
+          </div>
+          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length === 0">
+            <div class="combobox-empty">
+              <span class="material-icons">info_outline</span>
+              No known runtime ARNs — type an ARN or a URL
+            </div>
+          </div>
+        </div>
+        <!-- Derived transport, so it does not have to be inferred from the combination above -->
+        <div class="external-runtime-auth-notice" [class.error-message]="hasInvocationPlanProblem">
+          <span class="material-icons">{{ hasInvocationPlanProblem ? 'error_outline' : 'info' }}</span>
+          <span>
+            <strong *ngIf="agentEndpointKind !== 'none'">{{ agentEndpointKind === 'arn' ? 'Runtime ARN' : 'Agent URL' }}.</strong>
+            {{ invocationPlanDescription }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <!-- Inbound/outbound credentials. Applies when we call an external agent,
+             or when this agent is exposed over A2A and callers authenticate to it. -->
+        <div class="a2a-server-auth-config" *ngIf="showInboundAuthSection">
+          <label class="config-label">Authentication</label>
+          <span class="field-hint">Which credentials are presented on the wire. This never changes the protocol or
+            the endpoint — only what is sent to authenticate.</span>
           <div class="auth-type-options">
             <div class="auth-type-option" [class.selected]="(editingAgent.a2a_auth_type || 'none') === 'none'"
-              (click)="editingAgent.a2a_auth_type = 'none'">
+              (click)="setInboundAuthType('none')">
               <span class="material-icons">lock_open</span> None
             </div>
             <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'oauth'"
-              (click)="editingAgent.a2a_auth_type = 'oauth'">
+              (click)="setInboundAuthType('oauth')">
               <span class="material-icons">token</span> OAuth
             </div>
+            <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'oauth_m2m'"
+              (click)="setInboundAuthType('oauth_m2m')">
+              <span class="material-icons">sync_lock</span> OAuth (M2M)
+            </div>
             <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'iam'"
-              (click)="editingAgent.a2a_auth_type = 'iam'">
+              (click)="setInboundAuthType('iam')">
               <span class="material-icons">security</span> IAM
             </div>
             <div class="auth-type-option" [class.selected]="editingAgent.a2a_auth_type === 'bearer'"
-              (click)="editingAgent.a2a_auth_type = 'bearer'">
+              (click)="setInboundAuthType('bearer')">
               <span class="material-icons">key</span> Bearer Token
             </div>
           </div>
@@ -200,6 +275,104 @@
                 </button>
                 <button class="nova-button secondary small" *ngIf="inboundA2aOAuthEditing"
                   (click)="inboundA2aOAuthEditing = false; inboundA2aOAuthTokenEndpoint = ''; inboundA2aOAuthUsername = ''; inboundA2aOAuthPassword = ''; inboundA2aOAuthError = null">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="inboundA2aOAuthError">
+                <span class="material-icons">error_outline</span>
+                {{ inboundA2aOAuthError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Inbound OAuth client-credentials (machine-to-machine) -->
+          <div class="oauth-credentials-config" *ngIf="editingAgent.a2a_auth_type === 'oauth_m2m'">
+            <div class="credential-status-indicator" *ngIf="!inboundM2mEditing">
+              <div class="credential-status stored" *ngIf="editingAgent.a2a_oauth_client_credentials?.hasCredentials">
+                <span class="material-icons">check_circle</span>
+                <span>Credentials stored in SSM</span>
+              </div>
+              <div class="credential-status not-stored" *ngIf="!editingAgent.a2a_oauth_client_credentials?.hasCredentials">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>No credentials stored</span>
+              </div>
+            </div>
+            <!-- Stored token endpoint, so an operator can confirm what will be called -->
+            <div class="server-details" *ngIf="editingAgent.a2a_oauth_client_credentials?.tokenUrl && !inboundM2mEditing">
+              <span class="server-detail">
+                <span class="material-icons">link</span>
+                {{ editingAgent.a2a_oauth_client_credentials?.tokenUrl }}
+              </span>
+              <span class="server-detail" *ngIf="editingAgent.a2a_oauth_client_credentials?.scope">
+                <span class="material-icons">label</span>
+                Scope: {{ editingAgent.a2a_oauth_client_credentials?.scope }}
+              </span>
+            </div>
+            <div class="token-status"
+              *ngIf="editingAgent.a2a_oauth_client_credentials?.hasCredentials && !inboundM2mEditing">
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="beginInboundClientCredentialsUpdate()">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="removeInboundClientCredentials()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
+            </div>
+            <div class="credentials-input-group"
+              *ngIf="!editingAgent.a2a_oauth_client_credentials?.hasCredentials || inboundM2mEditing">
+              <div class="credential-field">
+                <label>Client ID <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundM2mClientId"
+                  placeholder="OAuth client id" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Client Secret <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="inboundM2mSecretVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="inboundM2mClientSecret" placeholder="OAuth client secret" autocomplete="off"
+                    spellcheck="false">
+                  <button class="toggle-visibility-btn" (click)="inboundM2mSecretVisible = !inboundM2mSecretVisible"
+                    type="button" [title]="inboundM2mSecretVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ inboundM2mSecretVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="credential-field">
+                <label>Token URL <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundM2mTokenUrl"
+                  placeholder="https://your-domain/oauth2/token" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Scope <span class="optional-hint">(optional)</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundM2mScope"
+                  placeholder="e.g. agents/invoke" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Audience <span class="optional-hint">(optional)</span></label>
+                <input type="text" class="form-control" [(ngModel)]="inboundM2mAudience"
+                  placeholder="Required by some providers" autocomplete="off">
+              </div>
+              <span class="field-hint token-hint">
+                <span class="material-icons">info_outline</span>
+                Credentials are stored encrypted in AWS SSM. At invocation time the client id and secret are
+                exchanged at the token URL for an access token
+                (<code>grant_type=client_credentials</code>), which is sent as
+                <code>Authorization: Bearer &lt;token&gt;</code> and re-minted when it expires. No Cognito user
+                is involved, so this works with any OAuth 2.0 provider.
+              </span>
+              <span class="field-hint token-hint" *ngIf="inboundM2mEditing">
+                <span class="material-icons">info_outline</span>
+                The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
+              </span>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="saveInboundClientCredentials()"
+                  [disabled]="inboundM2mSaving || !inboundM2mClientId.trim() || !inboundM2mClientSecret.trim() || !inboundM2mTokenUrl.trim()">
+                  <span class="material-icons">{{ inboundM2mSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ inboundM2mSaving ? 'Saving...' : 'Save Credentials' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="inboundM2mEditing"
+                  (click)="cancelInboundClientCredentialsEdit()">
                   Cancel
                 </button>
               </div>
@@ -293,50 +466,6 @@
       </div>
 
     </div>
-    <!-- Runtime ARN Section -->
-    <div class="form-section">
-      <h5 class="section-title">
-        <span class="material-icons">cloud</span>
-        Runtime ARN
-      </h5>
-      <p class="section-description">AgentCore Runtime ARN for this agent. Select an existing ARN or enter a new one.
-      </p>
-      <div class="form-group">
-        <label for="runtime_arn">Runtime ARN</label>
-        <div class="runtime-arn-combobox" [class.open]="runtimeArnDropdownOpen">
-          <div class="combobox-input-wrapper">
-            <span class="material-icons combobox-icon">cloud_queue</span>
-            <input type="text" id="runtime_arn" class="form-control combobox-input" [ngModel]="editingAgent.runtime_arn"
-              (ngModelChange)="onRuntimeArnInput($event)" (focus)="toggleRuntimeArnDropdown()"
-              (blur)="closeRuntimeArnDropdown()" [disabled]="isLoading"
-              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/..." autocomplete="off">
-            <button class="combobox-clear-btn" *ngIf="editingAgent.runtime_arn" (click)="clearRuntimeArn()"
-              [disabled]="isLoading" type="button" title="Clear">
-              <span class="material-icons">close</span>
-            </button>
-            <button class="combobox-toggle-btn" (click)="toggleRuntimeArnDropdown()" [disabled]="isLoading"
-              type="button">
-              <span class="material-icons">{{ runtimeArnDropdownOpen ? 'expand_less' : 'expand_more' }}</span>
-            </button>
-          </div>
-          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length > 0">
-            <div class="combobox-option" *ngFor="let arn of getFilteredRuntimeArns()"
-              (mousedown)="selectRuntimeArn(arn)">
-              <span class="material-icons option-icon">cloud_queue</span>
-              <span class="option-arn">{{ arn }}</span>
-            </div>
-          </div>
-          <div class="combobox-dropdown" *ngIf="runtimeArnDropdownOpen && getFilteredRuntimeArns().length === 0">
-            <div class="combobox-empty">
-              <span class="material-icons">info_outline</span>
-              No runtime ARNs available
-            </div>
-          </div>
-        </div>
-        <span class="field-hint">Optional. If not set, the agent will use the default shared runtime ARN.</span>
-      </div>
-    </div>
-
     <!-- Color Configuration Section -->
     <div class="form-section">
       
@@ -364,7 +493,7 @@
     </div>
 
     <!-- Model Configuration Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">psychology</span>
         Model Configuration
@@ -387,7 +516,7 @@
     </div>
 
     <!-- Knowledge Base Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">menu_book</span>
         Knowledge Base
@@ -470,7 +599,7 @@
 
 
     <!-- Tool Agents Section -->
-    <div class="form-section" *ngIf="availableAgents.length > 0 &&  !editingAgent.is_a2a">
+    <div class="form-section" *ngIf="availableAgents.length > 0 && !isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">hub</span>
         Tool Agents
@@ -493,7 +622,7 @@
 
 
     <!-- Agent Tools Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">build</span>
         Agent Tools
@@ -538,7 +667,7 @@
     </div>
 
     <!-- Injectable Values Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">data_object</span>
         Injectable Values
@@ -592,7 +721,7 @@
     </div>
 
     <!-- MCP Servers Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">extension</span>
         MCP Tool Servers
@@ -655,6 +784,10 @@
                 <span class="server-detail auth-badge" *ngIf="server.oauthToken?.hasToken">
                   <span class="material-icons">vpn_key</span>
                   Bearer token configured
+                </span>
+                <span class="server-detail auth-badge" *ngIf="server.oauthClientCredentials?.hasCredentials">
+                  <span class="material-icons">sync_lock</span>
+                  OAuth M2M configured
                 </span>
               </div>
               <div class="server-description" *ngIf="server.description">
@@ -757,7 +890,7 @@
     </div>
 
     <!-- A2A External Agents Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">share</span>
         External A2A Agents
@@ -800,20 +933,22 @@
               <div class="server-header">
                 <span class="material-icons transport-icon">share</span>
                 <span class="server-name">{{ extAgent.name || 'Unnamed Agent' }}</span>
-                <span class="server-transport-badge a2a-badge">A2A</span>
+                <span class="server-transport-badge a2a-badge">
+                  {{ getEntryProtocol(extAgent) === 'a2a' ? 'A2A' : 'HTTP' }}
+                </span>
                 <span class="server-transport-badge auth-type-badge"
                   *ngIf="extAgent.authType && extAgent.authType !== 'none'">
-                  {{ extAgent.authType === 'oauth' ? 'OAuth' : (extAgent.authType === 'iam' ? 'IAM' : 'Bearer Token') }}
+                  {{ getAuthTypeLabel(extAgent.authType) }}
                 </span>
               </div>
               <div class="server-details">
-                <span class="server-detail" *ngIf="extAgent.arn">
+                <span class="server-detail" *ngIf="getEntryEndpoint(extAgent)">
                   <span class="material-icons">cloud</span>
-                  {{ extAgent.arn }}
+                  {{ getEntryEndpoint(extAgent) }}
                 </span>
-                <span class="server-detail" *ngIf="!extAgent.arn" style="color: #ef4444;">
+                <span class="server-detail" *ngIf="!getEntryEndpoint(extAgent)" style="color: #ef4444;">
                   <span class="material-icons" style="color: #ef4444;">error_outline</span>
-                  ARN required
+                  Endpoint required
                 </span>
                 <span class="server-detail auth-badge credential-stored"
                   *ngIf="extAgent.authType === 'oauth' && extAgent.oauthCredentials?.hasCredentials">
@@ -822,6 +957,16 @@
                 </span>
                 <span class="server-detail auth-badge credential-not-stored"
                   *ngIf="extAgent.authType === 'oauth' && !extAgent.oauthCredentials?.hasCredentials">
+                  <span class="material-icons">radio_button_unchecked</span>
+                  Not stored
+                </span>
+                <span class="server-detail auth-badge credential-stored"
+                  *ngIf="extAgent.authType === 'oauth_m2m' && extAgent.oauthClientCredentials?.hasCredentials">
+                  <span class="material-icons">check_circle</span>
+                  Client credentials stored
+                </span>
+                <span class="server-detail auth-badge credential-not-stored"
+                  *ngIf="extAgent.authType === 'oauth_m2m' && !extAgent.oauthClientCredentials?.hasCredentials">
                   <span class="material-icons">radio_button_unchecked</span>
                   Not stored
                 </span>
@@ -922,6 +1067,10 @@
             (click)="setNotifyAuthType('bearer')">
             <span class="material-icons">key</span> Bearer Token
           </div>
+          <div class="auth-type-option" [class.selected]="notifyConfig.auth_type === 'oauth_m2m'"
+            (click)="setNotifyAuthType('oauth_m2m')">
+            <span class="material-icons">sync_lock</span> OAuth (M2M)
+          </div>
         </div>
 
         <!-- AWS IAM notice -->
@@ -999,6 +1148,101 @@
           </div>
         </div>
 
+        <!-- OAuth client-credentials (machine-to-machine) for the webhook POST -->
+        <div class="oauth-credentials-config" *ngIf="notifyConfig.auth_type === 'oauth_m2m'">
+          <div class="credential-status-indicator" *ngIf="!notifyM2mEditing">
+            <div class="credential-status stored" *ngIf="notifyConfig.oauth_client_credentials?.hasCredentials">
+              <span class="material-icons">check_circle</span>
+              <span>Credentials stored</span>
+            </div>
+            <div class="credential-status not-stored" *ngIf="!notifyConfig.oauth_client_credentials?.hasCredentials">
+              <span class="material-icons">radio_button_unchecked</span>
+              <span>Not stored</span>
+            </div>
+          </div>
+          <div class="server-details" *ngIf="notifyConfig.oauth_client_credentials?.tokenUrl && !notifyM2mEditing">
+            <span class="server-detail">
+              <span class="material-icons">link</span>
+              {{ notifyConfig.oauth_client_credentials?.tokenUrl }}
+            </span>
+            <span class="server-detail" *ngIf="notifyConfig.oauth_client_credentials?.scope">
+              <span class="material-icons">label</span>
+              Scope: {{ notifyConfig.oauth_client_credentials?.scope }}
+            </span>
+          </div>
+          <div class="token-status" *ngIf="notifyConfig.oauth_client_credentials?.hasCredentials && !notifyM2mEditing">
+            <div class="token-actions">
+              <button class="nova-button secondary small" (click)="beginNotifyClientCredentialsUpdate()">
+                <span class="material-icons">edit</span> Update
+              </button>
+              <button class="nova-button secondary small danger" (click)="removeNotifyClientCredentials()">
+                <span class="material-icons">delete_outline</span> Remove
+              </button>
+            </div>
+          </div>
+          <div class="credentials-input-group"
+            *ngIf="!notifyConfig.oauth_client_credentials?.hasCredentials || notifyM2mEditing">
+            <div class="credential-field">
+              <label>Client ID <span class="required">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="notifyM2mClientId"
+                placeholder="OAuth client id" autocomplete="off">
+            </div>
+            <div class="credential-field">
+              <label>Client Secret <span class="required">*</span></label>
+              <div class="token-input-row">
+                <input [type]="notifyM2mSecretVisible ? 'text' : 'password'" class="form-control"
+                  [(ngModel)]="notifyM2mClientSecret" placeholder="OAuth client secret" autocomplete="off"
+                  spellcheck="false">
+                <button class="toggle-visibility-btn" (click)="notifyM2mSecretVisible = !notifyM2mSecretVisible"
+                  type="button" [title]="notifyM2mSecretVisible ? 'Hide' : 'Show'">
+                  <span class="material-icons">{{ notifyM2mSecretVisible ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="credential-field">
+              <label>Token URL <span class="required">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="notifyM2mTokenUrl"
+                placeholder="https://your-domain/oauth2/token" autocomplete="off">
+            </div>
+            <div class="credential-field">
+              <label>Scope <span class="optional-hint">(optional)</span></label>
+              <input type="text" class="form-control" [(ngModel)]="notifyM2mScope"
+                placeholder="e.g. notifications/write" autocomplete="off">
+            </div>
+            <div class="credential-field">
+              <label>Audience <span class="optional-hint">(optional)</span></label>
+              <input type="text" class="form-control" [(ngModel)]="notifyM2mAudience"
+                placeholder="Required by some providers" autocomplete="off">
+            </div>
+            <span class="field-hint token-hint">
+              <span class="material-icons">info_outline</span>
+              Credentials are stored encrypted in AWS SSM. Before each notification POST the client id and secret
+              are exchanged at the token URL (<code>grant_type=client_credentials</code>) for an access token sent
+              as <code>Authorization: Bearer &lt;token&gt;</code>. Tokens are cached until they expire. If the
+              exchange fails the notification is skipped — the agent's own invocation is unaffected.
+            </span>
+            <span class="field-hint token-hint" *ngIf="notifyM2mEditing">
+              <span class="material-icons">info_outline</span>
+              The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
+            </span>
+            <div class="token-save-actions">
+              <button class="nova-button primary small" (click)="saveNotifyClientCredentials()"
+                [disabled]="notifyM2mSaving || !notifyM2mClientId.trim() || !notifyM2mClientSecret.trim() || !notifyM2mTokenUrl.trim()">
+                <span class="material-icons">{{ notifyM2mSaving ? 'hourglass_empty' : 'save' }}</span>
+                {{ notifyM2mSaving ? 'Saving...' : 'Save Credentials' }}
+              </button>
+              <button class="nova-button secondary small" *ngIf="notifyM2mEditing"
+                (click)="cancelNotifyClientCredentialsEdit()">
+                Cancel
+              </button>
+            </div>
+            <div class="token-error" *ngIf="notifyEditorError">
+              <span class="material-icons">error_outline</span>
+              {{ notifyEditorError }}
+            </div>
+          </div>
+        </div>
+
         <div class="server-actions" style="justify-content: flex-end; margin-top: 12px;">
           <button class="remove-server-btn" (click)="disableNotifyOnInvocation()" [disabled]="isLoading" title="Remove">
             <span class="material-icons">delete_outline</span> Remove notification
@@ -1008,7 +1252,7 @@
     </div>
 
     <!-- Instructions Section -->
-    <div class="form-section" *ngIf="!editingAgent.is_a2a">
+    <div class="form-section" *ngIf="!isExternalAgent">
       <h5 class="section-title">
         <span class="material-icons">description</span>
         Agent Instructions
@@ -1032,6 +1276,32 @@
       <div class="external-runtime-notice" *ngIf="isExternalRuntime">
         <span class="material-icons">info</span>
         Instructions are managed by the external runtime and cannot be edited here.
+      </div>
+
+      <!-- Version picker. Absent for new agents, which have no history yet. -->
+      <div class="instruction-version-row" *ngIf="!isNew && !isExternalRuntime">
+        <label for="instruction-version">Version</label>
+        <select id="instruction-version" class="form-control instruction-version-select"
+          [ngModel]="selectedInstructionVersionSk" (ngModelChange)="onInstructionVersionChange($event)"
+          [disabled]="isLoading || isGeneratingInstructions || isLoadingInstructionVersions || isLoadingInstructionVersion">
+          <option [value]="liveInstructionSk">{{ liveInstructionOptionLabel }}</option>
+          <option *ngFor="let v of instructionVersions" [value]="v.sk">{{ instructionVersionLabel(v) }}</option>
+        </select>
+        <span class="instruction-version-status" *ngIf="isLoadingInstructionVersions">Loading history…</span>
+        <span class="instruction-version-status" *ngIf="isLoadingInstructionVersion">Loading version…</span>
+        <span class="instruction-version-status error" *ngIf="instructionVersionError">{{ instructionVersionError }}</span>
+        <span class="instruction-version-status"
+          *ngIf="!isLoadingInstructionVersions && !instructionVersionError && !instructionVersions.length">
+          No earlier versions yet — saving creates the first.
+        </span>
+      </div>
+
+      <div class="instruction-version-notice" *ngIf="isViewingHistoricInstructionVersion">
+        <span class="material-icons">history</span>
+        <span>
+          Showing <strong>{{ selectedInstructionVersionLabel }}</strong>, which is not what the agent is running.
+          Saving publishes this text as a new version; earlier versions are kept.
+        </span>
       </div>
 
       <div class="ai-prompt-dialog" *ngIf="showInstructionsPrompt">

@@ -445,7 +445,7 @@ TOOL_HANDLERS = {
 def lambda_handler(event: Dict, context: Any) -> Dict:
     """MCP Gateway Lambda handler.
 
-    Follows the same contract as adcp_mcp_handler.py:
+    Follows the MCP gateway target contract:
     - event["toolName"] or event["name"]: tool to invoke
     - event["arguments"] or event["input"]: tool parameters
     - Returns: {"content": [{"text": JSON string}]}

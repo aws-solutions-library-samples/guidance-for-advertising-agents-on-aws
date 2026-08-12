@@ -3,6 +3,7 @@ import { AwsConfigService } from './aws-config.service';
 import { DynamoDBClient, GetItemCommand, PutItemCommand, DeleteItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { SSMClient, PutParameterCommand, DeleteParameterCommand, GetParameterCommand } from '@aws-sdk/client-ssm';
+import { OAuthClientCredentialsRef } from './oauth-client-credentials';
 
 /**
  * MCP Server configuration for connecting to external MCP tools
@@ -47,6 +48,20 @@ export interface MCPServerConfig {
     /** SSM parameter path (set by backend after token storage) */
     ssmPath?: string;
   };
+  /**
+   * Selected authentication mode.
+   *
+   * Older records have no value here; the editor and the runtime both fall back
+   * to inferring the mode from which credential field is populated. New records
+   * always set it, because `oauth_m2m` and `bearer` both authenticate with an
+   * `Authorization` header and cannot be told apart by presence alone.
+   */
+  authType?: 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m';
+  /**
+   * OAuth 2.0 client-credentials reference. The secret lives in SSM under
+   * `ssmPath`; the runtime mints a token per server and sends it as a bearer.
+   */
+  oauthClientCredentials?: OAuthClientCredentialsRef;
 }
 
 /**
@@ -60,14 +75,33 @@ export interface ExternalAgentConfig {
   name: string;
   /** ARN of the remote agent (e.g., AgentCore runtime ARN or A2A endpoint) */
   arn: string;
-  /** Whether this agent is an A2A (Agent-to-Agent) protocol agent */
+  /**
+   * Where to send requests: an AgentCore runtime ARN (`arn:...`) or an absolute
+   * agent URL (`https://...`). Takes precedence over `arn`, which is ARN-only
+   * and kept for existing entries.
+   */
+  endpoint?: string;
+  /**
+   * Wire protocol used to invoke this peer: `a2a` for JSON-RPC 2.0
+   * `message/send`, `http` for a plain JSON request body. Selects the request
+   * envelope and response parsing only — independent of endpoint and auth.
+   */
+  protocol?: 'a2a' | 'http';
+  /**
+   * @deprecated Superseded by `protocol`. Still read so existing entries keep
+   * working: `true` means `a2a`.
+   */
   isA2A: boolean;
   /** Optional description of what this external agent provides */
   description?: string;
   /** Whether this external agent is enabled */
   enabled: boolean;
-  /** Authentication type: 'none', 'oauth', 'iam', or 'bearer' */
-  authType?: 'none' | 'oauth' | 'iam' | 'bearer';
+  /**
+   * Authentication type. 'oauth' mints a Cognito token via
+   * USER_PASSWORD_AUTH; 'oauth_m2m' uses the OAuth 2.0 client-credentials
+   * grant against any provider's token endpoint.
+   */
+  authType?: 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer';
   /** OAuth Bearer Token authentication for A2A agents */
   oauthToken?: {
     /** Whether a token has been stored in SSM Parameter Store */
@@ -82,6 +116,12 @@ export interface ExternalAgentConfig {
     /** SSM parameter path for the credentials */
     ssmPath?: string;
   };
+  /**
+   * OAuth 2.0 client-credentials reference for `authType: 'oauth_m2m'`. Shares
+   * the outbound A2A parameter path with `oauthCredentials`; the stored
+   * document's `grant_type` tells the two apart.
+   */
+  oauthClientCredentials?: OAuthClientCredentialsRef;
   /**
    * Static Bearer Token authentication for A2A agents. The raw token lives
    * only in SSM SecureString; the record keeps a reference plus an optional
@@ -130,8 +170,13 @@ export interface ExternalAgentConfig {
 export interface NotifyOnInvocationConfig {
   /** HTTPS endpoint to POST the notification to */
   endpoint: string;
-  /** Auth type for the notification POST. Matches the existing A2A auth vocabulary (no api_key/oauth2/Secrets Manager). */
-  auth_type: 'none' | 'iam' | 'bearer';
+  /**
+   * Auth type for the notification POST. Matches the A2A auth vocabulary, less
+   * the Cognito USER_PASSWORD_AUTH mode: a webhook receiver is arbitrary, so
+   * 'oauth_m2m' (client-credentials against the receiver's own provider) is the
+   * OAuth flow offered here.
+   */
+  auth_type: 'none' | 'iam' | 'bearer' | 'oauth_m2m';
   /**
    * Static Bearer Token reference. The raw token lives only in SSM
    * SecureString; this record keeps a reference plus an optional
@@ -143,6 +188,12 @@ export interface NotifyOnInvocationConfig {
     ssmPath?: string;
     expiresAt?: string;
   };
+  /**
+   * OAuth 2.0 client-credentials reference. Present only when
+   * auth_type === 'oauth_m2m'. Shares the notify parameter path with
+   * `bearer_token`; the stored document's `grant_type` tells the two apart.
+   */
+  oauth_client_credentials?: OAuthClientCredentialsRef;
 }
 
 /**
@@ -180,10 +231,47 @@ export interface AgentConfiguration {
   knowledge_base?: string;
   /** Structured external A2A agent configurations */
   external_agent_configs?: ExternalAgentConfig[];
-  /** Whether this agent is exposed via the A2A JSON-RPC protocol (defaults to false) */
+  /**
+   * Where this agent runs.
+   *
+   * - `adfabric`: hosted in the shared AdFabric Strands runtime, so its model,
+   *   instructions, tools, and knowledge base are configured here.
+   * - `external`: reachable at its own endpoint, invoked over the wire. None of
+   *   the AdFabric-side behaviour settings apply.
+   *
+   * Defaults to `adfabric`. Records written before this field existed are read
+   * through `is_a2a`, which was doubling as the "externally hosted" flag.
+   */
+  agent_hosting?: 'adfabric' | 'external';
+  /**
+   * Wire protocol used to invoke this agent: `a2a` for JSON-RPC 2.0
+   * `message/send`, `http` for a plain JSON request body.
+   *
+   * This selects the request envelope and response parsing, nothing else — it
+   * does not imply an endpoint kind or an auth mode.
+   */
+  agent_protocol?: 'a2a' | 'http';
+  /**
+   * Where to send requests: an AgentCore runtime ARN (`arn:...`) or an absolute
+   * agent URL (`https://...`). A URL lets an external agent be something other
+   * than an AgentCore runtime.
+   *
+   * Takes precedence over `runtime_arn`, which remains for records that predate
+   * this field and for AdFabric-hosted agents.
+   */
+  agent_endpoint?: string;
+  /**
+   * @deprecated Superseded by `agent_protocol` (envelope) and `agent_hosting`
+   * (where it runs), which this flag used to conflate. Still read so existing
+   * records keep working.
+   */
   is_a2a?: boolean;
-  /** Authentication type for inbound A2A requests to this agent's endpoint */
-  a2a_auth_type?: 'none' | 'oauth' | 'iam' | 'bearer';
+  /**
+   * Authentication type for inbound A2A requests to this agent's endpoint.
+   * 'oauth' is Cognito USER_PASSWORD_AUTH; 'oauth_m2m' is the OAuth 2.0
+   * client-credentials grant against any provider's token endpoint.
+   */
+  a2a_auth_type?: 'none' | 'oauth' | 'oauth_m2m' | 'iam' | 'bearer';
   /** OAuth credentials for this agent's own (self-deployed) A2A endpoint, stored in SSM */
   a2a_oauth_credentials?: {
     /** Whether credentials have been stored in SSM Parameter Store */
@@ -191,6 +279,12 @@ export interface AgentConfiguration {
     /** SSM parameter path for the credentials */
     ssmPath?: string;
   };
+  /**
+   * OAuth 2.0 client-credentials reference for `a2a_auth_type: 'oauth_m2m'`.
+   * Shares the inbound parameter path with `a2a_oauth_credentials`; the stored
+   * document's `grant_type` tells the two apart.
+   */
+  a2a_oauth_client_credentials?: OAuthClientCredentialsRef;
   /**
    * Static Bearer Token reference for this agent's own (self-deployed) A2A
    * endpoint. Enforcement is the deploy-time runtime authorizer's job, not
@@ -217,6 +311,61 @@ export interface GlobalConfiguration {
   knowledge_bases: Record<string, string>;
   configured_colors: Record<string, string>;
   agent_configs: Record<string, AgentConfiguration>;
+}
+
+/**
+ * Sort key of the instruction record the agent runtime reads.
+ *
+ * `dynamodb_config_loader.load_agent_instructions` fetches
+ * `INSTRUCTION#<agent>` / `v1`, so this key stays the live pointer and version
+ * snapshots go to other sort keys. Changing it requires a runtime change.
+ */
+export const INSTRUCTION_LIVE_SK = 'v1';
+
+/** Sort key prefix for instruction version snapshots: `VERSION#000007`. */
+export const INSTRUCTION_VERSION_SK_PREFIX = 'VERSION#';
+
+/**
+ * Width of the zero-padded revision in the sort key. The padding is what makes
+ * DynamoDB's lexicographic sort match numeric order, so a descending query
+ * returns the newest version first. Correct up to 999999 versions.
+ */
+const INSTRUCTION_VERSION_PAD = 6;
+
+/** Newest-first cap on how many snapshots the version dropdown loads. */
+const MAX_INSTRUCTION_VERSIONS_LISTED = 50;
+
+/**
+ * Metadata for one instruction snapshot. Deliberately excludes the instruction
+ * text: prompts run to tens of KB, so the list query projects metadata only and
+ * the body is fetched when a version is actually selected.
+ */
+export interface InstructionVersionSummary {
+  /** Full DynamoDB sort key, e.g. `VERSION#000007`. */
+  sk: string;
+  version: number;
+  updatedAt?: string;
+  author?: string;
+  note?: string;
+  /** Length of the stored text, so the UI can show size without fetching it. */
+  contentLength?: number;
+}
+
+export interface InstructionVersionHistory {
+  /** Snapshots, newest first. */
+  versions: InstructionVersionSummary[];
+  live: {
+    exists: boolean;
+    updatedAt?: string;
+    /**
+     * Version this pointer was published from, or null when the live text was
+     * written outside the versioning path — a redeploy (`--mode overwrite`) or
+     * an edit made before versioning existed. Null means the live text may not
+     * correspond to any snapshot, which the UI surfaces rather than papering
+     * over.
+     */
+    version: number | null;
+  };
 }
 
 /**
@@ -558,12 +707,193 @@ export class AgentDynamoDBService {
     }
   }
 
+  // ============================================
+  // Instruction Version History
+  // ============================================
+
+  /** Build the padded sort key for a revision number. */
+  private instructionVersionSk(version: number): string {
+    return `${INSTRUCTION_VERSION_SK_PREFIX}${String(version).padStart(INSTRUCTION_VERSION_PAD, '0')}`;
+  }
+
+  /** Parse a revision number back out of a sort key, or null if it isn't one. */
+  private parseInstructionVersionSk(sk: string): number | null {
+    if (!sk?.startsWith(INSTRUCTION_VERSION_SK_PREFIX)) return null;
+    const parsed = Number.parseInt(sk.slice(INSTRUCTION_VERSION_SK_PREFIX.length), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  /**
+   * Read the live instruction item without consulting the cache.
+   *
+   * Used on the write path, where the point is to capture what is actually
+   * stored before overwriting it — a cached copy could be up to the cache TTL
+   * out of date and would archive the wrong text.
+   */
+  private async readLiveInstructionItem(
+    agentName: string
+  ): Promise<{ content: string; version: number | null; updatedAt?: string } | null> {
+    try {
+      const response = await this.dynamoDBClient!.send(new GetItemCommand({
+        TableName: this.tableName!,
+        Key: marshall({ pk: `INSTRUCTION#${agentName}`, sk: INSTRUCTION_LIVE_SK })
+      }));
+      if (!response.Item) return null;
+      const item = unmarshall(response.Item);
+      const rawVersion = item['instruction_version'];
+      const version = typeof rawVersion === 'number' ? rawVersion : Number.parseInt(rawVersion, 10);
+      return {
+        content: (item['content'] as string) ?? '',
+        version: Number.isFinite(version) ? version : null,
+        updatedAt: item['updated_at'] as string | undefined
+      };
+    } catch (error) {
+      console.error(`❌ AgentDynamoDBService: Failed to read live instructions for ${agentName}:`, error);
+      return null;
+    }
+  }
+
+  /** Write one immutable instruction snapshot. */
+  private async putInstructionVersion(
+    agentName: string,
+    version: number,
+    instructions: string,
+    meta: { author?: string; note?: string; updatedAt?: string } = {}
+  ): Promise<void> {
+    const item: Record<string, any> = {
+      pk: `INSTRUCTION#${agentName}`,
+      sk: this.instructionVersionSk(version),
+      config_type: 'instruction_version',
+      agent_name: agentName,
+      content: instructions,
+      content_length: instructions.length,
+      instruction_version: version,
+      updated_at: meta.updatedAt || new Date().toISOString()
+    };
+    if (meta.author) item['author'] = meta.author;
+    if (meta.note) item['note'] = meta.note;
+
+    await this.dynamoDBClient!.send(new PutItemCommand({
+      TableName: this.tableName!,
+      Item: marshall(item, { removeUndefinedValues: true })
+    }));
+  }
+
+  /**
+   * List instruction snapshots for an agent, newest first, plus the state of the
+   * live pointer.
+   *
+   * Projects metadata only — `content` is excluded so opening the dropdown does
+   * not pull every historical prompt into the browser.
+   */
+  async getInstructionVersionHistory(agentName: string): Promise<InstructionVersionHistory> {
+    const empty: InstructionVersionHistory = { versions: [], live: { exists: false, version: null } };
+
+    if (!await this.ensureClient()) {
+      return empty;
+    }
+
+    const history: InstructionVersionHistory = { versions: [], live: { exists: false, version: null } };
+
+    try {
+      const response = await this.dynamoDBClient!.send(new QueryCommand({
+        TableName: this.tableName!,
+        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+        ExpressionAttributeValues: marshall({
+          ':pk': `INSTRUCTION#${agentName}`,
+          ':prefix': INSTRUCTION_VERSION_SK_PREFIX
+        }),
+        // Aliased throughout so no attribute name can collide with a DynamoDB
+        // reserved word.
+        ProjectionExpression: '#sk, #ver, #upd, #author, #note, #len',
+        ExpressionAttributeNames: {
+          '#sk': 'sk',
+          '#ver': 'instruction_version',
+          '#upd': 'updated_at',
+          '#author': 'author',
+          '#note': 'note',
+          '#len': 'content_length'
+        },
+        ScanIndexForward: false,
+        Limit: MAX_INSTRUCTION_VERSIONS_LISTED
+      }));
+
+      for (const raw of response.Items || []) {
+        const item = unmarshall(raw);
+        const sk = item['sk'] as string;
+        const version = this.parseInstructionVersionSk(sk);
+        if (version === null) continue;
+        history.versions.push({
+          sk,
+          version,
+          updatedAt: item['updated_at'] as string | undefined,
+          author: item['author'] as string | undefined,
+          note: item['note'] as string | undefined,
+          contentLength: typeof item['content_length'] === 'number' ? item['content_length'] : undefined
+        });
+      }
+    } catch (error) {
+      console.error(`❌ AgentDynamoDBService: Failed to list instruction versions for ${agentName}:`, error);
+      return empty;
+    }
+
+    const live = await this.readLiveInstructionItem(agentName);
+    if (live) {
+      history.live = { exists: true, version: live.version, updatedAt: live.updatedAt };
+    }
+
+    return history;
+  }
+
+  /**
+   * Fetch the instruction text for one snapshot sort key, or for the live
+   * record when passed INSTRUCTION_LIVE_SK.
+   */
+  async getAgentInstructionsAtVersion(agentName: string, sk: string): Promise<string | null> {
+    const cacheKey = `${agentName}#${sk}`;
+    const cached = this.instructionsCache.get(cacheKey);
+    if (this.isCacheValid(cached || null)) {
+      return cached!.data;
+    }
+
+    if (!await this.ensureClient()) {
+      return null;
+    }
+
+    try {
+      const response = await this.dynamoDBClient!.send(new GetItemCommand({
+        TableName: this.tableName!,
+        Key: marshall({ pk: `INSTRUCTION#${agentName}`, sk })
+      }));
+
+      if (!response.Item) {
+        console.warn(`⚠️ AgentDynamoDBService: No instructions at ${agentName}/${sk}`);
+        return null;
+      }
+
+      const instructions = (unmarshall(response.Item)['content'] as string) ?? '';
+      this.instructionsCache.set(cacheKey, {
+        data: instructions,
+        timestamp: Date.now(),
+        ttl: this.CACHE_TTL
+      });
+      return instructions;
+    } catch (error) {
+      console.error(`❌ AgentDynamoDBService: Failed to get instructions at ${agentName}/${sk}:`, error);
+      return null;
+    }
+  }
+
   /**
    * Save agent configuration to DynamoDB
    * Updates both the global config and instruction record
    * Validates: Requirements 3.4, 4.5, 6.2, 6.6
+   *
+   * @param editedBy Identity recorded as the author of the instruction version
+   *                 this save creates. Omitted means the snapshot carries no
+   *                 author rather than an assumed one.
    */
-  async saveAgent(agent: AgentConfiguration): Promise<boolean> {
+  async saveAgent(agent: AgentConfiguration, editedBy?: string): Promise<boolean> {
     if (!await this.ensureClient()) {
       return false;
     }
@@ -623,9 +953,12 @@ export class AgentDynamoDBService {
         return false;
       }
       
-      // If agent has instructions, save them separately
+      // Only write instructions when there is text to write. The editor opens
+      // with an empty instructions field and back-fills it asynchronously, so a
+      // save issued before that fetch lands would otherwise blank the stored
+      // prompt.
       if (agent.instructions) {
-        await this.saveAgentInstructions(agent.agent_name, agent.instructions);
+        await this.saveAgentInstructions(agent.agent_name, agent.instructions, { author: editedBy });
       }
       
       console.log(`✅ AgentDynamoDBService: Saved agent ${agent.agent_name}`);
@@ -637,37 +970,77 @@ export class AgentDynamoDBService {
   }
 
   /**
-   * Save agent instructions to DynamoDB
+   * Save agent instructions, appending a version snapshot.
    * Validates: Requirements 7.3
+   *
+   * Two writes per save: an immutable `VERSION#<n>` snapshot, then the `v1`
+   * pointer the agent runtime reads. History is append-only — restoring an
+   * earlier version publishes it as a new one rather than rewinding, so nothing
+   * is ever overwritten in place.
    */
-  async saveAgentInstructions(agentName: string, instructions: string): Promise<boolean> {
+  async saveAgentInstructions(
+    agentName: string,
+    instructions: string,
+    options: { author?: string; note?: string } = {}
+  ): Promise<boolean> {
     if (!await this.ensureClient()) {
       return false;
     }
-    
+
     try {
-      const command = new PutItemCommand({
+      const history = await this.getInstructionVersionHistory(agentName);
+      const live = await this.readLiveInstructionItem(agentName);
+      let lastVersion = history.versions.length ? history.versions[0].version : 0;
+
+      if (live && live.version === null && live.content) {
+        // Live text came from outside the versioning path (a redeploy, or an edit
+        // predating this feature). Archive it before the pointer is overwritten
+        // in place, otherwise the deploy-seeded prompt is unrecoverable after the
+        // first edit.
+        lastVersion += 1;
+        await this.putInstructionVersion(agentName, lastVersion, live.content, {
+          updatedAt: live.updatedAt,
+          note: 'Captured from the live record when versioning began'
+        });
+      } else if (live && live.content === instructions) {
+        // Byte-identical to what is already published; another snapshot would
+        // only pad the dropdown.
+        console.log(`ℹ️ AgentDynamoDBService: Instructions for ${agentName} unchanged, no new version`);
+        return true;
+      }
+
+      const nextVersion = lastVersion + 1;
+      const savedAt = new Date().toISOString();
+
+      await this.putInstructionVersion(agentName, nextVersion, instructions, {
+        author: options.author,
+        note: options.note,
+        updatedAt: savedAt
+      });
+
+      // The live pointer. `instruction_version` ties it back to the snapshot so
+      // the UI can tell whether the running text corresponds to a known version.
+      await this.dynamoDBClient!.send(new PutItemCommand({
         TableName: this.tableName!,
         Item: marshall({
           pk: `INSTRUCTION#${agentName}`,
-          sk: 'v1',
+          sk: INSTRUCTION_LIVE_SK,
           config_type: 'instruction',
           content: instructions,
           agent_name: agentName,
-          updated_at: new Date().toISOString()
+          instruction_version: nextVersion,
+          updated_at: savedAt
         })
-      });
-      
-      await this.dynamoDBClient!.send(command);
-      
-      // Update cache
+      }));
+
       this.instructionsCache.set(agentName, {
         data: instructions,
         timestamp: Date.now(),
         ttl: this.CACHE_TTL
       });
-      
-      console.log(`✅ AgentDynamoDBService: Saved instructions for ${agentName}`);
+      this.instructionsCache.delete(`${agentName}#${INSTRUCTION_LIVE_SK}`);
+
+      console.log(`✅ AgentDynamoDBService: Saved instructions for ${agentName} as v${nextVersion}`);
       return true;
     } catch (error) {
       console.error(`❌ AgentDynamoDBService: Failed to save instructions for ${agentName}:`, error);
@@ -699,6 +1072,33 @@ export class AgentDynamoDBService {
         await this.saveGlobalConfig(globalConfig);
       }
       
+      // Delete instruction version snapshots. These live under the same pk as the
+      // live instruction record but on other sort keys, so the fixed-key deletes
+      // below would leave them behind for a later agent of the same name to
+      // inherit.
+      try {
+        const versionQuery = new QueryCommand({
+          TableName: this.tableName!,
+          KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+          ExpressionAttributeValues: marshall({
+            ':pk': `INSTRUCTION#${agentName}`,
+            ':prefix': INSTRUCTION_VERSION_SK_PREFIX
+          }),
+          ProjectionExpression: '#sk',
+          ExpressionAttributeNames: { '#sk': 'sk' }
+        });
+        const versionResponse = await this.dynamoDBClient!.send(versionQuery);
+        for (const raw of versionResponse.Items || []) {
+          const { sk } = unmarshall(raw);
+          await this.dynamoDBClient!.send(new DeleteItemCommand({
+            TableName: this.tableName!,
+            Key: marshall({ pk: `INSTRUCTION#${agentName}`, sk })
+          }));
+        }
+      } catch (versionError) {
+        console.warn(`⚠️ Could not delete instruction versions for ${agentName}:`, versionError);
+      }
+
       // Delete related records: INSTRUCTION#, CARD#, VIZ_MAP#, VIZ_TEMPLATE#
       const recordPrefixes = ['INSTRUCTION#', 'CARD#', 'VIZ_MAP#'];
       

@@ -162,7 +162,7 @@ class A4AMCPHandlerDeployer:
         # Naming
         self.lambda_name = f"{stack_prefix}-a4a-mcp-handler-{unique_id}"
         self.role_name = f"{stack_prefix}-a4a-mcp-role-{unique_id}"
-        self.target_name = "adcp"
+        self.target_name = "agent"
         self.gateway_name = f"{stack_prefix}-ads-gw-{unique_id}"
 
     # ─── Gateway Discovery ─────────────────────────────────────────────
@@ -814,14 +814,6 @@ class OAuthGatewayDeployer:
         repo_root = Path(__file__).parent.parent.parent
         arns = {}
 
-        # AdCP handler ARN from .ads-gw config
-        ads_gw_config = repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json"
-        if ads_gw_config.exists():
-            with open(ads_gw_config) as f:
-                config = json.load(f)
-            arns["adcp_handler"] = config.get("lambda_arn", "")
-            logger.info(f"Discovered adcp-handler ARN: {arns['adcp_handler']}")
-
         # A4A MCP handler ARN
         mcp_config = repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json"
         if mcp_config.exists():
@@ -1144,8 +1136,8 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         user_pool_id = self.validate_prerequisites()
         lambda_arns = self.discover_lambda_arns()
-        if not lambda_arns.get("adcp_handler") or not lambda_arns.get("a4a_mcp_handler"):
-            logger.error("Could not discover both Lambda ARNs")
+        if not lambda_arns.get("a4a_mcp_handler"):
+            logger.error("Could not discover the A4A MCP handler Lambda ARN")
             results["status"] = "lambda_arns_not_found"
             return results
 
@@ -1172,7 +1164,7 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info("Step 3: Creating OAuth gateway IAM role")
         logger.info("=" * 60)
-        all_lambda_arns = [lambda_arns["adcp_handler"], lambda_arns["a4a_mcp_handler"]]
+        all_lambda_arns = [lambda_arns["a4a_mcp_handler"]]
         role_arn = self.create_oauth_gateway_role(all_lambda_arns)
         results["role_arn"] = role_arn
 
@@ -1192,24 +1184,8 @@ class OAuthGatewayDeployer:
         logger.info("Step 5: Registering Lambda targets on OAuth gateway")
         logger.info("=" * 60)
 
-        # Get tool schemas — import from sibling module
-        try:
-            import importlib.util
-            spec_path = Path(__file__).parent / "deploy_adcp_gateway.py"
-            spec_module = importlib.util.spec_from_file_location("deploy_adcp_gateway", spec_path)
-            adcp_module = importlib.util.module_from_spec(spec_module)
-            spec_module.loader.exec_module(adcp_module)
-            adcp_deployer = adcp_module.AdCPGatewayDeployer(self.stack_prefix, self.unique_id, self.region, self.profile)
-            adcp_schema = adcp_deployer.get_adcp_tool_schema()
-        except Exception as e:
-            logger.warning(f"Could not import AdCP tool schema: {e}. Using empty schema for AdCP target.")
-            adcp_schema = []
-
-        # Register AdCP target
-        adcp_target_name = "adcp"
-        self.register_target(gateway["gateway_id"], adcp_target_name, lambda_arns["adcp_handler"], adcp_schema)
-
-        # Register A4A MCP handler target
+        # Register A4A MCP handler target. The AdCP target that used to be
+        # registered alongside it is gone with the AdCP MCP Gateway.
         a4a_target_name = "agent"
         self.register_target(gateway["gateway_id"], a4a_target_name, lambda_arns["a4a_mcp_handler"], A4A_MCP_TOOL_SCHEMA)
 
@@ -1321,12 +1297,6 @@ class ExternalOAuthGatewayDeployer:
         """Read existing Lambda ARNs from config files."""
         repo_root = Path(__file__).parent.parent.parent
         arns = {}
-
-        ads_gw_config = repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json"
-        if ads_gw_config.exists():
-            with open(ads_gw_config) as f:
-                config = json.load(f)
-            arns["adcp_handler"] = config.get("lambda_arn", "")
 
         mcp_config = repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json"
         if mcp_config.exists():
@@ -1496,8 +1466,8 @@ class ExternalOAuthGatewayDeployer:
         logger.info("Step 1: Discovering Lambda ARNs")
         logger.info("=" * 60)
         lambda_arns = self.discover_lambda_arns()
-        if not lambda_arns.get("adcp_handler") or not lambda_arns.get("a4a_mcp_handler"):
-            logger.error("Could not discover both Lambda ARNs. Deploy IAM target first.")
+        if not lambda_arns.get("a4a_mcp_handler"):
+            logger.error("Could not discover the A4A MCP handler Lambda ARN. Deploy IAM target first.")
             results["status"] = "lambda_arns_not_found"
             return results
 
@@ -1505,7 +1475,7 @@ class ExternalOAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info("Step 2: Ensuring gateway IAM role")
         logger.info("=" * 60)
-        all_arns = [lambda_arns["adcp_handler"], lambda_arns["a4a_mcp_handler"]]
+        all_arns = [lambda_arns["a4a_mcp_handler"]]
         role_arn = self.ensure_gateway_role(all_arns)
         results["role_arn"] = role_arn
 
@@ -1527,21 +1497,8 @@ class ExternalOAuthGatewayDeployer:
         logger.info("Step 4: Registering Lambda targets")
         logger.info("=" * 60)
 
-        try:
-            import importlib.util
-            spec_path = Path(__file__).parent / "deploy_adcp_gateway.py"
-            spec_module = importlib.util.spec_from_file_location("deploy_adcp_gateway", spec_path)
-            adcp_module = importlib.util.module_from_spec(spec_module)
-            spec_module.loader.exec_module(adcp_module)
-            adcp_deployer = adcp_module.AdCPGatewayDeployer(self.stack_prefix, self.unique_id, self.region, self.profile)
-            adcp_schema = adcp_deployer.get_adcp_tool_schema()
-        except Exception as e:
-            logger.warning(f"Could not import AdCP tool schema: {e}. Using empty schema.")
-            adcp_schema = []
-
-        adcp_target_name = "adcp"
-        self.register_target(gateway["gateway_id"], adcp_target_name, lambda_arns["adcp_handler"], adcp_schema)
-
+        # The AdCP target that used to be registered here is gone with the AdCP
+        # MCP Gateway.
         a4a_target_name = "agent"
         self.register_target(gateway["gateway_id"], a4a_target_name, lambda_arns["a4a_mcp_handler"], A4A_MCP_TOOL_SCHEMA)
 
@@ -1927,13 +1884,14 @@ def main():
             )
             logger.info(f"✅ Updated Lambda: {data_lambda_name}")
         except lambda_client.exceptions.ResourceNotFoundException:
-            # Get execution role from existing adcp Lambda
-            adcp_lambda_name = f"{args.stack_prefix}-adcp-handler-{args.unique_id}"
+            # Borrow the execution role from the A4A MCP handler Lambda. This used
+            # to come from the adcp-handler Lambda, which no longer exists.
+            source_lambda_name = f"{args.stack_prefix}-a4a-mcp-handler-{args.unique_id}"
             try:
-                adcp_config = lambda_client.get_function(FunctionName=adcp_lambda_name)
-                role_arn = adcp_config["Configuration"]["Role"]
+                source_config = lambda_client.get_function(FunctionName=source_lambda_name)
+                role_arn = source_config["Configuration"]["Role"]
             except Exception:
-                logger.error("Cannot find execution role — deploy adcp-handler first")
+                logger.error(f"Cannot find execution role — deploy {source_lambda_name} first")
                 sys.exit(1)
 
             lambda_client.create_function(

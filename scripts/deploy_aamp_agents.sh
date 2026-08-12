@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# AAMP Phase 12 deployment — sourced by scripts/deploy-ecosystem.sh
+# AAMP Phase 9 deployment (optional) — sourced by scripts/deploy-ecosystem.sh
 # =============================================================================
 # Defines deploy_aamp_agents(): clones/locates the IAB Tech Lab seller & buyer
 # agent repos, deploys their AgentCore HTTP runtimes via each repo's own
@@ -34,16 +34,82 @@
 # Their own default is Nova Pro, which reliably fails CrewAI tool calling on the
 # Bedrock Converse API with:
 #   ModelErrorException: Model produced invalid sequence as part of ToolUse
-# (observed in both AAMP runtimes' CloudWatch logs). Claude Opus 5 via the
+# (observed in both AAMP runtimes' CloudWatch logs). Claude Sonnet 5 via the
 # global cross-region inference profile handles the tool-use contract, so we
 # default to it. Override with AAMP_LLM_MODEL to use a different model.
-: "${AAMP_LLM_MODEL:=bedrock/global.anthropic.claude-opus-5}"
+: "${AAMP_LLM_MODEL:=bedrock/global.anthropic.claude-sonnet-5}"
 
 # Inbound auth for the AAMP runtimes: "oauth" (Cognito JWT authorizer, works
 # cross-account/anywhere) or "iam" (SigV4, same-account only). Defaults to
 # oauth so the AAMP agents can be hosted anywhere, matching the external-agents
 # pattern. Set AAMP_INBOUND_AUTH=iam to keep the legacy SigV4 behavior.
 : "${AAMP_INBOUND_AUTH:=oauth}"
+
+# Longest runtime name that still lets `agentcore launch` enable observability.
+# --------------------------------------------------------------------------
+# The toolkit derives CloudWatch Logs delivery names from the memory id, which is
+# "<runtime name>_mem-<10-char suffix>", and the longest name it builds from that
+# is "<memory id>-traces-destination". PutDeliveryDestination caps `name` at 60,
+# so the runtime name has to fit in 60 - len("_mem-") - 10 - len("-traces-destination").
+# Exceeding it does not fail the deploy: memory is still created, but traces
+# delivery is skipped with a ValidationException.
+AAMP_RUNTIME_NAME_BUDGET=26
+
+# Build an AAMP runtime name that fits AAMP_RUNTIME_NAME_BUDGET.
+#
+# Shortens the descriptive words before touching stack prefix or unique id, since
+# those two identify the deployment and collide if trimmed. Echoes the name and
+# reports on stderr when it had to shorten.
+_aamp_runtime_name() {
+    local role="$1"      # buyer | seller
+    local suffix="${2:-}" # e.g. "_http"
+
+    local candidate="${STACK_PREFIX}_aamp_${role}_${UNIQUE_ID}${suffix}"
+    if [ ${#candidate} -le $AAMP_RUNTIME_NAME_BUDGET ]; then
+        printf '%s' "$candidate"
+        return 0
+    fi
+
+    local short_role="$role"
+    case "$role" in
+        buyer)  short_role="buy" ;;
+        seller) short_role="sell" ;;
+    esac
+
+    local attempt
+    for attempt in \
+        "${STACK_PREFIX}_aamp_${short_role}_${UNIQUE_ID}${suffix}" \
+        "${STACK_PREFIX}_${short_role}_${UNIQUE_ID}${suffix}" \
+        "${STACK_PREFIX}_${short_role}_${UNIQUE_ID}"
+    do
+        if [ ${#attempt} -le $AAMP_RUNTIME_NAME_BUDGET ]; then
+            print_warning "   Runtime name '${candidate}' (${#candidate} chars) exceeds the ${AAMP_RUNTIME_NAME_BUDGET}-char observability budget; using '${attempt}'" >&2
+            printf '%s' "$attempt"
+            return 0
+        fi
+    done
+
+    # Dropping words was not enough, so trim the stack prefix instead of the tail.
+    # A plain truncation of the whole string can cut off the role marker, and
+    # buyer and seller would then collapse to the same name and overwrite each
+    # other's runtime.
+    local tail="_${short_role}_${UNIQUE_ID}${suffix}"
+    local prefix_room=$(( AAMP_RUNTIME_NAME_BUDGET - ${#tail} ))
+    local truncated
+    if [ $prefix_room -ge 1 ]; then
+        truncated="${STACK_PREFIX:0:$prefix_room}${tail}"
+    else
+        # Even the tail alone is over budget: keep the role and trim the unique id.
+        local head="${STACK_PREFIX:0:1}_${short_role}_"
+        local uid_room=$(( AAMP_RUNTIME_NAME_BUDGET - ${#head} - ${#suffix} ))
+        [ $uid_room -lt 1 ] && uid_room=1
+        truncated="${head}${UNIQUE_ID:0:$uid_room}${suffix}"
+    fi
+    truncated="${truncated%_}"
+    print_warning "   Runtime name '${candidate}' cannot be shortened below ${AAMP_RUNTIME_NAME_BUDGET} chars by dropping words; using '${truncated}'" >&2
+    print_warning "   A shorter --stack-prefix or --unique-id would avoid the trimming." >&2
+    printf '%s' "$truncated"
+}
 
 # Extract runtime ARNs from a .bedrock_agentcore.yaml, keyed by the authoritative
 # `aws.protocol_configuration.server_protocol` field (HTTP vs MCP) rather than a
@@ -226,7 +292,7 @@ PYAUTH
 # temperature, e.g.
 #     llm=LLM(model=settings.default_llm_model, temperature=0.5)
 # (~11 sites per repo, plus one inline call in the seller's http_main.py).
-# Claude Opus 5 — the model this deploy selects — REJECTS that parameter, so
+# Claude Sonnet 5 — the model this deploy selects — REJECTS that parameter, so
 # every crew invocation fails the request outright:
 #     Request validation failed: temperature is deprecated for this model.
 # and the agent surfaces a failed/placeholder result instead of real output.
@@ -306,15 +372,224 @@ PYTEMP
 ) || count=0
 
     if [ "${count:-0}" -gt 0 ]; then
-        print_success "   ${label}: removed ${count} hardcoded 'temperature=' argument(s) from LLM calls (Opus 5 rejects it)"
+        print_success "   ${label}: removed ${count} hardcoded 'temperature=' argument(s) from LLM calls (Sonnet 5 rejects it)"
     else
         print_status "   ${label}: no hardcoded 'temperature=' found in src/ — nothing to strip"
     fi
     return 0
 }
 
+# Make the IAB runtimes stop sending an assistant-final conversation to Bedrock.
+# --------------------------------------------------------------------------
+# WHY: Claude (the model this deploy selects) rejects a Converse request whose
+# message list ends with an assistant turn:
+#     AWS Bedrock API call failed: Request validation failed: The model returned
+#     the following errors: This model does not support assistant message
+#     prefill. The conversation must end with a user message.
+# (observed in the buyer runtime's CloudWatch logs, raised from
+#  crewai/llms/providers/bedrock/completion.py::call)
+#
+# CrewAI's Bedrock provider guards against this in _format_messages_for_converse
+# by appending a continuation user turn — but only for Anthropic models, and only
+# since crewai 1.14. Two things defeat that guard in these repos:
+#
+#   1. The buyer's infra/aws/agentcore/requirements.txt (the file the AgentCore
+#      starter toolkit pip-installs into the container) pins crewai==1.10.1,
+#      whose guard covers Cohere/Command models ONLY — there is no Anthropic
+#      branch, so an assistant-final list goes to Bedrock unchanged. That pin is
+#      stale relative to the repo's own pyproject (crewai>=1.14.4,<2.0.0) and to
+#      the seller's requirements file (crewai>=1.14.0), which is why only the
+#      buyer runtime hits this. Fix: relax the '==' pin to the pyproject floor.
+#   2. Each repo ships patches/crewai_bedrock_fix.py, which wraps
+#      _handle_converse to strip orphaned toolUse/toolResult blocks. That runs
+#      AFTER _format_messages_for_converse, and dropping an orphaned assistant
+#      toolUse orphans the user toolResult that follows it, which is then dropped
+#      too — putting an assistant message back in the final position and undoing
+#      CrewAI's guarantee. Fix: re-assert "ends with a user turn" after
+#      sanitization, using the same continuation text upstream CrewAI uses.
+#
+# Both edits are append-only/single-line, idempotent, backed up per file as
+# <file>.aamp-orig, and recorded in .aamp-patched-files so a user-supplied
+# (--local-aamp) checkout is restored byte-for-byte after deployment.
+_aamp_fix_bedrock_prefill() {
+    local repo_dir="$1"
+    local label="$2"
+
+    if [ ! -d "$repo_dir" ]; then
+        return 0
+    fi
+
+    local result
+    result=$("${PYTHON_CMD:-python3}" - "$repo_dir" << 'PYPREFILL'
+import os
+import re
+import sys
+
+repo_dir = sys.argv[1]
+manifest_path = os.path.join(repo_dir, ".aamp-patched-files")
+
+# The floor the IAB repos' own pyproject.toml declares (crewai>=1.14.4,<2.0.0).
+# 1.14 is the first release whose Bedrock provider appends a continuation user
+# turn for Anthropic models when the conversation would otherwise end with an
+# assistant message.
+MIN_CREWAI = (1, 14, 4)
+MIN_CREWAI_SPEC = ">=1.14.4,<2.0.0"
+
+patched_files = []
+
+
+def _record(path, original):
+    backup = path + ".aamp-orig"
+    if not os.path.exists(backup):
+        with open(backup, "w", encoding="utf-8") as f:
+            f.write(original)
+    patched_files.append(os.path.relpath(path, repo_dir))
+
+
+def _version_tuple(text):
+    parts = []
+    for chunk in text.split("."):
+        m = re.match(r"^(\d+)", chunk)
+        if not m:
+            break
+        parts.append(int(m.group(1)))
+    return tuple(parts)
+
+
+# ── 1. Relax a stale '==' crewai pin in the AgentCore requirements file ──
+req_status = "absent"
+req_path = os.path.join(repo_dir, "infra", "aws", "agentcore", "requirements.txt")
+pin_re = re.compile(r"(?m)^(crewai(?:\[[^\]]*\])?)==([0-9][^\s;#]*)[ \t]*$")
+if os.path.isfile(req_path):
+    with open(req_path, encoding="utf-8") as f:
+        original = f.read()
+
+    replaced = []
+
+    def _relax(match):
+        name, version = match.group(1), match.group(2)
+        if _version_tuple(version) >= MIN_CREWAI:
+            return match.group(0)
+        replaced.append(version)
+        return name + MIN_CREWAI_SPEC
+
+    text = pin_re.sub(_relax, original)
+    if replaced:
+        _record(req_path, original)
+        with open(req_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        req_status = "relaxed:" + ",".join(replaced)
+    else:
+        req_status = "ok"
+
+# ── 2. Re-assert "conversation ends with a user turn" after sanitization ──
+GUARD = '''
+
+# ─── AAMP deploy patch: never hand Bedrock an assistant-final conversation ───
+# Claude on the Bedrock Converse API rejects a request whose message list ends
+# with an assistant turn:
+#     "This model does not support assistant message prefill.
+#      The conversation must end with a user message."
+# _sanitize_tool_blocks() above can produce exactly that shape: an orphaned
+# assistant toolUse block is dropped, which orphans the user toolResult that
+# followed it, which is dropped in turn — leaving an assistant message last.
+# CrewAI appends a continuation user turn for Anthropic models inside
+# _format_messages_for_converse(), but that runs BEFORE this sanitizer, so the
+# guarantee is lost. Re-establish it here with the same continuation text
+# upstream CrewAI uses.
+_AAMP_PREFILL_GUARD = True
+_AAMP_CONTINUATION_TEXT = "Please continue and provide your final answer."
+
+_aamp_sanitize_tool_blocks_inner = _sanitize_tool_blocks
+
+
+def _aamp_ensure_ends_with_user(messages: list) -> list:
+    """Append a continuation user turn if the conversation ends with assistant."""
+    if not messages:
+        return messages
+    last = messages[-1]
+    if isinstance(last, dict) and last.get("role") == "assistant":
+        logger.debug(
+            "Bedrock Converse: message list ended with an assistant turn; "
+            "appending a continuation user turn (model rejects assistant prefill)"
+        )
+        return [
+            *messages,
+            {"role": "user", "content": [{"text": _AAMP_CONTINUATION_TEXT}]},
+        ]
+    return messages
+
+
+def _sanitize_tool_blocks(messages: list) -> list:  # noqa: F811
+    """Strip orphaned tool blocks, then guarantee a user turn in final position."""
+    return _aamp_ensure_ends_with_user(_aamp_sanitize_tool_blocks_inner(messages))
+'''
+
+guard_status = "absent"
+fix_path = os.path.join(repo_dir, "patches", "crewai_bedrock_fix.py")
+if os.path.isfile(fix_path):
+    with open(fix_path, encoding="utf-8") as f:
+        original = f.read()
+    if "_AAMP_PREFILL_GUARD" in original:
+        guard_status = "present"
+    elif "def _sanitize_tool_blocks" not in original:
+        guard_status = "unexpected"
+    else:
+        _record(fix_path, original)
+        with open(fix_path, "w", encoding="utf-8") as f:
+            f.write(original.rstrip("\n") + "\n" + GUARD)
+        guard_status = "added"
+
+if patched_files:
+    with open(manifest_path, "a", encoding="utf-8") as f:
+        for rel in patched_files:
+            f.write(rel + "\n")
+
+print(f"{req_status}|{guard_status}")
+PYPREFILL
+) || result="error|error"
+
+    local req_status="${result%%|*}"
+    local guard_status="${result##*|}"
+
+    case "$req_status" in
+        relaxed:*)
+            print_success "   ${label}: relaxed stale crewai pin (==${req_status#relaxed:}) to '>=1.14.4,<2.0.0' in infra/aws/agentcore/requirements.txt"
+            ;;
+        ok)
+            print_status "   ${label}: no crewai '==' pin below 1.14.4 in infra/aws/agentcore/requirements.txt — nothing to relax"
+            ;;
+        absent)
+            print_warning "   ${label}: infra/aws/agentcore/requirements.txt not found — could not verify the crewai version installed in the runtime"
+            ;;
+        *)
+            print_warning "   ${label}: could not inspect infra/aws/agentcore/requirements.txt — the runtime may install a crewai without the Anthropic assistant-prefill guard"
+            ;;
+    esac
+
+    case "$guard_status" in
+        added)
+            print_success "   ${label}: added assistant-prefill guard to patches/crewai_bedrock_fix.py"
+            ;;
+        present)
+            print_status "   ${label}: assistant-prefill guard already present — skipping"
+            ;;
+        absent)
+            print_status "   ${label}: no patches/crewai_bedrock_fix.py — nothing to guard"
+            ;;
+        unexpected)
+            print_warning "   ${label}: patches/crewai_bedrock_fix.py no longer defines _sanitize_tool_blocks — guard NOT applied. Review that file."
+            ;;
+        *)
+            print_warning "   ${label}: failed to apply the assistant-prefill guard — see output above"
+            ;;
+    esac
+
+    return 0
+}
+
 deploy_aamp_agents() {
-    print_step "Step 11b: Deploying AAMP agents (IAB buyer & seller)..."
+    print_step "Step 9: Deploying AAMP agents (IAB buyer & seller)..."
 
     # ── Environment for the IAB sub-deploys ─────────────────────────────────
     # The IAB repos' infra/aws/agentcore/deploy.sh invokes `agentcore configure`
@@ -454,11 +729,17 @@ REOF
     _aamp_inject_src_pythonpath "$aamp_seller_dir" "Seller"
     _aamp_inject_src_pythonpath "$aamp_buyer_dir" "Buyer"
 
-    # ── Remove the crews' hardcoded temperature= (rejected by Opus 5) ────
+    # ── Remove the crews' hardcoded temperature= (rejected by Sonnet 5) ──
     # See _aamp_strip_llm_temperature (top of this file) for the full rationale.
     print_status "Removing hardcoded LLM temperature from IAB crews..."
     _aamp_strip_llm_temperature "$aamp_seller_dir" "Seller"
     _aamp_strip_llm_temperature "$aamp_buyer_dir" "Buyer"
+
+    # ── Stop the runtimes sending an assistant-final conversation ────────
+    # See _aamp_fix_bedrock_prefill (top of this file) for the full rationale.
+    print_status "Applying Bedrock assistant-prefill fix to IAB runtimes..."
+    _aamp_fix_bedrock_prefill "$aamp_seller_dir" "Seller"
+    _aamp_fix_bedrock_prefill "$aamp_buyer_dir" "Buyer"
 
     # ── Model: override the IAB default (Nova Pro) ───────────────────────
     # Both IAB deploy scripts read $DEFAULT_LLM_MODEL and forward it to the
@@ -545,7 +826,8 @@ REOF
     local seller_mcp_runtime_arn=""
     local seller_http_runtime_arn=""
     local seller_runtime_arn=""
-    local seller_agent_name="${STACK_PREFIX}_aamp_seller_${UNIQUE_ID}"
+    local seller_agent_name
+    seller_agent_name="$(_aamp_runtime_name seller)"
 
     if [ -d "$aamp_seller_dir" ] && [ -f "$aamp_seller_dir/infra/aws/agentcore/deploy.sh" ]; then
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -564,7 +846,7 @@ REOF
             print_status "   Deploy mode: http only (set DEPLOY_MCP=true to include MCP runtime)"
         fi
         seller_deploy_cmd="$seller_deploy_cmd --region $AWS_REGION"
-        seller_deploy_cmd="$seller_deploy_cmd --name ${STACK_PREFIX}_aamp_seller_${UNIQUE_ID}"
+        seller_deploy_cmd="$seller_deploy_cmd --name $seller_agent_name"
 
         if [ -n "$AWS_PROFILE" ]; then
             seller_deploy_cmd="$seller_deploy_cmd --profile $AWS_PROFILE"
@@ -611,7 +893,8 @@ REOF
 
     # ── Deploy Buyer Agent ──────────────────────────────────────────────
     local buyer_runtime_arn=""
-    local buyer_agent_name="${STACK_PREFIX}_aamp_buyer_${UNIQUE_ID}_http"
+    local buyer_agent_name
+    buyer_agent_name="$(_aamp_runtime_name buyer _http)"
 
     if [ -d "$aamp_buyer_dir" ] && [ -f "$aamp_buyer_dir/infra/aws/agentcore/deploy.sh" ]; then
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -833,7 +1116,7 @@ PYEOF2
 
     # ── Summary ─────────────────────────────────────────────────────────
     print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    print_status "Phase 12: AAMP Deployment Summary"
+    print_status "Phase 9: AAMP Deployment Summary"
     print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     if [ -n "$seller_http_runtime_arn" ]; then
@@ -853,7 +1136,7 @@ PYEOF2
 
     # ── Post-deploy: Sync configs to all three sources ──────────────────
     # The deploy script uploads to DynamoDB (Step 9) but the S3 data bucket
-    # and S3 UI bucket can get stale after Phase 12 deploys new AAMP runtimes.
+    # and S3 UI bucket can get stale after Phase 9 deploys new AAMP runtimes.
     # This step ensures all three config sources are consistent.
 
     local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
@@ -919,13 +1202,15 @@ PYEOF2
             fi
         done
 
-        # Restore every src/ file the temperature strip modified, using the
-        # per-file .aamp-orig backups listed in each repo's manifest, so a local
-        # checkout is left byte-for-byte as the user had it.
+        # Restore every file our post-clone patches modified (temperature strip
+        # and the Bedrock assistant-prefill fix), using the per-file .aamp-orig
+        # backups listed in each repo's manifests, so a local checkout is left
+        # byte-for-byte as the user had it.
         for _repo in "$aamp_seller_dir" "$aamp_buyer_dir"; do
-            local _manifest="${_repo}/.aamp-temperature-patched"
-            if [ -f "$_manifest" ]; then
-                local _restored=0
+            local _restored=0
+            for _manifest in "${_repo}/.aamp-temperature-patched" \
+                             "${_repo}/.aamp-patched-files"; do
+                [ -f "$_manifest" ] || continue
                 while IFS= read -r _rel; do
                     [ -z "$_rel" ] && continue
                     if [ -f "${_repo}/${_rel}.aamp-orig" ]; then
@@ -934,9 +1219,9 @@ PYEOF2
                     fi
                 done < "$_manifest"
                 rm -f "$_manifest"
-                if [ "$_restored" -gt 0 ]; then
-                    print_status "Restored ${_restored} original source file(s) in $(basename "$_repo")"
-                fi
+            done
+            if [ "$_restored" -gt 0 ]; then
+                print_status "Restored ${_restored} original source file(s) in $(basename "$_repo")"
             fi
         done
     fi

@@ -198,6 +198,63 @@ $fuchsia-accent: #c300e0;
     color: #6b7280 !important;
     cursor: not-allowed;
   }
+
+  .instruction-version-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      font-family: $font-family-ember;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0;
+    }
+
+    .instruction-version-select {
+      width: auto;
+      min-width: 280px;
+      max-width: 100%;
+      font-size: 13px;
+      padding: 6px 10px;
+    }
+
+    .instruction-version-status {
+      font-size: 12px;
+      color: #6b7280;
+      font-family: $font-family-ember;
+
+      &.error {
+        color: #b42318;
+      }
+    }
+  }
+
+  // Amber rather than the purple informational treatment: the editor is showing
+  // text the agent is not running, which is a state to act on, not just note.
+  .instruction-version-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: rgba(180, 83, 9, 0.06);
+    border: 1px solid rgba(180, 83, 9, 0.25);
+    border-radius: 12px;
+    font-size: 13px;
+    color: #b45309;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 18px;
+      opacity: 0.85;
+    }
+  }
 }
 
 // Form Groups
@@ -320,6 +377,101 @@ $fuchsia-accent: #c300e0;
 }
 
 // A2A Server Auth Config (inbound auth type selector)
+// Informational callout used for the derived-transport line and the
+// external-runtime notices. Matches the modal's rule of the same name, which
+// this component's markup was relying on without ever inheriting it.
+.external-runtime-auth-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, rgba($purple-accent, 0.06) 0%, rgba(#fda83b, 0.04) 100%);
+  border: 1px solid rgba($purple-accent, 0.2);
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+
+  .material-icons {
+    font-size: 18px;
+    color: $purple-accent;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  strong {
+    color: #374151;
+    font-weight: 600;
+  }
+
+  // A misconfiguration is stated in the same place, styled as a problem.
+  &.error-message {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #b91c1c;
+
+    .material-icons,
+    strong {
+      color: #b91c1c;
+    }
+  }
+}
+
+// Group label for the segmented selectors. Component-scoped for the same reason
+// as .auth-type-options below.
+.config-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+  font-family: $font-family-ember;
+}
+
+// Segmented chip selectors. Component-scoped rather than nested under
+// .a2a-server-auth-config, because the same control is used for hosting and
+// protocol outside that container.
+.auth-type-options {
+  display: flex;
+  // Five modes no longer fit one row in the panel's width.
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+
+  .auth-type-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: $font-family-ember;
+
+    .material-icons {
+      font-size: 18px;
+    }
+
+    &:hover {
+      border-color: rgba($purple-accent, 0.3);
+      color: $purple-accent;
+    }
+
+    &.selected {
+      background: rgba($purple-accent, 0.1);
+      border-color: $purple-accent;
+      color: $purple-accent;
+      font-weight: 600;
+    }
+  }
+}
+
 .a2a-server-auth-config {
   margin-top: 16px;
   padding: 16px;
@@ -339,43 +491,6 @@ $fuchsia-accent: #c300e0;
   .field-hint {
     display: block;
     margin-bottom: 12px;
-  }
-
-  .auth-type-options {
-    display: flex;
-    gap: 8px;
-
-    .auth-type-option {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border: 1px solid #e5e7eb;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #6b7280;
-      background: white;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-family: $font-family-ember;
-
-      .material-icons {
-        font-size: 18px;
-      }
-
-      &:hover {
-        border-color: rgba($purple-accent, 0.3);
-        color: $purple-accent;
-      }
-
-      &.selected {
-        background: rgba($purple-accent, 0.1);
-        border-color: $purple-accent;
-        color: $purple-accent;
-        font-weight: 600;
-      }
-    }
   }
 
   // Inbound OAuth credentials section (inside a2a-server-auth-config)

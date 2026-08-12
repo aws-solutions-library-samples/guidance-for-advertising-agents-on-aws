@@ -193,11 +193,15 @@ The ecosystem consists of several components that require specific IAM roles:
 
 ---
 
-## 3. MCP Gateway Role
+## 3. MCP Gateway Role (deprecated)
 
 **Role Name:** `{stack-prefix}-ads-gw-role-{unique-id}`
 
 **Purpose:** Allows the AgentCore MCP Gateway to invoke Lambda functions that implement the Ad Context Protocol (AdCP).
+
+> **Legacy.** The AdCP MCP Gateway was removed in favour of the AdCP-compliant reference agents
+> `AdCPBuyerAgent` and `AdCPSellerAgent`. Nothing creates this role any more; it exists only on stacks deployed
+> before the removal, where `--cleanup` deletes it. See [what ships today](../README.md#adcp-migration-status).
 
 **Trust Policy:**
 ```json
@@ -258,11 +262,15 @@ The ecosystem consists of several components that require specific IAM roles:
 
 ---
 
-## 5. AdCP Lambda Execution Role
+## 5. AdCP Lambda Execution Role (deprecated)
 
 **Role Name:** `{stack-prefix}-adcp-lambda-role-{unique-id}`
 
 **Purpose:** Execution role for the Lambda function that implements AdCP protocol handlers.
+
+> **Legacy.** Serves the removed AdCP MCP Gateway path, superseded by `AdCPBuyerAgent` and `AdCPSellerAgent`.
+> Nothing creates this role any more; it exists only on stacks deployed before the removal, where `--cleanup`
+> deletes it. See [what ships today](../README.md#adcp-migration-status).
 
 **Trust Policy:**
 ```json

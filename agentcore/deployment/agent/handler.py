@@ -24,18 +24,6 @@ from shared.response_model import (
     ResponseModel,
 )
 from shared.image_generator import generate_image_from_descriptions
-from shared.adcp_tools import (
-    ADCP_TOOLS, 
-    get_adcp_mcp_tools,
-    get_products,
-    get_signals,
-    activate_signal,
-    create_media_buy,
-    get_media_buy_delivery,
-    verify_brand_safety,
-    resolve_audience_reach,
-    configure_brand_lift_study,
-)
 
 from shared.file_processor import get_s3_as_base64_and_extract_summary_and_facts
 from shared.mcp_tools import build_mcp_tools_for_agent
@@ -1843,21 +1831,6 @@ def build_tools_for_agent(agent_name: str) -> list:
         "file_read": file_read,
         "generate_image_from_descriptions": generate_image_from_descriptions,
         "http_request": http_request,
-        
-        # AdCP Media Buy Protocol tools
-        "get_products": get_products,
-        "create_media_buy": create_media_buy,
-        "get_media_buy_delivery": get_media_buy_delivery,
-        
-        # AdCP Signals Protocol tools
-        "get_signals": get_signals,
-        "activate_signal": activate_signal,
-        
-        # MCP Verification/Identity/Measurement tools
-        "verify_brand_safety": verify_brand_safety,
-        "resolve_audience_reach": resolve_audience_reach,
-        "configure_brand_lift_study": configure_brand_lift_study,
-        
     }
     
     tools = []

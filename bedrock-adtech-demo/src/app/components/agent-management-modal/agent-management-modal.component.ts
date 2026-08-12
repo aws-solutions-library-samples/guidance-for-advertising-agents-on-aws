@@ -5,6 +5,7 @@ import { BedrockService } from '../../services/bedrock.service';
 import { AgentEditorPanelComponent } from '../agent-editor-panel/agent-editor-panel.component';
 import { AttachedDocument, generateFullAgentConfig } from '../agent-editor-panel/agent-editor-ai.helpers';
 import { AVAILABLE_TEMPLATES } from '../agent-editor-panel/agent-editor-panel.constants';
+import { resolveAgentProtocol } from '../../services/agent-invocation-plan';
 
 // Re-export the canonical schema types (defined once in agent-dynamodb.service.ts)
 // so existing consumers importing from this file continue to work unchanged.
@@ -425,7 +426,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
 
       // Save agent to DynamoDB
       // Validates: Requirement 4.5 - Save new agent to DynamoDB
-      const success = await this.agentDynamoDBService.saveAgent(agent);
+      const success = await this.agentDynamoDBService.saveAgent(agent, this.currentUser);
       if (success) {
         // Validates: Requirement 3.6 - Display success notification on save
         const message = this.isAddingNew 
@@ -601,6 +602,23 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
     setTimeout(() => {
       this.successMessage = null;
     }, 3000);
+  }
+
+  /**
+   * True when an agent runs outside the AdFabric runtime, so the list can mark
+   * it as reached over the wire. Reads `agent_hosting`, falling back to the old
+   * `is_a2a` flag that used to carry this meaning.
+   */
+  isExternalAgentConfig(agent: AgentConfiguration): boolean {
+    if (agent.agent_hosting) {
+      return agent.agent_hosting === 'external';
+    }
+    return !!agent.is_a2a;
+  }
+
+  /** Protocol label for the agent list badge. */
+  getAgentProtocolLabel(agent: AgentConfiguration): string {
+    return resolveAgentProtocol(agent) === 'a2a' ? 'A2A' : 'HTTP';
   }
 
   /**
