@@ -83,6 +83,16 @@ def main():
     parser.add_argument("--region", required=True)
     parser.add_argument("--config-dir", default="agentcore/deployment/agent")
     parser.add_argument("--dry-run", action="store_true", help="Show changes without writing")
+    parser.add_argument(
+        "--allow-unresolved",
+        action="store_true",
+        help=(
+            "Blank AAMP placeholders that have no value instead of aborting. For a "
+            "deploy that skips the optional AAMP phase: no AAMP runtime exists, so an "
+            "empty endpoint is the accurate state, and wire_aamp_agents.py fills it in "
+            "later if AAMP is deployed."
+        ),
+    )
     args = parser.parse_args()
 
     project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -113,6 +123,11 @@ def main():
                 content = content.replace(placeholder, value)
                 changes += count
                 print(f"  ✅ {placeholder} → {value} ({count}x)")
+            elif args.allow_unresolved:
+                # No AAMP runtime for this stack. Leave the endpoint empty rather than
+                # writing a literal "${...}" that would be treated as an ARN.
+                content = content.replace(placeholder, "")
+                print(f"  ⏭️  {placeholder} — no value available, left empty ({count} occurrence(s))")
             else:
                 missing.append(placeholder)
                 print(f"  ❌ {placeholder} — no value available ({count} occurrence(s))")
@@ -129,7 +144,8 @@ def main():
 
     if missing:
         print(f"\n  ❌ {len(missing)} placeholder(s) could not be resolved.")
-        print("  Run deploy-ecosystem.sh's AAMP step first to generate the deploy-output file.")
+        print("  Run deploy-ecosystem.sh's AAMP step first to generate the deploy-output file,")
+        print("  or pass --allow-unresolved to write the config with those endpoints empty.")
         sys.exit(1)
 
     if args.dry_run:

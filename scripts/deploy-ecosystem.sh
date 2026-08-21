@@ -1599,6 +1599,58 @@ deploy_lambda_functions() {
 # KB ID resolution now happens in upload_agent_configs_to_dynamodb.py using the
 # naming pattern <stack-prefix>-<value>-<unique-id> to look up real KB IDs via
 # the Bedrock API. This avoids mutating the local global_configuration.json file.
+# Generate global_configuration.json from the template when it is absent.
+#
+# The resolved config is a build artifact, not a source file: it is gitignored, and
+# a clean checkout does not have it. Several steps read it directly — the DynamoDB
+# upload (Step 7), the AAMP wiring (Step 9), and the UI config copy (Step 10) — so
+# without this a fresh clone fails partway through with a bare "No such file".
+#
+# Regenerating an existing file is deliberately avoided: it holds live values that
+# wire_aamp_agents.py and UI edits write back, and overwriting it would discard them.
+ensure_global_configuration() {
+    local config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local resolved="${config_dir}/global_configuration.json"
+    local template="${config_dir}/global_configuration.template.json"
+
+    if [ -f "$resolved" ]; then
+        return 0
+    fi
+
+    print_status "global_configuration.json not found — generating it from the template..."
+
+    if [ ! -f "$template" ]; then
+        print_error "❌ Neither the resolved config nor the template exists:"
+        print_error "   $resolved"
+        print_error "   $template"
+        return 1
+    fi
+
+    setup_python_environment
+
+    # --allow-unresolved: the AAMP runtime ARNs only exist once the optional AAMP
+    # phase has run. Leave those endpoints empty rather than refusing to write.
+    local resolve_cmd="$PYTHON_CMD ${SCRIPT_DIR}/resolve_config.py"
+    resolve_cmd="$resolve_cmd --stack-prefix $STACK_PREFIX"
+    resolve_cmd="$resolve_cmd --unique-id $UNIQUE_ID"
+    resolve_cmd="$resolve_cmd --region $AWS_REGION"
+    resolve_cmd="$resolve_cmd --config-dir $config_dir"
+    resolve_cmd="$resolve_cmd --allow-unresolved"
+
+    if ! eval "$resolve_cmd"; then
+        print_error "❌ Could not generate global_configuration.json from the template"
+        return 1
+    fi
+
+    if [ ! -f "$resolved" ]; then
+        print_error "❌ resolve_config.py reported success but $resolved is still missing"
+        return 1
+    fi
+
+    print_success "✅ Generated global_configuration.json from the template"
+    return 0
+}
+
 patch_global_config_kb_ids() {
     print_status "Knowledge base ID resolution will happen at DynamoDB upload time (Step 7)..."
     print_status "  KB naming pattern: ${STACK_PREFIX}-<kb-name>-${UNIQUE_ID}"
@@ -5216,6 +5268,10 @@ main() {
     
     # Initialize unique ID
     initialize_unique_id
+    
+    # Make sure the resolved config exists before any phase needs it. Runs here
+    # rather than inside a phase so it also covers --resume-at.
+    ensure_global_configuration
     
     # DEPLOYMENT PHASES:
     # Phase 1: Check and adjust AWS service quotas
