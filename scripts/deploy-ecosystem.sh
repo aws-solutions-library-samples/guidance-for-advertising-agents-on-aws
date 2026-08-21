@@ -182,6 +182,25 @@ aws_cmd() {
     fi
 }
 
+# Put the deploy's AWS identity into the environment for the AgentCore CLI.
+#
+# `agentcore configure` and `agentcore launch` take no --profile flag — the
+# toolkit resolves credentials through boto3's default chain. Without AWS_PROFILE
+# exported into the subprocess it uses default credentials and fails with "AWS
+# credentials are invalid" even when the rest of the deploy is authenticated.
+# Call this inside the subshell that runs the CLI.
+export_agentcore_aws_env() {
+    local region="${1:-$AWS_REGION}"
+    if [ -n "$AWS_PROFILE" ]; then
+        export AWS_PROFILE
+    fi
+    if [ -n "$region" ]; then
+        export AWS_REGION="$region"
+        export AWS_DEFAULT_REGION="$region"
+    fi
+    return 0
+}
+
 # Function to check if stack exists
 stack_exists() {
     aws_cmd cloudformation describe-stacks --stack-name "$1" --region "$AWS_REGION" > /dev/null 2>&1
@@ -575,7 +594,7 @@ prepare_a2a_handler() {
     # Execute agentcore configure command and capture output
     local configure_output
     local configure_exit_code
-    configure_output=$("$AGENTCORE_BIN" configure -e handler.py --protocol A2A 2>&1)
+    configure_output=$(export_agentcore_aws_env && "$AGENTCORE_BIN" configure -e handler.py --protocol A2A 2>&1)
     configure_exit_code=$?
     
     # Return to project root
@@ -1333,6 +1352,14 @@ deploy_infrastructure() {
                 --create-bucket-configuration LocationConstraint="$AWS_REGION" 2>&1) && bucket_created=true
         fi
 
+        # Already owning the bucket is success. The head-bucket above answers 403
+        # rather than 404 when the caller cannot list it, so an existing bucket can
+        # send us down this path.
+        if [ "$bucket_created" = false ] && printf '%s' "$create_err" | grep -q "BucketAlreadyOwnedByYou"; then
+            print_status "Lambda deployment bucket already owned by this account: $lambda_bucket"
+            bucket_created=true
+        fi
+
         # If creation failed (e.g. OperationAborted after recent deletion), try with a suffix
         if [ "$bucket_created" = false ]; then
             print_warning "Could not create bucket '$lambda_bucket': $create_err"
@@ -1349,13 +1376,35 @@ deploy_infrastructure() {
             fi
         fi
 
-        # Final check
-        if [ "$bucket_created" = false ] || ! aws_cmd s3api head-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>/dev/null; then
-            print_error "Failed to create Lambda deployment bucket after retry"
+        # A create that reports success is authoritative: the bucket exists. Only a
+        # failed create is fatal here.
+        if [ "$bucket_created" = false ]; then
+            print_error "Failed to create Lambda deployment bucket: $lambda_bucket"
             print_error "AWS error: $create_err"
             exit 1
         fi
-        print_success "Created Lambda deployment bucket: $lambda_bucket"
+
+        # Confirm visibility, but do not fail the deploy on this probe alone. A
+        # head-bucket issued immediately after create can 404 while the bucket
+        # propagates, and it answers 403 rather than 404 when the caller cannot
+        # list it — either would abort a deploy whose bucket was created fine.
+        local head_attempts=0
+        local bucket_visible=false
+        while [ $head_attempts -lt 5 ]; do
+            if aws_cmd s3api head-bucket --bucket "$lambda_bucket" --region "$AWS_REGION" 2>/dev/null; then
+                bucket_visible=true
+                break
+            fi
+            head_attempts=$((head_attempts + 1))
+            sleep 2
+        done
+
+        if [ "$bucket_visible" = true ]; then
+            print_success "Created Lambda deployment bucket: $lambda_bucket"
+        else
+            print_warning "Created bucket '$lambda_bucket' but head-bucket did not confirm it after ${head_attempts} attempt(s)."
+            print_warning "Continuing — the create call succeeded. A later upload will surface a real problem."
+        fi
     fi
     
     # Package and upload async image processor
@@ -2682,7 +2731,7 @@ print(arn)
     fi
     
     print_status "Running: $configure_cmd"
-    (cd "$agent_dir" && eval $configure_cmd)
+    (cd "$agent_dir" && export_agentcore_aws_env "$toolkit_region" && eval $configure_cmd)
     
     if [ $? -ne 0 ]; then
         print_error "AgentCore configure failed"
@@ -2775,7 +2824,7 @@ print(arn)
     fi
     
     print_status "Running: $AGENTCORE_BIN $AGENTCORE_DEPLOY_SUBCMD --agent $runtime_name --auto-update-on-conflict [+env vars]"
-    (cd "$agent_dir" && eval $deploy_cmd)
+    (cd "$agent_dir" && export_agentcore_aws_env "$toolkit_region" && eval $deploy_cmd)
     
     if [ $? -ne 0 ]; then
         print_error "AgentCore launch failed"

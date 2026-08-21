@@ -38,6 +38,7 @@ The script expects the following directory structure:
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
@@ -54,6 +55,15 @@ def get_dynamodb_table(table_name: str, region: str, profile: str = None):
     else:
         dynamodb = boto3.resource("dynamodb", region_name=region)
     return dynamodb.Table(table_name)
+
+
+def looks_like_kb_id(value: str) -> bool:
+    """Whether a config value is shaped like a Bedrock KB id rather than a name.
+
+    KB ids are 10-character uppercase alphanumerics (e.g. "QUHGJKGV0C"); the names
+    used in config are human-readable and contain lowercase (e.g. "Advertising").
+    """
+    return bool(value) and len(value) >= 10 and value.isalnum() and value.isupper()
 
 
 def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str, 
@@ -102,6 +112,9 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
     
     # List all knowledge bases and build a name -> ID lookup
     kb_name_to_id: Dict[str, str] = {}
+    # Only an authoritative listing lets us judge an existing id as stale. If the
+    # API call fails we must leave ids alone rather than rewrite valid ones.
+    api_listing_ok = False
     try:
         next_token = None
         while True:
@@ -116,6 +129,7 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
             next_token = response.get("nextToken")
             if not next_token:
                 break
+        api_listing_ok = True
     except Exception as e:
         print(f"⚠️  Could not list knowledge bases: {e}", file=sys.stderr)
         print("   Will try .kb-ids file fallback.", file=sys.stderr)
@@ -136,14 +150,82 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
     if not kb_name_to_id and not kb_base_name_to_id:
         print("   ⚠️  No KB IDs available from API or file. Values will be uploaded as-is.", file=sys.stderr)
         return config
-    
+
+    # Every KB id that exists for this account/region, from either source.
+    known_ids = set(kb_name_to_id.values()) | set(kb_base_name_to_id.values())
+
+    # KBs belonging to THIS stack, keyed by the middle segment of
+    # <stack-prefix>-<kb-name>-<unique-id>. Used to repair a stale id, where the
+    # config records an id and therefore no longer carries the name to look up.
+    stack_kb_pattern = re.compile(
+        rf"^{re.escape(stack_prefix)}-(.+)-{re.escape(unique_id)}$"
+    )
+    stack_kbs: Dict[str, str] = {}
+    for name, kb_id in kb_name_to_id.items():
+        m = stack_kb_pattern.match(name)
+        if m:
+            stack_kbs[m.group(1)] = kb_id
+
+    def repair_stale_kb_id(label: str, kb_value: str) -> Optional[str]:
+        """Return this stack's KB id when kb_value is an id that does not exist.
+
+        A config can carry a real id that belongs to a different account — copied
+        from another deployment, or written by the UI against a previous stack.
+        Bedrock rejects retrieval against it, and because it is shaped like a valid
+        id the name-based resolution below never runs. Re-resolve from the stack's
+        own KB naming instead of leaving agents pointed at a dead reference.
+
+        Returns None when the value is fine, cannot be judged, or is ambiguous.
+        """
+        if not api_listing_ok:
+            # No authoritative listing, so "missing" cannot be distinguished from
+            # "not enumerated".
+            return None
+        if kb_value in known_ids:
+            return None
+
+        if len(stack_kbs) == 1:
+            only_name, only_id = next(iter(stack_kbs.items()))
+            print(
+                f"   🔧 {label}: id '{kb_value}' does not exist in this account — "
+                f"re-resolved to {only_id} ({stack_prefix}-{only_name}-{unique_id})"
+            )
+            return only_id
+
+        # More than one candidate: prefer a name the .kb-ids file recorded for this
+        # stack, which is written by the KB deployment step.
+        preferred = [n for n in stack_kbs if n in kb_base_name_to_id]
+        if len(preferred) == 1:
+            name = preferred[0]
+            print(
+                f"   🔧 {label}: id '{kb_value}' does not exist in this account — "
+                f"re-resolved to {stack_kbs[name]} ({stack_prefix}-{name}-{unique_id}, via .kb-ids)"
+            )
+            return stack_kbs[name]
+
+        if not stack_kbs:
+            print(
+                f"   ❌ {label}: id '{kb_value}' does not exist in this account and no "
+                f"KB named {stack_prefix}-<name>-{unique_id} was found. This agent "
+                f"cannot retrieve until a knowledge base is deployed for the stack."
+            )
+        else:
+            print(
+                f"   ❌ {label}: id '{kb_value}' does not exist in this account and "
+                f"{len(stack_kbs)} stack KBs could match ({', '.join(sorted(stack_kbs))}). "
+                f"Set the KB name explicitly in the config to disambiguate."
+            )
+        return None
+
     # Resolve each entry in the knowledge_bases map
     resolved_count = 0
+    repaired_count = 0
     for agent_name, kb_value in list(knowledge_bases_map.items()):
-        # Skip if the value already looks like a resolved KB ID.
-        # Real Bedrock KB IDs are 10-char uppercase alphanumeric (e.g., "QUHGJKGV0C").
-        # Human-readable names like "Advertising" contain lowercase letters.
-        if len(kb_value) >= 10 and kb_value.isalnum() and kb_value.isupper():
+        if looks_like_kb_id(kb_value):
+            repaired = repair_stale_kb_id(f"{agent_name}", kb_value)
+            if repaired:
+                knowledge_bases_map[agent_name] = repaired
+                repaired_count += 1
             continue
         
         # Construct the expected deployed KB name
@@ -172,8 +254,13 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
         if not kb_ref:
             continue
         
-        # Skip if already looks like a resolved KB ID (uppercase alphanumeric, 10+ chars)
-        if len(kb_ref) >= 10 and kb_ref.isalnum() and kb_ref.isupper():
+        if looks_like_kb_id(kb_ref):
+            repaired = repair_stale_kb_id(
+                f"agent_configs.{agent_name}.knowledge_base", kb_ref
+            )
+            if repaired:
+                agent_cfg["knowledge_base"] = repaired
+                repaired_count += 1
             continue
         
         # If the value matches a deployed KB name pattern already (e.g., "cbi-Advertising-ibc226"),
@@ -195,8 +282,13 @@ def resolve_knowledge_base_ids(config: Dict[str, Any], stack_prefix: str,
                 print(f"   ✅ agent_configs.{agent_name}.knowledge_base: {kb_ref} -> {kb_base_name_to_id[kb_ref]} (via .kb-ids file)")
                 resolved_count += 1
     
-    if resolved_count > 0:
-        print(f"   📊 Resolved {resolved_count} knowledge base reference(s)")
+    if resolved_count or repaired_count:
+        parts = []
+        if resolved_count:
+            parts.append(f"resolved {resolved_count} name(s)")
+        if repaired_count:
+            parts.append(f"re-resolved {repaired_count} stale id(s)")
+        print(f"   📊 Knowledge base references: {', '.join(parts)}")
     else:
         print(f"   ℹ️  No knowledge base references needed resolution")
     
