@@ -176,7 +176,7 @@ describe('AgentDynamoDBService instruction versions', () => {
     it('archives the existing text before overwriting the pointer', async () => {
       seedUnversionedLive(fake, 'ORIGINAL from the .txt library');
 
-      const ok = await service.saveAgentInstructions(AGENT, 'EDITED in the UI', { author: 'zellest@amazon.com' });
+      const ok = await service.saveAgentInstructions(AGENT, 'EDITED in the UI', { author: 'editor@example.com' });
 
       expect(ok).toBe(true);
       // The deploy-seeded prompt survives as v1 and is still recoverable.
