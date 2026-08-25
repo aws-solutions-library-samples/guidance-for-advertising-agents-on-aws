@@ -1,0 +1,39 @@
+{
+  "_comment": "A4A MCP Gateway configuration — copy the relevant section to your MCP config file. Replace <GATEWAY_URL>, <AWS_PROFILE> and <AWS_REGION> with your deployment's values; the gateway URL is printed by Phase 12 and stored in .quick-gw-<PREFIX>-<UID>.json.",
+  "_paths": {
+    "kiro": "~/.kiro/settings/mcp.json",
+    "quick_desktop": "Settings → Capabilities → MCP Servers → Add (Local)"
+  },
+  "mcpServers": {
+    "_comment_primary": "PRIMARY: mcp-proxy-for-aws (official AWS, SigV4 native, no token management)",
+    "a4a-agents": {
+      "command": "uvx",
+      "timeout": 300000,
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "<GATEWAY_URL>",
+        "--metadata",
+        "AWS_REGION=<AWS_REGION>",
+        "--read-timeout",
+        "300"
+      ],
+      "env": {
+        "AWS_PROFILE": "<AWS_PROFILE>"
+      }
+    },
+    "_comment_fallback": "FALLBACK: npx mcp-remote (if you prefer Node.js or need OAuth for non-AWS auth)",
+    "a4a-agents-npx": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "<GATEWAY_URL>"
+      ],
+      "env": {
+        "AWS_PROFILE": "<AWS_PROFILE>",
+        "AWS_REGION": "<AWS_REGION>"
+      },
+      "disabled": true
+    }
+  }
+}
