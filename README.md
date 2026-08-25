@@ -276,7 +276,8 @@ The deployment process uses a single comprehensive script that handles all infra
 8. **Phase 8**: Deploy AgentCore agents
 9. **Phase 9**: Deploy AAMP agents _(**optional, opt-in** — you are prompted; see [AAMP Agents](#9-aamp-agents-optional))_
 10. **Phase 10**: Generate UI configuration
-11. **Phase 11**: Warm up agent runtimes _(runs last — after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
+11. **Phase 11**: Warm up agent runtimes _(after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
+12. **Phase 12**: Deploy Quick MCP Gateway _(**optional, opt-in** — you are prompted; see [Quick MCP Gateway](#10-quick-mcp-gateway-optional))_
 
 > **Note:** Between Phase 10 and Phase 11 the script runs the **optional, opt-in external A2A agents** step (it prompts in interactive mode and is skipped with `--skip-confirmations`). It is not one of the 11 numbered phases — see [External Agents (A2A)](#7-external-agents-a2a). Warmup (Phase 11) deliberately runs after it.
 
@@ -376,7 +377,8 @@ The deployment script automatically handles:
 - **Phase 8**: Deploy AgentCore agents
 - **Phase 9**: Deploy AAMP agents _(optional, opt-in — skipped by `--skip-confirmations`)_
 - **Phase 10**: Generate UI configuration
-- **Phase 11**: Warm up agent runtimes _(runs last, after the optional external A2A agents step)_
+- **Phase 11**: Warm up agent runtimes _(after the optional external A2A agents step)_
+- **Phase 12**: Deploy Quick MCP Gateway _(optional, opt-in — skipped by `--skip-confirmations`)_
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-a4a-us-east-1`. The name of the file depends on stack-prefix and region.
 
@@ -392,7 +394,8 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 8: Deploy AgentCore agents
 # Phase 9: Deploy AAMP agents (optional, opt-in — add --deploy-aamp to include it)
 # Phase 10: Generate UI configuration
-# Phase 11: Warm up agent runtimes (runs last, after the optional external A2A agents step)
+# Phase 11: Warm up agent runtimes (after the optional external A2A agents step)
+# Phase 12: Deploy Quick MCP Gateway (optional, opt-in — add --deploy-quick-gateway to include it)
 
 ./scripts/deploy-ecosystem.sh \
   --stack-prefix a4a \
@@ -1102,6 +1105,46 @@ aws cognito-idp admin-create-user \
   **⚠️ Cost note:** this provisions **two additional AgentCore runtimes** beyond
   the ones in the standard deployment. They are not included in the cost estimate
   in the [Cost](#cost) section above.
+
+### 10. Quick MCP Gateway (Optional)
+
+  **Phase 12** of `scripts/deploy-ecosystem.sh` puts an Amazon Bedrock AgentCore MCP Gateway in
+  front of the agents so **Amazon Quick Suite** (web and desktop), **Kiro** and **Claude
+  Desktop** can call them as MCP tools — no AWS CLI needed for business users.
+
+  Four tools are exposed: `list_agents`, `get_agent_schema`, `invoke_agent` and
+  `get_agent_conversation`.
+
+  The phase is **optional and opt-in**:
+
+  | How you run the script | What Phase 12 does |
+  | --- | --- |
+  | Interactive, no flag | Asks you |
+  | `--deploy-quick-gateway` | Deploys without prompting |
+  | `--skip-quick-gateway` | Skips without prompting |
+  | `--non-interactive` or `--skip-confirmations` | Skips |
+
+  ```bash
+  # Deploy just the gateway against an existing stack
+  scripts/deploy-ecosystem.sh \
+    --resume-at 12 --deploy-quick-gateway \
+    --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE>
+  ```
+
+  **What it creates:** a Cognito resource server and app client on the user pool your stack
+  already has, an MCP Gateway with a Cognito JWT authorizer, and an IAM role that lets the
+  gateway invoke one Lambda. The app client secret is stored in SSM as a `SecureString` at
+  `/<PREFIX>/quick-gateway/<UID>/client-secret` and is never printed to the deploy log.
+
+  **Skipping is safe.** The `a4a-mcp-handler` Lambda behind the gateway is created in Phase 2
+  with every stack, but without Phase 12 it has no gateway in front of it and an empty
+  `GUIDANCE_RUNTIME_ARN`, so nothing invokes it.
+
+  **Skills:** ready-made Amazon Quick Suite skill definitions live in
+  [`quick-skill/`](quick-skill/). Upload them through the Quick UI to get guided demo flows.
+
+  Full setup instructions for all four access methods, including a manual path that does not
+  use the deployment script: **[docs/QUICK_SETUP_GUIDE.md](docs/QUICK_SETUP_GUIDE.md)**
 
 ## Next Steps 
 

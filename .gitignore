@@ -188,12 +188,7 @@ docs/_training
 # Internal-only docs — not published with the guidance
 docs/CUSTOMER_DATA_GUIDE.md
 docs/DEPLOY_PIPELINE_ISSUES.md
-docs/QUICK_SETUP_GUIDE.md
-docs/SSO_SETUP_GUIDE.md
 
-# Internal-only skill notes (and their local working copies)
-quick-skill/
-_quick-skill/
 
 # Internal-only external agent sources (and their local working copies).
 # The underscore-prefixed directories are local renames kept out of the repo.

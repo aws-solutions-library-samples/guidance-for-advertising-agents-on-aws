@@ -770,6 +770,7 @@ class OAuthGatewayDeployer:
         self.cognito_client = session.client("cognito-idp")
         self.cfn_client = session.client("cloudformation")
         self.sts_client = session.client("sts")
+        self.ssm_client = session.client("ssm")
         self.account_id = self.sts_client.get_caller_identity()["Account"]
         self._session = session
 
@@ -810,11 +811,18 @@ class OAuthGatewayDeployer:
         return ""
 
     def discover_lambda_arns(self) -> dict:
-        """Read existing Lambda ARNs from config files."""
+        """Resolve the A4A MCP handler Lambda ARN.
+
+        Two sources, in order:
+          1. `.a4a-mcp-handler-{prefix}-{id}.json`, written by A4AMCPHandlerDeployer
+             for deployments that used the --iam-target path.
+          2. lambda:GetFunction by name, for deployments where the function is
+             managed by CloudFormation (deploy-ecosystem.sh Phase 2) and so leaves
+             no state file behind.
+        """
         repo_root = Path(__file__).parent.parent.parent
         arns = {}
 
-        # A4A MCP handler ARN
         mcp_config = repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json"
         if mcp_config.exists():
             with open(mcp_config) as f:
@@ -822,20 +830,27 @@ class OAuthGatewayDeployer:
             arns["a4a_mcp_handler"] = config.get("lambda_arn", "")
             logger.info(f"Discovered a4a-mcp-handler ARN: {arns['a4a_mcp_handler']}")
 
+        if not arns.get("a4a_mcp_handler"):
+            function_name = f"{self.stack_prefix}-a4a-mcp-handler-{self.unique_id}"
+            try:
+                session = boto3.Session(profile_name=self.profile) if self.profile else boto3.Session()
+                lambda_client = session.client("lambda", region_name=self.region)
+                response = lambda_client.get_function(FunctionName=function_name)
+                arns["a4a_mcp_handler"] = response["Configuration"]["FunctionArn"]
+                logger.info(f"Resolved a4a-mcp-handler ARN from Lambda: {arns['a4a_mcp_handler']}")
+            except ClientError as e:
+                logger.warning(f"Could not resolve {function_name} via lambda:GetFunction: {e}")
+
         return arns
 
     def validate_prerequisites(self):
         """Validate all prerequisites before any resource creation."""
-        repo_root = Path(__file__).parent.parent.parent
-
-        if not (repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json").exists():
-            logger.error("IAM gateway config not found. Run deploy-ecosystem.sh Phase 6 first.")
-            sys.exit(1)
-
-        if not (repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json").exists():
-            logger.error("A4A MCP handler config not found. Run deploy_a4a_mcp_handler.py --iam-target first.")
-            sys.exit(1)
-
+        # The Lambda ARN is validated by the caller via discover_lambda_arns(), which
+        # falls back to lambda:GetFunction. No state file is required.
+        #
+        # The check for .ads-gw-*.json was removed with the AdCP MCP Gateway. Nothing
+        # writes that file any more, so requiring it made this deployer exit before
+        # creating anything.
         user_pool_id = self.discover_user_pool_id()
         if not user_pool_id:
             logger.error("Cognito User Pool not found. Check CloudFormation stack outputs.")
@@ -1191,6 +1206,31 @@ class OAuthGatewayDeployer:
 
         results["status"] = "success"
 
+        # Step 6: Store the client secret in SSM
+        #
+        # The secret is written to a SecureString parameter and never logged. Printing
+        # it put a live OAuth credential into any captured deploy output.
+        secret_param = f"/{self.stack_prefix}/quick-gateway/{self.unique_id}/client-secret"
+        secret_stored = False
+        if app_client.get("client_secret"):
+            try:
+                self.ssm_client.put_parameter(
+                    Name=secret_param,
+                    Value=app_client["client_secret"],
+                    Type="SecureString",
+                    Overwrite=True,
+                    Description="Cognito app client secret for the Quick MCP Gateway",
+                )
+                secret_stored = True
+                logger.info(f"Stored client secret in SSM: {secret_param}")
+            except ClientError as e:
+                logger.error(f"Could not write the client secret to SSM ({secret_param}): {e}")
+                logger.error("Read it with: aws cognito-idp describe-user-pool-client "
+                             f"--user-pool-id {user_pool_id} --client-id {app_client['client_id']} "
+                             f"--region {self.region} --query UserPoolClient.ClientSecret --output text")
+
+        results["cognito"]["client_secret_ssm_path"] = secret_param if secret_stored else ""
+
         # Output connection config
         logger.info("")
         logger.info("=" * 60)
@@ -1198,7 +1238,6 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info(f"Gateway URL: {gateway['gateway_url']}")
         logger.info(f"Client ID: {app_client['client_id']}")
-        logger.info(f"Client Secret: {app_client['client_secret'][:8]}...{app_client['client_secret'][-4:]}")
         logger.info(f"Token URL: {token_url}")
         logger.info(f"Scope: {self.resource_server_id}/{self.scope_name}")
         logger.info("")
@@ -1206,25 +1245,61 @@ class OAuthGatewayDeployer:
         logger.info("QUICK SUITE WEB — Connection Config")
         logger.info("=" * 60)
         logger.info("In Quick Suite web → Settings → Capabilities → MCP → Add:")
-        logger.info(f"  Name: A4A Advertising Agents")
+        logger.info("  Name: A4A Advertising Agents")
         logger.info(f"  URL: {gateway['gateway_url']}")
-        logger.info(f"  Auth: Service authentication (OAuth)")
+        logger.info("  Auth: Service authentication (OAuth)")
         logger.info(f"  Client ID: {app_client['client_id']}")
-        logger.info(f"  Client Secret: {app_client['client_secret']}")
         logger.info(f"  Token URL: {token_url}")
         logger.info(f"  Authorization URL: {authorization_url}")
         logger.info(f"  Scope: {self.resource_server_id}/{self.scope_name}")
         logger.info("")
+        if secret_stored:
+            logger.info("  Client Secret: stored in SSM. Read it with:")
+            logger.info(f"    aws ssm get-parameter --name {secret_param} \\")
+            logger.info(f"      --with-decryption --query Parameter.Value --output text --region {self.region}")
+        else:
+            logger.info("  Client Secret: NOT stored in SSM — see the error above for how to read it")
+        logger.info("")
 
-        # Save config (redact secret in file)
         results["connection_config"] = {
             "gateway_url": gateway["gateway_url"],
             "client_id": app_client["client_id"],
-            "client_secret": "*** SEE CONSOLE OUTPUT ***",
+            "client_secret_ssm_path": secret_param if secret_stored else "",
             "token_url": token_url,
             "authorization_url": authorization_url,
             "scope": f"{self.resource_server_id}/{self.scope_name}",
         }
+
+        # State file for deploy-ecosystem.sh Phase 12 and the deploy summary.
+        # Carries the SSM path, never the secret value.
+        try:
+            repo_root = Path(__file__).parent.parent.parent
+            state_file = repo_root / f".quick-gw-{self.stack_prefix}-{self.unique_id}.json"
+            with open(state_file, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "stack_prefix": self.stack_prefix,
+                        "unique_id": self.unique_id,
+                        "region": self.region,
+                        "gateway_id": gateway["gateway_id"],
+                        "gateway_url": gateway["gateway_url"],
+                        "gateway_arn": gateway.get("gateway_arn", ""),
+                        "target_name": a4a_target_name,
+                        "client_id": app_client["client_id"],
+                        "client_secret_ssm_path": secret_param if secret_stored else "",
+                        "token_url": token_url,
+                        "authorization_url": authorization_url,
+                        "scope": f"{self.resource_server_id}/{self.scope_name}",
+                        "cognito_domain": domain,
+                        "user_pool_id": user_pool_id,
+                    },
+                    f,
+                    indent=2,
+                )
+                f.write("\n")
+            logger.info(f"Wrote {state_file.name}")
+        except OSError as e:
+            logger.warning(f"Could not write the gateway state file: {e}")
 
         return results
 

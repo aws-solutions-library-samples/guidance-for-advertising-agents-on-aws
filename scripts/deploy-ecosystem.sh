@@ -59,6 +59,10 @@ AAMP_BRANCH="${AAMP_BRANCH:-main}"
 # Whether to run the optional AAMP phase. "true"/"false" decide outright;
 # empty means ask in interactive mode and skip otherwise.
 DEPLOY_AAMP="${DEPLOY_AAMP:-}"
+# Whether to run the optional Quick MCP Gateway phase (Phase 12). Same tri-state as
+# DEPLOY_AAMP: "true"/"false" decide outright; empty means ask in interactive mode and
+# skip otherwise.
+DEPLOY_QUICK_GATEWAY="${DEPLOY_QUICK_GATEWAY:-}"
 CLEANUP_MODE=false
 
 # Colors for output
@@ -1419,6 +1423,7 @@ deploy_infrastructure() {
         "async-image-processor:async_image_processor.py"
         "create-demo-user:create_demo_user.py"
         "creative-image-generator:creative_image_generator.py"
+        "a4a-mcp-handler:a4a_mcp_handler.py"
     )
     
     for lambda_func in "${lambda_functions[@]}"; do
@@ -1481,6 +1486,11 @@ deploy_infrastructure() {
     # Add Lambda S3 parameters for services stack
     services_parameters="$services_parameters ParameterKey=AsyncImageProcessorS3Bucket,ParameterValue=$lambda_bucket"
     services_parameters="$services_parameters ParameterKey=AsyncImageProcessorS3Key,ParameterValue=lambda/async-image-processor.zip"
+    # A4A MCP handler — target behind the optional Quick MCP Gateway (Phase 12).
+    # Deployed with every stack; inert until Phase 12 wires it to a runtime and puts a
+    # gateway in front of it.
+    services_parameters="$services_parameters ParameterKey=A4AMCPHandlerS3Bucket,ParameterValue=$lambda_bucket"
+    services_parameters="$services_parameters ParameterKey=A4AMCPHandlerS3Key,ParameterValue=lambda/a4a-mcp-handler.zip"
     # services_parameters="$services_parameters ParameterKey=VisualizationsLambdaS3Key,ParameterValue=lambda/visualizations-action-group.zip"
     
     if [ -n "$IMAGE_GENERATION_MODEL" ]; then
@@ -3530,6 +3540,9 @@ cleanup_ecosystem() {
     
     # Step 2: Remove any AdCP MCP Gateway left over from a pre-removal deployment
     cleanup_adcp_gateway
+
+    # Step 2b: Remove the optional Quick MCP Gateway (Phase 12) if it was deployed
+    cleanup_quick_gateway
     
     # Step 3: Delete data sources
     cleanup_data_sources
@@ -3557,6 +3570,149 @@ cleanup_ecosystem() {
     
     print_success "🎉 ECOSYSTEM CLEANUP COMPLETED!"
     print_status "All resources have been successfully removed."
+}
+
+# Tear down the optional Quick MCP Gateway (Phase 12) and its Cognito resources.
+#
+# Does NOT delete the Cognito user pool domain. Phase 12 is the only thing that
+# creates that domain, but the UI's SSO sign-in reads the same one, so removing it
+# here would break federated login on a stack where SSO is configured. It goes with
+# the user pool when the CloudFormation stack is deleted.
+#
+# The a4a-mcp-handler Lambda and its role are CloudFormation-managed (Phase 2), so
+# they are removed by the infrastructure stack deletion, not here.
+cleanup_quick_gateway() {
+    print_step "2b. Cleaning up Quick MCP Gateway..."
+
+    local gw_state_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gateway_name="${STACK_PREFIX}-oauth-gw-${UNIQUE_ID}"
+    local role_name="${STACK_PREFIX}-oauth-gw-role-${UNIQUE_ID}"
+    local app_client_name="${STACK_PREFIX}-oauth-gw-client-${UNIQUE_ID}"
+    local resource_server_id="${STACK_PREFIX}-oauth-gw-${UNIQUE_ID}"
+    local secret_param="/${STACK_PREFIX}/quick-gateway/${UNIQUE_ID}/client-secret"
+
+    local gateways_json found_gateway_id=""
+    gateways_json=$(aws_cmd bedrock-agentcore-control list-gateways --region "$AWS_REGION" 2>/dev/null || echo '{"items":[]}')
+    found_gateway_id=$(echo "$gateways_json" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for gw in data.get('items', []):
+        if gw.get('name', '') == '${gateway_name}':
+            print(gw.get('gatewayId', ''))
+            break
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+
+    local role_exists=""
+    aws_cmd iam get-role --role-name "$role_name" >/dev/null 2>&1 && role_exists="true"
+
+    local secret_exists=""
+    aws_cmd ssm get-parameter --name "$secret_param" --region "$AWS_REGION" >/dev/null 2>&1 && secret_exists="true"
+
+    if [ -z "$found_gateway_id" ] && [ -z "$role_exists" ] && [ -z "$secret_exists" ]; then
+        print_status "No Quick MCP Gateway resources found for ${STACK_PREFIX}-${UNIQUE_ID}, skipping..."
+        rm -f "$gw_state_file" 2>/dev/null || true
+        return 0
+    fi
+
+    print_status "Found Quick MCP Gateway resources:"
+    [ -n "$found_gateway_id" ] && print_status "  - MCP Gateway: $found_gateway_id"
+    [ -n "$role_exists" ] && print_status "  - IAM role: $role_name"
+    [ -n "$secret_exists" ] && print_status "  - SSM parameter: $secret_param"
+    print_status "  - Cognito app client and resource server (if present)"
+    print_warning "  The Cognito user pool domain is NOT deleted — the UI's SSO sign-in uses it."
+
+    if [ "$SKIP_CONFIRMATIONS" != true ] && [ "$INTERACTIVE_MODE" = true ]; then
+        printf "Delete Quick MCP Gateway resources for stack ${STACK_PREFIX}-${UNIQUE_ID}? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            print_status "Skipping Quick MCP Gateway cleanup"
+            return 0
+        fi
+    fi
+
+    # Targets first, then the gateway
+    if [ -n "$found_gateway_id" ]; then
+        local targets_json target_ids
+        targets_json=$(aws_cmd bedrock-agentcore-control list-gateway-targets \
+            --gateway-identifier "$found_gateway_id" --region "$AWS_REGION" 2>/dev/null || echo '{"items":[]}')
+        target_ids=$(echo "$targets_json" | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for t in data.get('items', []):
+        tid = t.get('targetId')
+        if tid:
+            print(tid)
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+        for target_id in $target_ids; do
+            print_status "Deleting gateway target: $target_id"
+            aws_cmd bedrock-agentcore-control delete-gateway-target \
+                --gateway-identifier "$found_gateway_id" --target-id "$target_id" \
+                --region "$AWS_REGION" >/dev/null 2>&1 || \
+                print_warning "  Could not delete target $target_id"
+        done
+
+        print_status "Deleting MCP Gateway: $found_gateway_id"
+        aws_cmd bedrock-agentcore-control delete-gateway \
+            --gateway-identifier "$found_gateway_id" --region "$AWS_REGION" >/dev/null 2>&1 || \
+            print_warning "  Could not delete gateway $found_gateway_id"
+    fi
+
+    # Gateway IAM role: inline policy first, then the role
+    if [ -n "$role_exists" ]; then
+        print_status "Deleting IAM role: $role_name"
+        aws_cmd iam delete-role-policy --role-name "$role_name" \
+            --policy-name "oauth-gw-lambda-invoke" >/dev/null 2>&1 || true
+        aws_cmd iam delete-role --role-name "$role_name" >/dev/null 2>&1 || \
+            print_warning "  Could not delete role $role_name"
+    fi
+
+    # SSM secret
+    if [ -n "$secret_exists" ]; then
+        print_status "Deleting SSM parameter: $secret_param"
+        aws_cmd ssm delete-parameter --name "$secret_param" --region "$AWS_REGION" >/dev/null 2>&1 || \
+            print_warning "  Could not delete $secret_param"
+    fi
+
+    # Cognito app client and resource server
+    local user_pool_id
+    user_pool_id=$(get_stack_output "${STACK_PREFIX}-infrastructure-core" "UserPoolId")
+    if [ -n "$user_pool_id" ] && [ "$user_pool_id" != "None" ]; then
+        local client_id
+        client_id=$(aws_cmd cognito-idp list-user-pool-clients --user-pool-id "$user_pool_id" \
+            --max-results 60 --region "$AWS_REGION" 2>/dev/null | $PYTHON_CMD -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for c in data.get('UserPoolClients', []):
+        if c.get('ClientName') == '${app_client_name}':
+            print(c.get('ClientId', ''))
+            break
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+        if [ -n "$client_id" ]; then
+            print_status "Deleting Cognito app client: $app_client_name"
+            aws_cmd cognito-idp delete-user-pool-client --user-pool-id "$user_pool_id" \
+                --client-id "$client_id" --region "$AWS_REGION" >/dev/null 2>&1 || \
+                print_warning "  Could not delete app client $client_id"
+        fi
+
+        print_status "Deleting Cognito resource server: $resource_server_id"
+        aws_cmd cognito-idp delete-resource-server --user-pool-id "$user_pool_id" \
+            --identifier "$resource_server_id" --region "$AWS_REGION" >/dev/null 2>&1 || true
+    else
+        print_warning "  Could not resolve the user pool; Cognito app client and resource server left in place."
+    fi
+
+    rm -f "$gw_state_file" 2>/dev/null || true
+    print_success "✅ Quick MCP Gateway cleanup complete"
+    return 0
 }
 
 # Tear down an AdCP MCP Gateway, its handler Lambda, IAM role, and SSM parameter.
@@ -4501,6 +4657,14 @@ parse_args() {
                 DEPLOY_AAMP=false
                 shift
                 ;;
+            --deploy-quick-gateway)
+                DEPLOY_QUICK_GATEWAY=true
+                shift
+                ;;
+            --skip-quick-gateway)
+                DEPLOY_QUICK_GATEWAY=false
+                shift
+                ;;
             --non-interactive)
                 INTERACTIVE_MODE=false
                 shift
@@ -4537,11 +4701,13 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-11)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
     echo "  --local-aamp PATH        Use local IAB AAMP repos (dir containing seller-agent/ and buyer-agent/) instead of cloning"
     echo "  --aamp-branch BRANCH     Branch to checkout in IAB repos when cloning (default: main)"
     echo "  --deploy-aamp            Deploy the optional AAMP agents (Phase 9) without prompting"
     echo "  --skip-aamp              Skip the optional AAMP agents (Phase 9) without prompting"
+    echo "  --deploy-quick-gateway   Deploy the optional Quick MCP Gateway (Phase 12) without prompting"
+    echo "  --skip-quick-gateway     Skip the optional Quick MCP Gateway (Phase 12) without prompting"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
@@ -4556,6 +4722,7 @@ show_usage() {
     echo "  $0 --resume-at 8                     # Resume from step 8 (Deploy AgentCore agents)"
     echo "  $0 --resume-at 7 --skip-confirmations # Resume from step 7 (DynamoDB upload) without update confirmations"
     echo "  $0 --resume-at 9 --deploy-aamp       # Deploy just the optional AAMP agents (then UI + warmup)"
+    echo "  $0 --resume-at 12 --deploy-quick-gateway # Deploy just the optional Quick MCP Gateway"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4640,6 +4807,7 @@ confirm_deployment_steps() {
         "Phase 9: Deploy AAMP agents (optional — you will be asked)"
         "Phase 10: Generate UI configuration"
         "Phase 11: Warmup agent runtimes"
+        "Phase 12: Deploy Quick MCP Gateway (optional — you will be asked)"
     )
     
     print_status "The following steps will be executed:"
@@ -5090,6 +5258,253 @@ prompt_and_deploy_aamp_agents() {
     deploy_aamp_agents
 }
 
+# =============================================================================
+# Phase 12 (optional): Quick MCP Gateway
+# =============================================================================
+# Puts an AgentCore MCP Gateway in front of the a4a-mcp-handler Lambda so Amazon
+# Quick Suite web, Quick Desktop, Kiro and Claude Desktop can call the agents.
+#
+# The Lambda itself is deployed with every stack in Phase 2 (it is in the Phase 2
+# packaging list and defined in infrastructure-services.yml). Without this phase it
+# has no caller and an empty GUIDANCE_RUNTIME_ARN, so it is inert.
+#
+# Ordering: the gateway target points at the Lambda, and the Lambda invokes the
+# AgentCore runtime, so this must run after Phase 2 (Lambda) and Phase 8 (runtime).
+# That is why it sits at the end rather than next to the other Lambda work.
+
+# Resolve the deployed AdFabricAgent runtime ARN from the Phase 8 state file.
+# Echoes the ARN, or nothing if it cannot be determined.
+_quick_gw_runtime_arn() {
+    local state_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    [ -f "$state_file" ] || return 0
+    "${PYTHON_CMD:-python3}" -c "
+import json, sys
+try:
+    with open('${state_file}') as f:
+        data = json.load(f)
+    for agent in data.get('deployed_agents') or []:
+        arn = agent.get('runtime_arn')
+        if arn:
+            print(arn)
+            break
+except Exception:
+    pass
+" 2>/dev/null
+}
+
+# Narrow the Lambda role's InvokeAgentRuntime statement from runtime/* to the specific
+# runtime ARN. The role is created by CloudFormation in Phase 2, before the runtime
+# exists, so the wildcard is unavoidable at creation time — this is where it gets fixed.
+_quick_gw_narrow_role_policy() {
+    local runtime_arn="$1"
+    local role_name="${STACK_PREFIX}-a4a-mcp-role-${UNIQUE_ID}"
+    local table_name="${STACK_PREFIX}-AgentConfig-${UNIQUE_ID}"
+    local log_group="/aws/lambda/${STACK_PREFIX}-a4a-mcp-handler-${UNIQUE_ID}"
+    local account_id
+    account_id=$(aws_cmd sts get-caller-identity --query Account --output text 2>/dev/null)
+    if [ -z "$account_id" ] || [ "$account_id" = "None" ]; then
+        print_warning "   Could not resolve account id; leaving the role policy at runtime/*"
+        return 1
+    fi
+
+    local policy
+    policy=$("${PYTHON_CMD:-python3}" -c "
+import json
+runtime_arn = '''${runtime_arn}'''
+region = '''${AWS_REGION}'''
+account = '''${account_id}'''
+table = '''${table_name}'''
+log_group = '''${log_group}'''
+policy = {
+    'Version': '2012-10-17',
+    'Statement': [
+        {
+            'Sid': 'InvokeAgentRuntime',
+            'Effect': 'Allow',
+            'Action': ['bedrock-agentcore:InvokeAgentRuntime'],
+            'Resource': [runtime_arn, runtime_arn + '/runtime-endpoint/*'],
+        },
+        {
+            'Sid': 'AgentCoreMemoryRead',
+            'Effect': 'Allow',
+            'Action': [
+                'bedrock-agentcore:GetMemory',
+                'bedrock-agentcore:GetMemoryEvent',
+                'bedrock-agentcore:ListMemoryEvents',
+                'bedrock-agentcore:ListEvents',
+                'bedrock-agentcore:SearchMemory',
+            ],
+            'Resource': ['arn:aws:bedrock-agentcore:%s:%s:memory/*' % (region, account)],
+        },
+        {
+            'Sid': 'DynamoDBReadOnly',
+            'Effect': 'Allow',
+            'Action': ['dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:Scan'],
+            'Resource': [
+                'arn:aws:dynamodb:%s:%s:table/%s' % (region, account, table),
+                'arn:aws:dynamodb:%s:%s:table/%s/index/*' % (region, account, table),
+            ],
+        },
+        {
+            'Sid': 'CloudWatchLogs',
+            'Effect': 'Allow',
+            'Action': ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+            'Resource': ['arn:aws:logs:%s:%s:log-group:%s:*' % (region, account, log_group)],
+        },
+        {
+            'Sid': 'CloudWatchMetrics',
+            'Effect': 'Allow',
+            'Action': ['cloudwatch:PutMetricData'],
+            'Resource': ['*'],
+            'Condition': {'StringEquals': {'cloudwatch:namespace': 'A4A/MCPHandler'}},
+        },
+    ],
+}
+print(json.dumps(policy))
+" 2>/dev/null)
+
+    if [ -z "$policy" ]; then
+        print_warning "   Could not build the narrowed policy; leaving it at runtime/*"
+        return 1
+    fi
+
+    if aws_cmd iam put-role-policy \
+        --role-name "$role_name" \
+        --policy-name "a4a-mcp-handler-policy" \
+        --policy-document "$policy" >/dev/null 2>&1; then
+        print_success "   ✅ Lambda role InvokeAgentRuntime narrowed to the deployed runtime"
+        return 0
+    fi
+    print_warning "   Could not narrow the Lambda role policy; it remains scoped to runtime/*"
+    return 1
+}
+
+deploy_quick_gateway() {
+    print_step "Step 12: Deploying Quick MCP Gateway..."
+
+    local mcp_deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_a4a_mcp_handler.py"
+    local lambda_name="${STACK_PREFIX}-a4a-mcp-handler-${UNIQUE_ID}"
+    local gw_state_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+
+    # ── Preflight ────────────────────────────────────────────────────────
+    # Every check names what is missing and which phase provides it. Nothing is
+    # created until all of them pass, so a failed preflight leaves no partial state.
+    if [ ! -f "$mcp_deploy_script" ]; then
+        print_error "❌ Gateway deploy script not found: $mcp_deploy_script"
+        return 1
+    fi
+
+    local _qg_py="${PYTHON_CMD:-python3}"
+    if "$_qg_py" -c "import boto3" >/dev/null 2>&1; then
+        if ! "$_qg_py" -c "import boto3; boto3.client('sts').get_caller_identity()" >/dev/null 2>&1; then
+            print_error "❌ AWS credentials are not resolvable by the AWS SDK (boto3)."
+            print_error "   Configure credentials for the SDK's standard credential chain, then re-run this phase."
+            return 1
+        fi
+    fi
+
+    if ! aws_cmd lambda get-function --function-name "$lambda_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+        print_error "❌ Lambda not found: $lambda_name"
+        print_error "   It is created in Phase 2 (Deploy infrastructure). Run Phase 2 first."
+        return 1
+    fi
+
+    local runtime_arn
+    runtime_arn=$(_quick_gw_runtime_arn)
+    if [ -z "$runtime_arn" ]; then
+        print_error "❌ Could not determine the AgentCore runtime ARN."
+        print_error "   It is recorded by Phase 8 (Deploy AgentCore agents) in"
+        print_error "   .agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json. Run Phase 8 first."
+        return 1
+    fi
+    print_status "   Runtime: ${runtime_arn}"
+
+    local user_pool_id
+    user_pool_id=$(get_stack_output "${STACK_PREFIX}-infrastructure-core" "UserPoolId")
+    if [ -z "$user_pool_id" ] || [ "$user_pool_id" = "None" ]; then
+        print_error "❌ Could not resolve the Cognito user pool from stack outputs."
+        print_error "   It is created in Phase 2 (Deploy infrastructure). Run Phase 2 first."
+        return 1
+    fi
+
+    # ── Wire the Lambda to the runtime ───────────────────────────────────
+    print_status "🔗 Wiring the Lambda to the AgentCore runtime..."
+    if ! aws_cmd lambda update-function-configuration \
+        --function-name "$lambda_name" \
+        --environment "Variables={AGENT_CONFIG_TABLE=${STACK_PREFIX}-AgentConfig-${UNIQUE_ID},GUIDANCE_RUNTIME_ARN=${runtime_arn}}" \
+        --region "$AWS_REGION" >/dev/null 2>&1; then
+        print_error "❌ Could not set GUIDANCE_RUNTIME_ARN on $lambda_name."
+        print_error "   No gateway was created. Fix the Lambda update and re-run this phase."
+        return 1
+    fi
+    print_success "   ✅ GUIDANCE_RUNTIME_ARN set"
+
+    _quick_gw_narrow_role_policy "$runtime_arn" || true
+
+    # ── Deploy the gateway ───────────────────────────────────────────────
+    print_status "🚪 Creating the OAuth MCP Gateway (Cognito CUSTOM_JWT)..."
+    local gw_cmd="$_qg_py \"$mcp_deploy_script\" --mode oauth-cognito \
+        --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+    if [ -n "$AWS_PROFILE" ]; then
+        gw_cmd="$gw_cmd --profile $AWS_PROFILE"
+    fi
+
+    if ! eval "$gw_cmd"; then
+        print_error "❌ Quick MCP Gateway deployment failed."
+        print_error "   Re-running this phase is safe — every step is idempotent."
+        return 1
+    fi
+
+    print_success "✅ Quick MCP Gateway deployed"
+    if [ -f "$gw_state_file" ]; then
+        print_status "   Connection details: $(basename "$gw_state_file")"
+    fi
+    print_status "   Setup guide: docs/QUICK_SETUP_GUIDE.md"
+    print_status "   Client secret is stored in SSM, not printed:"
+    print_status "     aws ssm get-parameter --name /${STACK_PREFIX}/quick-gateway/${UNIQUE_ID}/client-secret --with-decryption --query Parameter.Value --output text --region $AWS_REGION"
+    return 0
+}
+
+# Phase 12 (optional): gate deploy_quick_gateway() behind an explicit choice.
+# Precedence matches the AAMP phase: --deploy-quick-gateway/--skip-quick-gateway win
+# outright; otherwise interactive runs are asked and non-interactive runs skip.
+prompt_and_deploy_quick_gateway() {
+    if [ "$DEPLOY_QUICK_GATEWAY" = "false" ]; then
+        print_status "⏭️  Step 12: Skipping Quick MCP Gateway (--skip-quick-gateway)."
+        return 0
+    fi
+
+    if [ "$DEPLOY_QUICK_GATEWAY" != "true" ]; then
+        echo ""
+        print_status "=========================================="
+        print_status "🚪 STEP 12 (OPTIONAL): Quick MCP Gateway"
+        print_status "=========================================="
+        print_status "Puts an MCP Gateway in front of the agents so Amazon Quick Suite web,"
+        print_status "Quick Desktop, Kiro and Claude Desktop can call them."
+        print_status "Creates: a Cognito app client and resource server, an MCP Gateway with a"
+        print_status "Cognito JWT authorizer, and an IAM role for the gateway."
+        print_status "Skipping is safe — nothing else in the deployment depends on it."
+
+        if [ "$INTERACTIVE_MODE" != true ] || [ "$SKIP_CONFIRMATIONS" = true ]; then
+            print_status "Non-interactive mode: skipping the Quick MCP Gateway."
+            print_status "Deploy later with:"
+            print_status "  $0 --resume-at 12 --deploy-quick-gateway --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+
+        printf "Deploy the Quick MCP Gateway now? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            print_status "Skipping the Quick MCP Gateway."
+            print_status "You can deploy it later with:"
+            print_status "  $0 --resume-at 12 --deploy-quick-gateway --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+    fi
+
+    deploy_quick_gateway
+}
+
 # Function to optionally deploy the external A2A agents
 # Prompts the user at the end of deployment and, if accepted, runs
 # external-agents/deploy_external_agents.py for each external agent,
@@ -5364,6 +5779,13 @@ main() {
     if [ "$RESUME_AT_STEP" -le 11 ]; then
         warmup_agent_runtimes
     fi
+
+    # Phase 12: optional Quick MCP Gateway. Appended after warmup so no existing phase
+    # number changes — the gateway is only consumed by MCP clients via the setup guide,
+    # not by the UI config generated in Phase 10.
+    if [ "$RESUME_AT_STEP" -le 12 ]; then
+        prompt_and_deploy_quick_gateway
+    fi
     
     # Optional: deploy external A2A agents (prompts the user; passes variables automatically)
     # --- TEMPORARILY BACKED OUT: AdCreationAgent + AdCPSellerAgent ---
@@ -5395,6 +5817,28 @@ main() {
         print_status "  ✅ AAMP Agents: Deployed (IAB buyer & seller runtimes)"
     else
         print_status "  ⏭️  AAMP Agents: Not deployed (optional Step 9 — re-run with --resume-at 9 --deploy-aamp)"
+    fi
+
+    # Quick MCP Gateway is optional (Step 12) — report only what was actually deployed
+    local quick_gw_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    if [ -f "$quick_gw_file" ]; then
+        local quick_gw_url
+        quick_gw_url=$("${PYTHON_CMD:-python3}" -c "
+import json
+try:
+    with open('${quick_gw_file}') as f:
+        print((json.load(f) or {}).get('gateway_url', ''))
+except Exception:
+    pass
+" 2>/dev/null)
+        if [ -n "$quick_gw_url" ]; then
+            print_status "  ✅ Quick MCP Gateway: $quick_gw_url"
+        else
+            print_status "  ✅ Quick MCP Gateway: Deployed (see $(basename "$quick_gw_file"))"
+        fi
+        print_status "     Setup guide: docs/QUICK_SETUP_GUIDE.md"
+    else
+        print_status "  ⏭️  Quick MCP Gateway: Not deployed (optional Step 12 — re-run with --resume-at 12 --deploy-quick-gateway)"
     fi
 
     # Check if AgentCore agents were actually deployed by looking at the file
