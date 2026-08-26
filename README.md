@@ -44,6 +44,8 @@ This guidance provides an agentic solution that delivers:
 - **Cost-Optimized Model Assignment**: Intelligent foundation model selection based on task complexity
 - **Real-Time Creative Generation**: Amazon Nova Canvas integration for dynamic image creation
 - **UI-Generated Visualizations**: Automatic detection and rendering of visualization-worthy data from agent responses (allocations, timelines, metrics, channels, and more)
+- **Access from AI Desktop Apps (Optional)**: An MCP Gateway exposes the agents as tools to **Amazon Quick Suite** (web and desktop), **Kiro** and **Claude Desktop**, so business users can reach the agents from where they already work — no AWS CLI, no terminal. Ships with ready-made Quick Suite **skill definitions** for guided media planning and deal negotiation flows
+- **Federated Sign-In (Optional)**: The UI supports SSO through any OIDC identity provider registered in the Cognito user pool (Okta, Microsoft Entra ID, Ping, or your own), alongside the default email and password sign-in. Entirely configuration-driven — no identity provider details in the application code
 
 ### Architecture
 
@@ -61,16 +63,33 @@ This guidance provides an agentic solution that delivers:
 - **External API Integration**: Real-time data from weather services, social media platforms, and competitive intelligence feeds
 - **External A2A Agents**: Optionally deploy standalone agents (e.g. AdCreationAgent, AAMP Seller Agent) to their own AgentCore runtime, invoked by the main agents over the A2A protocol with IAM, Cognito OAuth, or static Bearer Token inbound auth (see [`external-agents/`](external-agents/README.md))
 - **Invocation Notification Hook**: Optionally configure any agent to fire a webhook notification (fire-and-forget, no response awaited) to an external endpoint every time it's invoked with a real user prompt — useful for driving an external display, log sink, or workflow trigger
+- **Quick MCP Gateway (Optional)**: An AgentCore MCP Gateway fronting a single Lambda target, exposing four tools — `list_agents`, `get_agent_schema`, `invoke_agent` and `get_agent_conversation`. Inbound auth is a Cognito JWT authorizer scoped to one app client. Long-running orchestrator calls fall back to an async polling pattern so MCP clients are never left waiting on a timeout (see [Quick MCP Gateway](#10-quick-mcp-gateway-optional))
+- **Quick Suite Skills**: Uploadable skill definitions in [`quick-skill/`](quick-skill/) that drive guided demo flows — a full platform skill, a media planning assistant with an RFP response flow, and a 3-step AAMP deal negotiation walkthrough
+- **Cognito Federated Identity (Optional)**: OIDC federation on the existing user pool, with the identity provider name and hosted-UI domain supplied at deploy time rather than compiled in (see [Enabling SSO](#11-enabling-sso-optional))
 
 ### Cost 
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of July 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $371.31 per month, assuming daily usage (see cost breakdown for details)._
+_You are responsible for the cost of the AWS services used while running this Guidance. As of July 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $371.41 per month, assuming daily usage (see cost breakdown for details)._
 
 The AgentCore deployment model provides cost advantages through:
 - **Pay-per-use container runtime**: Only pay when agents are actively processing requests
 - **Shared infrastructure**: Multiple agents share the same AgentCore runtime reducing overhead
 - **Optimized model usage**: Intelligent foundation model assignment (Claude Sonnet 5 for orchestrators, with the option to switch specialists to Claude Haiku 4.5 for further cost savings)
 - **Dynamic scaling**: Container-based agents scale automatically based on demand
+
+**Cost of the optional capabilities.** Both optional features are close to free at demo scale, and
+neither is deployed unless you opt in:
+
+- **Quick MCP Gateway (Phase 12)** adds a gateway priced per API call — `InvokeTool` at $5 per
+  million and gateway operations such as `ListTools` and health checks — plus one Lambda. With
+  four tools, no semantic-search indexing, and demo-scale usage, this is cents per month. It is
+  the only optional capability that creates billable resources.
+- **Federated sign-in (SSO)** creates **no new AWS resources at all**. It uses the Cognito user
+  pool the stack already has, and a Cognito prefix hosted-UI domain carries no charge. Federated
+  users do count toward Cognito monthly-active-user pricing, which has a smaller free tier for
+  OIDC and SAML users than for native user-pool users — still $0 at demo scale, but worth knowing
+  if you scale the number of sign-ins.
+- **Quick Suite skills** are markdown files uploaded through the Quick UI. No AWS cost.
 
 _We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. This estimate reflects the AWS services and configuration in the current architecture; you are encouraged to review newer AWS services or features that may offer more cost-effective ways to run this workload and to apply them as optimizations. The repository maintainers periodically update this Guidance to reflect updated best practices. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
 
@@ -81,19 +100,20 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | AWS service | Dimensions | Monthly Cost [USD] |
 | ----------- | ------------ | ------------ |
 | Amazon Bedrock Foundation Models | Claude Sonnet 5 (orchestrators) + Haiku 4.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
-| Amazon Bedrock AgentCore | AgentCore Runtime (container invocations), AgentCore Memory (short-term + summary/semantic), AgentCore Gateway (MCP over IAM SigV4); average session duration of 45 minutes | $24.00 |
+| Amazon Bedrock AgentCore | AgentCore Runtime (container invocations) and AgentCore Memory (short-term + summary/semantic); average session duration of 45 minutes | $24.00 |
+| Amazon Bedrock AgentCore Gateway | **Optional (Phase 12)** — Quick MCP Gateway. Priced per API call: `InvokeTool` at $5 per million, plus gateway operations (`ListTools`, health checks). 4 tools registered from a static schema, so no semantic-search indexing charge. Demo-scale Quick Suite, Kiro and Claude Desktop use. **$0.00 if the phase is skipped** | $0.10 |
 | Amazon Bedrock — Nova Sonic (voice) | Bidirectional speech-to-speech streaming for the voice interface, priced per minute of audio in/out; occasional demo use | $6.00 |
 | Amazon Bedrock — Image models (Nova Canvas / SD 3.5) | Creative generation via the asynchronous image pipeline | $3.00 |
 | Amazon OpenSearch Serverless | Knowledge base vector collection, indexing and search OCUs (dominant fixed cost) | $219.00 |
 | Amazon DynamoDB | 3 on-demand (pay-per-request) tables: AgentConfig (instructions, cards, visualization maps, global/tab config), ImageStatus (async job state), Visualizations (maps + templates); config read on every agent invocation | $70.31 |
 | Amazon S3 | 4 buckets: knowledge base source data (5GB), UI static hosting (OAC), generated content, and services bucket | $3.00 |
-| AWS Lambda | 5 MCP tool-target and pipeline functions: AdCP tools, agents-as-tools, audience taxonomy, image request, and async image processor | $2.50 |
+| AWS Lambda | Pipeline and MCP tool-target functions: creative image request, async image processor, demo user custom resource, and the `a4a-mcp-handler` MCP target behind the optional Quick Gateway. The MCP handler is deployed with every stack but is only invoked when Phase 12 is enabled, so it contributes nothing to this figure otherwise | $2.50 |
 | AWS WAF | Web ACL with AWS common managed rule set fronting the CloudFront distribution | $6.00 |
 | Amazon CloudWatch | AgentCore observability — logs, metrics, and traces | $5.00 |
 | AWS CloudFront | Global content delivery for the demo interface | $0.50 |
-| Amazon Cognito | User Pool + Identity Pool for authentication (within free tier at demo scale) | $0.00 |
-| AWS Systems Manager | Parameter Store (standard parameters for gateway/runtime config). Additional authenticated connections (bearer-token notification hooks, A2A credential providers) add SSM SecureString / Secrets Manager charges — see the Invocation Notification Hook cost note | $0.00 |
-| **Total** | | **~$371.31** |
+| Amazon Cognito | User Pool + Identity Pool for authentication, the hosted-UI prefix domain (no charge), and — when SSO is enabled — OIDC federated sign-in. Within free tier at demo scale. Note that federated OIDC/SAML monthly active users have a smaller free tier than native user-pool users | $0.00 |
+| AWS Systems Manager | Parameter Store standard parameters for runtime config, plus a `SecureString` holding the Quick Gateway app-client secret (AWS-managed key, no charge). Additional authenticated connections (bearer-token notification hooks, A2A credential providers) add SSM SecureString / Secrets Manager charges — see the Invocation Notification Hook cost note | $0.00 |
+| **Total** | Includes both optional capabilities. Skipping Phase 12 brings this to ~$371.31 | **~$371.41** |
 
 ## Prerequisites 
 
