@@ -917,7 +917,10 @@ class OAuthGatewayDeployer:
             raise
 
     def create_app_client(self, user_pool_id: str) -> dict:
-        """Create App Client with client_credentials flow. Returns {client_id, client_secret}."""
+        """Create the app client for the authorization code flow.
+
+        Returns {client_id, client_secret}. Reuses an existing client of the same name.
+        """
         # Check if client already exists
         try:
             response = self.cognito_client.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
@@ -936,20 +939,37 @@ class OAuthGatewayDeployer:
         except ClientError:
             pass
 
-        # Create new client — needs both code + client_credentials flows
-        # code flow: for Quick Suite web (user login via hosted UI)
-        # client_credentials: for service-to-service (programmatic access)
+        # Authorization code flow only.
+        #
+        # Cognito rejects client_credentials combined with code or implicit:
+        #   InvalidOAuthFlowException: client_credentials flow can not be selected
+        #   along with code flow or implicit flow
+        # so requesting both never created a client at all.
+        #
+        # `code` is the flow that is actually used. Quick Suite is configured with
+        # "User authentication -> Custom user based OAuth": on save it opens the Cognito
+        # hosted login, the user signs in, and Quick exchanges the authorization code —
+        # which is why it asks for an Authorization URL and a callback is registered
+        # below. The other documented clients (Kiro, Claude Desktop) authenticate with
+        # SigV4 via mcp-proxy-for-aws and never use this client, so nothing consumes a
+        # machine-to-machine token here.
+        #
+        # If a service-to-service caller is ever needed, it takes a second app client
+        # with client_credentials — the two flows cannot share one.
         scope_custom = f"{self.resource_server_id}/{self.scope_name}"
         response = self.cognito_client.create_user_pool_client(
             UserPoolId=user_pool_id,
             ClientName=self.app_client_name,
             GenerateSecret=True,
             SupportedIdentityProviders=["COGNITO"],
-            AllowedOAuthFlows=["client_credentials", "code"],
+            AllowedOAuthFlows=["code"],
             AllowedOAuthScopes=[scope_custom, "openid", "email", "profile"],
             AllowedOAuthFlowsUserPoolClient=True,
             CallbackURLs=[
+                # Quick Suite's OAuth callback. us-east-1 for every customer
+                # regardless of deployment region — that is where the endpoint lives.
                 "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback",
+                # Local OAuth testing without Quick Suite.
                 "http://localhost:3000/callback",
             ],
         )
