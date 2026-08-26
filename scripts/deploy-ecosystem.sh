@@ -3591,7 +3591,7 @@ cleanup_ecosystem() {
 cleanup_quick_gateway() {
     print_step "2b. Cleaning up Quick MCP Gateway..."
 
-    local gw_state_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local gw_state_file="${PROJECT_ROOT}/.oauth-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     local gateway_name="${STACK_PREFIX}-oauth-gw-${UNIQUE_ID}"
     local role_name="${STACK_PREFIX}-oauth-gw-role-${UNIQUE_ID}"
     local app_client_name="${STACK_PREFIX}-oauth-gw-client-${UNIQUE_ID}"
@@ -5403,7 +5403,9 @@ deploy_quick_gateway() {
 
     local mcp_deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_a4a_mcp_handler.py"
     local lambda_name="${STACK_PREFIX}-a4a-mcp-handler-${UNIQUE_ID}"
-    local gw_state_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    # Written by deploy_a4a_mcp_handler.py's main(); also what the schema-updater mode
+    # and the cleanup path read.
+    local gw_state_file="${PROJECT_ROOT}/.oauth-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
 
     # ── Preflight ────────────────────────────────────────────────────────
     # Every check names what is missing and which phase provides it. Nothing is
@@ -5839,14 +5841,17 @@ main() {
     fi
 
     # Quick MCP Gateway is optional (Step 12) — report only what was actually deployed
-    local quick_gw_file="${PROJECT_ROOT}/.quick-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
+    local quick_gw_file="${PROJECT_ROOT}/.oauth-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$quick_gw_file" ]; then
         local quick_gw_url
+        # The URL sits under oauth_gateway, with connection_config as a fallback.
         quick_gw_url=$("${PYTHON_CMD:-python3}" -c "
 import json
 try:
     with open('${quick_gw_file}') as f:
-        print((json.load(f) or {}).get('gateway_url', ''))
+        d = json.load(f) or {}
+    print((d.get('oauth_gateway') or {}).get('gateway_url')
+          or (d.get('connection_config') or {}).get('gateway_url', ''))
 except Exception:
     pass
 " 2>/dev/null)

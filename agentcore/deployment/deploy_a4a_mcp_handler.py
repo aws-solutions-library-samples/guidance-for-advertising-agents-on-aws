@@ -1290,37 +1290,12 @@ class OAuthGatewayDeployer:
             "scope": f"{self.resource_server_id}/{self.scope_name}",
         }
 
-        # State file for deploy-ecosystem.sh Phase 12 and the deploy summary.
-        # Carries the SSM path, never the secret value.
-        try:
-            repo_root = Path(__file__).parent.parent.parent
-            state_file = repo_root / f".quick-gw-{self.stack_prefix}-{self.unique_id}.json"
-            with open(state_file, "w", encoding="utf-8") as f:
-                json.dump(
-                    {
-                        "stack_prefix": self.stack_prefix,
-                        "unique_id": self.unique_id,
-                        "region": self.region,
-                        "gateway_id": gateway["gateway_id"],
-                        "gateway_url": gateway["gateway_url"],
-                        "gateway_arn": gateway.get("gateway_arn", ""),
-                        "target_name": a4a_target_name,
-                        "client_id": app_client["client_id"],
-                        "client_secret_ssm_path": secret_param if secret_stored else "",
-                        "token_url": token_url,
-                        "authorization_url": authorization_url,
-                        "scope": f"{self.resource_server_id}/{self.scope_name}",
-                        "cognito_domain": domain,
-                        "user_pool_id": user_pool_id,
-                    },
-                    f,
-                    indent=2,
-                )
-                f.write("\n")
-            logger.info(f"Wrote {state_file.name}")
-        except OSError as e:
-            logger.warning(f"Could not write the gateway state file: {e}")
-
+        # No state file is written here. main() persists this whole `results` dict to
+        # .oauth-gw-{prefix}-{unique_id}.json, which is the convention the rest of the
+        # tooling already reads — TargetSchemaUpdater.discover_all_gateways() and the
+        # cleanup path both look there. Because client_secret_ssm_path was added to
+        # results["cognito"] and results["connection_config"] above, that file already
+        # carries everything a consumer needs, and still no secret value.
         return results
 
 
