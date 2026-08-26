@@ -1146,6 +1146,45 @@ aws cognito-idp admin-create-user \
   Full setup instructions for all four access methods, including a manual path that does not
   use the deployment script: **[docs/QUICK_SETUP_GUIDE.md](docs/QUICK_SETUP_GUIDE.md)**
 
+### 11. Enabling SSO (Optional)
+
+  The UI signs users in with a Cognito email and password by default. It can also offer
+  **federated sign-in** through any OIDC identity provider registered in the Cognito user pool —
+  Okta, Microsoft Entra ID, Ping, or your own.
+
+  This is **configuration-driven**. Nothing about your identity provider is hardcoded in the
+  application. Pass the provider name at deploy time and the UI renders an SSO button; omit it
+  and the login page is unchanged.
+
+  ```bash
+  # Deploy with SSO enabled
+  scripts/deploy-ecosystem.sh \
+    --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE> \
+    --sso-provider <IDP_NAME> \
+    --sso-label "Sign in with SSO"
+
+  # Or just regenerate the UI config on an existing stack (Phase 10)
+  scripts/deploy-ecosystem.sh --resume-at 10 \
+    --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE> \
+    --sso-provider <IDP_NAME>
+  ```
+
+  | Flag | Purpose |
+  | --- | --- |
+  | `--sso-provider NAME` | Identity provider name **exactly as registered in Cognito** (e.g. `OktaOIDC`, `AzureAD`) |
+  | `--sso-label LABEL` | Button text (default: `Sign in with SSO`) |
+
+  **Two prerequisites the deployment does not create for you**, both manual and both covered in
+  the guide: a Cognito hosted-UI **domain** on the user pool, and the **identity provider**
+  registered in that pool. If either is missing, no `sso` block is written to `aws-config.json`
+  and the UI falls back to email and password with no error. The generator tells you which one
+  is missing.
+
+  > If you deployed the optional Quick MCP Gateway (Phase 12), the Cognito domain already exists
+  > — it creates one as a side effect. Both features share that single domain.
+
+  Step-by-step for any OIDC provider: **[docs/SSO_SETUP_GUIDE.md](docs/SSO_SETUP_GUIDE.md)**
+
 ## Next Steps 
 
 **Enhance and customize your Agentic Application:**

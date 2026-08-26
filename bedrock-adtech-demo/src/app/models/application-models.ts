@@ -55,6 +55,21 @@ export interface AwsConfig {
   creativesBucket: string;
   creativesDynamoDBTable: string;
   demoLogGroupName?: string;
+
+  // Federated sign-in (SSO). Written by scripts/generate_aws_config.py only when
+  // --sso-provider is given AND the user pool has a domain. Absent means no SSO:
+  // the login page shows no SSO button and Amplify gets no oauth section.
+  sso?: SsoConfig;
+}
+
+export interface SsoConfig {
+  enabled: boolean;
+  /** Identity provider name exactly as registered in the Cognito user pool. */
+  providerName: string;
+  /** Label for the sign-in button. */
+  label: string;
+  /** Full host, e.g. my-pool.auth.<region>.amazoncognito.com — not just the prefix. */
+  cognitoDomain: string;
 }
 
 export interface AgentConfig {

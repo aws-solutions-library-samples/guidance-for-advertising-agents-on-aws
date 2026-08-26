@@ -63,6 +63,11 @@ DEPLOY_AAMP="${DEPLOY_AAMP:-}"
 # DEPLOY_AAMP: "true"/"false" decide outright; empty means ask in interactive mode and
 # skip otherwise.
 DEPLOY_QUICK_GATEWAY="${DEPLOY_QUICK_GATEWAY:-}"
+# Federated sign-in (SSO). SSO_PROVIDER is the identity provider name as registered in
+# the Cognito user pool. Empty means no SSO config is written and the UI shows only
+# email/password sign-in. See docs/SSO_SETUP_GUIDE.md.
+SSO_PROVIDER="${SSO_PROVIDER:-}"
+SSO_LABEL="${SSO_LABEL:-Sign in with SSO}"
 CLEANUP_MODE=false
 
 # Colors for output
@@ -3307,7 +3312,9 @@ generate_ui_config() {
     # Setup Python environment for UI config generation
     setup_python_environment
     
-    if $PYTHON_CMD "$config_script" generate --prefix "${STACK_PREFIX}" --suffix "${UNIQUE_ID}" --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --output "${CONFIG_FILE}"; then
+    # ${VAR:+ --flag "$VAR"} appends the SSO flags only when set, so a deployment
+    # without SSO passes no SSO arguments at all.
+    if $PYTHON_CMD "$config_script" generate --prefix "${STACK_PREFIX}" --suffix "${UNIQUE_ID}" --region "${AWS_REGION}" --profile "${AWS_PROFILE}" --output "${CONFIG_FILE}"${SSO_PROVIDER:+ --sso-provider "${SSO_PROVIDER}"}${SSO_PROVIDER:+ --sso-label "${SSO_LABEL}"}; then
         print_success "✅ UI configuration generated successfully"
     else
         print_warning "⚠️  Failed to generate UI configuration"
@@ -4665,6 +4672,14 @@ parse_args() {
                 DEPLOY_QUICK_GATEWAY=false
                 shift
                 ;;
+            --sso-provider)
+                SSO_PROVIDER="$2"
+                shift 2
+                ;;
+            --sso-label)
+                SSO_LABEL="$2"
+                shift 2
+                ;;
             --non-interactive)
                 INTERACTIVE_MODE=false
                 shift
@@ -4708,6 +4723,10 @@ show_usage() {
     echo "  --skip-aamp              Skip the optional AAMP agents (Phase 9) without prompting"
     echo "  --deploy-quick-gateway   Deploy the optional Quick MCP Gateway (Phase 12) without prompting"
     echo "  --skip-quick-gateway     Skip the optional Quick MCP Gateway (Phase 12) without prompting"
+    echo "  --sso-provider NAME      Identity provider name as registered in the Cognito user pool"
+    echo "                           (e.g. 'MyCompanySSO'). Enables the SSO button in the UI."
+    echo "                           Requires a hosted-UI domain — see docs/SSO_SETUP_GUIDE.md"
+    echo "  --sso-label LABEL        Label for the SSO button (default: 'Sign in with SSO')"
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
