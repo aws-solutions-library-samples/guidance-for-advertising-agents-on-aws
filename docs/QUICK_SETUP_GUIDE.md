@@ -234,7 +234,7 @@ For a full list of scenario prompts by agent, see the [`tab-configurations.json`
 |-------|----------|
 | "Creation failed" in Quick Suite | Check Client ID/Secret. Delete failed connection and recreate. |
 | Cognito login page doesn't appear | Verify Authorization URL. Ensure App Client has `code` flow enabled. |
-| "invalid_client_secret" | Re-check secret from IT admin (deploy script console output). |
+| "invalid_client_secret" | Re-read the secret from SSM — it is not printed to the deploy output. See [Retrieving the client secret](#retrieving-the-client-secret). |
 | Empty response | Agent timed out. Try again — runtime may have been cold-starting. |
 | Timeout after 2+ minutes | Normal for orchestrators. Wait up to 5 minutes. |
 | "Unknown tool" after restart | Reconnect the MCP server in settings. |
