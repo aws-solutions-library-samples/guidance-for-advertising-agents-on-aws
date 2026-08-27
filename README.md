@@ -1,6 +1,27 @@
 # Guidance for Advertising Agents
 
-> **📋 v2 Architecture Update:** This version introduces significant architectural changes including DynamoDB-backed agent configuration, a Nova Sonic voice interface, a full CRUD agent management UI, and UI-generated visualizations. If you are upgrading from v1, please review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for a detailed breakdown of all changes.
+> ## 🎓 `main` has graduated to v3
+>
+> The previous version is preserved on the [**`v2`**](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v2) branch. If you have a working v2 deployment and are not ready to move, stay on `v2` — it is unchanged.
+>
+> ### What v3 adds
+>
+> - **Access from AI desktop apps (optional)** — a new opt-in Phase 12 deploys an MCP Gateway that exposes the agents as tools to Amazon Quick Suite, Kiro, and Claude Desktop. Add `--deploy-quick-gateway`. See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md).
+> - **Quick Suite skill definitions** — ready-made guided flows for media planning and deal negotiation, under [`quick-skill/`](quick-skill/).
+> - **Federated sign-in (optional)** — SSO through any OIDC provider registered in the Cognito user pool (Okta, Microsoft Entra ID, Ping, or your own), alongside email and password. Entirely configuration-driven, with no identity provider details in application code. See [`docs/SSO_SETUP_GUIDE.md`](docs/SSO_SETUP_GUIDE.md).
+> - **Agent instruction versioning** — append-only version snapshots with a version dropdown in the agent editor. Selecting a version loads it; saving publishes a new version rather than rewinding.
+> - **AdCP-compliant reference agents** — `AdCPBuyerAgent` and `AdCPSellerAgent` under [`external-agents/`](external-agents/) take over the role of the removed AdCP MCP Gateway, speaking AdCP 3.1 between peer agents over A2A and MCP rather than flattening it into gateway tool calls. Note that **neither is a working default yet** — see [what ships today](#adcp-migration-status) before relying on them.
+> - **External agents decoupled from AgentCore** — hosting, wire protocol, and authentication are now independent (`agent_hosting` / `agent_protocol` / `agent_endpoint`), so an external agent can be a non-AgentCore endpoint and authentication no longer determines the invocation path.
+>
+> ### ⚠️ Breaking changes from v2
+>
+> - **Deployment phases were renumbered.** If you script `--resume-at`, the numbers have moved: configs→S3 is now 6, DynamoDB 7, AgentCore agents 8, AAMP 9, UI config 10, warmup 11, Quick Gateway 12. See the phase list under [Deployment Steps](#deployment-steps).
+> - **The AdCP MCP Gateway has been removed.** `deploy_adcp_gateway.py`, `adcp_tool_schema.json`, `lambda/adcp_mcp_handler.py`, and the agent-side `adcp_tools.py` / `adcp_mcp_client.py` are deleted, along with the 8 gateway-backed tools and their declarations on `AgencyAgent`, `PublisherAgent`, `SignalAgent`, `VerificationAgent`, `MeasurementAgent`, and `IdentityAgent`. Teardown is retained, so `--cleanup` still removes a gateway left over from a pre-v3 deployment instead of leaving it billing.
+> - **AAMP is now opt-in rather than automatic.** Use `--deploy-aamp` to include it or `--skip-aamp` to exclude it. The interactive prompt defaults to No, and it is skipped entirely in non-interactive runs. Its default model is now `bedrock/global.anthropic.claude-sonnet-5`, and AAMP runtime names are capped at 26 characters to stay within the CloudWatch Logs delivery name limit.
+> - **`AgencyAgent`'s Mode A / Mode B split is gone.** It was built on calling the removed gateway tools directly. `AgencyAgent` now always delegates inventory to `PublisherAgent` and signals to `SignalAgent` over A2A.
+> - **`agentcore/deployment/agent/global_configuration.json` is no longer tracked in the repository.** It is generated from `global_configuration.template.json` when absent and is gitignored. If you previously edited the tracked file, edit the template or the generated file instead — a fresh clone will not contain it.
+>
+> If you are upgrading from v1, review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for the v1 → v2 changes as well.
 
 This guidance demonstrates how to deploy a comprehensive agentic application for advertising workflows using Amazon Bedrock AgentCore. The solution showcases advanced multi-agent collaboration across the entire advertising value chain - from strategic media planning and audience targeting to real-time bid optimization and publisher revenue management.
 
