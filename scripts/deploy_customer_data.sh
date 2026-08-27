@@ -27,7 +27,6 @@ REGION="${AWS_REGION:-us-west-2}"
 STACK_PREFIX="${STACK_PREFIX:-a4a}"
 UNIQUE_ID="${UNIQUE_ID:-omixaj}"
 REVERT=false
-SKIP_ADCP=false
 SKIP_SELLER=false
 
 # Parse remaining args
@@ -36,7 +35,6 @@ while [[ $# -gt 0 ]]; do
         --revert)    REVERT=true; shift ;;
         --profile)   PROFILE="$2"; shift 2 ;;
         --region)    REGION="$2"; shift 2 ;;
-        --skip-adcp) SKIP_ADCP=true; shift ;;
         --skip-seller) SKIP_SELLER=true; shift ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
@@ -65,18 +63,9 @@ else
 fi
 echo ""
 
-# ── Step 2: Redeploy AdCP Lambda (globs merged CSVs) ───────────────
-if [ "$SKIP_ADCP" = false ]; then
-    echo "[Step 2] Redeploying AdCP Lambda (merged CSV data)..."
-    cd "$PROJECT_ROOT"
-    AWS_PROFILE="$PROFILE" AWS_DEFAULT_REGION="$REGION" python3 agentcore/deployment/deploy_adcp_gateway.py \
-        --stack-prefix "$STACK_PREFIX" --unique-id "$UNIQUE_ID" \
-        --region "$REGION" --profile "$PROFILE" --lambda-only
-    echo ""
-else
-    echo "[Step 2] ⏭️  Skipping AdCP Lambda redeploy (--skip-adcp)"
-    echo ""
-fi
+# Step 2 used to redeploy the AdCP MCP Gateway Lambda so it would pick up the
+# merged customer CSVs. The gateway has been removed, so there is no longer an
+# AdCP Lambda to refresh here.
 
 # ── Step 3: Redeploy AAMP Seller (if overlays exist) ───────────────
 SELLER_REPO="${LOCAL_AAMP_PATH:-/Users/bkrishnr/repos/github/iab-aamp}/seller-agent"

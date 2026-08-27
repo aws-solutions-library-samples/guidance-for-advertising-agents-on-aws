@@ -120,6 +120,33 @@
       box-shadow: none;
     }
   }
+
+  &.btn-sso {
+    margin-bottom: 4px;
+  }
+}
+
+// Separator between the SSO button and the email form. Rendered only when SSO is
+// configured, so the email-only login page is unchanged.
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 16px 0;
+  color: #6b7280;
+  font-size: 13px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+
+  span {
+    padding: 0 12px;
+    white-space: nowrap;
+  }
 }
 
 .spinner {

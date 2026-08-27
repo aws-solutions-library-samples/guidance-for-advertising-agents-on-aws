@@ -4,6 +4,7 @@ import { HttpRequest } from '@smithy/protocol-http';
 import { Sha256 } from '@aws-crypto/sha256-js';
 import { AwsConfigService } from './aws-config.service';
 import { AgentDynamoDBService } from './agent-dynamodb.service';
+import { acquireClientCredentialsToken } from './oauth-client-credentials';
 import { EnrichedAgent } from '../models/application-models';
 
 /**
@@ -92,6 +93,22 @@ export class NotifyDispatchService {
       const token = await this.agentDynamoDBService.getNotifyBearerToken(agent.name);
       if (!token) {
         console.warn(`⚠️ NotifyDispatch: bearer auth configured but no token stored for ${agent.name} — skipping notification`);
+        return;
+      }
+      headers['Authorization'] = `Bearer ${token}`;
+      requestInit = { method: 'POST', headers, body };
+    } else if (notifyConfig.auth_type === 'oauth_m2m') {
+      // Client-credentials grant: exchange the stored client id/secret at the
+      // receiver's token endpoint. Skip rather than send the POST unauthenticated,
+      // matching the bearer path — the notification is best-effort, so a failed
+      // exchange must not surface anywhere near the agent invocation.
+      const credentialsJson = await this.agentDynamoDBService.getNotifyBearerToken(agent.name);
+      const cacheKey = notifyConfig.oauth_client_credentials?.ssmPath || `notify:${agent.name}`;
+      let token: string;
+      try {
+        token = await acquireClientCredentialsToken(credentialsJson, cacheKey);
+      } catch (err) {
+        console.warn(`⚠️ NotifyDispatch: could not acquire an OAuth token for ${agent.name} — skipping notification:`, err);
         return;
       }
       headers['Authorization'] = `Bearer ${token}`;

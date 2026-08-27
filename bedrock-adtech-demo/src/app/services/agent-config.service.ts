@@ -275,6 +275,9 @@ export class AgentConfigService implements OnInit {
             runtimeId: defaultRuntimeId,
             runtimeName: defaultRuntimeName,
             is_a2a: config.is_a2a || false,
+            agent_hosting: config.agent_hosting || (config.is_a2a ? 'external' : 'adfabric'),
+            agent_protocol: config.agent_protocol || (config.is_a2a ? 'a2a' : 'http'),
+            agent_endpoint: config.agent_endpoint || '',
             a2a_auth_type: config.a2a_auth_type || 'none'
           };
 
@@ -350,6 +353,22 @@ export class AgentConfigService implements OnInit {
           // Apply A2A protocol settings from agent config
           if (config.is_a2a) {
             mainAgent.is_a2a = true;
+          }
+          // Protocol, hosting, and endpoint are independent of each other and of
+          // auth. Propagate each on its own so the router does not have to infer
+          // one from another; older configs are read through is_a2a.
+          if (config.agent_hosting) {
+            mainAgent.agent_hosting = config.agent_hosting;
+          } else if (config.is_a2a) {
+            mainAgent.agent_hosting = 'external';
+          }
+          if (config.agent_protocol) {
+            mainAgent.agent_protocol = config.agent_protocol;
+          } else if (config.is_a2a) {
+            mainAgent.agent_protocol = 'a2a';
+          }
+          if (config.agent_endpoint) {
+            mainAgent.agent_endpoint = config.agent_endpoint;
           }
           // Always propagate a2a_auth_type — an agent can have OAuth auth
           // configured on its runtime without being a full A2A JSON-RPC agent

@@ -162,7 +162,7 @@ class A4AMCPHandlerDeployer:
         # Naming
         self.lambda_name = f"{stack_prefix}-a4a-mcp-handler-{unique_id}"
         self.role_name = f"{stack_prefix}-a4a-mcp-role-{unique_id}"
-        self.target_name = "adcp"
+        self.target_name = "agent"
         self.gateway_name = f"{stack_prefix}-ads-gw-{unique_id}"
 
     # ─── Gateway Discovery ─────────────────────────────────────────────
@@ -770,6 +770,7 @@ class OAuthGatewayDeployer:
         self.cognito_client = session.client("cognito-idp")
         self.cfn_client = session.client("cloudformation")
         self.sts_client = session.client("sts")
+        self.ssm_client = session.client("ssm")
         self.account_id = self.sts_client.get_caller_identity()["Account"]
         self._session = session
 
@@ -810,19 +811,18 @@ class OAuthGatewayDeployer:
         return ""
 
     def discover_lambda_arns(self) -> dict:
-        """Read existing Lambda ARNs from config files."""
+        """Resolve the A4A MCP handler Lambda ARN.
+
+        Two sources, in order:
+          1. `.a4a-mcp-handler-{prefix}-{id}.json`, written by A4AMCPHandlerDeployer
+             for deployments that used the --iam-target path.
+          2. lambda:GetFunction by name, for deployments where the function is
+             managed by CloudFormation (deploy-ecosystem.sh Phase 2) and so leaves
+             no state file behind.
+        """
         repo_root = Path(__file__).parent.parent.parent
         arns = {}
 
-        # AdCP handler ARN from .ads-gw config
-        ads_gw_config = repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json"
-        if ads_gw_config.exists():
-            with open(ads_gw_config) as f:
-                config = json.load(f)
-            arns["adcp_handler"] = config.get("lambda_arn", "")
-            logger.info(f"Discovered adcp-handler ARN: {arns['adcp_handler']}")
-
-        # A4A MCP handler ARN
         mcp_config = repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json"
         if mcp_config.exists():
             with open(mcp_config) as f:
@@ -830,20 +830,27 @@ class OAuthGatewayDeployer:
             arns["a4a_mcp_handler"] = config.get("lambda_arn", "")
             logger.info(f"Discovered a4a-mcp-handler ARN: {arns['a4a_mcp_handler']}")
 
+        if not arns.get("a4a_mcp_handler"):
+            function_name = f"{self.stack_prefix}-a4a-mcp-handler-{self.unique_id}"
+            try:
+                session = boto3.Session(profile_name=self.profile) if self.profile else boto3.Session()
+                lambda_client = session.client("lambda", region_name=self.region)
+                response = lambda_client.get_function(FunctionName=function_name)
+                arns["a4a_mcp_handler"] = response["Configuration"]["FunctionArn"]
+                logger.info(f"Resolved a4a-mcp-handler ARN from Lambda: {arns['a4a_mcp_handler']}")
+            except ClientError as e:
+                logger.warning(f"Could not resolve {function_name} via lambda:GetFunction: {e}")
+
         return arns
 
     def validate_prerequisites(self):
         """Validate all prerequisites before any resource creation."""
-        repo_root = Path(__file__).parent.parent.parent
-
-        if not (repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json").exists():
-            logger.error("IAM gateway config not found. Run deploy-ecosystem.sh Phase 6 first.")
-            sys.exit(1)
-
-        if not (repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json").exists():
-            logger.error("A4A MCP handler config not found. Run deploy_a4a_mcp_handler.py --iam-target first.")
-            sys.exit(1)
-
+        # The Lambda ARN is validated by the caller via discover_lambda_arns(), which
+        # falls back to lambda:GetFunction. No state file is required.
+        #
+        # The check for .ads-gw-*.json was removed with the AdCP MCP Gateway. Nothing
+        # writes that file any more, so requiring it made this deployer exit before
+        # creating anything.
         user_pool_id = self.discover_user_pool_id()
         if not user_pool_id:
             logger.error("Cognito User Pool not found. Check CloudFormation stack outputs.")
@@ -910,7 +917,10 @@ class OAuthGatewayDeployer:
             raise
 
     def create_app_client(self, user_pool_id: str) -> dict:
-        """Create App Client with client_credentials flow. Returns {client_id, client_secret}."""
+        """Create the app client for the authorization code flow.
+
+        Returns {client_id, client_secret}. Reuses an existing client of the same name.
+        """
         # Check if client already exists
         try:
             response = self.cognito_client.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
@@ -929,20 +939,37 @@ class OAuthGatewayDeployer:
         except ClientError:
             pass
 
-        # Create new client — needs both code + client_credentials flows
-        # code flow: for Quick Suite web (user login via hosted UI)
-        # client_credentials: for service-to-service (programmatic access)
+        # Authorization code flow only.
+        #
+        # Cognito rejects client_credentials combined with code or implicit:
+        #   InvalidOAuthFlowException: client_credentials flow can not be selected
+        #   along with code flow or implicit flow
+        # so requesting both never created a client at all.
+        #
+        # `code` is the flow that is actually used. Quick Suite is configured with
+        # "User authentication -> Custom user based OAuth": on save it opens the Cognito
+        # hosted login, the user signs in, and Quick exchanges the authorization code —
+        # which is why it asks for an Authorization URL and a callback is registered
+        # below. The other documented clients (Kiro, Claude Desktop) authenticate with
+        # SigV4 via mcp-proxy-for-aws and never use this client, so nothing consumes a
+        # machine-to-machine token here.
+        #
+        # If a service-to-service caller is ever needed, it takes a second app client
+        # with client_credentials — the two flows cannot share one.
         scope_custom = f"{self.resource_server_id}/{self.scope_name}"
         response = self.cognito_client.create_user_pool_client(
             UserPoolId=user_pool_id,
             ClientName=self.app_client_name,
             GenerateSecret=True,
             SupportedIdentityProviders=["COGNITO"],
-            AllowedOAuthFlows=["client_credentials", "code"],
+            AllowedOAuthFlows=["code"],
             AllowedOAuthScopes=[scope_custom, "openid", "email", "profile"],
             AllowedOAuthFlowsUserPoolClient=True,
             CallbackURLs=[
+                # Quick Suite's OAuth callback. us-east-1 for every customer
+                # regardless of deployment region — that is where the endpoint lives.
                 "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback",
+                # Local OAuth testing without Quick Suite.
                 "http://localhost:3000/callback",
             ],
         )
@@ -1144,8 +1171,8 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         user_pool_id = self.validate_prerequisites()
         lambda_arns = self.discover_lambda_arns()
-        if not lambda_arns.get("adcp_handler") or not lambda_arns.get("a4a_mcp_handler"):
-            logger.error("Could not discover both Lambda ARNs")
+        if not lambda_arns.get("a4a_mcp_handler"):
+            logger.error("Could not discover the A4A MCP handler Lambda ARN")
             results["status"] = "lambda_arns_not_found"
             return results
 
@@ -1172,7 +1199,7 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info("Step 3: Creating OAuth gateway IAM role")
         logger.info("=" * 60)
-        all_lambda_arns = [lambda_arns["adcp_handler"], lambda_arns["a4a_mcp_handler"]]
+        all_lambda_arns = [lambda_arns["a4a_mcp_handler"]]
         role_arn = self.create_oauth_gateway_role(all_lambda_arns)
         results["role_arn"] = role_arn
 
@@ -1192,28 +1219,37 @@ class OAuthGatewayDeployer:
         logger.info("Step 5: Registering Lambda targets on OAuth gateway")
         logger.info("=" * 60)
 
-        # Get tool schemas — import from sibling module
-        try:
-            import importlib.util
-            spec_path = Path(__file__).parent / "deploy_adcp_gateway.py"
-            spec_module = importlib.util.spec_from_file_location("deploy_adcp_gateway", spec_path)
-            adcp_module = importlib.util.module_from_spec(spec_module)
-            spec_module.loader.exec_module(adcp_module)
-            adcp_deployer = adcp_module.AdCPGatewayDeployer(self.stack_prefix, self.unique_id, self.region, self.profile)
-            adcp_schema = adcp_deployer.get_adcp_tool_schema()
-        except Exception as e:
-            logger.warning(f"Could not import AdCP tool schema: {e}. Using empty schema for AdCP target.")
-            adcp_schema = []
-
-        # Register AdCP target
-        adcp_target_name = "adcp"
-        self.register_target(gateway["gateway_id"], adcp_target_name, lambda_arns["adcp_handler"], adcp_schema)
-
-        # Register A4A MCP handler target
+        # Register A4A MCP handler target. The AdCP target that used to be
+        # registered alongside it is gone with the AdCP MCP Gateway.
         a4a_target_name = "agent"
         self.register_target(gateway["gateway_id"], a4a_target_name, lambda_arns["a4a_mcp_handler"], A4A_MCP_TOOL_SCHEMA)
 
         results["status"] = "success"
+
+        # Step 6: Store the client secret in SSM
+        #
+        # The secret is written to a SecureString parameter and never logged. Printing
+        # it put a live OAuth credential into any captured deploy output.
+        secret_param = f"/{self.stack_prefix}/quick-gateway/{self.unique_id}/client-secret"
+        secret_stored = False
+        if app_client.get("client_secret"):
+            try:
+                self.ssm_client.put_parameter(
+                    Name=secret_param,
+                    Value=app_client["client_secret"],
+                    Type="SecureString",
+                    Overwrite=True,
+                    Description="Cognito app client secret for the Quick MCP Gateway",
+                )
+                secret_stored = True
+                logger.info(f"Stored client secret in SSM: {secret_param}")
+            except ClientError as e:
+                logger.error(f"Could not write the client secret to SSM ({secret_param}): {e}")
+                logger.error("Read it with: aws cognito-idp describe-user-pool-client "
+                             f"--user-pool-id {user_pool_id} --client-id {app_client['client_id']} "
+                             f"--region {self.region} --query UserPoolClient.ClientSecret --output text")
+
+        results["cognito"]["client_secret_ssm_path"] = secret_param if secret_stored else ""
 
         # Output connection config
         logger.info("")
@@ -1222,7 +1258,6 @@ class OAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info(f"Gateway URL: {gateway['gateway_url']}")
         logger.info(f"Client ID: {app_client['client_id']}")
-        logger.info(f"Client Secret: {app_client['client_secret'][:8]}...{app_client['client_secret'][-4:]}")
         logger.info(f"Token URL: {token_url}")
         logger.info(f"Scope: {self.resource_server_id}/{self.scope_name}")
         logger.info("")
@@ -1230,26 +1265,37 @@ class OAuthGatewayDeployer:
         logger.info("QUICK SUITE WEB — Connection Config")
         logger.info("=" * 60)
         logger.info("In Quick Suite web → Settings → Capabilities → MCP → Add:")
-        logger.info(f"  Name: A4A Advertising Agents")
+        logger.info("  Name: A4A Advertising Agents")
         logger.info(f"  URL: {gateway['gateway_url']}")
-        logger.info(f"  Auth: Service authentication (OAuth)")
+        logger.info("  Auth: Service authentication (OAuth)")
         logger.info(f"  Client ID: {app_client['client_id']}")
-        logger.info(f"  Client Secret: {app_client['client_secret']}")
         logger.info(f"  Token URL: {token_url}")
         logger.info(f"  Authorization URL: {authorization_url}")
         logger.info(f"  Scope: {self.resource_server_id}/{self.scope_name}")
         logger.info("")
+        if secret_stored:
+            logger.info("  Client Secret: stored in SSM. Read it with:")
+            logger.info(f"    aws ssm get-parameter --name {secret_param} \\")
+            logger.info(f"      --with-decryption --query Parameter.Value --output text --region {self.region}")
+        else:
+            logger.info("  Client Secret: NOT stored in SSM — see the error above for how to read it")
+        logger.info("")
 
-        # Save config (redact secret in file)
         results["connection_config"] = {
             "gateway_url": gateway["gateway_url"],
             "client_id": app_client["client_id"],
-            "client_secret": "*** SEE CONSOLE OUTPUT ***",
+            "client_secret_ssm_path": secret_param if secret_stored else "",
             "token_url": token_url,
             "authorization_url": authorization_url,
             "scope": f"{self.resource_server_id}/{self.scope_name}",
         }
 
+        # No state file is written here. main() persists this whole `results` dict to
+        # .oauth-gw-{prefix}-{unique_id}.json, which is the convention the rest of the
+        # tooling already reads — TargetSchemaUpdater.discover_all_gateways() and the
+        # cleanup path both look there. Because client_secret_ssm_path was added to
+        # results["cognito"] and results["connection_config"] above, that file already
+        # carries everything a consumer needs, and still no secret value.
         return results
 
 
@@ -1321,12 +1367,6 @@ class ExternalOAuthGatewayDeployer:
         """Read existing Lambda ARNs from config files."""
         repo_root = Path(__file__).parent.parent.parent
         arns = {}
-
-        ads_gw_config = repo_root / f".ads-gw-{self.stack_prefix}-{self.unique_id}.json"
-        if ads_gw_config.exists():
-            with open(ads_gw_config) as f:
-                config = json.load(f)
-            arns["adcp_handler"] = config.get("lambda_arn", "")
 
         mcp_config = repo_root / f".a4a-mcp-handler-{self.stack_prefix}-{self.unique_id}.json"
         if mcp_config.exists():
@@ -1496,8 +1536,8 @@ class ExternalOAuthGatewayDeployer:
         logger.info("Step 1: Discovering Lambda ARNs")
         logger.info("=" * 60)
         lambda_arns = self.discover_lambda_arns()
-        if not lambda_arns.get("adcp_handler") or not lambda_arns.get("a4a_mcp_handler"):
-            logger.error("Could not discover both Lambda ARNs. Deploy IAM target first.")
+        if not lambda_arns.get("a4a_mcp_handler"):
+            logger.error("Could not discover the A4A MCP handler Lambda ARN. Deploy IAM target first.")
             results["status"] = "lambda_arns_not_found"
             return results
 
@@ -1505,7 +1545,7 @@ class ExternalOAuthGatewayDeployer:
         logger.info("=" * 60)
         logger.info("Step 2: Ensuring gateway IAM role")
         logger.info("=" * 60)
-        all_arns = [lambda_arns["adcp_handler"], lambda_arns["a4a_mcp_handler"]]
+        all_arns = [lambda_arns["a4a_mcp_handler"]]
         role_arn = self.ensure_gateway_role(all_arns)
         results["role_arn"] = role_arn
 
@@ -1527,21 +1567,8 @@ class ExternalOAuthGatewayDeployer:
         logger.info("Step 4: Registering Lambda targets")
         logger.info("=" * 60)
 
-        try:
-            import importlib.util
-            spec_path = Path(__file__).parent / "deploy_adcp_gateway.py"
-            spec_module = importlib.util.spec_from_file_location("deploy_adcp_gateway", spec_path)
-            adcp_module = importlib.util.module_from_spec(spec_module)
-            spec_module.loader.exec_module(adcp_module)
-            adcp_deployer = adcp_module.AdCPGatewayDeployer(self.stack_prefix, self.unique_id, self.region, self.profile)
-            adcp_schema = adcp_deployer.get_adcp_tool_schema()
-        except Exception as e:
-            logger.warning(f"Could not import AdCP tool schema: {e}. Using empty schema.")
-            adcp_schema = []
-
-        adcp_target_name = "adcp"
-        self.register_target(gateway["gateway_id"], adcp_target_name, lambda_arns["adcp_handler"], adcp_schema)
-
+        # The AdCP target that used to be registered here is gone with the AdCP
+        # MCP Gateway.
         a4a_target_name = "agent"
         self.register_target(gateway["gateway_id"], a4a_target_name, lambda_arns["a4a_mcp_handler"], A4A_MCP_TOOL_SCHEMA)
 
@@ -1927,13 +1954,14 @@ def main():
             )
             logger.info(f"✅ Updated Lambda: {data_lambda_name}")
         except lambda_client.exceptions.ResourceNotFoundException:
-            # Get execution role from existing adcp Lambda
-            adcp_lambda_name = f"{args.stack_prefix}-adcp-handler-{args.unique_id}"
+            # Borrow the execution role from the A4A MCP handler Lambda. This used
+            # to come from the adcp-handler Lambda, which no longer exists.
+            source_lambda_name = f"{args.stack_prefix}-a4a-mcp-handler-{args.unique_id}"
             try:
-                adcp_config = lambda_client.get_function(FunctionName=adcp_lambda_name)
-                role_arn = adcp_config["Configuration"]["Role"]
+                source_config = lambda_client.get_function(FunctionName=source_lambda_name)
+                role_arn = source_config["Configuration"]["Role"]
             except Exception:
-                logger.error("Cannot find execution role — deploy adcp-handler first")
+                logger.error(f"Cannot find execution role — deploy {source_lambda_name} first")
                 sys.exit(1)
 
             lambda_client.create_function(

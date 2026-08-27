@@ -1,12 +1,13 @@
 """A2A client tool provider construction for Strands agents.
 
 Builds A2AClientToolProvider instances from an agent's
-``external_agent_configs`` list, handling OAuth, IAM, and no-auth paths.
+``external_agent_configs`` list, handling OAuth (Cognito user/password and
+client-credentials), static bearer, IAM, and no-auth paths.
 
 Error handling wraps every provider creation in try/except so that a
 single misconfigured external agent never prevents the remaining agents
-from being registered.  A 120-second timeout is applied to all outbound
-HTTP requests.
+from being registered.  A timeout is applied to all outbound HTTP requests
+(see ``A2A_REQUEST_TIMEOUT_SECONDS``).
 """
 
 import hashlib
@@ -18,11 +19,41 @@ from uuid import uuid4
 
 from strands_tools.a2a_client import A2AClientToolProvider
 from shared.a2a_auth import A2ATokenManager
+from shared.agent_invocation_plan import (
+    ENDPOINT_URL,
+    plan_for_entry,
+    signing_service_for,
+    sigv4_headers,
+)
 
 logger = logging.getLogger(__name__)
 
-# Timeout in seconds for all outbound A2A HTTP requests (Requirement 9.1)
-A2A_REQUEST_TIMEOUT_SECONDS = 120
+# Timeout in seconds for all outbound A2A HTTP requests (Requirement 9.1).
+#
+# The original 120s was tuned for A2A peers that answer in one model turn. It is
+# too short for a CrewAI crew runtime: the AAMP buyer agent's deal-booking flow
+# runs a multi-agent crew that regularly exceeds two minutes, so the invoke tool
+# aborted a healthy, still-running call and reported it to the model as
+#     Error invoking AAMPBuyerAgent: ... Read timed out. (read timeout=120)
+# (observed end to end against the deployed runtimes). The default now matches
+# AgentCore Runtime's own default maximum invocation duration of 900s, so this
+# client stops being the first thing to give up. Override with the
+# A2A_REQUEST_TIMEOUT_SECONDS environment variable.
+def _a2a_request_timeout_seconds(default: int = 900) -> int:
+    """Read the outbound A2A request timeout from the environment.
+
+    Falls back to ``default`` when unset, non-numeric, or non-positive, so a bad
+    value degrades to a working timeout rather than disabling the bound.
+    """
+    raw = os.environ.get("A2A_REQUEST_TIMEOUT_SECONDS", "")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+A2A_REQUEST_TIMEOUT_SECONDS = _a2a_request_timeout_seconds()
 
 # Length bounds AgentCore enforces on runtimeSessionId. The front-end generates
 # session ids that already satisfy the minimum, which lets this module reuse the
@@ -99,7 +130,11 @@ def build_a2a_client_tools(
     an A2AClientToolProvider with the entry's ARN as the endpoint.
 
     Authentication is configured per-entry:
-    - oauth: retrieves a bearer token via A2ATokenManager.
+    - oauth: retrieves a bearer token via A2ATokenManager (Cognito
+      USER_PASSWORD_AUTH).
+    - oauth_m2m: retrieves a bearer token via A2ATokenManager (OAuth 2.0
+      client-credentials grant against the peer's own token endpoint).
+    - bearer: sends an operator-supplied static token verbatim.
     - iam: creates the provider without extra auth (SigV4 handled by SDK).
     - none: no authentication headers.
 
@@ -128,21 +163,35 @@ def build_a2a_client_tools(
     providers: List = []
     token_manager = None
 
+    # Decide per entry, not globally. A2AClientToolProvider performs A2A
+    # discovery over HTTP, so it only works for an entry that both speaks A2A and
+    # is addressed by a URL. Everything else — any HTTP-protocol entry, and every
+    # ARN-addressed entry regardless of protocol — is invoked by a direct tool.
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    invoke_entries: List[dict] = []
+
     for entry in external_configs:
-        if not entry.get("isA2A", False) or not entry.get("enabled", False):
+        if not entry.get("enabled", True):
             continue
 
         entry_name = entry.get("name", "unknown")
-        arn = entry.get("arn", "")
-        if not arn:
+        plan = plan_for_entry(entry, region)
+
+        if plan.problem:
             logger.warning(
-                "⚠️ A2A_TOOLS: Skipping entry '%s' for %s — missing ARN",
+                "⚠️ A2A_TOOLS: Skipping entry '%s' for %s — %s",
                 entry_name,
                 agent_name,
+                plan.problem,
             )
             continue
 
-        auth_type = entry.get("authType", "none")
+        if not (plan.is_a2a and plan.endpoint_kind == ENDPOINT_URL):
+            invoke_entries.append(entry)
+            continue
+
+        arn = plan.endpoint
+        auth_type = plan.auth_type
 
         try:
             # Base httpx client args with 120-second timeout (Req 9.1)
@@ -150,8 +199,16 @@ def build_a2a_client_tools(
                 "timeout": A2A_REQUEST_TIMEOUT_SECONDS,
             }
 
-            if auth_type == "oauth":
-                oauth_creds = entry.get("oauthCredentials", {})
+            if auth_type in ("oauth", "oauth_m2m"):
+                # Both OAuth modes resolve to a bearer token; they differ only in
+                # the exchange, which A2ATokenManager picks from the stored
+                # document's grant_type. 'oauth_m2m' records its reference under
+                # oauthClientCredentials, 'oauth' under oauthCredentials.
+                oauth_creds = (
+                    entry.get("oauthClientCredentials")
+                    or entry.get("oauthCredentials")
+                    or {}
+                )
                 if oauth_creds.get("hasCredentials") and oauth_creds.get("ssmPath"):
                     if token_manager is None:
                         token_manager = A2ATokenManager()
@@ -169,18 +226,18 @@ def build_a2a_client_tools(
                         # Auth error — log without credential details
                         logger.error(
                             "❌ A2A_TOOLS: OAuth token acquisition failed for '%s' "
-                            "(agent=%s)",
+                            "(agent=%s, auth=%s)",
                             entry_name,
                             agent_name,
+                            auth_type,
                         )
                         continue
 
-                    httpx_args["headers"] = {
-                        "Authorization": f"Bearer {token}"
-                    }
+                    httpx_args["headers"] = build_bearer_auth_header(token)
                 else:
                     logger.warning(
-                        "⚠️ A2A_TOOLS: OAuth configured but no credentials for '%s'",
+                        "⚠️ A2A_TOOLS: %s configured but no credentials for '%s'",
+                        auth_type,
                         entry_name,
                     )
                     continue
@@ -253,27 +310,24 @@ def build_a2a_client_tools(
             agent_name,
         )
 
-    # Check if any entries use AgentCore ARNs (not HTTP URLs).
-    # A2AClientToolProvider expects HTTP URLs for A2A protocol discovery.
-    # AgentCore runtimes use ARNs and must be invoked via the
-    # bedrock-agentcore InvokeAgentRuntime API instead.
-    has_agentcore_arns = any(
-        (entry.get("arn", "") or entry.get("runtime_arn", "")).startswith("arn:aws:bedrock-agentcore")
-        for entry in external_configs
-    )
-
-    if has_agentcore_arns:
-        # Skip A2A HTTP tools — they'll fail against AgentCore ARNs.
-        # Use direct InvokeAgentRuntime instead.
+    # Entries that cannot go through A2A HTTP discovery get a direct invoke tool.
+    # Previously a single ARN-addressed entry forced EVERY entry down this path,
+    # which silently dropped working URL-addressed A2A peers.
+    direct_invoke_tools: List = []
+    if invoke_entries:
         logger.info(
-            "🔗 A2A_TOOLS: AgentCore ARNs detected — using direct invoke instead of A2A HTTP protocol"
+            "🔗 A2A_TOOLS: %d entr%s invoked directly (ARN endpoint or HTTP protocol)",
+            len(invoke_entries),
+            "y" if len(invoke_entries) == 1 else "ies",
         )
-        agentcore_tools = _build_agentcore_invoke_tools(
-            agent_name, external_configs, session_id=session_id
+        direct_invoke_tools = _build_agentcore_invoke_tools(
+            agent_name, invoke_entries, session_id=session_id
         )
-        return agentcore_tools
 
-    # For non-AgentCore entries (real HTTP URLs), extract tools from providers.
+    if not providers:
+        return direct_invoke_tools
+
+    # For A2A-over-URL entries, extract tools from providers.
     # If a provider exposes no tools (or raises), fall back to passing the
     # provider object itself — Strands Agent accepts providers as tool sources.
     all_tools = []
@@ -304,7 +358,7 @@ def build_a2a_client_tools(
             )
             all_tools.append(provider)
 
-    return all_tools
+    return all_tools + direct_invoke_tools
 
 
 def _extract_a2a_text(parsed: dict, raw: str) -> str:
@@ -347,17 +401,19 @@ def _extract_a2a_text(parsed: dict, raw: str) -> str:
 def _resolve_oauth_ssm_path(entry: dict) -> str:
     """Return the SSM path holding the target's inbound OAuth credentials.
 
-    Prefers the explicit ``oauthCredentials.ssmPath`` set on the entry (the UI
-    writes this when an operator enables A2A on an agent's Inbound
-    Authentication settings). Falls back to the repo's path convention
+    Prefers an explicit ``ssmPath`` set on the entry — under
+    ``oauthClientCredentials`` for the client-credentials mode, or
+    ``oauthCredentials`` for the Cognito username/password mode (the UI writes
+    one of these when an operator configures an agent's Inbound Authentication
+    settings). Falls back to the repo's path convention
     ``/{STACK_PREFIX}/a2a-inbound-tokens/{UNIQUE_ID}/{name}`` when both env
     vars are present. Returns "" when it cannot be resolved — the caller then
     surfaces an explicit "not configured" error rather than guessing.
     """
-    oauth_creds = entry.get("oauthCredentials") or {}
-    ssm_path = oauth_creds.get("ssmPath") or ""
-    if ssm_path:
-        return ssm_path
+    for field in ("oauthClientCredentials", "oauthCredentials"):
+        ssm_path = (entry.get(field) or {}).get("ssmPath") or ""
+        if ssm_path:
+            return ssm_path
 
     stack_prefix = os.environ.get("STACK_PREFIX", "")
     unique_id = os.environ.get("UNIQUE_ID", "")
@@ -436,32 +492,39 @@ def _invoke_agentcore_oauth(
     ssm_path: str,
     client_id: str = "",
     session_id: str = "",
+    request_url: str = "",
 ):
     """Invoke an OAuth-protected AgentCore runtime over HTTPS with a bearer.
 
-    Mirrors the UI's OAuth invoke path: acquire a Cognito bearer from the
-    stored credentials (via A2ATokenManager) and POST to the runtime's
-    data-plane invocations endpoint. Returns ``(response_text, error)`` where
-    exactly one is non-None. The bearer never appears in the returned error.
+    Mirrors the UI's OAuth invoke path: acquire a bearer from the stored
+    credentials (via A2ATokenManager, which runs either the Cognito
+    USER_PASSWORD_AUTH or the OAuth client-credentials exchange depending on the
+    stored document) and POST to the runtime's data-plane invocations endpoint.
+    Returns ``(response_text, error)`` where exactly one is non-None. The bearer
+    never appears in the returned error.
 
     ``session_id`` is the AgentCore runtimeSessionId to use — pass the derived
     front-end session id so the external runtime keeps a continuous session.
+
+    ``request_url`` overrides the derived AgentCore data-plane URL, which is how
+    a URL-addressed agent is reached.
     """
     import requests
     from urllib.parse import quote
 
     if not ssm_path:
         return None, (
-            "OAuth credentials not configured for this agent. Store the "
-            "inbound Cognito credentials (Auth Client ID, Username, Password) "
-            "via the agent's Inbound Authentication settings."
+            "OAuth credentials not configured for this agent. Store either the "
+            "inbound Cognito credentials (Auth Client ID, Username, Password) or "
+            "the OAuth M2M credentials (Client ID, Client Secret, Token URL) via "
+            "the agent's Inbound Authentication settings."
         )
 
     token, err = _get_token_manager().get_bearer_token(ssm_path, client_id=client_id)
     if err or not token:
         return None, (err or "Failed to acquire OAuth bearer token")
 
-    endpoint = (
+    endpoint = request_url or (
         f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
         f"{quote(arn, safe='')}/invocations?qualifier=DEFAULT"
     )
@@ -495,6 +558,7 @@ def _invoke_agentcore_bearer(
     payload: bytes,
     token: str,
     session_id: str = "",
+    request_url: str = "",
 ):
     """Invoke a bearer-protected AgentCore runtime over HTTPS with a static token.
 
@@ -513,7 +577,7 @@ def _invoke_agentcore_bearer(
         # Fail closed — the caller must not proceed unauthenticated.
         return None, "Bearer token not configured for this agent."
 
-    endpoint = (
+    endpoint = request_url or (
         f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
         f"{quote(arn, safe='')}/invocations?qualifier=DEFAULT"
     )
@@ -536,6 +600,71 @@ def _invoke_agentcore_bearer(
         # Keep the message short and free of the token value.
         return None, f"Bearer invocation failed (HTTP {resp.status_code})"
     return resp.text, None
+
+
+def _invoke_https_endpoint(
+    plan,
+    entry: dict,
+    payload: bytes,
+    session_id: str = "",
+):
+    """POST to a URL-addressed agent using SigV4 or no credentials.
+
+    Covers the combinations the AgentCore SDK cannot: a URL endpoint with either
+    ``iam`` (signed here, since ``invoke_agent_runtime`` cannot address a URL) or
+    ``none``. Returns ``(response_text, error)`` where exactly one is non-None.
+    """
+    import requests
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id
+        or f"a2a-{uuid4().hex}{uuid4().hex}",
+    }
+
+    if plan.auth_type == "iam":
+        try:
+            headers = sigv4_headers(
+                url=plan.request_url,
+                body=payload,
+                headers=headers,
+                service=signing_service_for(plan, entry),
+                region=os.environ.get("AWS_REGION", "us-east-1"),
+            )
+        except Exception as e:  # noqa: BLE001 - surface a sanitized signing error
+            return None, f"could not SigV4-sign the request: {_sanitize_error_message(e)}"
+
+    try:
+        resp = requests.post(
+            plan.request_url,
+            data=payload,
+            headers=headers,
+            timeout=A2A_REQUEST_TIMEOUT_SECONDS,
+        )
+    except Exception as e:  # noqa: BLE001 - surface a sanitized transport error
+        return None, _sanitize_error_message(e)
+
+    if resp.status_code >= 400:
+        return None, f"invocation failed (HTTP {resp.status_code})"
+    return resp.text, None
+
+
+def wrap_as_agent_message(agent_name: str, text: str) -> str:
+    """Wrap an external agent's reply in the tag the UI reads as an agent turn.
+
+    `invoke_specialist` in handler.py returns
+    ``<agent-message agent='NAME'>...</agent-message>``, and the front end matches
+    exactly that to emit a collaborator-response attributed to NAME. External
+    agents returned bare text, so their replies rendered as anonymous tool output
+    instead of as the agent speaking.
+
+    Already-wrapped text is returned unchanged, so a remote agent that emits the
+    tag itself does not end up double-wrapped.
+    """
+    body = "" if text is None else str(text)
+    if "<agent-message" in body:
+        return body
+    return f"<agent-message agent='{agent_name}'>{body}</agent-message>"
 
 
 def _build_agentcore_invoke_tools(
@@ -584,14 +713,22 @@ def _build_agentcore_invoke_tools(
         description = entry.get("description", f"Invoke the {entry_name} runtime")
         region = entry.get("awsAuth", {}).get("region", os.environ.get("AWS_REGION", "us-west-2"))
 
-        # The request envelope depends on the target's protocol. Entries
-        # flagged ``isA2A`` (external AgentCore runtimes deployed with
-        # --protocol A2A) speak JSON-RPC 2.0 and reject the legacy
-        # {"prompt", "routing_mode"} envelope. The runtime_arn schema used by
-        # CrewAI crew runtimes (AAMP seller agents) has no isA2A flag and
-        # expects that legacy envelope, so it remains the default.
-        is_a2a = bool(entry.get("isA2A", False))
-        auth_type = (entry.get("authType") or "none").lower()
+        # The request envelope follows the entry's protocol: `a2a` speaks
+        # JSON-RPC 2.0 and rejects the legacy {"prompt", "routing_mode"}
+        # envelope that CrewAI crew runtimes (AAMP seller agents) expect. The
+        # transport is a separate question, answered by the plan below.
+        plan = plan_for_entry(entry, region)
+        if plan.problem:
+            logger.warning(
+                "⚠️ AGENTCORE_INVOKE: Skipping '%s' for %s — %s",
+                entry_name,
+                agent_name,
+                plan.problem,
+            )
+            continue
+
+        is_a2a = plan.is_a2a
+        auth_type = plan.auth_type
         oauth_ssm_path = _resolve_oauth_ssm_path(entry)
         oauth_client_id = entry.get("cognitoClientId") or os.environ.get(
             "A2A_CLIENT_ID", ""
@@ -600,7 +737,9 @@ def _build_agentcore_invoke_tools(
         bearer_ssm_path = (entry.get("bearerToken") or {}).get("ssmPath", "")
 
         # Capture variables in closure
-        _arn = arn
+        _arn = plan.endpoint
+        _plan = plan
+        _entry = entry
         _region = region
         _entry_name = entry_name
         _is_a2a = is_a2a
@@ -649,19 +788,24 @@ def _build_agentcore_invoke_tools(
                     }).encode("utf-8")
 
                 logger.info(
-                    "🔗 AGENTCORE_INVOKE: Calling %s at %s (protocol=%s, auth=%s)",
+                    "🔗 AGENTCORE_INVOKE: Calling %s at %s "
+                    "(protocol=%s, endpoint=%s, transport=%s, auth=%s)",
                     _entry_name,
                     _arn[:80],
                     "A2A" if _is_a2a else "crew",
+                    _plan.endpoint_kind,
+                    _plan.transport,
                     _auth_type,
                 )
 
-                # OAuth runtimes are fronted by a Cognito JWT authorizer and
-                # must be invoked over the HTTPS data-plane endpoint with a
-                # bearer token — SigV4 invoke_agent_runtime does not satisfy a
-                # JWT authorizer. This mirrors the UI's OAuth invoke path and
-                # reuses A2ATokenManager (SSM credentials -> Cognito bearer).
-                if _auth_type == "oauth":
+                # OAuth runtimes are fronted by a JWT authorizer and must be
+                # invoked over the HTTPS data-plane endpoint with a bearer token
+                # — SigV4 invoke_agent_runtime does not satisfy a JWT
+                # authorizer. This mirrors the UI's OAuth invoke path and reuses
+                # A2ATokenManager, which runs either the Cognito
+                # USER_PASSWORD_AUTH or the client-credentials exchange
+                # depending on the stored document.
+                if _auth_type in ("oauth", "oauth_m2m"):
                     response_body, err = _invoke_agentcore_oauth(
                         arn=_arn,
                         region=_region,
@@ -669,13 +813,16 @@ def _build_agentcore_invoke_tools(
                         ssm_path=_ssm_path,
                         client_id=_client_id,
                         session_id=active_session_id,
+                        request_url=_plan.request_url,
                     )
                     if err:
                         logger.error(
                             "❌ AGENTCORE_INVOKE: OAuth invoke failed for %s",
                             _entry_name,
                         )
-                        return f"Error invoking {_entry_name}: {err}"
+                        return wrap_as_agent_message(
+                            _entry_name, f"Error invoking {_entry_name}: {err}"
+                        )
                 elif _auth_type == "bearer":
                     # Static, operator-pasted token sent verbatim. Read fresh
                     # from SSM (no cache) so a re-pasted token is honored, then
@@ -692,9 +839,10 @@ def _build_agentcore_invoke_tools(
                             "❌ AGENTCORE_INVOKE: Bearer token unavailable for %s",
                             _entry_name,
                         )
-                        return (
+                        return wrap_as_agent_message(
+                            _entry_name,
                             f"Error invoking {_entry_name}: bearer token not "
-                            "configured or unavailable"
+                            "configured or unavailable",
                         )
                     response_body, err = _invoke_agentcore_bearer(
                         arn=_arn,
@@ -702,15 +850,50 @@ def _build_agentcore_invoke_tools(
                         payload=payload,
                         token=token,
                         session_id=active_session_id,
+                        request_url=_plan.request_url,
                     )
                     if err:
                         logger.error(
                             "❌ AGENTCORE_INVOKE: Bearer invoke failed for %s",
                             _entry_name,
                         )
-                        return f"Error invoking {_entry_name}: {err}"
+                        return wrap_as_agent_message(
+                            _entry_name, f"Error invoking {_entry_name}: {err}"
+                        )
+                elif not _plan.uses_sdk:
+                    # URL endpoint with `iam` or `none`: the SDK cannot address a
+                    # URL, so POST directly (signing here when auth is iam).
+                    response_body, err = _invoke_https_endpoint(
+                        plan=_plan,
+                        entry=_entry,
+                        payload=payload,
+                        session_id=active_session_id,
+                    )
+                    if err:
+                        logger.error(
+                            "❌ AGENTCORE_INVOKE: Direct invoke failed for %s",
+                            _entry_name,
+                        )
+                        return wrap_as_agent_message(
+                            _entry_name, f"Error invoking {_entry_name}: {err}"
+                        )
                 else:
-                    client = boto3.client("bedrock-agentcore", region_name=_region)
+                    # botocore's default read timeout is 60s — shorter still than
+                    # the OAuth/bearer paths' bound and far shorter than a crew
+                    # runtime's turnaround, so give the SigV4 path the same
+                    # A2A_REQUEST_TIMEOUT_SECONDS budget. Retries stay off: a
+                    # retried invoke would re-run the remote agent's work.
+                    from botocore.config import Config as _BotoConfig
+
+                    client = boto3.client(
+                        "bedrock-agentcore",
+                        region_name=_region,
+                        config=_BotoConfig(
+                            connect_timeout=30,
+                            read_timeout=A2A_REQUEST_TIMEOUT_SECONDS,
+                            retries={"max_attempts": 0},
+                        ),
+                    )
                     # Pass the front-end-derived runtime session id so the
                     # external runtime keeps one continuous session per
                     # front-end conversation (SigV4 path also honors it).
@@ -733,13 +916,15 @@ def _build_agentcore_invoke_tools(
                 try:
                     parsed = _json.loads(response_body)
                 except _json.JSONDecodeError:
-                    return response_body
+                    return wrap_as_agent_message(_entry_name, response_body)
 
                 if _is_a2a:
-                    return _extract_a2a_text(parsed, response_body)
+                    return wrap_as_agent_message(
+                        _entry_name, _extract_a2a_text(parsed, response_body)
+                    )
 
                 content = parsed.get("response", response_body)
-                return str(content)
+                return wrap_as_agent_message(_entry_name, str(content))
 
             except Exception as e:
                 safe_msg = _sanitize_error_message(e)
@@ -748,7 +933,12 @@ def _build_agentcore_invoke_tools(
                     _entry_name,
                     safe_msg,
                 )
-                return f"Error invoking {_entry_name}: {safe_msg}"
+                # Wrapped like the success path and like invoke_specialist's error
+                # return, so the failure is attributed to the agent that failed
+                # rather than surfacing as unattributed tool output.
+                return wrap_as_agent_message(
+                    _entry_name, f"Error invoking {_entry_name}: {safe_msg}"
+                )
 
         tools.append(_invoke_runtime)
         logger.info(

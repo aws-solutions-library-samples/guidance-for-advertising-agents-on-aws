@@ -539,6 +539,36 @@ def get_memory_record_id(stack_prefix, unique_id):
     return None
 
 
+def get_cognito_domain(stack_prefix, unique_id, region, profile):
+    """Return the Cognito user pool's hosted-UI domain prefix, or None.
+
+    Nothing in this repo creates the domain — it is a manual operator step, or a
+    side effect of the optional Quick MCP Gateway phase. Returning None when it is
+    absent is the accurate answer, and the caller skips SSO config rather than
+    emitting a domain that does not resolve.
+    """
+    try:
+        import boto3
+
+        session = (
+            boto3.Session(profile_name=profile, region_name=region)
+            if profile
+            else boto3.Session(region_name=region)
+        )
+        cognito_client = session.client("cognito-idp")
+
+        pool_name = f"{stack_prefix}-users-{unique_id}"
+        response = cognito_client.list_user_pools(MaxResults=60)
+        for pool in response.get("UserPools", []):
+            if pool["Name"] == pool_name:
+                pool_details = cognito_client.describe_user_pool(UserPoolId=pool["Id"])
+                # Either a non-empty domain or None. Never a partially built value.
+                return pool_details["UserPool"].get("Domain") or None
+    except Exception as e:
+        print(f"    ⚠️  Could not look up Cognito domain: {e}")
+    return None
+
+
 def get_agentcore_runtime_arns(region, profile):
     """Get AgentCore runtime ARNs from AWS"""
     runtime_arns = {}
@@ -881,7 +911,15 @@ def get_agent_ids_and_aliases(stack_prefix, stack_suffix, region, profile):
     return agent_data
 
 
-def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file):
+def generate_aws_config(
+    stack_prefix,
+    stack_suffix,
+    region,
+    profile,
+    output_file,
+    sso_provider=None,
+    sso_label="Sign in with SSO",
+):
     """Generate the AWS config file"""
     infrastructure_config = get_infrastructure_config(
         stack_prefix, stack_suffix, region, profile
@@ -1048,6 +1086,33 @@ def generate_aws_config(stack_prefix, stack_suffix, region, profile, output_file
     if "cognito" in infrastructure_config:
         aws_config["aws"]["cognito"] = infrastructure_config["cognito"]
 
+    # Federated sign-in. Emitted only when a provider was named AND the user pool
+    # actually has a hosted-UI domain, because the UI builds its authorize and token
+    # URLs from that domain. Writing the block without one would render an SSO button
+    # that cannot work.
+    if sso_provider:
+        cognito_domain = get_cognito_domain(
+            stack_prefix, unique_id or stack_suffix, region, profile
+        )
+        if cognito_domain:
+            aws_config["sso"] = {
+                "enabled": True,
+                "providerName": sso_provider,
+                "label": sso_label,
+                # Full host, not the prefix — both the login component and Amplify
+                # use this value directly as the OAuth domain.
+                "cognitoDomain": f"{cognito_domain}.auth.{region}.amazoncognito.com",
+            }
+            print(
+                f"    ✅ SSO configured: provider={sso_provider}, domain={cognito_domain}"
+            )
+        else:
+            print(
+                f"    ⚠️  --sso-provider '{sso_provider}' was given but the user pool has no "
+                "hosted-UI domain, so no SSO config was written. Create the domain "
+                "(see docs/SSO_SETUP_GUIDE.md) and re-run."
+            )
+
     # Write to the output file
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
@@ -1089,6 +1154,20 @@ def main():
         "--output",
         default="bedrock-adtech-demo/src/assets/aws-config.json",
         help="Output file path (default: bedrock-adtech-demo/src/assets/aws-config.json)",
+    )
+    generate_parser.add_argument(
+        "--sso-provider",
+        default=None,
+        help=(
+            "Identity provider name as registered in the Cognito user pool "
+            "(e.g. 'MyCompanySSO'). Enables the SSO button in the UI. Requires the "
+            "user pool to have a hosted-UI domain — see docs/SSO_SETUP_GUIDE.md"
+        ),
+    )
+    generate_parser.add_argument(
+        "--sso-label",
+        default="Sign in with SSO",
+        help="Label for the SSO button in the UI (default: 'Sign in with SSO')",
     )
 
     # Validate command
@@ -1140,6 +1219,8 @@ def main():
                 region=region,
                 profile=profile,
                 output_file=output_file,
+                sso_provider=args.sso_provider,
+                sso_label=args.sso_label,
             )
 
             print(f"\n✅ AWS config generated successfully!")

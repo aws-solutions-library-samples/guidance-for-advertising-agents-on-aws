@@ -38,6 +38,7 @@ export class AppComponent implements OnInit, OnDestroy {
   activeTab = 'generic-tab-1'; // Start with first tab from config
   isAuthenticated = false;
   currentUser: any = null;
+  userDisplayName = 'User';
 
   tabs: TabConfig[] = [];
   isLoadingTabs = true;
@@ -145,9 +146,15 @@ export class AppComponent implements OnInit, OnDestroy {
     this.awsConfig.user$.subscribe((user) => {
       this.currentUser = user;
       this.isAuthenticated = !!user;
+      this.userDisplayName = this.getUserDisplayName(user);
 
       if (!user) {
-        this.router.navigate(['/login']);
+        // Mid-OAuth-callback there is no session yet, and the login component is
+        // exchanging the code. Redirecting to /login here would discard it.
+        const hasOAuthCode = window.location.search.includes('code=');
+        if (!hasOAuthCode) {
+          this.router.navigate(['/login']);
+        }
         // Clear tabs when not authenticated
         this.tabs = [];
         this.isLoadingTabs = false;
@@ -295,6 +302,36 @@ export class AppComponent implements OnInit, OnDestroy {
 
   isActiveTab(tabId: string): boolean {
     return this.activeTab === tabId;
+  }
+
+  /**
+   * Best available display name for the signed-in user.
+   *
+   * Password sign-in populates signInDetails.loginId. Federated sign-in does not:
+   * the login component stores tokens directly, so the email is read from the id
+   * token payload in localStorage instead.
+   */
+  private getUserDisplayName(user: any): string {
+    if (!user) return 'User';
+    if (user.signInDetails?.loginId) return user.signInDetails.loginId;
+    if (user.username && user.username.includes('@')) return user.username;
+
+    try {
+      const clientId = this.awsConfig.getConfig()?.aws?.cognito?.userPoolWebClientId;
+      if (clientId) {
+        const lastUser = localStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.LastAuthUser`);
+        if (lastUser) {
+          const idToken = localStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.${lastUser}.idToken`);
+          if (idToken) {
+            const payload = JSON.parse(atob(idToken.split('.')[1]));
+            return payload.email || payload.preferred_username || payload.sub || 'User';
+          }
+        }
+      }
+    } catch {
+      // A malformed or absent token is not worth failing the header over.
+    }
+    return user.userId || 'User';
   }
 
   async signOut(): Promise<void> {

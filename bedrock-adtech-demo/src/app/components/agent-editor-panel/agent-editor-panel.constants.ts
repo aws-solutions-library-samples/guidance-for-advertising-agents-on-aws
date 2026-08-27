@@ -50,11 +50,6 @@ export const AVAILABLE_TOOL_OPTIONS: string[] = [
   'retrieve_knowledge_base_results_tool',
   'lookup_events',
   'http_request',
-  'get_products',
-  'create_media_buy',
-  'get_media_buy_delivery',
-  'get_signals',
-  'activate_signal',
   'generate_image_from_descriptions',
   'file_read'
 ];

@@ -67,6 +67,13 @@ instead of inventing creatives.
 
 ## AdCP Seller Agent
 
+> **Replaces the AdCP MCP Gateway.** `AdCPSellerAgent` and `AdCPBuyerAgent` are
+> the AdCP-compliant reference agents that took over from the AdCP MCP Gateway,
+> which has been removed from `scripts/deploy-ecosystem.sh`. AdCP is spoken
+> between peer agents here rather than flattened into gateway tool calls. See
+> [what ships today](../README.md#adcp-migration-status) — neither agent is a
+> working default yet.
+
 A fully [Ad Context Protocol](https://docs.adcontextprotocol.org) (**AdCP 3.1**)
 compliant **sales agent** (publisher/SSP sell-side). It implements the AdCP
 Media Buy sell-side task surface to the letter of the spec

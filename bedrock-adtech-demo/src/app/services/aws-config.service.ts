@@ -481,15 +481,30 @@ export class AwsConfigService implements OnInit {
   }
 
   private configureAmplify(config: AwsConfig): void {
+    // Federated sign-in is opt-in per deployment. The oauth section is included only
+    // when aws-config.json carries an enabled sso block, so a deployment without SSO
+    // never hands Amplify a domain that does not resolve.
+    const sso = config.sso?.enabled ? config.sso : null;
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4200';
+    const loginWith: Record<string, unknown> = { email: true };
+    if (sso) {
+      loginWith['oauth'] = {
+        domain: sso.cognitoDomain,
+        scopes: ['openid', 'email', 'profile'],
+        redirectSignIn: [`${currentOrigin}/`],
+        redirectSignOut: [`${currentOrigin}/`],
+        responseType: 'code',
+        providers: [{ custom: sso.providerName }],
+      };
+    }
+
     Amplify.configure({
       Auth: {
         Cognito: {
           userPoolId: config.aws.cognito.userPoolId,
           userPoolClientId: config.aws.cognito.userPoolWebClientId,
           identityPoolId: config.aws.cognito.identityPoolId,
-          loginWith: {
-            email: true
-          },
+          loginWith: loginWith as any,
           signUpVerificationMethod: 'code',
           userAttributes: {
             email: {

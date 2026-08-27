@@ -1504,6 +1504,7 @@ max-width: 85vw;  }
 
   .auth-type-options {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
 
@@ -1725,6 +1726,7 @@ max-width: 85vw;  }
 
   .auth-type-options {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
   }
@@ -2754,6 +2756,8 @@ max-width: 85vw;  }
 // Auth type options (shared between A2A and MCP)
 .auth-type-options, .a2a-editor-top-modal .auth-type-options {
   display: flex;
+  // Five modes no longer fit one row inside the A2A/MCP editor overlays.
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 

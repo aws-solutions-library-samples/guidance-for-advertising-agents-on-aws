@@ -34,6 +34,14 @@ Parameters:
     Type: String
     Description: S3 key for the async image processor Lambda code
     Default: 'lambda/async-image-processor.zip'
+  A4AMCPHandlerS3Bucket:
+    Type: String
+    Description: S3 bucket containing the A4A MCP handler Lambda code
+    Default: ''
+  A4AMCPHandlerS3Key:
+    Type: String
+    Description: S3 key for the A4A MCP handler Lambda code
+    Default: 'lambda/a4a-mcp-handler.zip'
 
 Resources:
   GeneratedContentBucket:
@@ -219,6 +227,96 @@ Resources:
           IMAGE_GENERATION_MODEL: !Ref ImageGenerationModel
       Timeout: 900  # 15 minutes for image generation
       MemorySize: 1024
+
+  # IAM Role for the A4A MCP Handler Lambda (Quick Suite MCP Gateway target)
+  #
+  # Every statement is scoped to a named resource. InvokeAgentRuntime is the one
+  # exception: the AgentCore runtime does not exist until deploy-ecosystem.sh Phase 8,
+  # after this stack is created, so it cannot be named here. Phase 12 narrows this
+  # statement to the specific runtime ARN once it is known.
+  A4AMCPHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackPrefix}-a4a-mcp-role-${UniqueId}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: a4a-mcp-handler-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: InvokeAgentRuntime
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:InvokeAgentRuntime
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:runtime/*'
+              - Sid: AgentCoreMemoryRead
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:GetMemoryEvent
+                  - bedrock-agentcore:ListMemoryEvents
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:SearchMemory
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/*'
+              - Sid: DynamoDBReadOnly
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt AgentConfigTable.Arn
+                  - !Sub '${AgentConfigTable.Arn}/index/*'
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${StackPrefix}-a4a-mcp-handler-${UniqueId}:*'
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: A4A/MCPHandler
+
+  # A4A MCP Handler Lambda Function — target behind the optional Quick MCP Gateway.
+  #
+  # Deployed with every stack, but inert until Phase 12 runs: without a gateway there is
+  # no caller, and GUIDANCE_RUNTIME_ARN is empty until Phase 12 sets it. An empty value
+  # is the accurate state rather than a placeholder that implies working wiring.
+  #
+  # Timeout is 300s to match the handler's own GIVE_UP_AFTER_SECONDS horizon. A lower
+  # value would kill get_agent_conversation mid-poll and surface a platform timeout
+  # instead of the handler's "still processing" response.
+  A4AMCPHandlerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackPrefix}-a4a-mcp-handler-${UniqueId}'
+      Runtime: python3.11
+      Handler: a4a_mcp_handler.lambda_handler
+      Role: !GetAtt A4AMCPHandlerRole.Arn
+      Code:
+        S3Bucket: !Ref A4AMCPHandlerS3Bucket
+        S3Key: !Ref A4AMCPHandlerS3Key
+      Environment:
+        Variables:
+          AGENT_CONFIG_TABLE: !Ref AgentConfigTable
+          GUIDANCE_RUNTIME_ARN: ''
+      Timeout: 300
+      MemorySize: 512
 
   # IAM Role for Creative Image Generator Lambda
   CreativeImageGeneratorLambdaRole:
@@ -567,6 +665,21 @@ Outputs:
     Value: !Ref AsyncImageProcessorFunction
     Export:
       Name: !Sub '${StackPrefix}-AsyncImageProcessorFunctionName-${UniqueId}'
+  A4AMCPHandlerFunctionArn:
+    Description: ARN of the A4A MCP Handler Lambda function (Quick MCP Gateway target)
+    Value: !GetAtt A4AMCPHandlerFunction.Arn
+    Export:
+      Name: !Sub '${StackPrefix}-A4AMCPHandlerFunctionArn-${UniqueId}'
+  A4AMCPHandlerFunctionName:
+    Description: Name of the A4A MCP Handler Lambda function
+    Value: !Ref A4AMCPHandlerFunction
+    Export:
+      Name: !Sub '${StackPrefix}-A4AMCPHandlerFunctionName-${UniqueId}'
+  A4AMCPHandlerRoleName:
+    Description: Name of the A4A MCP Handler Lambda execution role (narrowed by Phase 12)
+    Value: !Ref A4AMCPHandlerRole
+    Export:
+      Name: !Sub '${StackPrefix}-A4AMCPHandlerRoleName-${UniqueId}'
    
   GeneratedContentBucketName:
     Description: Name of the generated content S3 bucket

@@ -129,7 +129,9 @@
                   <div class="agent-info">
                     <span class="agent-name">
                       {{ agent.agent_display_name }}
-                      <span class="a2a-badge" *ngIf="agent.is_a2a">A2A</span>
+                      <span class="a2a-badge" *ngIf="isExternalAgentConfig(agent)">
+                        {{ getAgentProtocolLabel(agent) }}
+                      </span>
                     </span>
                     <span class="agent-team">{{ agent.team_name }}</span>
                   </div>
@@ -315,7 +317,7 @@
             </div>
             <div class="transport-option" [class.selected]="mcpServer.transport === 'http'"
               (click)="mcpServer.transport = 'http'; editorPanel.updateMcpServerJsonFromForm()">
-              <span class="material-icons">http</span> HTTP
+              <span class="material-icons">swap_horiz</span> HTTP
             </div>
             <div class="transport-option" [class.selected]="mcpServer.transport === 'sse'"
               (click)="mcpServer.transport = 'sse'; editorPanel.updateMcpServerJsonFromForm()">
@@ -378,22 +380,125 @@
             <div class="mcp-form-section auth-section">
               <h6><span class="material-icons">vpn_key</span> Authentication</h6>
               <div class="auth-type-options">
-                <div class="auth-type-option" [class.selected]="!mcpServer.oauthToken?.hasToken && !mcpServer.awsAuth && !editorPanel.mcpOAuthCredentialsPending"
+                <div class="auth-type-option" [class.selected]="editorPanel.isMcpNoAuthSelected(mcpServer)"
                   (click)="editorPanel.setMcpAuthType(mcpServer, 'none')">
                   <span class="material-icons">lock_open</span> None
                 </div>
-                <div class="auth-type-option" [class.selected]="mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsPending"
+                <div class="auth-type-option" [class.selected]="editorPanel.isMcpOAuthSelected(mcpServer)"
                   (click)="editorPanel.setMcpAuthType(mcpServer, 'bearer')">
                   <span class="material-icons">token</span> OAuth
                 </div>
-                <div class="auth-type-option" [class.selected]="!!mcpServer.awsAuth"
+                <div class="auth-type-option" [class.selected]="editorPanel.isMcpM2mSelected(mcpServer)"
+                  (click)="editorPanel.setMcpAuthType(mcpServer, 'oauth_m2m')">
+                  <span class="material-icons">sync_lock</span> OAuth (M2M)
+                </div>
+                <div class="auth-type-option" [class.selected]="editorPanel.getMcpAuthType(mcpServer) === 'aws_iam'"
                   (click)="editorPanel.setMcpAuthType(mcpServer, 'aws_iam')">
                   <span class="material-icons">security</span> AWS IAM
                 </div>
               </div>
 
+              <!-- OAuth client-credentials (machine-to-machine) Config -->
+              <div class="oauth-credentials-config" *ngIf="editorPanel.isMcpM2mSelected(mcpServer)">
+                <div class="credential-status-indicator" *ngIf="!editorPanel.mcpM2mEditing">
+                  <div class="credential-status stored" *ngIf="mcpServer.oauthClientCredentials?.hasCredentials">
+                    <span class="material-icons">check_circle</span>
+                    <span>Credentials stored</span>
+                  </div>
+                  <div class="credential-status not-stored" *ngIf="!mcpServer.oauthClientCredentials?.hasCredentials">
+                    <span class="material-icons">radio_button_unchecked</span>
+                    <span>Not stored</span>
+                  </div>
+                </div>
+                <div class="server-details"
+                  *ngIf="mcpServer.oauthClientCredentials?.tokenUrl && !editorPanel.mcpM2mEditing">
+                  <span class="server-detail">
+                    <span class="material-icons">link</span>
+                    {{ mcpServer.oauthClientCredentials?.tokenUrl }}
+                  </span>
+                  <span class="server-detail" *ngIf="mcpServer.oauthClientCredentials?.scope">
+                    <span class="material-icons">label</span>
+                    Scope: {{ mcpServer.oauthClientCredentials?.scope }}
+                  </span>
+                </div>
+                <div class="token-status"
+                  *ngIf="mcpServer.oauthClientCredentials?.hasCredentials && !editorPanel.mcpM2mEditing">
+                  <div class="token-actions">
+                    <button class="nova-button secondary small" (click)="editorPanel.beginMcpClientCredentialsUpdate()">
+                      <span class="material-icons">edit</span> Update
+                    </button>
+                    <button class="nova-button secondary small danger"
+                      (click)="editorPanel.removeMcpClientCredentials(mcpServer)">
+                      <span class="material-icons">delete_outline</span> Remove
+                    </button>
+                  </div>
+                </div>
+                <div class="credentials-input-group"
+                  *ngIf="!mcpServer.oauthClientCredentials?.hasCredentials || editorPanel.mcpM2mEditing">
+                  <div class="credential-field">
+                    <label>Client ID <span class="required">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpM2mClientId"
+                      placeholder="OAuth client id" autocomplete="off">
+                  </div>
+                  <div class="credential-field">
+                    <label>Client Secret <span class="required">*</span></label>
+                    <div class="token-input-row">
+                      <input [type]="editorPanel.mcpM2mSecretVisible ? 'text' : 'password'" class="form-control"
+                        [(ngModel)]="editorPanel.mcpM2mClientSecret" placeholder="OAuth client secret"
+                        autocomplete="off" spellcheck="false">
+                      <button class="toggle-visibility-btn"
+                        (click)="editorPanel.mcpM2mSecretVisible = !editorPanel.mcpM2mSecretVisible" type="button"
+                        [title]="editorPanel.mcpM2mSecretVisible ? 'Hide' : 'Show'">
+                        <span class="material-icons">{{ editorPanel.mcpM2mSecretVisible ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="credential-field">
+                    <label>Token URL <span class="required">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpM2mTokenUrl"
+                      placeholder="https://your-domain/oauth2/token" autocomplete="off">
+                  </div>
+                  <div class="credential-field">
+                    <label>Scope <span class="optional-hint">(optional)</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpM2mScope"
+                      placeholder="e.g. mcp/tools.read" autocomplete="off">
+                  </div>
+                  <div class="credential-field">
+                    <label>Audience <span class="optional-hint">(optional)</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpM2mAudience"
+                      placeholder="Required by some providers" autocomplete="off">
+                  </div>
+                  <span class="field-hint token-hint">
+                    <span class="material-icons">info_outline</span>
+                    Credentials are stored encrypted in AWS SSM Parameter Store. The runtime exchanges them at the
+                    token URL (<code>grant_type=client_credentials</code>) for an access token and connects with
+                    <code>Authorization: Bearer &lt;token&gt;</code>. Supported on the HTTP transport; stdio servers
+                    take credentials through environment variables instead.
+                  </span>
+                  <span class="field-hint token-hint" *ngIf="editorPanel.mcpM2mEditing">
+                    <span class="material-icons">info_outline</span>
+                    The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
+                  </span>
+                  <div class="token-save-actions">
+                    <button class="nova-button primary small" (click)="editorPanel.saveMcpClientCredentials()"
+                      [disabled]="editorPanel.mcpM2mSaving || !editorPanel.mcpM2mClientId.trim() || !editorPanel.mcpM2mClientSecret.trim() || !editorPanel.mcpM2mTokenUrl.trim()">
+                      <span class="material-icons">{{ editorPanel.mcpM2mSaving ? 'hourglass_empty' : 'save' }}</span>
+                      {{ editorPanel.mcpM2mSaving ? 'Saving...' : 'Save Credentials' }}
+                    </button>
+                    <button class="nova-button secondary small" *ngIf="editorPanel.mcpM2mEditing"
+                      (click)="editorPanel.cancelMcpClientCredentialsEdit()">
+                      Cancel
+                    </button>
+                  </div>
+                  <div class="token-error" *ngIf="editorPanel.mcpServerJsonError">
+                    <span class="material-icons">error_outline</span>
+                    {{ editorPanel.mcpServerJsonError }}
+                  </div>
+                </div>
+              </div>
+
               <!-- OAuth Credentials Config -->
-              <div class="oauth-credentials-config" *ngIf="mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsPending">
+              <div class="oauth-credentials-config" *ngIf="editorPanel.isMcpOAuthSelected(mcpServer)">
                 <!-- Credentials already stored — show status -->
                 <div class="token-status" *ngIf="mcpServer.oauthToken?.hasToken && !editorPanel.mcpOAuthCredentialsEditing">
                   <div class="token-configured-badge">
@@ -576,14 +681,39 @@
           </div>
         </div>
 
-        <!-- ARN Configuration -->
+        <!-- Protocol: request envelope only. Independent of endpoint and auth. -->
         <div class="a2a-form-section">
-          <h6><span class="material-icons">cloud</span> Agent ARN</h6>
+          <h6><span class="material-icons">swap_horiz</span> Invocation Protocol</h6>
+          <span class="field-hint">Which wire format to use when calling this peer. This chooses the request
+            envelope only — it does not decide the endpoint type or the credentials.</span>
+          <div class="auth-type-options">
+            <div class="auth-type-option" [class.selected]="editorPanel.getEntryProtocol(a2aAgent) === 'http'"
+              (click)="editorPanel.setEntryProtocol(a2aAgent, 'http')">
+              <span class="material-icons">swap_horiz</span> HTTP
+            </div>
+            <div class="auth-type-option" [class.selected]="editorPanel.getEntryProtocol(a2aAgent) === 'a2a'"
+              (click)="editorPanel.setEntryProtocol(a2aAgent, 'a2a')">
+              <span class="material-icons">share</span> A2A (JSON-RPC 2.0)
+            </div>
+          </div>
+        </div>
+
+        <!-- Endpoint: AgentCore runtime ARN or any agent URL -->
+        <div class="a2a-form-section">
+          <h6><span class="material-icons">cloud</span> Agent Endpoint</h6>
           <div class="a2a-form-group">
-            <label>Runtime ARN <span class="required">*</span></label>
-            <input type="text" class="form-control" [(ngModel)]="a2aAgent.arn"
-              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/...">
-            <span class="field-hint">The AgentCore runtime ARN or A2A endpoint for this external agent.</span>
+            <label>Endpoint <span class="required">*</span></label>
+            <input type="text" class="form-control" [ngModel]="editorPanel.getEntryEndpoint(a2aAgent)"
+              (ngModelChange)="editorPanel.setEntryEndpoint(a2aAgent, $event)"
+              placeholder="arn:aws:bedrock-agentcore:us-east-1:123456789:runtime/... or https://peer.example.com/a2a">
+            <span class="field-hint">An AgentCore runtime ARN (<code>arn:aws:bedrock-agentcore:...</code>) or an
+              absolute agent URL (<code>https://...</code>), so this peer can be something other than an AgentCore
+              runtime.</span>
+          </div>
+          <!-- Derived transport, so it does not have to be inferred -->
+          <div class="external-runtime-auth-notice">
+            <span class="material-icons">info</span>
+            <span>{{ editorPanel.describeEntryInvocation(a2aAgent) }}</span>
           </div>
         </div>
 
@@ -614,7 +744,9 @@
           <!-- External runtime notice -->
           <div class="external-runtime-auth-notice" *ngIf="editorPanel.isExternalRuntime">
             <span class="material-icons">info</span>
-            <span>Only IAM and OAuth authentication are supported for external runtimes at this time.</span>
+            <span>External runtimes support IAM and the two OAuth modes. Either OAuth mode sends a bearer token
+              to the runtime's data-plane endpoint, so the runtime's authorizer has to accept tokens from the
+              issuer you configure here.</span>
           </div>
 
           <!-- Auth type selector -->
@@ -626,6 +758,10 @@
             <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'oauth'"
               (click)="editorPanel.setA2aAuthType(a2aAgent, 'oauth')">
               <span class="material-icons">token</span> OAuth
+            </div>
+            <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'oauth_m2m'"
+              (click)="editorPanel.setA2aAuthType(a2aAgent, 'oauth_m2m')">
+              <span class="material-icons">sync_lock</span> OAuth (M2M)
             </div>
             <div class="auth-type-option" [class.selected]="editorPanel.getA2aAuthType(a2aAgent) === 'iam'"
               (click)="editorPanel.setA2aAuthType(a2aAgent, 'iam')">
@@ -769,6 +905,103 @@
                 </button>
                 <button class="nova-button secondary small" *ngIf="editorPanel.a2aOAuthCredentialsEditing"
                   (click)="editorPanel.a2aOAuthCredentialsEditing = false; editorPanel.a2aOAuthClientId = ''; editorPanel.a2aOAuthUsername = ''; editorPanel.a2aOAuthPassword = ''">
+                  Cancel
+                </button>
+              </div>
+              <div class="token-error" *ngIf="editorPanel.a2aEditorError">
+                <span class="material-icons">error_outline</span>
+                {{ editorPanel.a2aEditorError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- OAuth client-credentials (machine-to-machine) Config -->
+          <div class="oauth-credentials-config" *ngIf="editorPanel.getA2aAuthType(a2aAgent) === 'oauth_m2m'">
+            <div class="credential-status-indicator" *ngIf="!editorPanel.a2aM2mEditing">
+              <div class="credential-status stored" *ngIf="a2aAgent.oauthClientCredentials?.hasCredentials">
+                <span class="material-icons">check_circle</span>
+                <span>Credentials stored</span>
+              </div>
+              <div class="credential-status not-stored" *ngIf="!a2aAgent.oauthClientCredentials?.hasCredentials">
+                <span class="material-icons">radio_button_unchecked</span>
+                <span>Not stored</span>
+              </div>
+            </div>
+            <div class="server-details" *ngIf="a2aAgent.oauthClientCredentials?.tokenUrl && !editorPanel.a2aM2mEditing">
+              <span class="server-detail">
+                <span class="material-icons">link</span>
+                {{ a2aAgent.oauthClientCredentials?.tokenUrl }}
+              </span>
+              <span class="server-detail" *ngIf="a2aAgent.oauthClientCredentials?.scope">
+                <span class="material-icons">label</span>
+                Scope: {{ a2aAgent.oauthClientCredentials?.scope }}
+              </span>
+            </div>
+            <div class="token-status"
+              *ngIf="a2aAgent.oauthClientCredentials?.hasCredentials && !editorPanel.a2aM2mEditing">
+              <div class="token-actions">
+                <button class="nova-button secondary small" (click)="editorPanel.beginA2aClientCredentialsUpdate()">
+                  <span class="material-icons">edit</span> Update
+                </button>
+                <button class="nova-button secondary small danger" (click)="editorPanel.removeA2aClientCredentials()">
+                  <span class="material-icons">delete_outline</span> Remove
+                </button>
+              </div>
+            </div>
+            <div class="credentials-input-group"
+              *ngIf="!a2aAgent.oauthClientCredentials?.hasCredentials || editorPanel.a2aM2mEditing">
+              <div class="credential-field">
+                <label>Client ID <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aM2mClientId"
+                  placeholder="OAuth client id" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Client Secret <span class="required">*</span></label>
+                <div class="token-input-row">
+                  <input [type]="editorPanel.a2aM2mSecretVisible ? 'text' : 'password'" class="form-control"
+                    [(ngModel)]="editorPanel.a2aM2mClientSecret" placeholder="OAuth client secret"
+                    autocomplete="off" spellcheck="false">
+                  <button class="toggle-visibility-btn"
+                    (click)="editorPanel.a2aM2mSecretVisible = !editorPanel.a2aM2mSecretVisible" type="button"
+                    [title]="editorPanel.a2aM2mSecretVisible ? 'Hide' : 'Show'">
+                    <span class="material-icons">{{ editorPanel.a2aM2mSecretVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="credential-field">
+                <label>Token URL <span class="required">*</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aM2mTokenUrl"
+                  placeholder="https://your-domain/oauth2/token" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Scope <span class="optional-hint">(optional)</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aM2mScope"
+                  placeholder="e.g. agents/invoke" autocomplete="off">
+              </div>
+              <div class="credential-field">
+                <label>Audience <span class="optional-hint">(optional)</span></label>
+                <input type="text" class="form-control" [(ngModel)]="editorPanel.a2aM2mAudience"
+                  placeholder="Required by some providers" autocomplete="off">
+              </div>
+              <span class="field-hint token-hint">
+                <span class="material-icons">info_outline</span>
+                Credentials are stored encrypted in AWS SSM Parameter Store. The runtime exchanges them at the
+                token URL (<code>grant_type=client_credentials</code>) for an access token, sends it as
+                <code>Authorization: Bearer &lt;token&gt;</code>, and re-mints it when it expires. No Cognito user
+                is involved, so this works with peers hosted anywhere.
+              </span>
+              <span class="field-hint token-hint" *ngIf="editorPanel.a2aM2mEditing">
+                <span class="material-icons">info_outline</span>
+                The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
+              </span>
+              <div class="token-save-actions">
+                <button class="nova-button primary small" (click)="editorPanel.saveA2aClientCredentials()"
+                  [disabled]="editorPanel.a2aM2mSaving || !editorPanel.a2aM2mClientId.trim() || !editorPanel.a2aM2mClientSecret.trim() || !editorPanel.a2aM2mTokenUrl.trim()">
+                  <span class="material-icons">{{ editorPanel.a2aM2mSaving ? 'hourglass_empty' : 'save' }}</span>
+                  {{ editorPanel.a2aM2mSaving ? 'Saving...' : 'Save Credentials' }}
+                </button>
+                <button class="nova-button secondary small" *ngIf="editorPanel.a2aM2mEditing"
+                  (click)="editorPanel.cancelA2aClientCredentialsEdit()">
                   Cancel
                 </button>
               </div>
