@@ -1,0 +1,440 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ad Buyer System — Compute stack: ECS Fargate service with EFS-backed
+  SQLite persistence, ALB with HTTPS, CloudWatch logging, and IAM roles.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  PublicSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+
+  PublicSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+
+  AlbSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+
+  EcsSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+
+  EfsSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+
+  ContainerImage:
+    Type: String
+    Description: ECR image URI for the ad buyer container.
+
+  CertificateArn:
+    Type: String
+    Description: ARN of an ACM certificate for the HTTPS listener.
+
+  AnthropicApiKeyParameter:
+    Type: String
+    Default: /ad-buyer-system/anthropic-api-key
+    Description: SSM SecureString parameter name for the Anthropic API key.
+
+  RedisEndpoint:
+    Type: String
+    Description: Redis primary endpoint address.
+
+  RedisPort:
+    Type: String
+    Default: "6379"
+    Description: Redis port.
+
+  ContainerPort:
+    Type: Number
+    Default: 8001
+
+  TaskCpu:
+    Type: Number
+    Default: 256
+
+  TaskMemory:
+    Type: Number
+    Default: 512
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: >
+      Desired task count. Keep at 1 — SQLite does not support concurrent
+      writers from multiple tasks.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+
+Resources:
+  # ---------- CloudWatch ----------
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${Environment}/ad-buyer"
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------- EFS ----------
+  EfsFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub "${Environment}-ad-buyer-efs"
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  EfsMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PrivateSubnet1Id
+      SecurityGroups:
+        - !Ref EfsSecurityGroupId
+
+  EfsMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PrivateSubnet2Id
+      SecurityGroups:
+        - !Ref EfsSecurityGroupId
+
+  EfsAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      PosixUser:
+        Uid: "1000"
+        Gid: "1000"
+      RootDirectory:
+        Path: /ad-buyer-data
+        CreationInfo:
+          OwnerUid: "1000"
+          OwnerGid: "1000"
+          Permissions: "0755"
+      AccessPointTags:
+        - Key: Name
+          Value: !Sub "${Environment}-ad-buyer-efs-ap"
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------- IAM ----------
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Environment}-ad-buyer-task-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeyParameter}"
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Environment}-ad-buyer-task-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EfsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:ClientMount
+                  - elasticfilesystem:ClientWrite
+                  - elasticfilesystem:DescribeMountTargets
+                Resource:
+                  - !GetAtt EfsFileSystem.Arn
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------- ECS Cluster ----------
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${Environment}-ad-buyer-cluster"
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------- Task Definition ----------
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${Environment}-ad-buyer"
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      Volumes:
+        - Name: efs-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EfsFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref EfsAccessPoint
+              IAM: ENABLED
+      ContainerDefinitions:
+        - Name: ad-buyer
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          MountPoints:
+            - SourceVolume: efs-data
+              ContainerPath: /app/data
+              ReadOnly: false
+          Environment:
+            - Name: STORAGE_TYPE
+              Value: redis
+            - Name: DATABASE_URL
+              Value: "sqlite:///./data/ad_buyer.db"
+            - Name: REDIS_URL
+              Value: !Sub "redis://${RedisEndpoint}:${RedisPort}/0"
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+          Secrets:
+            - Name: ANTHROPIC_API_KEY
+              ValueFrom: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeyParameter}"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ad-buyer
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - !Sub "curl -f http://localhost:${ContainerPort}/health || exit 1"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------- ALB ----------
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${Environment}-ad-buyer-alb"
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+      SecurityGroups:
+        - !Ref AlbSecurityGroupId
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${Environment}-ad-buyer-tg"
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: !Ref ContainerPort
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: "200"
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: "30"
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  HttpRedirectListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
+
+  # ---------- ECS Service ----------
+  EcsService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - HttpsListener
+      - EfsMountTarget1
+      - EfsMountTarget2
+    Properties:
+      ServiceName: !Sub "${Environment}-ad-buyer-service"
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1Id
+            - !Ref PrivateSubnet2Id
+          SecurityGroups:
+            - !Ref EcsSecurityGroupId
+      LoadBalancers:
+        - ContainerName: ad-buyer
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 0
+        MaximumPercent: 100
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Project
+          Value: ad-buyer-system
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  AlbDnsName:
+    Description: DNS name of the Application Load Balancer.
+    Value: !GetAtt Alb.DNSName
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-AlbDnsName"
+
+  AlbHostedZoneId:
+    Description: Hosted zone ID of the ALB.
+    Value: !GetAtt Alb.CanonicalHostedZoneID
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-AlbHostedZoneId"
+
+  AlbArn:
+    Description: ARN of the Application Load Balancer.
+    Value: !Ref Alb
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-AlbArn"
+
+  TargetGroupArn:
+    Description: ARN of the target group.
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-TargetGroupArn"
+
+  EcsClusterName:
+    Description: Name of the ECS cluster.
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-EcsClusterName"
+
+  EcsServiceName:
+    Description: Name of the ECS service.
+    Value: !GetAtt EcsService.Name
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-EcsServiceName"
+
+  EfsFileSystemId:
+    Description: ID of the EFS filesystem.
+    Value: !Ref EfsFileSystem
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-EfsFileSystemId"
+
+  LogGroupName:
+    Description: CloudWatch log group name.
+    Value: !Ref LogGroup
+    Export:
+      Name: !Sub "${Environment}-ad-buyer-LogGroupName"

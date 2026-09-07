@@ -206,3 +206,12 @@ external-agents/BACKED_OUT_CONFIG.md
 agentcore/deployment/agent/global_configuration.json
 .oauth-gw-*.json
 .quick-gw-*.json
+
+# AgentCore starter-toolkit per-runtime deploy state (generated at deploy time).
+# The .yaml is already ignored above; this covers the directory the toolkit
+# creates under each agent/repo (Dockerfiles, build context, per-runtime config).
+**/.bedrock_agentcore/
+# Backups the AAMP deploy writes when patching a --local-aamp checkout.
+*.aamp-orig
+.aamp-temperature-patched
+.aamp-patched-files

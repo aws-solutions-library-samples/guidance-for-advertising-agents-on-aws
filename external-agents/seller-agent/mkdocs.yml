@@ -1,0 +1,92 @@
+site_name: IAB Tech Lab — Seller Agent
+site_url: https://iabtechlab.github.io/seller-agent/
+site_description: API & Architecture Reference for the IAB OpenDirect 2.1 Seller Agent
+repo_url: https://github.com/IABTechLab/seller-agent
+repo_name: IABTechLab/seller-agent
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+  custom_dir: docs/overrides
+
+plugins:
+  - search
+  - mermaid2
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quickstart: getting-started/quickstart.md
+  - API Reference:
+      - Overview: api/overview.md
+      - MCP Protocol: api/mcp.md
+      - A2A Protocol: api/a2a.md
+      - Agent Discovery: api/agent-discovery.md
+      - Authentication: api/authentication.md
+      - Quotes: api/quotes.md
+      - Orders: api/orders.md
+      - Change Requests: api/change-requests.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Data Flow: architecture/data-flow.md
+      - Storage: architecture/storage.md
+  - State Machines:
+      - Order Lifecycle: state-machines/order-lifecycle.md
+      - Change Request Flow: state-machines/change-request-flow.md
+  - Event Bus:
+      - Overview: event-bus/overview.md
+  - Integration:
+      - Buyer Agent Guide: integration/buyer-agent.md
+      - Negotiation Protocol: integration/negotiation.md
+  - AI Assistant Setup:
+      - Claude (Desktop & Web): guides/claude-desktop-setup.md
+      - ChatGPT, Codex & AI IDEs: guides/chatgpt-setup.md
+      - Developer Setup: guides/developer-setup.md
+  - Publisher Guide:
+      - Setup Overview: guides/publisher-setup.md
+      - Configuration: guides/configuration.md
+      - Inventory Sync: guides/inventory-sync.md
+      - Media Kit: guides/media-kit.md
+      - Pricing & Access Tiers: guides/pricing-rules.md
+      - Approval & HITL: guides/approval-rules.md
+      - Buyer & Agent Management: guides/agent-management.md
+      - Deployment: guides/deployment.md
+  - "Buyer Agent Docs →": https://iabtechlab.github.io/buyer-agent/

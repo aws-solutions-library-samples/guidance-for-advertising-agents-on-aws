@@ -1,0 +1,65 @@
+# =============================================================================
+# Ad Buyer System — Local Development Stack
+# =============================================================================
+# Usage:
+#   docker compose up              # Start all services
+#   docker compose up -d           # Start in background
+#   docker compose logs -f app     # Follow app logs
+#   docker compose down -v         # Stop and remove volumes
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis — production-equivalent key-value store
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../../.env
+    environment:
+      STORAGE_TYPE: redis
+      DATABASE_URL: sqlite:///./data/ad_buyer.db
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - buyerdata:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Seller Agent (optional — for end-to-end testing)
+  # ---------------------------------------------------------------------------
+  # Uncomment to run a seller agent alongside the buyer:
+  # seller:
+  #   image: ad-seller:latest
+  #   ports:
+  #     - "8000:8000"
+  #   env_file:
+  #     - ../../.env
+  #   environment:
+  #     STORAGE_TYPE: sqlite
+
+volumes:
+  redisdata:
+  buyerdata:

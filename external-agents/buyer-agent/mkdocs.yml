@@ -1,0 +1,117 @@
+site_name: IAB Tech Lab — Buyer Agent
+site_url: https://iabtechlab.github.io/buyer-agent/
+site_description: API & Architecture Reference for the IAB OpenDirect 2.1 Buyer Agent
+repo_url: https://github.com/IABTechLab/buyer-agent
+repo_name: IABTechLab/buyer-agent
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+  custom_dir: docs/overrides
+
+plugins:
+  - search
+  - mermaid2
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quickstart: getting-started/quickstart.md
+  - API Reference:
+      - Overview: api/overview.md
+      - Protocol Overview: api/protocols.md
+      - MCP Client: api/mcp-client.md
+      - A2A Client: api/a2a-client.md
+      - Authentication: api/authentication.md
+      - Change Requests: api/change-requests.md
+      - Media Kit: api/media-kit.md
+      - Deals: api/deals.md
+      - Bookings: api/bookings.md
+      - Seller Discovery: api/seller-discovery.md
+      - Products: api/products.md
+      - Sessions: api/sessions.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Agent Hierarchy: architecture/agent-hierarchy.md
+      - Booking Flow: architecture/booking-flow.md
+      - Buyer Deal Flow: architecture/buyer-deal-flow.md
+      - Deal Store: architecture/deal-store.md
+      - Storage Backends: architecture/storage-backends.md
+      - Models: architecture/models.md
+      - Tools Reference: architecture/tools.md
+      - MCP Server: architecture/mcp-server.md
+      - Deal Library: architecture/deal-library.md
+      - SSP Connectors: architecture/ssp-connectors.md
+  - State Machines:
+      - Order Lifecycle: state-machines/order-lifecycle.md
+      - Change Request Flow: state-machines/change-request-flow.md
+  - Event Bus:
+      - Overview: event-bus/overview.md
+  - Buyer Guide:
+      - Overview: guides/overview.md
+      - Deal Booking: guides/deal-booking.md
+      - Negotiation: guides/negotiation.md
+      - Identity Strategy: guides/identity.md
+      - Media Kit Browsing: guides/media-kit.md
+      - Sessions: guides/sessions.md
+      - Multi-Seller Discovery: guides/multi-seller.md
+      - Linear TV Buying: guides/linear-tv.md
+      - Configuration: guides/configuration.md
+      - Deployment & Operations: guides/deployment-ops-guide.md
+      - Multi-Seller Orchestration: guides/multi-seller-orchestration.md
+      - Campaign Pipeline: guides/campaign-pipeline.md
+      - Budget Pacing: guides/budget-pacing.md
+      - Creative Management: guides/creative-management.md
+      - Deal Library: guides/deal-library.md
+      - SSP Connector Setup: guides/ssp-connectors.md
+  - Integration:
+      - Seller Agent Guide: integration/seller-agent.md
+      - OpenDirect Protocol: integration/opendirect.md
+      - IAB Diligence Platform Approval: integration/iab-diligence-platform.md
+  - AI Assistant Setup:
+      - Claude (Desktop & Web): claude-desktop-setup.md
+      - ChatGPT, Codex & AI IDEs: multi-client-setup.md
+      - Developer Setup: ai-assistant/developer-setup.md
+  - MCP Reference:
+      - Tools Reference: ai-assistant/mcp-tools.md
+      - Slash Commands: ai-assistant/slash-commands.md
+      - Setup Wizard: ai-assistant/setup-wizard.md
+  - "Seller Agent Docs →": https://iabtechlab.github.io/seller-agent/

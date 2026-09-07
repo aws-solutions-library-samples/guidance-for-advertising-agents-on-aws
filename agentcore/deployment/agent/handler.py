@@ -2702,6 +2702,21 @@ async def agent_invocation(payload, context):
                     event_count += 1
                     if event_count <= 3:  # Log first few events
                         _flush_log(f"🎬 AGENT_INVOCATION: Event #{event_count}, keys={list(event.keys()) if isinstance(event, dict) else type(event)}")
+                    # Forward interim progress streamed from a sub-agent invoke
+                    # tool (e.g. the long-running AAMP buyer) so the UI can show
+                    # live status instead of a silent wait. These are the "⏳ "
+                    # lines yielded by the A2A invoke tool; the tool's final
+                    # answer arrives separately as a normal message/tool result.
+                    _tse = event.get("tool_stream_event") if isinstance(event, dict) else None
+                    if isinstance(_tse, dict):
+                        _sdata = _tse.get("data")
+                        if isinstance(_sdata, str) and _sdata.startswith("⏳"):
+                            yield {
+                                "type": "agent_status",
+                                "data": _sdata,
+                                "teamName": orchestrator_instance.team_name,
+                            }
+                        continue
                     if event.get("message") and event.get("message").get("content"):
                         event["teamName"] = orchestrator_instance.team_name
                         yield event

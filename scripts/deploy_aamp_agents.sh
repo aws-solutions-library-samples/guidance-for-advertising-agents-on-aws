@@ -45,6 +45,13 @@
 # pattern. Set AAMP_INBOUND_AUTH=iam to keep the legacy SigV4 behavior.
 : "${AAMP_INBOUND_AUTH:=oauth}"
 
+# Serving protocol for the AAMP runtimes: "a2a" (Strands + A2A, default) or "http"
+# (legacy CrewAI HTTP crew). "a2a" deploys each repo's a2a_main.py via
+# `deploy.sh --mode a2a` (requirements-a2a.txt, no crewai) and skips the
+# CrewAI-only source patches. Set AAMP_PROTOCOL=http for the legacy path.
+: "${AAMP_PROTOCOL:=a2a}"
+: "${AGENTCORE_A2A_PORT:=9000}"
+
 # Longest runtime name that still lets `agentcore launch` enable observability.
 # --------------------------------------------------------------------------
 # The toolkit derives CloudWatch Logs delivery names from the memory id, which is
@@ -588,6 +595,56 @@ PYPREFILL
     return 0
 }
 
+# Grant the buyer runtime's execution role read access to the seller's inbound
+# OAuth credential in SSM.
+# --------------------------------------------------------------------------
+# WHY: the buyer coordinator calls the seller over A2A by minting a Cognito
+# bearer from the seller's inbound credential, stored at
+#   /{prefix}/a2a-inbound-tokens/{uid}/AAMPSellerAgent
+# (see provision_aamp_a2a_auth.py and the buyer's seller_client.py). The buyer
+# runtime's execution role is created by the AgentCore starter toolkit with a
+# minimal policy that does NOT include ssm:GetParameter for that path, so the
+# buyer cannot read the credential and buyer→seller auth fails with an
+# "authentication issue". This attaches a least-privilege inline policy:
+# ssm:GetParameter on the single seller parameter, plus kms:Decrypt scoped to
+# the SSM service (the parameter is a SecureString on the aws/ssm key).
+# Idempotent (put-role-policy overwrites), and only used on the A2A + OAuth path.
+_aamp_grant_buyer_seller_cred_read() {
+    local buyer_arn="$1"
+    local seller_param="$2"   # e.g. /dm1/a2a-inbound-tokens/7e6w5f/AAMPSellerAgent
+    [ -n "$buyer_arn" ] || return 0
+    [ -n "$seller_param" ] || return 0
+
+    local runtime_id account_id role_arn role_name
+    runtime_id="${buyer_arn##*/}"
+    account_id=$(aws_cmd sts get-caller-identity --query Account --output text 2>/dev/null | tr -d '[:space:]')
+    role_arn=$(aws_cmd bedrock-agentcore-control get-agent-runtime \
+        --agent-runtime-id "$runtime_id" --query roleArn --output text 2>/dev/null | tr -d '[:space:]')
+
+    if [ -z "$role_arn" ] || [ "$role_arn" = "None" ] || [ -z "$account_id" ]; then
+        print_warning "   ⚠️  Could not resolve the buyer runtime role; skipping seller-cred read grant."
+        print_warning "      buyer→seller auth will fail until the role can read $seller_param"
+        return 0
+    fi
+    role_name="${role_arn##*/}"
+
+    local param_arn="arn:aws:ssm:${AWS_REGION}:${account_id}:parameter${seller_param}"
+    local policy
+    policy=$(cat <<JSON
+{"Version":"2012-10-17","Statement":[
+{"Sid":"ReadSellerInboundCreds","Effect":"Allow","Action":"ssm:GetParameter","Resource":"${param_arn}"},
+{"Sid":"DecryptSsmSecureString","Effect":"Allow","Action":"kms:Decrypt","Resource":"*","Condition":{"StringEquals":{"kms:ViaService":"ssm.${AWS_REGION}.amazonaws.com"}}}
+]}
+JSON
+)
+    if aws_cmd iam put-role-policy --role-name "$role_name" \
+        --policy-name "AampSellerInboundRead" --policy-document "$policy" >/dev/null 2>&1; then
+        print_success "   ✅ Granted buyer role ($role_name) read access to the seller inbound creds"
+    else
+        print_warning "   ⚠️  Could not attach seller-cred read policy to $role_name — buyer→seller auth may fail."
+    fi
+}
+
 deploy_aamp_agents() {
     print_step "Step 9: Deploying AAMP agents (IAB buyer & seller)..."
 
@@ -729,17 +786,20 @@ REOF
     _aamp_inject_src_pythonpath "$aamp_seller_dir" "Seller"
     _aamp_inject_src_pythonpath "$aamp_buyer_dir" "Buyer"
 
-    # ── Remove the crews' hardcoded temperature= (rejected by Sonnet 5) ──
-    # See _aamp_strip_llm_temperature (top of this file) for the full rationale.
-    print_status "Removing hardcoded LLM temperature from IAB crews..."
-    _aamp_strip_llm_temperature "$aamp_seller_dir" "Seller"
-    _aamp_strip_llm_temperature "$aamp_buyer_dir" "Buyer"
+    # ── CrewAI-only source patches (temperature strip + Bedrock assistant-prefix) ──
+    # These fix CrewAI's Bedrock Converse provider. The Strands + A2A runtime
+    # (AAMP_PROTOCOL=a2a) does not use CrewAI, so they are skipped there.
+    if [ "$AAMP_PROTOCOL" = "a2a" ]; then
+        print_status "AAMP_PROTOCOL=a2a (Strands) — skipping CrewAI temperature/prefill source patches"
+    else
+        print_status "Removing hardcoded LLM temperature from IAB crews..."
+        _aamp_strip_llm_temperature "$aamp_seller_dir" "Seller"
+        _aamp_strip_llm_temperature "$aamp_buyer_dir" "Buyer"
 
-    # ── Stop the runtimes sending an assistant-final conversation ────────
-    # See _aamp_fix_bedrock_prefill (top of this file) for the full rationale.
-    print_status "Applying Bedrock assistant-prefill fix to IAB runtimes..."
-    _aamp_fix_bedrock_prefill "$aamp_seller_dir" "Seller"
-    _aamp_fix_bedrock_prefill "$aamp_buyer_dir" "Buyer"
+        print_status "Applying Bedrock assistant-prefill fix to IAB runtimes..."
+        _aamp_fix_bedrock_prefill "$aamp_seller_dir" "Seller"
+        _aamp_fix_bedrock_prefill "$aamp_buyer_dir" "Buyer"
+    fi
 
     # ── Model: override the IAB default (Nova Pro) ───────────────────────
     # Both IAB deploy scripts read $DEFAULT_LLM_MODEL and forward it to the
@@ -747,6 +807,15 @@ REOF
     # supported override path — no patching required.
     export DEFAULT_LLM_MODEL="$AAMP_LLM_MODEL"
     print_status "AAMP crew LLM: $AAMP_LLM_MODEL (overrides the IAB Nova Pro default)"
+
+    # Strands BedrockModel wants the BARE Bedrock model id / inference-profile id,
+    # not the litellm-style "bedrock/<id>" the CrewAI path uses. Strip the prefix
+    # for the A2A runtimes (both seller and buyer read DEFAULT_LLM_MODEL).
+    if [ "$AAMP_PROTOCOL" = "a2a" ]; then
+        export DEFAULT_LLM_MODEL="${AAMP_LLM_MODEL#bedrock/}"
+        export AGENTCORE_A2A_PORT
+        print_status "AAMP A2A model: $DEFAULT_LLM_MODEL (Strands BedrockModel id); A2A port $AGENTCORE_A2A_PORT"
+    fi
 
     # ── Inbound auth: resolve Cognito + attach the JWT authorizer ────────
     # Mirrors the external-agents pattern: the runtime is deployed with a
@@ -838,7 +907,10 @@ REOF
         # Default to HTTP-only deployment. MCP runtime is optional (--deploy-mcp flag)
         # because the MCP runtime-to-runtime pattern causes guidance agent OOM (Issue 19).
         # The MCP runtime is still useful for direct MCP clients (Claude Desktop, etc.)
-        if [ "${DEPLOY_MCP:-false}" = true ]; then
+        if [ "$AAMP_PROTOCOL" = "a2a" ]; then
+            seller_deploy_cmd="$seller_deploy_cmd --mode a2a"
+            print_status "   Deploy mode: a2a (Strands + A2A)"
+        elif [ "${DEPLOY_MCP:-false}" = true ]; then
             seller_deploy_cmd="$seller_deploy_cmd --mode all"
             print_status "   Deploy mode: all (MCP + HTTP) — DEPLOY_MCP=true"
         else
@@ -902,7 +974,7 @@ REOF
         print_status "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
         local buyer_deploy_cmd="bash $aamp_buyer_dir/infra/aws/agentcore/deploy.sh"
-        buyer_deploy_cmd="$buyer_deploy_cmd --mode http"
+        buyer_deploy_cmd="$buyer_deploy_cmd --mode $AAMP_PROTOCOL"
         buyer_deploy_cmd="$buyer_deploy_cmd --region $AWS_REGION"
         buyer_deploy_cmd="$buyer_deploy_cmd --name $buyer_agent_name"
 
@@ -915,10 +987,22 @@ REOF
             buyer_deploy_cmd="$buyer_deploy_cmd --seller-url $seller_runtime_arn"
         fi
 
+        # For A2A, the buyer coordinator reaches the seller's A2A runtime. Export
+        # the seller endpoint + inbound-cred SSM path + Cognito client id so the
+        # buyer deploy.sh forwards them into the runtime env (Q4=A). seller_ssm_path
+        # is the seller's inbound-token path provisioned above.
+        if [ "$AAMP_PROTOCOL" = "a2a" ]; then
+            export AAMP_SELLER_RUNTIME_ARN="$seller_runtime_arn"
+            export A2A_SELLER_SSM_PATH="$seller_ssm_path"
+            export A2A_CLIENT_ID="$aamp_client_id"
+            export AGENTCORE_A2A_PORT
+            print_status "   Buyer→seller wiring: ARN=${seller_runtime_arn:0:60}..., ssm=${A2A_SELLER_SSM_PATH:-<none>}"
+        fi
+
         # Run deploy from the buyer repo root (required by agentcore CLI).
         # As with the seller, capture the exit status but extract the ARN from
         # .bedrock_agentcore.yaml regardless — the runtime may exist even if a
-        # non-fatal post-deploy step returned non-zero. The buyer is HTTP-only.
+        # non-fatal post-deploy step returned non-zero.
         local buyer_deploy_rc=0
         (cd "$aamp_buyer_dir" && eval "$buyer_deploy_cmd") || buyer_deploy_rc=$?
 
@@ -945,6 +1029,17 @@ REOF
         fi
     else
         print_warning "⚠️  Buyer agent directory or deploy script not found — skipping"
+    fi
+
+    # ── Grant the buyer runtime read access to the seller's inbound creds ──
+    # A2A + OAuth only: the buyer mints a Cognito bearer from the seller's SSM
+    # credential to call the seller. Its execution role (created by the toolkit
+    # with a minimal policy) cannot read that parameter by default, so without
+    # this grant buyer→seller auth fails. Least privilege: GetParameter on the
+    # one seller param + kms:Decrypt scoped to the SSM service.
+    if [ "$AAMP_PROTOCOL" = "a2a" ] && [ "$aamp_auth_mode" = "oauth" ] && \
+       [ -n "$buyer_runtime_arn" ] && [ -n "$seller_ssm_path" ]; then
+        _aamp_grant_buyer_seller_cred_read "$buyer_runtime_arn" "$seller_ssm_path"
     fi
 
     # ── Store runtime ARNs ──────────────────────────────────────────────

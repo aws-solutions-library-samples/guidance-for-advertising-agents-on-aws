@@ -398,6 +398,123 @@ def _extract_a2a_text(parsed: dict, raw: str) -> str:
     return "\n".join(texts) if texts else raw
 
 
+# Sentinel marking the end of the interim-status queue for a streaming invoke.
+_SENTINEL = object()
+
+# Matches up to and including the first sentence/line boundary, used to coalesce
+# token-level status deltas into readable progress lines.
+_PROGRESS_BOUNDARY = re.compile(r".*?(?:[.!?:]\s|\n|…)", re.DOTALL)
+
+
+def _split_progress(buf: str):
+    """Split ``buf`` at the first sentence/line boundary.
+
+    Returns ``(line, found, rest)``: when a boundary is present, ``line`` is the
+    text up to and including it, ``found`` is True, and ``rest`` is the remainder;
+    otherwise ``(buf, False, "")``.
+    """
+    m = _PROGRESS_BOUNDARY.match(buf)
+    if m:
+        end = m.end()
+        return buf[:end], True, buf[end:]
+    return buf, False, ""
+
+
+def _parts_text(parts) -> str:
+    """Join the text of A2A message/artifact ``parts`` (kind == 'text')."""
+    out: List[str] = []
+    for part in parts or []:
+        if isinstance(part, dict):
+            if part.get("kind") == "text" and part.get("text"):
+                out.append(part["text"])
+            elif isinstance(part.get("text"), str) and part["text"]:
+                out.append(part["text"])
+    return "".join(out)
+
+
+def _consume_a2a_sse(resp, on_status=None) -> str:
+    """Consume an A2A ``message/stream`` SSE response and return the final text.
+
+    Iterates the ``text/event-stream`` body (one ``data: <json-rpc>`` object per
+    event). Two kinds of events matter:
+
+    - ``status-update`` — interim progress (the agent's working narration). Each
+      one's text is passed to ``on_status`` (if given) so callers can surface
+      progress; it is NOT part of the returned answer.
+    - ``artifact-update`` / final ``message`` — the actual answer. Artifact text
+      is accumulated across chunks and returned.
+
+    Streaming keeps the connection alive with incremental events, so a long
+    (~1-2 min) response no longer trips the data-plane single-response deadline
+    that makes a synchronous ``message/send`` return 424.
+
+    Returns the assembled final text (falls back to the last status text, then
+    to the raw body, so a caller always gets something non-empty).
+    """
+    import json as _json
+
+    artifact_text: List[str] = []
+    last_status_text = ""
+    raw_lines: List[str] = []
+
+    # Works for both requests.Response and botocore StreamingBody: iter_lines()
+    # yields bytes on both; decode defensively.
+    for line in resp.iter_lines():
+        if not line:
+            continue
+        if isinstance(line, bytes):
+            line = line.decode("utf-8", "replace")
+        raw_lines.append(line)
+        if not line.startswith("data:"):
+            continue
+        data = line[len("data:"):].strip()
+        if not data or data == "[DONE]":
+            continue
+        try:
+            evt = _json.loads(data)
+        except _json.JSONDecodeError:
+            continue
+
+        if isinstance(evt.get("error"), dict):
+            err = evt["error"]
+            return f"A2A error {err.get('code', 'unknown')}: {err.get('message', 'failed')}"
+
+        result = evt.get("result")
+        if not isinstance(result, dict):
+            continue
+
+        kind = result.get("kind")
+        if kind == "artifact-update":
+            txt = _parts_text((result.get("artifact") or {}).get("parts"))
+            if txt:
+                artifact_text.append(txt)
+        elif kind == "status-update":
+            status = result.get("status") or {}
+            txt = _parts_text((status.get("message") or {}).get("parts"))
+            if txt:
+                last_status_text = txt
+                if on_status is not None:
+                    try:
+                        on_status(txt)
+                    except Exception:  # noqa: BLE001 - never let status relay break the invoke
+                        pass
+        elif kind in ("message", "task"):
+            for artifact in result.get("artifacts", []) or []:
+                txt = _parts_text(artifact.get("parts"))
+                if txt:
+                    artifact_text.append(txt)
+            if not artifact_text:
+                txt = _parts_text(result.get("parts"))
+                if txt:
+                    artifact_text.append(txt)
+
+    if artifact_text:
+        return "".join(artifact_text)
+    if last_status_text:
+        return last_status_text
+    return "\n".join(raw_lines)
+
+
 def _resolve_oauth_ssm_path(entry: dict) -> str:
     """Return the SSM path holding the target's inbound OAuth credentials.
 
@@ -493,6 +610,8 @@ def _invoke_agentcore_oauth(
     client_id: str = "",
     session_id: str = "",
     request_url: str = "",
+    stream: bool = False,
+    on_status=None,
 ):
     """Invoke an OAuth-protected AgentCore runtime over HTTPS with a bearer.
 
@@ -532,16 +651,22 @@ def _invoke_agentcore_oauth(
     # external runtime maintains a continuous session across turns. Only fall
     # back to a random id when none was supplied.
     runtime_session_id = session_id or f"a2a-{uuid4().hex}{uuid4().hex}"
+    # For A2A `message/stream`, ask for SSE and read incrementally: a long
+    # (~1-2 min) response streams keep-alive events instead of tripping the
+    # data-plane single-response deadline that returns 424 for `message/send`.
+    accept = "text/event-stream" if stream else "application/json"
     try:
         resp = requests.post(
             endpoint,
             data=payload,
             headers={
                 "Content-Type": "application/json",
+                "Accept": accept,
                 "Authorization": f"Bearer {token}",
                 "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
             },
             timeout=A2A_REQUEST_TIMEOUT_SECONDS,
+            stream=stream,
         )
     except Exception as e:  # noqa: BLE001 - surface a sanitized transport error
         return None, _sanitize_error_message(e)
@@ -549,6 +674,8 @@ def _invoke_agentcore_oauth(
     if resp.status_code >= 400:
         # Body may echo request detail; keep it short and free of the bearer.
         return None, f"OAuth invocation failed (HTTP {resp.status_code})"
+    if stream:
+        return _consume_a2a_sse(resp, on_status=on_status), None
     return resp.text, None
 
 
@@ -559,6 +686,8 @@ def _invoke_agentcore_bearer(
     token: str,
     session_id: str = "",
     request_url: str = "",
+    stream: bool = False,
+    on_status=None,
 ):
     """Invoke a bearer-protected AgentCore runtime over HTTPS with a static token.
 
@@ -582,16 +711,19 @@ def _invoke_agentcore_bearer(
         f"{quote(arn, safe='')}/invocations?qualifier=DEFAULT"
     )
     runtime_session_id = session_id or f"a2a-{uuid4().hex}{uuid4().hex}"
+    accept = "text/event-stream" if stream else "application/json"
     try:
         resp = requests.post(
             endpoint,
             data=payload,
             headers={
                 "Content-Type": "application/json",
+                "Accept": accept,
                 **build_bearer_auth_header(token),
                 "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
             },
             timeout=A2A_REQUEST_TIMEOUT_SECONDS,
+            stream=stream,
         )
     except Exception as e:  # noqa: BLE001 - surface a sanitized transport error
         return None, _sanitize_error_message(e)
@@ -599,6 +731,8 @@ def _invoke_agentcore_bearer(
     if resp.status_code >= 400:
         # Keep the message short and free of the token value.
         return None, f"Bearer invocation failed (HTTP {resp.status_code})"
+    if stream:
+        return _consume_a2a_sse(resp, on_status=on_status), None
     return resp.text, None
 
 
@@ -749,9 +883,12 @@ def _build_agentcore_invoke_tools(
         _bearer_ssm_path = bearer_ssm_path
         _session_id = runtime_session_id
 
-        @strands_tool(name=tool_name, description=description)
-        def _invoke_runtime(prompt: str) -> str:
-            """Forward a request to the external agent runtime and return its response.
+        def _do_invoke(prompt: str, on_status=None) -> str:
+            """Forward a request to the external agent runtime; return final text.
+
+            ``on_status``, when given, is called with each interim A2A
+            status-update text as it streams (progress narration), so a caller
+            can surface live progress. It never affects the returned answer.
 
             Args:
                 prompt: The request to send to the agent runtime.
@@ -767,12 +904,15 @@ def _build_agentcore_invoke_tools(
 
             try:
                 if _is_a2a:
-                    # A2A JSON-RPC 2.0 message/send envelope. AgentCore passes
+                    # A2A JSON-RPC 2.0 message/stream envelope. Streaming keeps
+                    # the connection alive with incremental SSE events, so a long
+                    # (~1-2 min) plan does not trip the data-plane single-response
+                    # deadline that returns 424 for message/send. AgentCore passes
                     # this body through to the A2A container unmodified.
                     payload = _json.dumps({
                         "jsonrpc": "2.0",
                         "id": uuid4().hex,
-                        "method": "message/send",
+                        "method": "message/stream",
                         "params": {
                             "message": {
                                 "role": "user",
@@ -814,6 +954,8 @@ def _build_agentcore_invoke_tools(
                         client_id=_client_id,
                         session_id=active_session_id,
                         request_url=_plan.request_url,
+                        stream=_is_a2a,
+                        on_status=on_status,
                     )
                     if err:
                         logger.error(
@@ -851,6 +993,8 @@ def _build_agentcore_invoke_tools(
                         token=token,
                         session_id=active_session_id,
                         request_url=_plan.request_url,
+                        stream=_is_a2a,
+                        on_status=on_status,
                     )
                     if err:
                         logger.error(
@@ -896,21 +1040,29 @@ def _build_agentcore_invoke_tools(
                     )
                     # Pass the front-end-derived runtime session id so the
                     # external runtime keeps one continuous session per
-                    # front-end conversation (SigV4 path also honors it).
+                    # front-end conversation (SigV4 path also honors it). For
+                    # A2A, request SSE so a long response streams incrementally
+                    # instead of tripping the single-response 424 deadline.
                     response = client.invoke_agent_runtime(
                         agentRuntimeArn=_arn,
                         payload=payload,
                         contentType="application/json",
-                        accept="application/json",
+                        accept="text/event-stream" if _is_a2a else "application/json",
                         runtimeSessionId=active_session_id,
                     )
                     # AgentCore returns the body under the "response" key
                     # (StreamingBody); fall back to "body" for older shapes.
-                    response_body = response.get("response", response.get("body", b""))
-                    if hasattr(response_body, "read"):
-                        response_body = response_body.read()
-                    if isinstance(response_body, bytes):
-                        response_body = response_body.decode("utf-8")
+                    response_stream = response.get("response", response.get("body", b""))
+                    if _is_a2a and hasattr(response_stream, "iter_lines"):
+                        # Consume the SSE stream; final assembled text is returned
+                        # already-extracted, so the A2A parse below is a no-op.
+                        response_body = _consume_a2a_sse(response_stream, on_status=on_status)
+                    else:
+                        response_body = response_stream
+                        if hasattr(response_body, "read"):
+                            response_body = response_body.read()
+                        if isinstance(response_body, bytes):
+                            response_body = response_body.decode("utf-8")
 
                 # Parse the response to extract the actual content
                 try:
@@ -939,6 +1091,75 @@ def _build_agentcore_invoke_tools(
                 return wrap_as_agent_message(
                     _entry_name, f"Error invoking {_entry_name}: {safe_msg}"
                 )
+
+        @strands_tool(name=tool_name, description=description)
+        async def _invoke_runtime(prompt: str):
+            """Forward a request to the external agent runtime and return its response.
+
+            For A2A agents this streams the remote agent's interim progress
+            (status-update narration) as tool-stream events — so the UI can show
+            what the sub-agent is doing during a long (~1-2 min) call — then
+            returns its final answer as the tool result. Non-A2A runtimes just
+            return the final answer.
+
+            Args:
+                prompt: The request to send to the agent runtime.
+            """
+            import asyncio
+            import queue as _queue
+            import threading
+
+            loop = asyncio.get_event_loop()
+
+            if not _is_a2a:
+                # No interim status for crew/http runtimes: run the blocking
+                # invoke off the event loop and return the result.
+                yield await loop.run_in_executor(None, lambda: _do_invoke(prompt))
+                return
+
+            # A2A: run the blocking streamed invoke in a worker thread; its
+            # on_status callback pushes interim narration onto a queue that we
+            # drain here and yield as coalesced progress lines. The final answer
+            # is returned as the last yield (Strands treats it as the tool result).
+            status_q: "_queue.Queue" = _queue.Queue()
+            holder: dict = {}
+
+            def _run() -> None:
+                try:
+                    holder["result"] = _do_invoke(prompt, on_status=status_q.put)
+                except Exception as e:  # noqa: BLE001
+                    holder["result"] = wrap_as_agent_message(
+                        _entry_name,
+                        f"Error invoking {_entry_name}: {_sanitize_error_message(e)}",
+                    )
+                finally:
+                    status_q.put(_SENTINEL)
+
+            threading.Thread(target=_run, daemon=True).start()
+
+            buf = ""
+            last_emitted = ""
+            while True:
+                item = await loop.run_in_executor(None, status_q.get)
+                if item is _SENTINEL:
+                    break
+                if not isinstance(item, str):
+                    continue
+                buf += item
+                line, found, rest = _split_progress(buf)
+                while found:
+                    clean = line.strip()
+                    if clean and clean != last_emitted:
+                        last_emitted = clean
+                        yield f"⏳ {_entry_name}: {clean}"
+                    buf = rest
+                    line, found, rest = _split_progress(buf)
+
+            tail = buf.strip()
+            if tail and tail != last_emitted and len(tail) > 12:
+                yield f"⏳ {_entry_name}: {tail}"
+
+            yield holder.get("result", wrap_as_agent_message(_entry_name, ""))
 
         tools.append(_invoke_runtime)
         logger.info(

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Library Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YcnS/pqFESY2zCNG0no9aIi7INnWk6cl+Qhc"
+        crossorigin="anonymous">
+  <style>
+    :root {
+      --dj-primary: #2563eb;
+      --dj-dark: #1e293b;
+      --dj-light: #f8fafc;
+    }
+    body { background: var(--dj-light); }
+    .navbar { background: var(--dj-dark) !important; }
+    .navbar-brand { font-weight: 700; letter-spacing: .5px; }
+
+    .section-card { margin-bottom: 1.5rem; }
+    .section-card .card-header {
+      font-weight: 600;
+      font-size: .95rem;
+      background: #e2e8f0;
+    }
+
+    /* Status badges */
+    .badge-active   { background: #16a34a; }
+    .badge-draft    { background: #ca8a04; }
+    .badge-paused   { background: #ea580c; }
+    .badge-expired  { background: #dc2626; }
+    .badge-canceled { background: #6b7280; }
+    .badge-imported { background: #7c3aed; }
+
+    /* Sortable column headers */
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--dj-primary); }
+    th.sortable::after { content: ' \25B4\25BE'; font-size: .7em; opacity: .4; }
+
+    /* Deal detail modal */
+    .detail-label { font-weight: 600; color: #475569; min-width: 160px; }
+
+    /* Agent sidebar */
+    .agent-sidebar { font-size: .88rem; }
+    .agent-sidebar .badge { font-size: .75rem; }
+
+    /* Schema panel mini table */
+    .schema-table td { padding: .25rem .5rem; font-size: .85rem; }
+
+    /* Clickable row */
+    .deal-row { cursor: pointer; }
+    .deal-row:hover { background: #e0e7ff !important; }
+
+    /* Import results */
+    .import-results { max-height: 400px; overflow-y: auto; }
+
+    /* Event log */
+    .event-log { max-height: 350px; overflow-y: auto; }
+    .event-entry { font-size: .85rem; border-bottom: 1px solid #e2e8f0; padding: .4rem 0; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark">
+  <div class="container-fluid">
+    <span class="navbar-brand">Deal Library <small class="text-secondary">Phase 1 Dashboard</small></span>
+    <span class="text-light small" id="nav-deal-count"></span>
+  </div>
+</nav>
+
+<div class="container-fluid mt-3">
+<div class="row">
+
+<!-- ============================================================ -->
+<!-- LEFT COLUMN: Main content -->
+<!-- ============================================================ -->
+<div class="col-lg-9">
+
+  <!-- Section 1: Schema Status -->
+  <div class="card section-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      Schema Status
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadSchema()">Refresh</button>
+    </div>
+    <div class="card-body p-2">
+      <div class="row">
+        <div class="col-md-3">
+          <strong>Schema Version:</strong> <span id="schema-version" class="badge bg-primary">--</span>
+        </div>
+        <div class="col-md-4">
+          <strong>Tables:</strong>
+          <table class="table table-sm schema-table mb-0 mt-1" id="schema-tables">
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="col-md-5">
+          <strong>v2 Deal Columns:</strong>
+          <div id="v2-columns" class="mt-1" style="font-size:.82rem; max-height:120px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 & 3: Filters + Deal Table -->
+  <div class="card section-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      Deal Portfolio
+      <div>
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="showSummaryModal()">Summary</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadDeals()">Refresh</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Filters row -->
+      <div class="row g-2 mb-3" id="filters-row">
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filter-status">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="paused">Paused</option>
+            <option value="expired">Expired</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filter-media-type">
+            <option value="">All Media Types</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filter-deal-type">
+            <option value="">All Deal Types</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select form-select-sm" id="filter-seller">
+            <option value="">All Sellers</option>
+          </select>
+        </div>
+        <div class="col-auto flex-grow-1">
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="search-box" placeholder="Search deals...">
+            <button class="btn btn-outline-primary" onclick="searchDeals()">Search</button>
+          </div>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-primary" onclick="applyFilters()">Apply</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Deal table -->
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle" id="deal-table">
+          <thead class="table-light">
+            <tr>
+              <th class="sortable" data-col="display_name">Name</th>
+              <th class="sortable" data-col="seller_org">Seller</th>
+              <th class="sortable" data-col="deal_type">Type</th>
+              <th class="sortable" data-col="media_type">Media</th>
+              <th class="sortable" data-col="status">Status</th>
+              <th class="sortable" data-col="price">Price</th>
+              <th class="sortable" data-col="flight_start">Flight Start</th>
+              <th class="sortable" data-col="flight_end">Flight End</th>
+            </tr>
+          </thead>
+          <tbody id="deal-tbody"></tbody>
+        </table>
+      </div>
+      <div id="deal-count-info" class="text-muted small"></div>
+    </div>
+  </div>
+
+  <!-- Section 4: CSV Import -->
+  <div class="card section-card">
+    <div class="card-header">CSV Import</div>
+    <div class="card-body">
+      <form id="csv-form" enctype="multipart/form-data">
+        <div class="row g-2 align-items-end">
+          <div class="col-auto flex-grow-1">
+            <label class="form-label form-label-sm mb-0">CSV File</label>
+            <input type="file" class="form-control form-control-sm" id="csv-file" accept=".csv">
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-primary">Parse CSV</button>
+          </div>
+        </div>
+      </form>
+      <div id="import-results" class="mt-3 d-none">
+        <div class="row">
+          <div class="col-auto">
+            <span class="badge bg-success" id="import-success">0 successful</span>
+            <span class="badge bg-danger" id="import-errors">0 errors</span>
+            <span class="badge bg-warning text-dark" id="import-skipped">0 skipped</span>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-success" id="save-import-btn" onclick="saveImportedDeals()">
+              Save to Portfolio
+            </button>
+          </div>
+        </div>
+        <div class="import-results mt-2">
+          <div id="import-deals-table"></div>
+          <div id="import-errors-table" class="mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5: Manual Entry -->
+  <div class="card section-card">
+    <div class="card-header">Manual Deal Entry</div>
+    <div class="card-body">
+      <form id="manual-form">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label form-label-sm mb-0">Display Name *</label>
+            <input type="text" class="form-control form-control-sm" name="display_name" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label form-label-sm mb-0">Seller URL *</label>
+            <input type="text" class="form-control form-control-sm" name="seller_url" required
+                   placeholder="https://seller.example.com">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Deal Type</label>
+            <select class="form-select form-select-sm" name="deal_type" id="manual-deal-type"></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Status</label>
+            <select class="form-select form-select-sm" name="status">
+              <option value="draft" selected>Draft</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-3">
+            <label class="form-label form-label-sm mb-0">Seller Org</label>
+            <input type="text" class="form-control form-control-sm" name="seller_org">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label form-label-sm mb-0">Seller Domain</label>
+            <input type="text" class="form-control form-control-sm" name="seller_domain"
+                   placeholder="example.com">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Seller Type</label>
+            <select class="form-select form-select-sm" name="seller_type" id="manual-seller-type">
+              <option value="">--</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Media Type</label>
+            <select class="form-select form-select-sm" name="media_type" id="manual-media-type">
+              <option value="">--</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Price Model</label>
+            <select class="form-select form-select-sm" name="price_model" id="manual-price-model">
+              <option value="">--</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Price (CPM)</label>
+            <input type="number" step="0.01" class="form-control form-control-sm" name="price">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Impressions</label>
+            <input type="number" class="form-control form-control-sm" name="impressions">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Flight Start</label>
+            <input type="date" class="form-control form-control-sm" name="flight_start">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Flight End</label>
+            <input type="date" class="form-control form-control-sm" name="flight_end">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Advertiser ID</label>
+            <input type="text" class="form-control form-control-sm" name="advertiser_id">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Tags (comma-sep)</label>
+            <input type="text" class="form-control form-control-sm" name="tags" placeholder="premium,sports">
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-8">
+            <label class="form-label form-label-sm mb-0">Description</label>
+            <input type="text" class="form-control form-control-sm" name="description">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label form-label-sm mb-0">Seller Deal ID</label>
+            <input type="text" class="form-control form-control-sm" name="seller_deal_id">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-sm btn-primary w-100">Create Deal</button>
+          </div>
+        </div>
+      </form>
+      <div id="manual-result" class="mt-2"></div>
+    </div>
+  </div>
+
+  <!-- Section 6: Event Log -->
+  <div class="card section-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      Event Log <small class="text-muted">(Phase 1 events)</small>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadEvents()">Refresh</button>
+    </div>
+    <div class="card-body p-2">
+      <div class="event-log" id="event-log"></div>
+    </div>
+  </div>
+
+</div><!-- /col-lg-9 -->
+
+<!-- ============================================================ -->
+<!-- RIGHT COLUMN: Agent Info Sidebar -->
+<!-- ============================================================ -->
+<div class="col-lg-3">
+  <div class="card section-card agent-sidebar">
+    <div class="card-header">Deal Library Agent</div>
+    <div class="card-body" id="agent-info">
+      <div class="text-muted small">Loading...</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /row -->
+</div><!-- /container -->
+
+<!-- Deal Detail Modal -->
+<div class="modal fade" id="dealModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dealModalTitle">Deal Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="dealModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Portfolio Summary</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="summaryModalBody">
+        <div class="text-center text-muted">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+<script>
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let allDeals = [];
+let parsedImportDeals = [];
+let sortCol = 'display_name';
+let sortAsc = true;
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  loadSchema();
+  loadEnums();
+  loadDeals();
+  loadEvents();
+  loadAgentInfo();
+
+  // Sort headers
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) { sortAsc = !sortAsc; }
+      else { sortCol = col; sortAsc = true; }
+      renderDeals(allDeals);
+    });
+  });
+
+  // CSV form
+  document.getElementById('csv-form').addEventListener('submit', e => {
+    e.preventDefault();
+    uploadCSV();
+  });
+
+  // Manual form
+  document.getElementById('manual-form').addEventListener('submit', e => {
+    e.preventDefault();
+    createManualDeal();
+  });
+
+  // Search on Enter
+  document.getElementById('search-box').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); searchDeals(); }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
+async function api(url, opts) {
+  const resp = await fetch(url, opts);
+  return resp.json();
+}
+
+// ---------------------------------------------------------------------------
+// Schema
+// ---------------------------------------------------------------------------
+async function loadSchema() {
+  const data = await api('/api/schema');
+  document.getElementById('schema-version').textContent = 'v' + data.schema_version;
+
+  const tbody = document.querySelector('#schema-tables tbody');
+  tbody.innerHTML = data.tables.map(t =>
+    `<tr><td>${t.name}</td><td class="text-end">${t.row_count}</td></tr>`
+  ).join('');
+
+  document.getElementById('v2-columns').innerHTML =
+    data.v2_columns.map(c => `<span class="badge bg-secondary me-1 mb-1">${c}</span>`).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Enums (for dropdowns)
+// ---------------------------------------------------------------------------
+async function loadEnums() {
+  const data = await api('/api/enums');
+
+  // Filter dropdowns
+  fillSelect('filter-media-type', data.media_types, 'All Media Types');
+  fillSelect('filter-deal-type', data.deal_types, 'All Deal Types');
+
+  // Manual entry dropdowns
+  fillSelect('manual-deal-type', data.deal_types, null, 'PD');
+  fillSelect('manual-media-type', data.media_types, '--');
+  fillSelect('manual-seller-type', data.seller_types, '--');
+  fillSelect('manual-price-model', data.price_models, '--');
+}
+
+function fillSelect(id, values, emptyLabel, defaultVal) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  // Keep existing options if emptyLabel is provided
+  let html = '';
+  if (emptyLabel) html = `<option value="">${emptyLabel}</option>`;
+  values.forEach(v => {
+    const selected = v === defaultVal ? ' selected' : '';
+    html += `<option value="${v}"${selected}>${v}</option>`;
+  });
+  sel.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Deals
+// ---------------------------------------------------------------------------
+async function loadDeals() {
+  const data = await api('/api/deals?limit=500');
+  allDeals = data.deals;
+  renderDeals(allDeals);
+  populateSellerFilter(allDeals);
+  document.getElementById('nav-deal-count').textContent = data.count + ' deals';
+}
+
+function applyFilters() {
+  const params = new URLSearchParams();
+  const status = document.getElementById('filter-status').value;
+  const media = document.getElementById('filter-media-type').value;
+  const dtype = document.getElementById('filter-deal-type').value;
+  if (status) params.set('status', status);
+  if (media) params.set('media_type', media);
+  if (dtype) params.set('deal_type', dtype);
+
+  api('/api/deals?' + params.toString() + '&limit=500').then(data => {
+    // Apply seller filter client-side
+    const seller = document.getElementById('filter-seller').value;
+    let deals = data.deals;
+    if (seller) {
+      deals = deals.filter(d => (d.seller_org || d.seller_domain || '') === seller);
+    }
+    allDeals = deals;
+    renderDeals(allDeals);
+  });
+}
+
+function clearFilters() {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-media-type').value = '';
+  document.getElementById('filter-deal-type').value = '';
+  document.getElementById('filter-seller').value = '';
+  document.getElementById('search-box').value = '';
+  loadDeals();
+}
+
+async function searchDeals() {
+  const q = document.getElementById('search-box').value.trim();
+  if (!q) { loadDeals(); return; }
+  const data = await api('/api/search?q=' + encodeURIComponent(q));
+  allDeals = data.results;
+  renderDeals(allDeals);
+}
+
+function populateSellerFilter(deals) {
+  const sellers = new Set();
+  deals.forEach(d => {
+    const s = d.seller_org || d.seller_domain;
+    if (s) sellers.add(s);
+  });
+  const sel = document.getElementById('filter-seller');
+  let html = '<option value="">All Sellers</option>';
+  [...sellers].sort().forEach(s => {
+    html += `<option value="${esc(s)}">${esc(s)}</option>`;
+  });
+  sel.innerHTML = html;
+}
+
+function renderDeals(deals) {
+  // Sort
+  const sorted = [...deals].sort((a, b) => {
+    let av = a[sortCol] ?? '';
+    let bv = b[sortCol] ?? '';
+    if (typeof av === 'number' && typeof bv === 'number') {
+      return sortAsc ? av - bv : bv - av;
+    }
+    av = String(av).toLowerCase();
+    bv = String(bv).toLowerCase();
+    if (av < bv) return sortAsc ? -1 : 1;
+    if (av > bv) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('deal-tbody');
+  tbody.innerHTML = sorted.map(d => {
+    const name = d.display_name || d.product_name || '(unnamed)';
+    const seller = d.seller_org || d.seller_domain || 'N/A';
+    const status = d.status || '?';
+    const price = d.price != null ? '$' + Number(d.price).toFixed(2) : '--';
+    return `<tr class="deal-row" onclick="showDealDetail('${d.id}')">
+      <td>${esc(name)}</td>
+      <td>${esc(seller)}</td>
+      <td><span class="badge bg-info text-dark">${d.deal_type || '?'}</span></td>
+      <td>${d.media_type || 'N/A'}</td>
+      <td><span class="badge badge-${status}">${status}</span></td>
+      <td>${price}</td>
+      <td>${d.flight_start || '--'}</td>
+      <td>${d.flight_end || '--'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('deal-count-info').textContent =
+    `Showing ${sorted.length} deal(s)`;
+}
+
+// ---------------------------------------------------------------------------
+// Deal Detail Modal
+// ---------------------------------------------------------------------------
+async function showDealDetail(dealId) {
+  const data = await api('/api/deals/' + dealId);
+  const d = data.deal;
+  const meta = data.portfolio_metadata;
+  const acts = data.activations || [];
+  const perf = data.performance_cache;
+
+  const name = d.display_name || d.product_name || '(unnamed)';
+  document.getElementById('dealModalTitle').textContent = name;
+
+  let html = '<div class="row">';
+
+  // Core fields
+  html += '<div class="col-md-6">';
+  html += '<h6>Core Fields</h6>';
+  html += detailRow('ID', d.id);
+  html += detailRow('Display Name', name);
+  html += detailRow('Status', `<span class="badge badge-${d.status}">${d.status}</span>`);
+  html += detailRow('Deal Type', d.deal_type);
+  html += detailRow('Media Type', d.media_type || 'N/A');
+  html += detailRow('Seller Deal ID', d.seller_deal_id || 'N/A');
+  html += detailRow('Description', d.description || 'N/A');
+  html += '</div>';
+
+  // Seller + Pricing
+  html += '<div class="col-md-6">';
+  html += '<h6>Seller</h6>';
+  html += detailRow('Organization', d.seller_org || 'N/A');
+  html += detailRow('Domain', d.seller_domain || 'N/A');
+  html += detailRow('Type', d.seller_type || 'N/A');
+  html += detailRow('URL', d.seller_url || 'N/A');
+
+  html += '<h6 class="mt-2">Pricing</h6>';
+  html += detailRow('Price (CPM)', d.price != null ? '$' + Number(d.price).toFixed(2) : 'N/A');
+  html += detailRow('Fixed CPM', d.fixed_price_cpm != null ? '$' + Number(d.fixed_price_cpm).toFixed(2) : 'N/A');
+  html += detailRow('Bid Floor', d.bid_floor_cpm != null ? '$' + Number(d.bid_floor_cpm).toFixed(2) : 'N/A');
+  html += detailRow('Price Model', d.price_model || 'N/A');
+  html += detailRow('Currency', d.currency || 'USD');
+  html += '</div>';
+
+  html += '</div>'; // /row
+
+  // Volume + Dates
+  html += '<div class="row mt-2">';
+  html += '<div class="col-md-6">';
+  html += '<h6>Volume & Dates</h6>';
+  html += detailRow('Impressions', d.impressions != null ? Number(d.impressions).toLocaleString() : 'N/A');
+  html += detailRow('Flight Start', d.flight_start || 'N/A');
+  html += detailRow('Flight End', d.flight_end || 'N/A');
+  html += detailRow('Created', d.created_at || 'N/A');
+  html += '</div>';
+
+  // Portfolio Metadata
+  html += '<div class="col-md-6">';
+  html += '<h6>Portfolio Metadata</h6>';
+  if (meta) {
+    html += detailRow('Import Source', meta.import_source || 'N/A');
+    html += detailRow('Import Date', meta.import_date || 'N/A');
+    html += detailRow('Advertiser', meta.advertiser_id || 'N/A');
+    html += detailRow('Agency', meta.agency_id || 'N/A');
+    html += detailRow('Tags', meta.tags || 'N/A');
+  } else {
+    html += '<div class="text-muted small">No metadata</div>';
+  }
+  html += '</div>';
+  html += '</div>'; // /row
+
+  // Activations
+  html += '<h6 class="mt-2">Deal Activations</h6>';
+  if (acts.length) {
+    html += '<table class="table table-sm table-bordered"><thead><tr>' +
+      '<th>Platform</th><th>Platform Deal ID</th><th>Status</th><th>Last Sync</th>' +
+      '</tr></thead><tbody>';
+    acts.forEach(a => {
+      html += `<tr><td>${esc(a.platform)}</td><td>${esc(a.platform_deal_id || 'N/A')}</td>` +
+        `<td>${esc(a.activation_status || 'N/A')}</td><td>${esc(a.last_sync_at || 'N/A')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div class="text-muted small">No activations</div>';
+  }
+
+  // Performance Cache
+  html += '<h6 class="mt-2">Performance Cache</h6>';
+  if (perf) {
+    html += detailRow('Impressions Delivered', perf.impressions_delivered != null ? Number(perf.impressions_delivered).toLocaleString() : 'N/A');
+    html += detailRow('Spend to Date', perf.spend_to_date != null ? '$' + Number(perf.spend_to_date).toLocaleString(undefined, {minimumFractionDigits: 2}) : 'N/A');
+    html += detailRow('Fill Rate', perf.fill_rate != null ? (perf.fill_rate * 100).toFixed(1) + '%' : 'N/A');
+    html += detailRow('Win Rate', perf.win_rate != null ? (perf.win_rate * 100).toFixed(1) + '%' : 'N/A');
+    html += detailRow('Avg eCPM', perf.avg_effective_cpm != null ? '$' + Number(perf.avg_effective_cpm).toFixed(2) : 'N/A');
+    html += detailRow('Trend', perf.performance_trend || 'N/A');
+  } else {
+    html += '<div class="text-muted small">No performance data</div>';
+  }
+
+  document.getElementById('dealModalBody').innerHTML = html;
+  new bootstrap.Modal(document.getElementById('dealModal')).show();
+}
+
+function detailRow(label, value) {
+  return `<div class="d-flex mb-1"><span class="detail-label">${label}:</span><span>${value}</span></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Summary Modal
+// ---------------------------------------------------------------------------
+async function showSummaryModal() {
+  const modal = new bootstrap.Modal(document.getElementById('summaryModal'));
+  modal.show();
+  const data = await api('/api/summary');
+
+  let html = '';
+  html += `<div class="row text-center mb-3">
+    <div class="col"><h3>${data.total_deals}</h3><small class="text-muted">Total Deals</small></div>
+    <div class="col"><h3>$${Number(data.total_value).toLocaleString(undefined,{minimumFractionDigits:2})}</h3><small class="text-muted">Portfolio Value</small></div>
+    <div class="col"><h3>${Number(data.total_impressions).toLocaleString()}</h3><small class="text-muted">Total Impressions</small></div>
+  </div>`;
+
+  html += '<div class="row">';
+  // By Status
+  html += '<div class="col-md-4"><h6>By Status</h6>';
+  for (const [k, v] of Object.entries(data.by_status || {})) {
+    html += `<div><span class="badge badge-${k} me-1">${k}</span> ${v}</div>`;
+  }
+  html += '</div>';
+
+  // By Media Type
+  html += '<div class="col-md-4"><h6>By Media Type</h6>';
+  for (const [k, v] of Object.entries(data.by_media_type || {})) {
+    html += `<div>${k}: ${v}</div>`;
+  }
+  html += '</div>';
+
+  // By Deal Type
+  html += '<div class="col-md-4"><h6>By Deal Type</h6>';
+  for (const [k, v] of Object.entries(data.by_deal_type || {})) {
+    html += `<div>${k}: ${v}</div>`;
+  }
+  html += '</div>';
+  html += '</div>';
+
+  // Top Sellers
+  html += '<h6 class="mt-3">Top Sellers</h6>';
+  (data.top_sellers || []).forEach(s => {
+    html += `<div>${esc(s.seller)}: ${s.count} deal(s)</div>`;
+  });
+
+  document.getElementById('summaryModalBody').innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// CSV Import
+// ---------------------------------------------------------------------------
+async function uploadCSV() {
+  const fileInput = document.getElementById('csv-file');
+  if (!fileInput.files.length) { alert('Select a CSV file first.'); return; }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  const data = await api('/api/import', { method: 'POST', body: formData });
+
+  document.getElementById('import-results').classList.remove('d-none');
+  document.getElementById('import-success').textContent = data.successful + ' successful';
+  document.getElementById('import-errors').textContent = data.failed + ' errors';
+  document.getElementById('import-skipped').textContent = data.skipped + ' skipped';
+
+  parsedImportDeals = data.deals || [];
+
+  // Show parsed deals
+  if (parsedImportDeals.length) {
+    let html = '<table class="table table-sm table-bordered"><thead><tr>' +
+      '<th>Name</th><th>Seller</th><th>Type</th><th>Media</th><th>Price</th></tr></thead><tbody>';
+    parsedImportDeals.forEach(d => {
+      html += `<tr><td>${esc(d.display_name || '?')}</td><td>${esc(d.seller_org || '?')}</td>` +
+        `<td>${d.deal_type || '?'}</td><td>${d.media_type || 'N/A'}</td>` +
+        `<td>${d.fixed_price_cpm != null ? '$' + d.fixed_price_cpm : '--'}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('import-deals-table').innerHTML = html;
+  } else {
+    document.getElementById('import-deals-table').innerHTML = '';
+  }
+
+  // Show errors
+  if (data.errors && data.errors.length) {
+    let html = '<h6 class="text-danger">Errors</h6>' +
+      '<table class="table table-sm table-bordered"><thead><tr>' +
+      '<th>Row</th><th>Field</th><th>Message</th></tr></thead><tbody>';
+    data.errors.forEach(e => {
+      html += `<tr><td>${e.row_number}</td><td>${esc(e.field)}</td><td>${esc(e.message)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('import-errors-table').innerHTML = html;
+  } else {
+    document.getElementById('import-errors-table').innerHTML = '';
+  }
+}
+
+async function saveImportedDeals() {
+  if (!parsedImportDeals.length) { alert('No parsed deals to save.'); return; }
+
+  const data = await api('/api/import/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deals: parsedImportDeals }),
+  });
+
+  const btn = document.getElementById('save-import-btn');
+  if (data.saved > 0) {
+    btn.textContent = `Saved ${data.saved} deal(s)`;
+    btn.classList.replace('btn-success', 'btn-secondary');
+    btn.disabled = true;
+    parsedImportDeals = [];
+    loadDeals();
+    loadEvents();
+  } else {
+    alert('Error saving deals: ' + JSON.stringify(data.errors));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manual Entry
+// ---------------------------------------------------------------------------
+async function createManualDeal() {
+  const form = document.getElementById('manual-form');
+  const fd = new FormData(form);
+  const body = {};
+
+  for (const [k, v] of fd.entries()) {
+    if (v === '' || v === '--') continue;
+    if (k === 'price' || k === 'impressions') {
+      body[k] = Number(v);
+    } else if (k === 'tags') {
+      body[k] = v.split(',').map(s => s.trim()).filter(Boolean);
+    } else {
+      body[k] = v;
+    }
+  }
+
+  const data = await api('/api/deals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const resultDiv = document.getElementById('manual-result');
+  if (data.success) {
+    resultDiv.innerHTML = `<div class="alert alert-success alert-sm py-1">Deal created: ${data.deal_id}</div>`;
+    form.reset();
+    loadDeals();
+    loadEvents();
+  } else {
+    resultDiv.innerHTML = `<div class="alert alert-danger alert-sm py-1">Errors: ${(data.errors || []).join('; ')}</div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+async function loadEvents() {
+  const data = await api('/api/events?limit=50');
+  const container = document.getElementById('event-log');
+
+  if (!data.events || !data.events.length) {
+    container.innerHTML = '<div class="text-muted small">No events yet.</div>';
+    return;
+  }
+
+  container.innerHTML = data.events.map(e => {
+    const ts = e.created_at ? new Date(e.created_at).toLocaleString() : '?';
+    let payload = '';
+    try {
+      const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
+      payload = p.display_name || p.import_source || '';
+    } catch(_) {}
+    return `<div class="event-entry">
+      <span class="badge bg-secondary me-1">${esc(e.event_type)}</span>
+      <span class="text-muted">${ts}</span>
+      ${payload ? '<span class="ms-2">' + esc(payload) + '</span>' : ''}
+      ${e.deal_id ? '<span class="ms-2 text-muted small">' + e.deal_id.substring(0,8) + '...</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Agent Info
+// ---------------------------------------------------------------------------
+async function loadAgentInfo() {
+  const data = await api('/api/agent-info');
+  let html = '';
+  html += `<h6>${esc(data.role)}</h6>`;
+  html += `<p class="small">${esc(data.goal)}</p>`;
+  html += `<p class="small text-muted">${esc(data.backstory_summary)}</p>`;
+
+  html += '<h6 class="mt-2">L1 Routing Heuristics</h6>';
+  html += '<div class="mb-1"><strong>Deal Library:</strong></div>';
+  (data.l1_routing?.deal_library_keywords || []).forEach(k => {
+    html += `<span class="badge bg-primary me-1 mb-1">${esc(k)}</span>`;
+  });
+  html += '<div class="mt-1 mb-1"><strong>Campaign Flow:</strong></div>';
+  (data.l1_routing?.campaign_flow_keywords || []).forEach(k => {
+    html += `<span class="badge bg-secondary me-1 mb-1">${esc(k)}</span>`;
+  });
+  html += `<div class="mt-1 small text-muted"><em>Ambiguous:</em> ${esc(data.l1_routing?.ambiguous_response || '')}</div>`;
+
+  html += '<h6 class="mt-2">Phase 1 Tools</h6>';
+  (data.phase1_tools || []).forEach(t => {
+    html += `<span class="badge bg-success me-1 mb-1">${esc(t)}</span>`;
+  });
+
+  html += '<h6 class="mt-2">Phase 1 Events</h6>';
+  (data.phase1_event_types || []).forEach(t => {
+    html += `<span class="badge bg-warning text-dark me-1 mb-1">${esc(t)}</span>`;
+  });
+
+  document.getElementById('agent-info').innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+function esc(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -2947,6 +2947,20 @@ Example format:
                       if (isExternalAgent) console.log('🔍 Parsed External Agent event:', eventData);
                       //console.log('🔍 Parsed AgentCore event:', dataContent.substring(0, 300));
 
+                      // Interim progress relayed from a long-running sub-agent
+                      // (e.g. the AAMP buyer): show it as a transient trace line
+                      // so the user sees live status during the wait.
+                      if (eventData.type === 'agent_status' && typeof eventData.data === 'string') {
+                        observer.next({
+                          type: 'trace',
+                          data: eventData.data,
+                          timestamp: new Date(),
+                          agentName: eventData.teamName || resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'tool-trace'
+                        });
+                        continue;
+                      }
+
                       // Handle non-Strands agent responses (e.g., AAMP buyer/seller using BedrockAgentCoreApp)
                       // These return {"response": "...", "metadata": {...}} directly, not Strands streaming events
                       if (eventData.response && !eventData.event && !eventData.message) {
