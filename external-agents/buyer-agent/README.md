@@ -144,7 +144,7 @@ Key settings:
 
 ```bash
 # LLM — set the API key for your chosen provider
-ANTHROPIC_API_KEY=sk-ant-api03-xxxxx        # For Anthropic (default)
+ANTHROPIC_API_KEY=<your-anthropic-api-key>  # For Anthropic (default)
 # OPENAI_API_KEY=sk-xxxxx                   # For OpenAI / Azure
 # COHERE_API_KEY=xxxxx                      # For Cohere
 
