@@ -54,17 +54,20 @@ Workflow — follow in order:
    the per-channel budget allocation, and audience coverage/gaps.
 2. For EACH channel whose allocated budget > 0, call `search_inventory` once with that channel and
    its budget to get real inventory from the seller. Do not call it for $0 channels.
-3. Produce a final media plan as a JSON object with these keys:
-   {"campaign_name","total_budget","flight","status":"planned","approval_required":true,
-    "budget_allocations":{channel:{"budget","percentage","rationale"}},
-    "recommendations":[{"product_id","product_name","channel","publisher","impressions","cpm","cost"}],
-    "audience_coverage":{...},"audience_gaps":[...]}
+3. Produce the final media plan as a concise **Markdown** response (NOT JSON), with:
+   - A one-line summary: campaign name, total budget, flight dates, and that it awaits approval.
+   - A **Budget Allocation** Markdown table with columns: Channel | Budget | % of Total | Rationale
+     (one row per funded channel; omit $0 channels).
+   - A **Recommended Inventory** Markdown table with columns: Product ID | Product | Channel |
+     Publisher | Impressions | CPM | Est. Cost (one row per recommended product).
+   - A short **Audience Coverage** line and any notable gaps.
 
 Rules:
 - NEVER invent CPMs, product ids, or publishers. Use only inventory returned by search_inventory.
-  If the seller returns no pricing for a channel, leave that recommendation's cpm null and note it.
+  If the seller returns no pricing for a channel, leave that CPM cell blank and note it.
 - Keep recommendations grounded in the search_inventory results.
-- Output ONLY the final JSON object as your final message.
+- NEVER use emojis. Present all tabular data as Markdown tables — never JSON or raw CSV.
+- Keep the entire response under 4096 characters.
 """
 
 

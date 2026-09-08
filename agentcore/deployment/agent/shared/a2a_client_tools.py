@@ -398,28 +398,6 @@ def _extract_a2a_text(parsed: dict, raw: str) -> str:
     return "\n".join(texts) if texts else raw
 
 
-# Sentinel marking the end of the interim-status queue for a streaming invoke.
-_SENTINEL = object()
-
-# Matches up to and including the first sentence/line boundary, used to coalesce
-# token-level status deltas into readable progress lines.
-_PROGRESS_BOUNDARY = re.compile(r".*?(?:[.!?:]\s|\n|…)", re.DOTALL)
-
-
-def _split_progress(buf: str):
-    """Split ``buf`` at the first sentence/line boundary.
-
-    Returns ``(line, found, rest)``: when a boundary is present, ``line`` is the
-    text up to and including it, ``found`` is True, and ``rest`` is the remainder;
-    otherwise ``(buf, False, "")``.
-    """
-    m = _PROGRESS_BOUNDARY.match(buf)
-    if m:
-        end = m.end()
-        return buf[:end], True, buf[end:]
-    return buf, False, ""
-
-
 def _parts_text(parts) -> str:
     """Join the text of A2A message/artifact ``parts`` (kind == 'text')."""
     out: List[str] = []
@@ -602,6 +580,56 @@ def _derive_runtime_session_id(session_id: str) -> str:
     return f"{sanitized}-{pad}"[:RUNTIME_SESSION_ID_MAX_LENGTH]
 
 
+# AgentCore returns 424 (Failed Dependency) or 503 while a target runtime is
+# cold-starting / not yet READY. The first call after an idle period hits this,
+# and a bare "HTTP 424" would otherwise surface to the user as a failure. Retry
+# the POST a few times with a short backoff — the status arrives before any
+# stream body, so re-POSTing never double-delivers a response.
+_COLDSTART_STATUSES = (424, 503)
+_COLDSTART_MAX_ATTEMPTS = 4
+_COLDSTART_BACKOFF_SECONDS = 8
+
+
+def _post_with_coldstart_retry(endpoint: str, payload: bytes, headers: dict, stream: bool):
+    """POST to an AgentCore data-plane endpoint, retrying cold-start 424/503.
+
+    Returns ``(response, error)`` with exactly one non-None. Waits and re-POSTs
+    on the retryable statuses; returns the response once it is not a cold-start
+    status or attempts are exhausted (the caller then surfaces the error).
+    """
+    import time as _time
+
+    import requests
+
+    for attempt in range(_COLDSTART_MAX_ATTEMPTS):
+        try:
+            resp = requests.post(
+                endpoint,
+                data=payload,
+                headers=headers,
+                timeout=A2A_REQUEST_TIMEOUT_SECONDS,
+                stream=stream,
+            )
+        except Exception as e:  # noqa: BLE001 - sanitized transport error
+            return None, _sanitize_error_message(e)
+
+        if resp.status_code in _COLDSTART_STATUSES and attempt < _COLDSTART_MAX_ATTEMPTS - 1:
+            try:
+                resp.close()
+            except Exception:  # noqa: BLE001
+                pass
+            logger.warning(
+                "🔁 AGENTCORE_INVOKE: target not ready (HTTP %s); retry %d/%d in %ds",
+                resp.status_code,
+                attempt + 1,
+                _COLDSTART_MAX_ATTEMPTS - 1,
+                _COLDSTART_BACKOFF_SECONDS,
+            )
+            _time.sleep(_COLDSTART_BACKOFF_SECONDS)
+            continue
+        return resp, None
+
+
 def _invoke_agentcore_oauth(
     arn: str,
     region: str,
@@ -655,22 +683,15 @@ def _invoke_agentcore_oauth(
     # (~1-2 min) response streams keep-alive events instead of tripping the
     # data-plane single-response deadline that returns 424 for `message/send`.
     accept = "text/event-stream" if stream else "application/json"
-    try:
-        resp = requests.post(
-            endpoint,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": accept,
-                "Authorization": f"Bearer {token}",
-                "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
-            },
-            timeout=A2A_REQUEST_TIMEOUT_SECONDS,
-            stream=stream,
-        )
-    except Exception as e:  # noqa: BLE001 - surface a sanitized transport error
-        return None, _sanitize_error_message(e)
-
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": accept,
+        "Authorization": f"Bearer {token}",
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
+    }
+    resp, err = _post_with_coldstart_retry(endpoint, payload, headers, stream)
+    if err:
+        return None, err
     if resp.status_code >= 400:
         # Body may echo request detail; keep it short and free of the bearer.
         return None, f"OAuth invocation failed (HTTP {resp.status_code})"
@@ -712,22 +733,15 @@ def _invoke_agentcore_bearer(
     )
     runtime_session_id = session_id or f"a2a-{uuid4().hex}{uuid4().hex}"
     accept = "text/event-stream" if stream else "application/json"
-    try:
-        resp = requests.post(
-            endpoint,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": accept,
-                **build_bearer_auth_header(token),
-                "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
-            },
-            timeout=A2A_REQUEST_TIMEOUT_SECONDS,
-            stream=stream,
-        )
-    except Exception as e:  # noqa: BLE001 - surface a sanitized transport error
-        return None, _sanitize_error_message(e)
-
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": accept,
+        **build_bearer_auth_header(token),
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
+    }
+    resp, err = _post_with_coldstart_retry(endpoint, payload, headers, stream)
+    if err:
+        return None, err
     if resp.status_code >= 400:
         # Keep the message short and free of the token value.
         return None, f"Bearer invocation failed (HTTP {resp.status_code})"
@@ -799,6 +813,130 @@ def wrap_as_agent_message(agent_name: str, text: str) -> str:
     if "<agent-message" in body:
         return body
     return f"<agent-message agent='{agent_name}'>{body}</agent-message>"
+
+
+# Marker prefixed to interim progress lines so handler.py can tell them apart
+# from the final answer. It carries the agent name so the UI can attribute the
+# status to the sub-agent, and is stripped before the text reaches the UI (no
+# marker or emoji in user-visible output). handler.py must match this format.
+_PROGRESS_PREFIX = "[[AGENT_STATUS|"
+_PROGRESS_SUFFIX = "]] "
+
+
+def _progress_line(entry_name: str, message: str) -> str:
+    """Format one interim progress line for handler.py to parse and strip."""
+    return f"{_PROGRESS_PREFIX}{entry_name}{_PROGRESS_SUFFIX}{message}"
+
+
+# How often to report that a long external call is still running, and the cap on
+# how many such reports to send.
+#
+# We deliberately do NOT relay the peer's status text. A Strands A2AServer
+# streams the agent's whole answer as status-update deltas, so echoing that text
+# reproduces the entire final answer as a series of partial "progress" bubbles
+# (every Markdown table row and rule arrives as its own short line) and then the
+# UI shows the same content again as the final turn. Instead we report the one
+# thing that is true and not already in the answer: that the call is in flight,
+# and for how long.
+_HEARTBEAT_SECONDS = 20
+_MAX_HEARTBEATS = 9
+
+# Rotated so a long wait does not read as a stuck loop. Each line says who we are
+# waiting on and what we expect back; none of them claim to know which internal
+# step the peer is on, because the peer does not report that.
+_WAITING_LINES = (
+    "{name} is still working on it. Requests like this normally take one to two"
+    " minutes, so this is expected.",
+    "Still waiting on {name} to finish and hand back its response. Nothing has"
+    " failed — it has not replied yet.",
+    "{name} has not responded yet. Holding the connection open and will show its"
+    " answer here as soon as it arrives.",
+)
+
+
+def _make_runtime_tool(_do_invoke, _is_a2a, _entry_name, tool_name, description):
+    """Create one decorated invoke tool bound to a single external-agent entry.
+
+    Defining the tool inside this factory (rather than directly in the build
+    loop) freezes ``_do_invoke``/``_is_a2a``/``_entry_name`` as factory
+    parameters, so each entry's tool invokes ITS OWN runtime. The decorated
+    function keeps the public signature ``(prompt: str)`` expected by the model.
+    """
+    from strands import tool as strands_tool
+
+    @strands_tool(name=tool_name, description=description)
+    async def _invoke_runtime(prompt: str):
+        """Forward a request to the external agent runtime and return its response.
+
+        For A2A agents this reports that the call is running (and for how long) as
+        tool-stream events, so the UI shows activity during a long (~1-2 min)
+        call, then returns the agent's final answer as the tool result. The
+        peer's own status text is not relayed: it is the answer being streamed,
+        so echoing it would show the answer twice. Non-A2A runtimes just return
+        the final answer.
+
+        Args:
+            prompt: The request to send to the agent runtime.
+        """
+        import asyncio
+        import threading
+        import time
+
+        loop = asyncio.get_event_loop()
+
+        if not _is_a2a:
+            # No interim status for crew/http runtimes: run the blocking
+            # invoke off the event loop and return the result.
+            yield await loop.run_in_executor(None, lambda: _do_invoke(prompt))
+            return
+
+        # A2A: run the blocking streamed invoke in a worker thread and report
+        # elapsed time while it runs. The final answer is the last yield
+        # (Strands treats it as the tool result).
+        holder: dict = {}
+        done = threading.Event()
+
+        def _run() -> None:
+            try:
+                holder["result"] = _do_invoke(prompt)
+            except Exception as e:  # noqa: BLE001
+                holder["result"] = wrap_as_agent_message(
+                    _entry_name,
+                    f"Error invoking {_entry_name}: {_sanitize_error_message(e)}",
+                )
+            finally:
+                done.set()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+        started = time.monotonic()
+        yield _progress_line(
+            _entry_name,
+            f"Passing your request to {_entry_name} and waiting for its reply."
+            " This usually takes a minute or two.",
+        )
+
+        beats = 0
+        while beats < _MAX_HEARTBEATS:
+            finished = await loop.run_in_executor(
+                None, lambda: done.wait(_HEARTBEAT_SECONDS)
+            )
+            if finished:
+                break
+            elapsed = int(time.monotonic() - started)
+            message = _WAITING_LINES[beats % len(_WAITING_LINES)].format(
+                name=_entry_name
+            )
+            beats += 1
+            yield _progress_line(
+                _entry_name, f"{message} (Waiting {elapsed}s so far.)"
+            )
+
+        # Make sure the worker has published its result before returning it.
+        await loop.run_in_executor(None, done.wait)
+        yield holder.get("result", wrap_as_agent_message(_entry_name, ""))
+
+    return _invoke_runtime
 
 
 def _build_agentcore_invoke_tools(
@@ -883,7 +1021,27 @@ def _build_agentcore_invoke_tools(
         _bearer_ssm_path = bearer_ssm_path
         _session_id = runtime_session_id
 
-        def _do_invoke(prompt: str, on_status=None) -> str:
+        def _do_invoke(
+            prompt: str,
+            on_status=None,
+            # Bind every per-entry value as a default so each tool closes over
+            # ITS OWN entry. Without this, these names resolve from the enclosing
+            # loop scope at call time and all hold the LAST entry's values — so
+            # every external tool (buyer AND seller) would invoke the last-wired
+            # runtime (the buyer), which is why seller-tool calls were answered
+            # by the buyer.
+            _arn=_arn,
+            _plan=_plan,
+            _entry=_entry,
+            _region=_region,
+            _entry_name=_entry_name,
+            _is_a2a=_is_a2a,
+            _auth_type=_auth_type,
+            _ssm_path=_ssm_path,
+            _client_id=_client_id,
+            _bearer_ssm_path=_bearer_ssm_path,
+            _session_id=_session_id,
+        ) -> str:
             """Forward a request to the external agent runtime; return final text.
 
             ``on_status``, when given, is called with each interim A2A
@@ -1068,6 +1226,10 @@ def _build_agentcore_invoke_tools(
                 try:
                     parsed = _json.loads(response_body)
                 except _json.JSONDecodeError:
+                    # The streaming paths (message/stream over OAuth/bearer/SDK)
+                    # pre-consume the SSE and hand back the already-extracted
+                    # final text, which is not a JSON-RPC envelope — so parsing
+                    # fails here on the normal, successful streamed response.
                     return wrap_as_agent_message(_entry_name, response_body)
 
                 if _is_a2a:
@@ -1092,76 +1254,18 @@ def _build_agentcore_invoke_tools(
                     _entry_name, f"Error invoking {_entry_name}: {safe_msg}"
                 )
 
-        @strands_tool(name=tool_name, description=description)
-        async def _invoke_runtime(prompt: str):
-            """Forward a request to the external agent runtime and return its response.
-
-            For A2A agents this streams the remote agent's interim progress
-            (status-update narration) as tool-stream events — so the UI can show
-            what the sub-agent is doing during a long (~1-2 min) call — then
-            returns its final answer as the tool result. Non-A2A runtimes just
-            return the final answer.
-
-            Args:
-                prompt: The request to send to the agent runtime.
-            """
-            import asyncio
-            import queue as _queue
-            import threading
-
-            loop = asyncio.get_event_loop()
-
-            if not _is_a2a:
-                # No interim status for crew/http runtimes: run the blocking
-                # invoke off the event loop and return the result.
-                yield await loop.run_in_executor(None, lambda: _do_invoke(prompt))
-                return
-
-            # A2A: run the blocking streamed invoke in a worker thread; its
-            # on_status callback pushes interim narration onto a queue that we
-            # drain here and yield as coalesced progress lines. The final answer
-            # is returned as the last yield (Strands treats it as the tool result).
-            status_q: "_queue.Queue" = _queue.Queue()
-            holder: dict = {}
-
-            def _run() -> None:
-                try:
-                    holder["result"] = _do_invoke(prompt, on_status=status_q.put)
-                except Exception as e:  # noqa: BLE001
-                    holder["result"] = wrap_as_agent_message(
-                        _entry_name,
-                        f"Error invoking {_entry_name}: {_sanitize_error_message(e)}",
-                    )
-                finally:
-                    status_q.put(_SENTINEL)
-
-            threading.Thread(target=_run, daemon=True).start()
-
-            buf = ""
-            last_emitted = ""
-            while True:
-                item = await loop.run_in_executor(None, status_q.get)
-                if item is _SENTINEL:
-                    break
-                if not isinstance(item, str):
-                    continue
-                buf += item
-                line, found, rest = _split_progress(buf)
-                while found:
-                    clean = line.strip()
-                    if clean and clean != last_emitted:
-                        last_emitted = clean
-                        yield f"⏳ {_entry_name}: {clean}"
-                    buf = rest
-                    line, found, rest = _split_progress(buf)
-
-            tail = buf.strip()
-            if tail and tail != last_emitted and len(tail) > 12:
-                yield f"⏳ {_entry_name}: {tail}"
-
-            yield holder.get("result", wrap_as_agent_message(_entry_name, ""))
-
-        tools.append(_invoke_runtime)
+        # Build the decorated tool in a factory so it closes over THIS entry's
+        # values (see _make_runtime_tool) rather than the loop's last-iteration
+        # values.
+        tools.append(
+            _make_runtime_tool(
+                _do_invoke=_do_invoke,
+                _is_a2a=_is_a2a,
+                _entry_name=_entry_name,
+                tool_name=tool_name,
+                description=description,
+            )
+        )
         logger.info(
             "✅ AGENTCORE_INVOKE: Created direct invoke tool '%s' for %s → %s",
             tool_name,

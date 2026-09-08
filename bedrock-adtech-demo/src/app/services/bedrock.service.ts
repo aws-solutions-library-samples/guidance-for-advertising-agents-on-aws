@@ -2951,12 +2951,19 @@ Example format:
                       // (e.g. the AAMP buyer): show it as a transient trace line
                       // so the user sees live status during the wait.
                       if (eventData.type === 'agent_status' && typeof eventData.data === 'string') {
+                        // Emit with the same shape as genuine agent reasoning so the
+                        // chat accumulates these into a single deduped "thinking"
+                        // bubble for the sub-agent (visible; not in hiddenMessageTypes).
+                        // Prefer the sub-agent name the runtime tagged the status
+                        // with, so progress is attributed to the agent doing the
+                        // work rather than to the team.
                         observer.next({
-                          type: 'trace',
+                          type: 'chunk',
                           data: eventData.data,
                           timestamp: new Date(),
-                          agentName: eventData.teamName || resolvedAgent.name || resolvedAgent.id,
-                          messageType: 'tool-trace'
+                          agentName: eventData.agentName || eventData.teamName || resolvedAgent.name || resolvedAgent.id,
+                          messageType: 'reasoning',
+                          metadata: { type: 'reasoning' }
                         });
                         continue;
                       }

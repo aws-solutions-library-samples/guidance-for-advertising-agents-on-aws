@@ -65,10 +65,20 @@
 }
 
 .main-content {
-  height: 100vh;
+  // Fill the tab's content wrapper. This was `height: 100vh`, which ignored the
+  // header and tab nav above it and therefore ran past the bottom of the
+  // viewport, taking the chat input with it.
+  height: 100%;
   position: relative;
   width: 100%;
   margin-top: 0px;
+  // Must be a flex column for .chat-area's `flex: 1` to resolve to a real
+  // height. Without it the chat had no height to inherit, which is why the chat
+  // interface previously hard-coded `height: 85vh` and pinned its input with
+  // `position: fixed` — leaving a gap between the last message and the input.
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 // Context Trigger Button
@@ -274,6 +284,8 @@
 // Chat Interface (Full Width)
 .chat-area {
   flex: 1;
+  // Lets the chat's own scroll container shrink instead of overflowing the tab.
+  min-height: 0;
   overflow: hidden;
   position: relative;
 

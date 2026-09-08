@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 _TOKEN_TIMEOUT = 30
 _token_cache: dict[str, tuple[str, float]] = {}
 
+# AgentCore returns these while the seller runtime is cold-starting / not READY.
+_COLDSTART_STATUSES = (424, 503)
+_COLDSTART_MAX_ATTEMPTS = 4
+_COLDSTART_BACKOFF_SECONDS = 8
+
 
 def _region() -> str:
     return os.environ.get("AWS_REGION", "us-east-1")
@@ -147,6 +152,8 @@ def search_seller_inventory(
     if err or not token:
         return f"Error: cannot reach seller (auth): {err or 'no token'}"
 
+    import time
+
     import httpx
 
     body = {
@@ -161,19 +168,31 @@ def search_seller_inventory(
             }
         },
     }
-    try:
-        resp = httpx.post(
-            endpoint,
-            content=json.dumps(body).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {token}",
-                "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": _runtime_session_id(context_id),
-            },
-            timeout=timeout,
-        )
-    except Exception as e:  # noqa: BLE001
-        return f"Error: seller request failed ({type(e).__name__})"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": _runtime_session_id(context_id),
+    }
+    # AgentCore returns 424 (Failed Dependency) / 503 while the seller runtime is
+    # cold-starting (container + Strands + catalog load). The first call after an
+    # idle period hits this; retry with a short backoff so a cold seller surfaces
+    # as a brief wait, not "temporary unavailability". The status arrives before
+    # any body, so re-POSTing never double-books anything (reads are idempotent).
+    content = json.dumps(body).encode("utf-8")
+    resp = None
+    for attempt in range(_COLDSTART_MAX_ATTEMPTS):
+        try:
+            resp = httpx.post(endpoint, content=content, headers=headers, timeout=timeout)
+        except Exception as e:  # noqa: BLE001
+            return f"Error: seller request failed ({type(e).__name__})"
+        if resp.status_code in _COLDSTART_STATUSES and attempt < _COLDSTART_MAX_ATTEMPTS - 1:
+            logger.warning(
+                "seller not ready (HTTP %s); retry %d/%d in %ds",
+                resp.status_code, attempt + 1, _COLDSTART_MAX_ATTEMPTS - 1, _COLDSTART_BACKOFF_SECONDS,
+            )
+            time.sleep(_COLDSTART_BACKOFF_SECONDS)
+            continue
+        break
 
     if resp.status_code >= 400:
         return f"Error: seller invocation failed (HTTP {resp.status_code})"

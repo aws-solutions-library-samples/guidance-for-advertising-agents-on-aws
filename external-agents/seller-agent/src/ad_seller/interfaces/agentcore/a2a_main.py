@@ -67,6 +67,13 @@ Operating rules:
 3. Enforce the seller price floor; if create_deal returns a price_below_floor
    error, relay the seller minimum to the buyer.
 4. Be concise and use the real data returned by your tools.
+
+Response formatting (required):
+- Your response should be no more than 4096 characters.
+- For all text outside of structured data, use Markdown. NEVER use emojis.
+- Present any tabular, CSV, or delimited data (inventory lists, pricing, rate
+  cards) as a Markdown table or another clearly readable layout — never as raw
+  CSV or delimited text.
 """
 
 @tool

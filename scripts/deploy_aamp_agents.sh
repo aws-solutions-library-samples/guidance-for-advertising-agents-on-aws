@@ -703,6 +703,33 @@ deploy_aamp_agents() {
 REOF
 
     # ── Resolve source directories ──────────────────────────────────────
+    # Default to the AAMP agents that ship in this repo. The Strands + A2A
+    # runtimes (a2a_main.py, requirements-a2a.txt, `deploy.sh --mode a2a`) live
+    # in ./external-agents; the upstream IAB repos do not have them, so cloning
+    # while AAMP_PROTOCOL=a2a (the default) fails with
+    #   ERROR: Invalid mode 'a2a'. Must be one of: all mcp http crew chat
+    # Cloning is still available by pointing LOCAL_AAMP_PATH at an empty value
+    # explicitly (AAMP_LOCAL_DEFAULT=0) for the legacy AAMP_PROTOCOL=http path.
+    if [ -z "$LOCAL_AAMP_PATH" ] && [ "${AAMP_LOCAL_DEFAULT:-1}" = "1" ]; then
+        _repo_aamp_dir="${PROJECT_ROOT}/external-agents"
+        if [ -f "$_repo_aamp_dir/seller-agent/infra/aws/agentcore/deploy.sh" ] && \
+           [ -f "$_repo_aamp_dir/buyer-agent/infra/aws/agentcore/deploy.sh" ]; then
+            LOCAL_AAMP_PATH="$_repo_aamp_dir"
+            print_status "🏠 Using in-repo AAMP agents: $LOCAL_AAMP_PATH"
+            print_status "   (override with --local-aamp, or AAMP_LOCAL_DEFAULT=0 to clone upstream)"
+        fi
+    fi
+
+    # A relative --local-aamp would break the deploy: the per-repo deploy.sh is
+    # invoked after a `cd` into the repo directory, so resolve it up front.
+    if [ -n "$LOCAL_AAMP_PATH" ] && [ "${LOCAL_AAMP_PATH#/}" = "$LOCAL_AAMP_PATH" ]; then
+        LOCAL_AAMP_PATH="$(cd "$LOCAL_AAMP_PATH" 2>/dev/null && pwd)" || {
+            print_error "❌ Local AAMP path does not exist: $LOCAL_AAMP_PATH"
+            return 1
+        }
+        print_status "   Resolved --local-aamp to absolute path: $LOCAL_AAMP_PATH"
+    fi
+
     if [ -n "$LOCAL_AAMP_PATH" ]; then
         print_status "🏠 Using local AAMP repos: $LOCAL_AAMP_PATH"
 

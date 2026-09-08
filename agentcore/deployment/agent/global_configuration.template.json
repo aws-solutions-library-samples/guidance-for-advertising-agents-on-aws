@@ -784,7 +784,7 @@
                     "name": "AAMPSellerAgent",
                     "arn": "${AAMP_SELLER_HTTP_RUNTIME_ARN}",
                     "isA2A": true,
-                    "enabled": true,
+                    "enabled": false,
                     "description": "IAB AAMP seller agent (publisher sell-side) running in its own AgentCore runtime: product catalog, rate-card / tiered pricing, inventory discovery by channel (CTV, linear, digital, audio), and deal creation (PG / PD / PA). Reached over its runtime endpoint with the credentials on this entry, so it can be hosted in any account. ARN and authentication are populated by scripts/deploy_aamp_agents.sh \u2014 do not hardcode.",
                     "awsAuth": {
                         "region": "us-east-1",

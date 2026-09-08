@@ -858,39 +858,38 @@
     "aamp-marketplace": {
       "id": "aamp-marketplace",
       "title": "IAB AAMP Marketplace",
-      "description": "Buyer-Seller Deal Lifecycle",
+      "description": "AAMP campaign planning & inventory discovery",
       "icon": "storefront",
       "defaultAgent": "AgencyAgent",
       "availableAgents": [
         "AgencyAgent",
-        "AAMPSellerAgent",
         "AAMPBuyerAgent"
       ],
       "scenarios": [
         {
-          "id": "step-1-plan",
-          "title": "Step 1: Plan & Discover",
-          "description": "Plan budget allocation and discover available CTV and digital video inventory with pricing.",
-          "query": "Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles. Allocate budget across channels and show me available inventory with pricing.",
+          "id": "aamp-plan-automotive",
+          "title": "Plan & Discover: Automotive",
+          "description": "Plan budget allocation and discover recommended CTV and digital video inventory with pricing.",
+          "query": "Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles. Allocate budget across channels and show me the recommended inventory with pricing.",
           "category": "Campaign Planning",
           "agentType": "AgencyAgent",
           "stepOrder": 1
         },
         {
-          "id": "step-2-negotiate-low",
-          "title": "Step 2: Negotiate (Low Offer)",
-          "description": "Attempt to book at an aggressive CPM below the seller's floor price.",
-          "query": "Create a Preferred Deal for inv-ctv-apex-sports-nba at $30 CPM for 5M impressions.",
-          "category": "Negotiation",
+          "id": "aamp-plan-fintech-mobile",
+          "title": "Plan & Discover: Fintech App",
+          "description": "Plan a mobile app install campaign and see recommended inventory with CPMs.",
+          "query": "Plan a $250K mobile app install campaign for a fintech budgeting app targeting adults 21-40 across mobile and performance video. Allocate the budget across channels and recommend inventory with CPMs and estimated impressions.",
+          "category": "Campaign Planning",
           "agentType": "AgencyAgent",
           "stepOrder": 2
         },
         {
-          "id": "step-3-counter-floor",
-          "title": "Step 3: Counter at Floor",
-          "description": "Counter at the seller's minimum acceptable CPM from the rejection.",
-          "query": "Create a Preferred Deal for inv-ctv-apex-sports-nba at $38 CPM for 5M impressions.",
-          "category": "Negotiation",
+          "id": "aamp-plan-cpg-ctv",
+          "title": "Plan & Discover: CPG Brand Awareness",
+          "description": "Plan a premium CTV brand-awareness campaign with a budget split and recommended inventory.",
+          "query": "Plan a $1M CTV brand-awareness campaign for a CPG snack brand targeting households with children. Show the budget split across channels and the recommended premium CTV inventory with pricing and audience reach.",
+          "category": "Campaign Planning",
           "agentType": "AgencyAgent",
           "stepOrder": 3
         }
@@ -908,7 +907,6 @@
         "MediaPlanningAgent",
         "MediaPlanCompiler",
         "AgencyAgent",
-        "AAMPSellerAgent",
         "AAMPBuyerAgent"
       ],
       "scenarios": [
@@ -940,20 +938,20 @@
           "stepOrder": 1
         },
         {
-          "id": "aamp-negotiate-low",
-          "title": "AAMP: Negotiate (Low Offer)",
-          "description": "Attempt to book at an aggressive CPM below the seller's floor price.",
-          "query": "Create a Preferred Deal for inv-ctv-apex-sports-nba at $30 CPM for 5M impressions.",
-          "category": "Negotiation",
+          "id": "aamp-plan-fintech",
+          "title": "AAMP: Plan Fintech App Campaign",
+          "description": "Plan a mobile app install campaign and see recommended inventory with CPMs.",
+          "query": "Plan a $250K mobile app install campaign for a fintech budgeting app targeting adults 21-40 across mobile and performance video. Allocate the budget across channels and recommend inventory with CPMs and estimated impressions.",
+          "category": "Campaign Planning",
           "agentType": "AgencyAgent",
           "stepOrder": 2
         },
         {
-          "id": "aamp-align-floor",
-          "title": "AAMP: Counter at Floor",
-          "description": "Counter at the seller's minimum acceptable CPM from the rejection.",
-          "query": "Create a Preferred Deal for inv-ctv-apex-sports-nba at $38 CPM for 5M impressions.",
-          "category": "Negotiation",
+          "id": "aamp-plan-cpg",
+          "title": "AAMP: Plan CPG Brand Awareness",
+          "description": "Plan a premium CTV brand-awareness campaign with a budget split and recommended inventory.",
+          "query": "Plan a $1M CTV brand-awareness campaign for a CPG snack brand targeting households with children. Show the budget split across channels and the recommended premium CTV inventory with pricing and audience reach.",
+          "category": "Campaign Planning",
           "agentType": "AgencyAgent",
           "stepOrder": 3
         }

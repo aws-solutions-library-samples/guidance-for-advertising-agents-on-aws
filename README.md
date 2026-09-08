@@ -1113,6 +1113,18 @@ aws cognito-idp admin-create-user \
   [`external-agents/`](#7-external-agents-a2a) — different code, different
   deploy path.
 
+  **How they run and how the orchestrator uses them:** both agents are **Strands
+  A2A** runtimes protected by **OAuth (custom JWT)**; the orchestrator reaches
+  the buyer over JSON-RPC `message/stream` (SSE) with a bearer token, and both
+  hops retry on cold-start (`424`/`503`). The `AgencyAgent` calls **only the
+  buyer** — the buyer plans the campaign and returns real inventory/pricing that
+  it sources from the seller internally, so the seller's orchestrator tool entry
+  is wired but `enabled: false`. During the long buyer call the UI shows capped
+  live `⏳` progress milestones, and the final media plan renders as
+  budget-allocation and inventory cards. Full details, including the auth/protocol
+  and re-enabling direct seller calls, are in
+  [`docs/aamp-deployment-modes.md`](docs/aamp-deployment-modes.md).
+
   **It is opt-in.** The phase does nothing unless you ask for it:
 
   | How you run the script | What Phase 9 does |

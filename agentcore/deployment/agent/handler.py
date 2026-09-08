@@ -2704,18 +2704,29 @@ async def agent_invocation(payload, context):
                         _flush_log(f"🎬 AGENT_INVOCATION: Event #{event_count}, keys={list(event.keys()) if isinstance(event, dict) else type(event)}")
                     # Forward interim progress streamed from a sub-agent invoke
                     # tool (e.g. the long-running AAMP buyer) so the UI can show
-                    # live status instead of a silent wait. These are the "⏳ "
-                    # lines yielded by the A2A invoke tool; the tool's final
-                    # answer arrives separately as a normal message/tool result.
+                    # live status instead of a silent wait. The A2A invoke tool
+                    # tags these lines as "[[AGENT_STATUS|<AgentName>]] message"
+                    # (a2a_client_tools._progress_line). The marker is stripped
+                    # here — so no marker or emoji reaches the UI — and the agent
+                    # name is passed through as agentName so the status is
+                    # attributed to the sub-agent rather than the team. The tool's
+                    # final answer arrives separately as a normal message result.
+                    _status_open = "[[AGENT_STATUS|"
+                    _status_close = "]] "
                     _tse = event.get("tool_stream_event") if isinstance(event, dict) else None
                     if isinstance(_tse, dict):
                         _sdata = _tse.get("data")
-                        if isinstance(_sdata, str) and _sdata.startswith("⏳"):
-                            yield {
-                                "type": "agent_status",
-                                "data": _sdata,
-                                "teamName": orchestrator_instance.team_name,
-                            }
+                        if isinstance(_sdata, str) and _sdata.startswith(_status_open):
+                            _close_at = _sdata.find(_status_close)
+                            if _close_at != -1:
+                                _status_agent = _sdata[len(_status_open):_close_at]
+                                _status_text = _sdata[_close_at + len(_status_close):]
+                                yield {
+                                    "type": "agent_status",
+                                    "data": _status_text,
+                                    "agentName": _status_agent,
+                                    "teamName": orchestrator_instance.team_name,
+                                }
                         continue
                     if event.get("message") and event.get("message").get("content"):
                         event["teamName"] = orchestrator_instance.team_name
