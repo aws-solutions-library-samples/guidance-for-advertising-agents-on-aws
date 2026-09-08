@@ -1,0 +1,5 @@
+id,name,description,size,segment_type,status,iab_audience_taxonomy_id
+aud-tech-readers,Technology Enthusiasts,Users who read technology news and reviews,9800000,FIRST_PARTY,ACTIVE,6.5.1
+aud-auto-intenders,Auto Purchase Intenders,Users researching auto purchases,3200000,THIRD_PARTY,ACTIVE,6.6.1
+aud-finance-pros,Finance Professionals,Finance and investment professionals,2100000,FIRST_PARTY,ACTIVE,6.7.1
+aud-travel-planners,Active Travel Planners,Users actively planning travel,4700000,THIRD_PARTY,ACTIVE,6.8.1

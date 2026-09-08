@@ -1,0 +1,5 @@
+id,name,description,size,segment_type,status,iab_audience_taxonomy_id
+aud-sports-enthusiasts,Sports Enthusiasts,Users who frequently watch sports content,12500000,FIRST_PARTY,ACTIVE,6.1.2
+aud-cord-cutters,Cord Cutters 18-34,Young adults who stream but don't have cable,8200000,FIRST_PARTY,ACTIVE,6.2.1
+aud-news-junkies,News & Current Events,Users who consume news content daily,6100000,FIRST_PARTY,ACTIVE,6.3.1
+aud-family-viewers,Family & Kids Viewers,Households with children watching family content,4500000,FIRST_PARTY,ACTIVE,6.4.1
