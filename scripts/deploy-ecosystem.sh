@@ -45,11 +45,13 @@ cd "$PROJECT_ROOT" || {
 # Configuration defaults
 STACK_PREFIX="${STACK_PREFIX:-sim}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-# Defaults to "default" when --profile is not passed. It must never be an empty
-# string: several phases export AWS_PROFILE, and boto3/the AWS CLI then look for
-# a profile literally named "" and fail with
+# Empty means "use whatever the AWS SDK/CLI resolves on its own" (env vars, an
+# instance role, an active SSO session). main() decides whether to fall back to
+# the "default" profile — see the resolution there. The one hard rule: an empty
+# AWS_PROFILE must never be *exported*, because boto3 and the CLI then look for a
+# profile literally named "" and fail with
 # "ProfileNotFound: The config profile () could not be found".
-AWS_PROFILE="${AWS_PROFILE:-default}"
+AWS_PROFILE="${AWS_PROFILE:-}"
 DEMO_USER_EMAIL="${DEMO_USER_EMAIL:-}"
 IMAGE_GENERATION_MODEL="${IMAGE_GENERATION_MODEL:-amazon.nova-canvas-v1:0}"
 INTERACTIVE_MODE="${INTERACTIVE_MODE:-true}"
@@ -3143,7 +3145,13 @@ detect_and_deploy_agentcore_agents() {
             local deploy_script="${PROJECT_ROOT}/agentcore/deployment/build_and_deploy.sh"
             if [ -f "$deploy_script" ]; then
                 export AWS_REGION="$AWS_REGION"
-                export AWS_PROFILE="$AWS_PROFILE"
+                # Never export an empty AWS_PROFILE — the child would look for a
+                # profile named "" instead of using the default credential chain.
+                if [ -n "${AWS_PROFILE:-}" ]; then
+                    export AWS_PROFILE="$AWS_PROFILE"
+                else
+                    unset AWS_PROFILE
+                fi
                 export STACK_PREFIX="$STACK_PREFIX"
                 export UNIQUE_ID="$UNIQUE_ID"
                 export AGENTCORE_AGENT_NAME="$agentcore_agent_name"
@@ -5227,11 +5235,18 @@ WARMUP_SCRIPT
     
     local exit_code=$?
     
-    # Export environment variables for the Python script
+    # Export environment variables for the Python script.
+    # AWS_PROFILE stays guarded: this runs after the warmup subprocess and the
+    # export persists for every later phase, so exporting it empty here is what
+    # broke the Quick Gateway phase with "The config profile () could not be found".
     export STACK_PREFIX
     export UNIQUE_ID
     export AWS_REGION
-    export AWS_PROFILE
+    if [ -n "${AWS_PROFILE:-}" ]; then
+        export AWS_PROFILE
+    else
+        unset AWS_PROFILE
+    fi
     export PROJECT_ROOT
     
     if [ "$warmup_result" = "SUCCESS" ]; then
@@ -5684,13 +5699,27 @@ main() {
     # Parse command line arguments first
     parse_args "$@"
 
-    # Normalize the profile once, up front. Without --profile this was left as an
-    # empty string, and any phase that exported it handed boto3 and the AWS CLI a
-    # profile named "" — failing with "ProfileNotFound: The config profile ()
-    # could not be found" instead of using credentials. Fall back to "default".
+    # Resolve the profile once, up front, when --profile was not passed.
+    #
+    # Leaving it empty used to break the phases that export AWS_PROFILE: boto3 and
+    # the CLI looked for a profile named "" and failed with "ProfileNotFound: The
+    # config profile () could not be found", which silently skipped every warmup
+    # and broke the Quick Gateway phase. Unconditionally forcing "default" fixed
+    # that but broke the opposite case — env-var credentials, an instance role, or
+    # an SSO session on a machine with no "default" profile.
+    #
+    # So: keep it empty (and never exported) when the SDK can already resolve
+    # credentials on its own, and only fall back to "default" when it cannot.
     if [ -z "${AWS_PROFILE:-}" ]; then
-        AWS_PROFILE="default"
-        export AWS_PROFILE
+        unset AWS_PROFILE
+        if aws sts get-caller-identity --query Account --output text >/dev/null 2>&1; then
+            AWS_PROFILE=""
+            print_status "No --profile given; using the credentials the AWS SDK resolves by default."
+        else
+            AWS_PROFILE="default"
+            export AWS_PROFILE
+            print_status "No --profile given and no ambient credentials; falling back to the 'default' profile."
+        fi
     fi
 
     # Check if cleanup mode

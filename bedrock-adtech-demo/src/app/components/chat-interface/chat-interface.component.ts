@@ -77,6 +77,12 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   // Group thread support
   private agentParticipants = new Map<string, AgentParticipant>();
   private currentAgentResponses = new Map<EnrichedAgent, Message>(); // Track ongoing responses per agent
+  // In-progress "thinking" bubbles for sub-agents (e.g. the AAMP buyer), keyed by
+  // agent name. These cannot live in currentAgentResponses: that map is keyed by
+  // the orchestrator's agent object, so a sub-agent's bubble would occupy the
+  // orchestrator's slot and the orchestrator's own reply would then be merged
+  // into it — showing AgencyAgent's answer under the sub-agent's name.
+  private subAgentThinkingMessages = new Map<string, Message>();
 
   // Specialist invocation tracking (invoke_specialist / invoke_specialist_with_RAG)
   private pendingSpecialistInvocations = new Map<string, PendingSpecialistInvocation>();
@@ -2377,6 +2383,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
     // Clear other state
     this.currentAgentResponses.clear();
+    this.subAgentThinkingMessages.clear();
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
@@ -2649,6 +2656,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     // console.log('agent type: '+agentType)
     // Clear any existing agent responses for this session
     this.currentAgentResponses.clear();
+    this.subAgentThinkingMessages.clear();
 
     // Clear source tracking to prevent accumulation from previous requests
     this.knowledgeBaseSources.clear();
@@ -3063,8 +3071,13 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'rationale':
               case 'reasoning':
               case 'thinking':
-                // Update existing message in place to prevent flashing
-                let currentMessage = this.currentAgentResponses.get(agent);
+                // Update existing message in place to prevent flashing.
+                // Sub-agent status keeps its own slot so it never shares (and so
+                // never steals) the orchestrator's in-progress message.
+                const isSubAgentThinking = agentName !== agent.name;
+                let currentMessage = isSubAgentThinking
+                  ? this.subAgentThinkingMessages.get(agentName)
+                  : this.currentAgentResponses.get(agent);
                 if (!currentMessage) {
                   // Create new message for this agent
                   const newMessageId = `${agentName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -3118,8 +3131,12 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                     };
                     existingMessage.text = `${updatedHistory.join('\n')}\n\n_Thinking..._`;
 
-                    // Update the reference in currentAgentResponses
-                    this.currentAgentResponses.set(agent, existingMessage);
+                    // Store the reference back in the slot it came from
+                    if (isSubAgentThinking) {
+                      this.subAgentThinkingMessages.set(agentName, existingMessage);
+                    } else {
+                      this.currentAgentResponses.set(agent, existingMessage);
+                    }
 
                     this.shouldScrollToBottom = true;
 
@@ -3580,6 +3597,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       console.log(this.messages)
       this.isLoading = false;
       this.currentAgentResponses.clear();
+      this.subAgentThinkingMessages.clear();
       this.changeDetectorRef.detectChanges();
     }
   }
@@ -7373,6 +7391,7 @@ ${formattedJson}
     this.thinkingCollapsed.clear();
     this.agentParticipants.clear();
     this.currentAgentResponses.clear();
+    this.subAgentThinkingMessages.clear();
     this.agentFirstMessages.clear();
 
     // Clear memory optimization caches
@@ -8129,6 +8148,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.requestSources.clear();
     this.requestToMessageMap.clear();
     this.currentAgentResponses.clear();
+    this.subAgentThinkingMessages.clear();
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
@@ -8160,6 +8180,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.requestSources.clear();
     this.requestToMessageMap.clear();
     this.currentAgentResponses.clear();
+    this.subAgentThinkingMessages.clear();
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
@@ -8195,6 +8216,7 @@ This analysis shows the impact of weather on audience behavior.`;
       this.requestSources.clear();
       this.requestToMessageMap.clear();
       this.currentAgentResponses.clear();
+      this.subAgentThinkingMessages.clear();
       this.recentMessageHashes.clear();
       this.referencesExpanded.clear();
       this.thinkingCollapsed.clear();
