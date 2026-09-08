@@ -3085,7 +3085,19 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   };
 
                   this.addMessageIfNotDuplicate(currentMessage, agentInMessage)
-                  this.updateAgentParticipant(agent);
+                  // Register the agent that is actually speaking. External agents
+                  // (e.g. the AAMP buyer) are not in agent_configs, so the lookup
+                  // above falls back to the orchestrator — registering `agent`
+                  // credited the chip and message count to AgencyAgent and the
+                  // sub-agent never appeared in the participants bar. Reuse the
+                  // orchestrator's theme but keep the speaking agent's identity;
+                  // updateAgentParticipant keys off the display name, so repeat
+                  // calls update one entry rather than adding duplicates.
+                  this.updateAgentParticipant(
+                    agentName !== agent.name
+                      ? ({ ...agent, id: agentName, name: agentName } as EnrichedAgent)
+                      : agent
+                  );
                 }
 
                 // Find the current message in the messages array and update it directly

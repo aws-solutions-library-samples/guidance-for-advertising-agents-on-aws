@@ -783,8 +783,8 @@
                     "id": "a2a_aamp_seller_runtime",
                     "name": "AAMPSellerAgent",
                     "arn": "${AAMP_SELLER_HTTP_RUNTIME_ARN}",
-                    "isA2A": false,
-                    "enabled": true,
+                    "isA2A": true,
+                    "enabled": false,
                     "description": "IAB AAMP seller agent (publisher sell-side) running in its own AgentCore runtime: product catalog, rate-card / tiered pricing, inventory discovery by channel (CTV, linear, digital, audio), and deal creation (PG / PD / PA). Reached over its runtime endpoint with the credentials on this entry, so it can be hosted in any account. ARN and authentication are populated by scripts/deploy_aamp_agents.sh \u2014 do not hardcode.",
                     "awsAuth": {
                         "region": "us-east-1",
@@ -797,7 +797,7 @@
                     "id": "a2a_aamp_buyer_runtime",
                     "name": "AAMPBuyerAgent",
                     "arn": "${AAMP_BUYER_HTTP_RUNTIME_ARN}",
-                    "isA2A": false,
+                    "isA2A": true,
                     "enabled": true,
                     "description": "IAB AAMP buyer agent (campaign planning) running in its own AgentCore runtime: takes a brief with budget, dates, objectives and audience, allocates budget across channels (CTV, display, mobile, performance), and returns a media plan for approval. No deals are booked without approval. Reached over its runtime endpoint with the credentials on this entry, so it can be hosted in any account. ARN and authentication are populated by scripts/deploy_aamp_agents.sh \u2014 do not hardcode.",
                     "awsAuth": {

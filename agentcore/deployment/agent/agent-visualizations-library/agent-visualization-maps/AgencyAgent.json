@@ -1,22 +1,26 @@
 {
   "agentName": "AgencyAgent",
-  "agentId": "agency-agent",
+  "agentId": "AgencyAgent",
   "templates": [
     {
       "templateId": "adcp_get_products-visualization",
-      "usage": "AdCP product inventory from get_products calls - displays interactive product grid with pricing, reach, and audience composition"
+      "usage": "Use when the agent completes multi-seller discovery across the IAB Tech Lab Agent Registry — render the returned inventory packages with pricing, reach, and audience data so the buyer can compare matching products from dozens of seller agents side by side."
     },
     {
       "templateId": "allocations-visualization",
-      "usage": "Budget allocation across publishers and channels"
+      "usage": "Use when presenting the budget allocation step — show how an approved campaign budget is distributed across channels, publishers, and seller agents based on target KPIs and audience metrics, including post-negotiation reallocations."
     },
     {
-      "templateId": "metrics-visualization",
-      "usage": "Campaign performance KPIs and delivery metrics"
+      "templateId": "adcp_create_media_buy-visualization",
+      "usage": "Use immediately after human-in-the-loop approval triggers execution — display the frosted confirmation chip with the booked media buy ID and committed budget to confirm the OpenDirect 2.1 / Deals API order transacted successfully."
     },
     {
       "templateId": "timeline-visualization",
-      "usage": "Campaign workflow phases and milestones"
+      "usage": "Use to render the append-only audit trail and campaign lifecycle milestones — brief structuring, discovery queries, negotiation rounds, approval gates, and line-item creation — as a chronological sequence for compliance review."
+    },
+    {
+      "templateId": "adcp_get_media_buy_delivery-visualization",
+      "usage": "Use during in-flight campaign monitoring and optimization — show delivery KPI tiles with sparklines (impressions, spend, pacing, CPM) for booked media buys so the agent can justify pacing or budget shift recommendations."
     }
   ]
 }

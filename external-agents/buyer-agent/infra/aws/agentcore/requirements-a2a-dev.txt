@@ -1,0 +1,5 @@
+# Dev/test deps for the A2A buyer runtime (PBT-09 framework selection).
+# Not installed in the runtime image — used to run tests locally / in CI.
+-r requirements-a2a.txt
+pytest>=8.0.0
+hypothesis>=6.100.0

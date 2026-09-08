@@ -1,0 +1,11 @@
+id,name,parent_id,status,sizes,ad_formats,device_types,inventory_type,content_categories,floor_price_cpm,currency,geo_targets,description
+inv-web-homepage-lb,Homepage Leaderboard,,ACTIVE,728x90|970x250,banner,1|2,display,IAB19,12.00,USD,US,Top-of-page leaderboard banner
+inv-web-homepage-mpu,Homepage MPU,,ACTIVE,300x250|336x280,banner,1|2,display,IAB19,10.00,USD,US,Homepage medium rectangle unit
+inv-web-article-sidebar,Article Sidebar,,ACTIVE,300x250|300x600,banner,2,display,IAB19,8.00,USD,US,Article page sidebar ad unit
+inv-web-article-inline,Article Inline,,ACTIVE,0x0,native,1|2,native,IAB19,9.00,USD,US,Native inline content within articles
+inv-web-article-video,Article Video Player,,ACTIVE,640x360,video,1|2,video,IAB19,18.00,USD,US,In-article video player
+inv-web-interstitial,Interstitial Overlay,,ACTIVE,320x480|1024x768,banner,1|2,display,,15.00,USD,US,Full-page interstitial overlay
+inv-web-sticky-footer,Sticky Footer Banner,,ACTIVE,320x50|728x90,banner,1|2,display,,6.00,USD,US,Sticky footer banner ad
+inv-web-sponsored-content,Sponsored Content Feed,,ACTIVE,0x0,native,1|2,native,,14.00,USD,US,Sponsored content in feed
+inv-web-newsletter,Newsletter Sponsorship,,ACTIVE,600x200,banner,2,display,,20.00,USD,US|US-NY,Email newsletter sponsorship
+inv-mobile-web-banner,Mobile Web Banner,,ACTIVE,320x50|320x100,banner,1,display,,5.00,USD,US,Mobile web bottom banner

@@ -45,7 +45,11 @@ cd "$PROJECT_ROOT" || {
 # Configuration defaults
 STACK_PREFIX="${STACK_PREFIX:-sim}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_PROFILE="${AWS_PROFILE:-}"
+# Defaults to "default" when --profile is not passed. It must never be an empty
+# string: several phases export AWS_PROFILE, and boto3/the AWS CLI then look for
+# a profile literally named "" and fail with
+# "ProfileNotFound: The config profile () could not be found".
+AWS_PROFILE="${AWS_PROFILE:-default}"
 DEMO_USER_EMAIL="${DEMO_USER_EMAIL:-}"
 IMAGE_GENERATION_MODEL="${IMAGE_GENERATION_MODEL:-amazon.nova-canvas-v1:0}"
 INTERACTIVE_MODE="${INTERACTIVE_MODE:-true}"
@@ -1821,7 +1825,10 @@ upload_agent_configurations_to_dynamodb() {
 }
 
 # Function to upload tab configurations to DynamoDB for runtime access
-# Called after agent config upload; preserves existing configs unless --force
+# Called after agent config upload. Uses --force so edits to
+# synthetic_data/configs/tab-configurations.json actually overwrite the live
+# TAB_CONFIG on redeploy (the item is deploy-owned; the UI writes scenario
+# edits to S3, not to this DynamoDB item, so forcing does not clobber UI edits).
 upload_tab_configurations_to_dynamodb() {
     print_status "Uploading tab configurations to DynamoDB..."
     
@@ -1843,7 +1850,7 @@ upload_tab_configurations_to_dynamodb() {
         return 0
     fi
     
-    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION"
+    local upload_cmd="$PYTHON_CMD $upload_script --table-name $config_table --region $AWS_REGION --force"
     
     if [ -n "$AWS_PROFILE" ]; then
         upload_cmd="$upload_cmd --profile $AWS_PROFILE"
@@ -4908,7 +4915,19 @@ warmup_agent_runtimes() {
     # Export the vars the heredoc reads via os.environ — they are plain shell
     # variables otherwise and would be empty in the Python subprocess (which
     # would make it look for ./.agentcore-agents--.json).
-    export STACK_PREFIX UNIQUE_ID AWS_REGION AWS_PROFILE PROJECT_ROOT
+    #
+    # boto3 reads AWS_PROFILE from the environment, so it must never be exported
+    # empty — that made it look for a profile literally named "" and fail with
+    # "ProfileNotFound: The config profile () could not be found", which skipped
+    # every warmup (including the A2ATokenManager SSM read for the OAuth
+    # runtimes) and, because the export persists, the Quick Gateway phase too.
+    # main() normalizes an unset profile to "default" before any phase runs.
+    export STACK_PREFIX UNIQUE_ID AWS_REGION PROJECT_ROOT
+    if [ -n "${AWS_PROFILE:-}" ]; then
+        export AWS_PROFILE
+    else
+        unset AWS_PROFILE
+    fi
     local warmup_result
     warmup_result=$($PYTHON_CMD << 'WARMUP_SCRIPT'
 import json
@@ -5664,7 +5683,16 @@ prompt_and_deploy_external_agents() {
 main() {
     # Parse command line arguments first
     parse_args "$@"
-    
+
+    # Normalize the profile once, up front. Without --profile this was left as an
+    # empty string, and any phase that exported it handed boto3 and the AWS CLI a
+    # profile named "" — failing with "ProfileNotFound: The config profile ()
+    # could not be found" instead of using credentials. Fall back to "default".
+    if [ -z "${AWS_PROFILE:-}" ]; then
+        AWS_PROFILE="default"
+        export AWS_PROFILE
+    fi
+
     # Check if cleanup mode
     if [ "$CLEANUP_MODE" = true ]; then
         print_status "=========================================="

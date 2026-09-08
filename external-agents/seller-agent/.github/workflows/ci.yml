@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout buyer-agent
+        uses: actions/checkout@v4
+        with:
+          repository: IABTechLab/buyer-agent
+          path: buyer-agent
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src/
+
+      - name: Unit tests
+        env:
+          ANTHROPIC_API_KEY: test-key-for-ci
+          AD_BUYER_SRC_PATH: ${{ github.workspace }}/buyer-agent/src
+          CREWAI_TELEMETRY_OPT_OUT: "true"
+          CREWAI_DISABLE_TELEMETRY: "true"
+          CREWAI_DISABLE_TRACKING: "true"
+          LITELLM_TELEMETRY: "False"
+          OTEL_SDK_DISABLED: "true"
+          ANONYMIZED_TELEMETRY: "False"
+          POSTHOG_DISABLED: "1"
+        run: timeout --kill-after=10s 600s pytest tests/unit/ -v --tb=short --timeout=30 --timeout-method=thread
+
+      - name: Integration tests
+        env:
+          ANTHROPIC_API_KEY: test-key-for-ci
+          CREWAI_TELEMETRY_OPT_OUT: "true"
+          CREWAI_DISABLE_TELEMETRY: "true"
+          CREWAI_DISABLE_TRACKING: "true"
+          LITELLM_TELEMETRY: "False"
+          OTEL_SDK_DISABLED: "true"
+          ANONYMIZED_TELEMETRY: "False"
+          POSTHOG_DISABLED: "1"
+        run: timeout --kill-after=10s 600s pytest tests/integration/ -v --tb=short --timeout=60 --timeout-method=thread

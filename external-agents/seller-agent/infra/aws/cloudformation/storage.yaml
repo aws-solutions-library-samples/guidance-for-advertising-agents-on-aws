@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ad Seller System — Storage stack.
+  Aurora Serverless v2 PostgreSQL 16 cluster and ElastiCache Redis cluster.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to deploy into
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: First private subnet
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second private subnet
+  DatabaseSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for Aurora
+  RedisSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for ElastiCache
+  DBMasterUsername:
+    Type: String
+    Default: seller
+    Description: Master username for Aurora
+  DBMasterPasswordSSMParam:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: SSM SecureString parameter name holding the DB password
+    Default: /ad-seller/db-password
+  MinACU:
+    Type: Number
+    Default: 0.5
+    Description: Minimum Aurora Capacity Units
+  MaxACU:
+    Type: Number
+    Default: 4
+    Description: Maximum Aurora Capacity Units
+
+# =============================================================================
+# Resources
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Aurora Serverless v2 — PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for Aurora
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      Tags:
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DependsOn: DBSubnetGroup
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      DatabaseName: ad_seller
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPasswordSSMParam
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroupId
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !Ref MinACU
+        MaxCapacity: !Ref MaxACU
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: Name
+          Value: !Sub "ad-seller-${Environment}-aurora"
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  AuroraInstance1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub "ad-seller-${Environment}-aurora-instance-1"
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------------------------------------------------------------------------
+  # ElastiCache Redis
+  # ---------------------------------------------------------------------------
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Private subnets for Redis
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+
+  RedisReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupDescription: !Sub "ad-seller-${Environment} Redis"
+      Engine: redis
+      EngineVersion: "7.1"
+      CacheNodeType: cache.t3.micro
+      NumCacheClusters: 1
+      AutomaticFailoverEnabled: false
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      SecurityGroupIds:
+        - !Ref RedisSecurityGroupId
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: false
+      Tags:
+        - Key: Name
+          Value: !Sub "ad-seller-${Environment}-redis"
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+# =============================================================================
+# Outputs
+# =============================================================================
+Outputs:
+  AuroraClusterEndpoint:
+    Description: Aurora cluster writer endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-AuroraEndpoint"
+
+  AuroraClusterPort:
+    Description: Aurora cluster port
+    Value: !GetAtt AuroraCluster.Endpoint.Port
+    Export:
+      Name: !Sub "${AWS::StackName}-AuroraPort"
+
+  AuroraClusterReaderEndpoint:
+    Description: Aurora cluster reader endpoint
+    Value: !GetAtt AuroraCluster.ReadEndpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-AuroraReaderEndpoint"
+
+  RedisEndpoint:
+    Description: Redis primary endpoint address
+    Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-RedisEndpoint"
+
+  RedisPort:
+    Description: Redis primary endpoint port
+    Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub "${AWS::StackName}-RedisPort"

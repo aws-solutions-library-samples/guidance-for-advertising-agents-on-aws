@@ -1,0 +1,11 @@
+id,name,parent_id,status,sizes,ad_formats,device_types,inventory_type,content_categories,floor_price_cpm,currency,geo_targets,description
+inv-ctv-sports-preroll,Sports Pre-Roll :15/:30,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-12,28.00,USD,US,Premium sports content pre-roll ad slot
+inv-ctv-sports-midroll,Sports Mid-Roll :15/:30,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-12,32.00,USD,US,Premium sports content mid-roll ad slot
+inv-ctv-news-preroll,News Pre-Roll :15/:30,,ACTIVE,1920x1080,video,3|7,ctv,IAB12,22.00,USD,US,News content pre-roll ad slot
+inv-ctv-entertainment-preroll,Entertainment Pre-Roll :30,,ACTIVE,1920x1080,video,3|7,ctv,IAB1,25.00,USD,US,Entertainment content pre-roll ad slot
+inv-ctv-entertainment-midroll,Entertainment Mid-Roll :15,,ACTIVE,1920x1080,video,3|7,ctv,IAB1,30.00,USD,US,Entertainment content mid-roll ad slot
+inv-ctv-kids-preroll,Kids & Family Pre-Roll :15,,ACTIVE,1920x1080,video,3|7,ctv,IAB6,18.00,USD,US,Kids and family content pre-roll ad slot
+inv-ctv-sports-pause,Sports Pause Ad,,ACTIVE,1920x1080,banner,3|7,display,IAB17,35.00,USD,US,Pause screen overlay during sports content
+inv-ctv-homepage-hero,Homepage Hero Banner,,ACTIVE,1920x1080|1280x720,banner,3|7,display,,40.00,USD,US,Homepage hero banner placement
+inv-video-web-preroll,Web Player Pre-Roll :15/:30,,ACTIVE,640x360|1280x720,video,1|2,video,,15.00,USD,US|US-NY,Web video player pre-roll
+inv-mobile-app-interstitial,Mobile App Interstitial,,ACTIVE,320x480|1080x1920,banner|video,1,mobile_app,,20.00,USD,US,Mobile app full-screen interstitial

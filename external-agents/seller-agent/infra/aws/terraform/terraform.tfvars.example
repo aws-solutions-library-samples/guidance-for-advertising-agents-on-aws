@@ -1,0 +1,37 @@
+# =============================================================================
+# Ad Seller System - Terraform Variables Example
+# Copy this file to terraform.tfvars and customise for your deployment.
+# =============================================================================
+
+# General
+environment = "dev"
+region      = "us-east-1"
+
+# Network
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b"]
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
+
+# Aurora Serverless v2 PostgreSQL
+db_name             = "ad_seller"
+db_master_username  = "seller"
+aurora_min_capacity = 0.5
+aurora_max_capacity = 4
+
+# ElastiCache Redis
+redis_node_type = "cache.t3.micro"
+
+# ECS / Fargate
+container_image_tag = "latest"
+container_port      = 8000
+desired_count       = 2
+task_cpu            = 256   # 0.25 vCPU
+task_memory         = 512   # MiB
+health_check_path   = "/health"
+
+# TLS – supply an ACM certificate ARN for HTTPS; leave empty for HTTP only
+certificate_arn = ""
+
+# Observability
+log_retention_days = 30

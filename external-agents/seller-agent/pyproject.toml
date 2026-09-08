@@ -1,0 +1,98 @@
+[project]
+name = "ad_seller_system"
+version = "0.1.0"
+description = "IAB Tech Lab OpenDirect 2.1 compliant ad seller system using CrewAI"
+authors = [
+    {name = "MobtownLabs", email = "hello@mobtownlabs.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+keywords = ["advertising", "programmatic", "opendirect", "iab", "crewai", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+
+dependencies = [
+    "crewai[anthropic,bedrock]>=1.14.4,<2.0.0",
+    "crewai-tools>=1.14.0,<2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "httpx>=0.27.0",
+    "mcp>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "typer>=0.12.0",
+    "rich>=13.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "aiosqlite>=0.20.0",
+]
+
+[project.optional-dependencies]
+postgres = [
+    "asyncpg>=0.29.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+gam = [
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "googleads>=40.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-timeout>=2.3.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    # hypothesis is used by property-based tests in tests/unit/agentcore/
+    # (test_routing_mode, test_deploy_modes, test_workshop_data, test_s3_csv_adapter).
+    # Without this, pytest collection fails.
+    "hypothesis>=6.0.0",
+]
+docs = [
+    "mkdocs-material>=9.5.0",
+    "mkdocs-mermaid2-plugin>=1.1.0",
+]
+all = [
+    "ad_seller_system[postgres,redis,gam,dev,docs]",
+]
+
+[project.scripts]
+ad-seller = "ad_seller.interfaces.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ad_seller"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "agentcore: tests that invoke a deployed AgentCore runtime (require AWS credentials)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true

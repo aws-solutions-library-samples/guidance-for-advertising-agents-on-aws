@@ -1,0 +1,30 @@
+{
+  "agentName": "AgencyAgent",
+  "agentId": "AgencyAgent",
+  "templateId": "adcp_create_media_buy-visualization",
+  "usage": "Media buy / deal booking confirmation after human-in-the-loop approval — shows the booked media buy ID, committed budget, product, flight, and estimated impressions (OpenDirect 2.1 / Deals API order).",
+  "dataMapping": {
+    "visualizationType": "adcp_create_media_buy-visualization",
+    "templateId": "adcp_create_media_buy-visualization",
+    "media_buy_id": "Booked media buy / deal identifier (e.g., mb_2024_espn_001 or DEAL-1234)",
+    "status": "Order status: 'confirmed', 'completed', or 'pending'",
+    "budget": "Committed budget amount (number)",
+    "currency": "Currency code (e.g., USD)",
+    "product_name": "Product / inventory name that was booked",
+    "start_date": "Flight start date (YYYY-MM-DD)",
+    "end_date": "Flight end date (YYYY-MM-DD)",
+    "estimated_impressions": "Estimated impressions for the booked buy (number)"
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_create_media_buy-visualization",
+    "templateId": "adcp_create_media_buy-visualization",
+    "media_buy_id": "mb_2024_espn_001",
+    "status": "confirmed",
+    "budget": 50000,
+    "currency": "USD",
+    "product_name": "Premium Sports CTV - Live Events",
+    "start_date": "2024-07-01",
+    "end_date": "2024-07-31",
+    "estimated_impressions": 2500000
+  }
+}

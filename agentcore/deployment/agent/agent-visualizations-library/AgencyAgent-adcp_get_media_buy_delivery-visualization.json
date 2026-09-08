@@ -1,0 +1,24 @@
+{
+  "agentName": "AgencyAgent",
+  "agentId": "AgencyAgent",
+  "templateId": "adcp_get_media_buy_delivery-visualization",
+  "usage": "In-flight delivery report for a booked media buy — delivery KPI tiles (impressions delivered, reach, completion rate, spend) with a daily-delivery sparkline for pacing and optimization decisions.",
+  "dataMapping": {
+    "visualizationType": "adcp_get_media_buy_delivery-visualization",
+    "templateId": "adcp_get_media_buy_delivery-visualization",
+    "impressions_delivered": "Total impressions delivered to date (number)",
+    "reach": "Unique reach (number)",
+    "completion_rate": "Video completion rate as a fraction between 0 and 1 (number)",
+    "spend": "Spend to date in the campaign currency (number)",
+    "daily_delivery": "Array of daily impression counts (numbers) rendered as the sparkline"
+  },
+  "exampleOutput": {
+    "visualizationType": "adcp_get_media_buy_delivery-visualization",
+    "templateId": "adcp_get_media_buy_delivery-visualization",
+    "impressions_delivered": 1600000,
+    "reach": 540000,
+    "completion_rate": 0.87,
+    "spend": 32000,
+    "daily_delivery": [45000, 52000, 48000, 61000, 55000, 58000, 63000, 68000, 72000]
+  }
+}

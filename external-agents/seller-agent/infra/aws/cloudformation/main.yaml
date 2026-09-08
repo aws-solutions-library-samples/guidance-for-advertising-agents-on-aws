@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ad Seller System — Root stack.
+  Orchestrates nested network, storage, and compute stacks.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+    Description: Deployment environment
+  TemplateBucketName:
+    Type: String
+    Description: S3 bucket holding the nested CloudFormation templates
+  TemplateBucketPrefix:
+    Type: String
+    Default: cloudformation
+    Description: Key prefix inside the S3 bucket (no trailing slash)
+  ContainerImage:
+    Type: String
+    Description: ECR image URI for the ad-seller container
+  ACMCertificateArn:
+    Type: String
+    Description: ARN of an ACM certificate for HTTPS on the ALB
+  DBMasterPasswordSSMParam:
+    Type: String
+    Default: /ad-seller/db-password
+    Description: SSM SecureString parameter name holding the Aurora master password
+  AnthropicAPIKeySSMParam:
+    Type: String
+    Default: /ad-seller/anthropic-api-key
+    Description: SSM SecureString parameter name holding the Anthropic API key
+  VpcCidr:
+    Type: String
+    Default: "10.20.0.0/16"
+  DesiredCount:
+    Type: Number
+    Default: 2
+    MinValue: 1
+
+# =============================================================================
+# Resources
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Network stack — VPC, subnets, NAT, security groups
+  # ---------------------------------------------------------------------------
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.amazonaws.com/${TemplateBucketPrefix}/network.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        VpcCidr: !Ref VpcCidr
+      Tags:
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------------------------------------------------------------------------
+  # Storage stack — Aurora Serverless v2, ElastiCache Redis
+  # ---------------------------------------------------------------------------
+  StorageStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.amazonaws.com/${TemplateBucketPrefix}/storage.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
+        DatabaseSecurityGroupId: !GetAtt NetworkStack.Outputs.DatabaseSecurityGroupId
+        RedisSecurityGroupId: !GetAtt NetworkStack.Outputs.RedisSecurityGroupId
+        DBMasterPasswordSSMParam: !Ref DBMasterPasswordSSMParam
+      Tags:
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ---------------------------------------------------------------------------
+  # Compute stack — ECS Fargate, ALB, IAM, logging
+  # ---------------------------------------------------------------------------
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: StorageStack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.amazonaws.com/${TemplateBucketPrefix}/compute.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PublicSubnet1Id: !GetAtt NetworkStack.Outputs.PublicSubnet1Id
+        PublicSubnet2Id: !GetAtt NetworkStack.Outputs.PublicSubnet2Id
+        PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
+        ALBSecurityGroupId: !GetAtt NetworkStack.Outputs.ALBSecurityGroupId
+        AppSecurityGroupId: !GetAtt NetworkStack.Outputs.AppSecurityGroupId
+        AuroraEndpoint: !GetAtt StorageStack.Outputs.AuroraClusterEndpoint
+        AuroraPort: !GetAtt StorageStack.Outputs.AuroraClusterPort
+        RedisEndpoint: !GetAtt StorageStack.Outputs.RedisEndpoint
+        RedisPort: !GetAtt StorageStack.Outputs.RedisPort
+        ContainerImage: !Ref ContainerImage
+        ACMCertificateArn: !Ref ACMCertificateArn
+        DesiredCount: !Ref DesiredCount
+        DBPasswordSSMParamName: !Ref DBMasterPasswordSSMParam
+        AnthropicAPIKeySSMParamName: !Ref AnthropicAPIKeySSMParam
+      Tags:
+        - Key: Project
+          Value: ad-seller-system
+        - Key: Environment
+          Value: !Ref Environment
+
+# =============================================================================
+# Outputs
+# =============================================================================
+Outputs:
+  ALBDnsName:
+    Description: Application Load Balancer DNS name
+    Value: !GetAtt ComputeStack.Outputs.ALBDnsName
+
+  ALBHostedZoneId:
+    Description: ALB Hosted Zone ID for Route 53 alias records
+    Value: !GetAtt ComputeStack.Outputs.ALBHostedZoneId
+
+  ECSClusterName:
+    Description: ECS cluster name
+    Value: !GetAtt ComputeStack.Outputs.ClusterName
+
+  ECSServiceName:
+    Description: ECS service name
+    Value: !GetAtt ComputeStack.Outputs.ServiceName
+
+  AuroraEndpoint:
+    Description: Aurora PostgreSQL writer endpoint
+    Value: !GetAtt StorageStack.Outputs.AuroraClusterEndpoint
+
+  RedisEndpoint:
+    Description: Redis primary endpoint
+    Value: !GetAtt StorageStack.Outputs.RedisEndpoint
+
+  VpcId:
+    Description: VPC ID
+    Value: !GetAtt NetworkStack.Outputs.VpcId
