@@ -51,7 +51,9 @@
         "EventsAgent": "#6842ff",
         "BidOptimizationAgent": "#6842ff",
         "BidSimulatorAgent": "#6842ff",
-        "ContextualAnalysisAgent": "#6842ff"
+        "ContextualAnalysisAgent": "#6842ff",
+        "AAMPBuyerAgent": "#0F7B6CFF",
+        "AAMPSellerAgent": "#B25E00FF"
     },
     "agent_configs": {
         "AdFabricAgent": {
