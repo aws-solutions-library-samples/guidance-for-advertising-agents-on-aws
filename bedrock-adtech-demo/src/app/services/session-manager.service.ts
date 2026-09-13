@@ -10,22 +10,72 @@ export interface SessionInfo {
   lastUsed: Date;
   messageCount?: number;
   title?: string;
+  /** Which tab owns this session. Sessions are never shared between tabs. */
+  tabId?: string;
 }
 
-interface StoredTabSessions {
-  sessions: SessionInfo[];
-  activeSessionId: string | null;
-}
-
+/**
+ * Session ownership
+ * -----------------
+ * Sessions live in memory, per tab, and are never persisted.
+ *
+ * They used to be held in localStorage under one `activeSessionId` shared by the
+ * whole app. That is wrong on both counts: every tab runs its own conversation,
+ * so a single active id meant whichever tab initialised last silently re-keyed
+ * the others (a tab's transcript stayed on screen while its session id changed
+ * underneath it, and the agent then had no history to restore); and persisting
+ * across reloads handed a new page a session id whose server-side conversation
+ * it could no longer see.
+ *
+ * A reload therefore starts fresh sessions. That is deliberate: the transcript is
+ * component state and does not survive a reload either, so a "resumed" id would
+ * only reattach an empty chat to a conversation the user can no longer see.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class SessionManagerService {
+  /** Sessions for this page load, newest last, keyed by nothing but their id. */
+  private sessions = new Map<string, SessionInfo>();
+
+  /** The session each tab is currently using. */
+  private activeSessionIdByTab = new Map<string, string>();
+
+  /**
+   * Callers that predate per-tab sessions (and the header pill) pass no tabId.
+   * They all mean "the tab the user is looking at", so they share one bucket
+   * rather than each minting a session of their own.
+   */
+  private static readonly DEFAULT_TAB_ID = '__default__';
+
+  /**
+   * The tab the user is currently on. Surfaces like the header session pill have
+   * no tabId of their own, and must show the session actually in use rather than
+   * minting one in a bucket no tab reads.
+   */
+  private activeTabId: string | null = null;
+
+  /** Called by a tab when it becomes the one the user is interacting with. */
+  setActiveTab(tabId: string): void {
+    const trimmed = (tabId || '').trim();
+    if (trimmed) {
+      this.activeTabId = trimmed;
+    }
+  }
+
+  /**
+   * Any tab that names itself while asking for a session is, by definition, the
+   * one in use — so no-arg callers (the header pill) follow it without every
+   * surface having to know a tab id.
+   */
+  private claimActiveTab(tabId: string): void {
+    if (tabId !== SessionManagerService.DEFAULT_TAB_ID) {
+      this.activeTabId = tabId;
+    }
+  }
+
   private currentSession: SessionInfo | null = null;
   private sessionSubject = new BehaviorSubject<SessionInfo | null>(null);
-  private readonly ACTIVE_SESSION_KEY = 'agentcore-session';
-  private readonly SESSIONS_LIST_KEY = 'agentcore-sessions';
-  private readonly SESSION_EXPIRY_HOURS = 24;
 
   public session$: Observable<SessionInfo | null> = this.sessionSubject.asObservable();
 
@@ -47,53 +97,30 @@ export class SessionManagerService {
   }
 
   /**
-   * Single entry point for session management.
-   * Checks localStorage 'agentcore-session' for an existing valid session.
-   * If valid and not expired (24h), updates lastUsed and returns it.
-   * If missing or expired, creates a new session with 33-char hex ID.
+   * Single entry point for session management: the calling tab's session,
+   * created on first use.
    */
-  getOrCreateSession(): SessionInfo {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
+  getOrCreateSession(tabId?: string): SessionInfo {
+    const tab = this.resolveTabId(tabId);
+    this.claimActiveTab(tab);
+    const existingId = this.activeSessionIdByTab.get(tab);
+    const existing = existingId ? this.sessions.get(existingId) : undefined;
 
-    // Check for existing valid session
-    if (storedData.activeSessionId) {
-      const activeSession = storedData.sessions.find(s => s.sessionId === storedData.activeSessionId);
-      if (activeSession && !this.isSessionExpired(activeSession)) {
-        activeSession.lastUsed = new Date();
-        this.currentSession = activeSession;
-        this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-        this.sessionSubject.next(this.currentSession);
-        return this.currentSession;
-      }
+    if (existing) {
+      existing.lastUsed = new Date();
+      this.setCurrent(existing);
+      return existing;
     }
 
-    // Create new session
-    const newSession = this.createNewSessionInternal();
-    storedData.sessions.push(newSession);
-    storedData.activeSessionId = newSession.sessionId;
-    this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-
-    this.currentSession = newSession;
-    this.sessionSubject.next(this.currentSession);
-    return newSession;
+    return this.createSessionForTab(tab);
   }
 
   /**
-   * Unconditionally creates a new session, ignoring any existing valid session.
-   * Used by the refresh button to force a fresh session.
-   * Stores in localStorage, adds to sessions list, sets as active, emits via session$.
+   * Unconditionally creates a new session for the calling tab, replacing any
+   * session it already had. Used by the refresh button and by "new session".
    */
-  forceNewSession(): SessionInfo {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
-
-    const newSession = this.createNewSessionInternal();
-    storedData.sessions.push(newSession);
-    storedData.activeSessionId = newSession.sessionId;
-    this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-
-    this.currentSession = newSession;
-    this.sessionSubject.next(this.currentSession);
-    return newSession;
+  forceNewSession(tabId?: string): SessionInfo {
+    return this.createSessionForTab(this.resolveTabId(tabId));
   }
 
   /**
@@ -101,90 +128,75 @@ export class SessionManagerService {
    * Delegates to getOrCreateSession() — kept for backward compatibility.
    */
   initializeSession(userId?: string | null, customerName?: string | null, tabId?: string): SessionInfo {
-    return this.getOrCreateSession();
+    return this.getOrCreateSession(tabId);
   }
 
   /**
-   * Get all sessions. Uses the consolidated sessions list key (no tab component).
+   * Sessions from this page load, most recently used first. Scoped to the
+   * calling tab, since one tab must not offer to resume another's conversation.
    */
-  getSessions(): SessionInfo[] {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
-
-    // Filter out expired sessions
-    const validSessions = storedData.sessions.filter(s => !this.isSessionExpired(s));
-
-    // Update storage if we filtered out any sessions
-    if (validSessions.length !== storedData.sessions.length) {
-      storedData.sessions = validSessions;
-      this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-    }
-
-    // Sort by last used (most recent first)
-    return validSessions.sort((a, b) =>
-      new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
-    );
+  getSessions(tabId?: string): SessionInfo[] {
+    const tab = this.resolveTabId(tabId);
+    this.claimActiveTab(tab);
+    return Array.from(this.sessions.values())
+      .filter(s => s.tabId === tab)
+      .sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime());
   }
 
   /**
-   * Switch to a different session
+   * Switch the calling tab to one of its own earlier sessions.
    */
-  switchSession(sessionId: string): SessionInfo | null {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
-
-    const session = storedData.sessions.find(s => s.sessionId === sessionId);
-    if (session && !this.isSessionExpired(session)) {
-      session.lastUsed = new Date();
-      storedData.activeSessionId = sessionId;
-      this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-      this.currentSession = session;
-      this.sessionSubject.next(this.currentSession);
-      return session;
+  switchSession(sessionId: string, tabId?: string): SessionInfo | null {
+    const tab = this.resolveTabId(tabId);
+    this.claimActiveTab(tab);
+    const session = this.sessions.get(sessionId);
+    if (!session || session.tabId !== tab) {
+      return null;
     }
-
-    return null;
+    session.lastUsed = new Date();
+    this.activeSessionIdByTab.set(tab, sessionId);
+    this.setCurrent(session);
+    return session;
   }
 
   /**
-   * Update session message count
+   * Count a message against a session. Drives "does this session have activity",
+   * which is how a tab decides whether an existing session is worth resuming.
    */
   updateSessionMessageCount(sessionId: string): void {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
-
-    const session = storedData.sessions.find(s => s.sessionId === sessionId);
+    const session = this.sessions.get(sessionId);
     if (session) {
       session.messageCount = (session.messageCount || 0) + 1;
       session.lastUsed = new Date();
-      this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
     }
   }
 
   /**
-   * Delete a session. If the deleted session was the active one,
-   * automatically creates a new session via getOrCreateSession().
+   * Delete a session. If it was the active one for its tab, that tab gets a new
+   * session so it always has one.
    */
   deleteSession(sessionId: string): void {
-    const storedData = this.loadStoredSessions(this.ACTIVE_SESSION_KEY);
+    const session = this.sessions.get(sessionId);
+    this.sessions.delete(sessionId);
 
-    storedData.sessions = storedData.sessions.filter(s => s.sessionId !== sessionId);
-
-    if (storedData.activeSessionId === sessionId) {
-      storedData.activeSessionId = null;
+    const tab = session?.tabId;
+    if (tab && this.activeSessionIdByTab.get(tab) === sessionId) {
+      this.activeSessionIdByTab.delete(tab);
+      this.createSessionForTab(tab);
+      return;
     }
 
-    this.saveStoredSessions(this.ACTIVE_SESSION_KEY, storedData);
-
     if (this.currentSession?.sessionId === sessionId) {
-      // Create a new session to replace the deleted active session
-      this.getOrCreateSession();
+      this.getOrCreateSession(tab);
     }
   }
 
   getCurrentSession(userId?: string | null, customerName?: string | null, tabId?: string): SessionInfo {
-    return this.getOrCreateSession();
+    return this.getOrCreateSession(tabId);
   }
 
   getCurrentSessionId(userId?: string | null, customerName?: string | null, tabId?: string): string {
-    return this.getOrCreateSession().sessionId;
+    return this.getOrCreateSession(tabId).sessionId;
   }
 
   /**
@@ -198,23 +210,40 @@ export class SessionManagerService {
   }
 
   isSessionValid(): boolean {
-    if (!this.currentSession) return false;
-    return !this.isSessionExpired(this.currentSession);
+    return this.currentSession !== null;
   }
 
   getSessionInfo(): SessionInfo | null {
     return this.currentSession;
   }
 
-  private createNewSessionInternal(): SessionInfo {
-    const sessionId = this.generateSessionId();
-    return {
-      sessionId,
+  private resolveTabId(tabId?: string): string {
+    const trimmed = (tabId || '').trim();
+    if (trimmed) {
+      return trimmed;
+    }
+    return this.activeTabId || SessionManagerService.DEFAULT_TAB_ID;
+  }
+
+  private createSessionForTab(tab: string): SessionInfo {
+    const session: SessionInfo = {
+      sessionId: this.generateSessionId(),
+      tabId: tab,
       createdAt: new Date(),
       lastUsed: new Date(),
       messageCount: 0,
       title: this.generateSessionTitle(new Date())
     };
+    this.sessions.set(session.sessionId, session);
+    this.activeSessionIdByTab.set(tab, session.sessionId);
+    this.claimActiveTab(tab);
+    this.setCurrent(session);
+    return session;
+  }
+
+  private setCurrent(session: SessionInfo): void {
+    this.currentSession = session;
+    this.sessionSubject.next(session);
   }
 
   private generateSessionId(): string {
@@ -228,38 +257,5 @@ export class SessionManagerService {
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     return `${dateStr} at ${timeStr}`;
-  }
-
-  private isSessionExpired(session: SessionInfo): boolean {
-    const now = new Date().getTime();
-    const lastUsed = new Date(session.lastUsed).getTime();
-    const hoursSinceActivity = (now - lastUsed) / (1000 * 60 * 60);
-    return hoursSinceActivity > this.SESSION_EXPIRY_HOURS;
-  }
-
-  private loadStoredSessions(storageKey: string): StoredTabSessions {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        parsed.sessions = parsed.sessions.map((s: any) => ({
-          ...s,
-          createdAt: new Date(s.createdAt),
-          lastUsed: new Date(s.lastUsed)
-        }));
-        return parsed;
-      }
-    } catch (error) {
-      console.warn('Failed to load sessions from localStorage:', error);
-    }
-    return { sessions: [], activeSessionId: null };
-  }
-
-  private saveStoredSessions(storageKey: string, data: StoredTabSessions): void {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(data));
-    } catch (error) {
-      console.error('Failed to save sessions to localStorage:', error);
-    }
   }
 }

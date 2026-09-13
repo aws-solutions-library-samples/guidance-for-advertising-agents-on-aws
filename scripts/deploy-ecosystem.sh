@@ -45,11 +45,13 @@ cd "$PROJECT_ROOT" || {
 # Configuration defaults
 STACK_PREFIX="${STACK_PREFIX:-sim}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-# Defaults to "default" when --profile is not passed. It must never be an empty
-# string: several phases export AWS_PROFILE, and boto3/the AWS CLI then look for
-# a profile literally named "" and fail with
+# Empty means "use whatever the AWS SDK/CLI resolves on its own" (env vars, an
+# instance role, an active SSO session). main() decides whether to fall back to
+# the "default" profile — see the resolution there. The one hard rule: an empty
+# AWS_PROFILE must never be *exported*, because boto3 and the CLI then look for a
+# profile literally named "" and fail with
 # "ProfileNotFound: The config profile () could not be found".
-AWS_PROFILE="${AWS_PROFILE:-default}"
+AWS_PROFILE="${AWS_PROFILE:-}"
 DEMO_USER_EMAIL="${DEMO_USER_EMAIL:-}"
 IMAGE_GENERATION_MODEL="${IMAGE_GENERATION_MODEL:-amazon.nova-canvas-v1:0}"
 INTERACTIVE_MODE="${INTERACTIVE_MODE:-true}"
@@ -1627,12 +1629,73 @@ deploy_lambda_functions() {
 #
 # Regenerating an existing file is deliberately avoided: it holds live values that
 # wire_aamp_agents.py and UI edits write back, and overwriting it would discard them.
+# Re-declare the external-agent connections the config already holds, in both the
+# local source file and the live DynamoDB item.
+#
+# Any step that publishes or rewrites the configuration must call this, because an
+# `external_agent_configs` entry alone is invisible to the UI: collaborators come
+# from `tool_agent_names` and bubble colours from `configured_colors`. Wiring an
+# external agent without declaring it there produced a deployment where the agent
+# answered but appeared unconnected and rendered grey.
+#
+# Idempotent and offline-safe: no ARNs, no credentials, no template. A deployment
+# with no external agents wired prints "already declared" and changes nothing.
+ensure_external_agent_connections_declared() {
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local config_file="${agent_config_dir}/global_configuration.json"
+
+    if [ ! -f "$config_file" ]; then
+        return 0
+    fi
+
+    setup_python_environment
+
+    local repair_cmd="$PYTHON_CMD ${SCRIPT_DIR}/wire_aamp_agents.py --repair-only \
+        --template ${agent_config_dir}/global_configuration.template.json \
+        --config ${config_file} \
+        --region $AWS_REGION"
+
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table
+    config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+    if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
+        repair_cmd="$repair_cmd --dynamodb-table $config_table"
+    else
+        repair_cmd="$repair_cmd --skip-dynamodb"
+    fi
+    if [ -n "$AWS_PROFILE" ]; then
+        repair_cmd="$repair_cmd --profile $AWS_PROFILE"
+    fi
+
+    print_status "Verifying external-agent connections are declared for the UI..."
+    if eval "$repair_cmd"; then
+        return 0
+    fi
+    # Never fail the deploy over this: the connection still works at runtime, it
+    # just may not be visible in the UI.
+    print_warning "⚠️  Could not verify external-agent connections (continuing)"
+    return 0
+}
+
 ensure_global_configuration() {
     local config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
     local resolved="${config_dir}/global_configuration.json"
     local template="${config_dir}/global_configuration.template.json"
 
     if [ -f "$resolved" ]; then
+        # The resolved file is deliberately kept as-is (see above), but that means a
+        # colour added to the template for a new agent never reaches a deployment that
+        # already has this file — the agent renders in the default grey forever.
+        # Backfill only the MISSING configured_colors keys: presentation-only, keyed by
+        # agent name, never overwriting an existing entry, so no live value is lost.
+        if [ -f "$template" ]; then
+            setup_python_environment
+            $PYTHON_CMD "${SCRIPT_DIR}/resolve_config.py" \
+                --stack-prefix "$STACK_PREFIX" --unique-id "$UNIQUE_ID" \
+                --region "$AWS_REGION" --config-dir "$config_dir" \
+                --backfill-colors-only || \
+                print_warning "   ⚠️  Could not backfill agent colours (continuing)."
+        fi
         return 0
     fi
 
@@ -2826,6 +2889,13 @@ print(arn)
     deploy_cmd="$deploy_cmd --env AWS_REGION=$AWS_REGION"
     deploy_cmd="$deploy_cmd --env AWS_DEFAULT_REGION=$AWS_REGION"
     deploy_cmd="$deploy_cmd --env AGENT_CONFIG_TABLE=${STACK_PREFIX}-AgentConfig-${UNIQUE_ID}"
+    # Progress-milestone table (infrastructure-services stack): external A2A peers
+    # append real per-step progress keyed by the A2A context id, and this agent's
+    # relay polls it while it waits so the UI shows what the peer is actually
+    # doing. Name is deterministic from the stack naming convention; if the table
+    # does not exist the relay logs one warning and falls back to elapsed-time
+    # updates.
+    deploy_cmd="$deploy_cmd --env AAMP_PROGRESS_TABLE=${STACK_PREFIX}-AgentProgress-${UNIQUE_ID}"
     deploy_cmd="$deploy_cmd --env MEMORY_ID=$memory_id"
     deploy_cmd="$deploy_cmd --env ACTOR_ID=AdFabricAgent"
     deploy_cmd="$deploy_cmd --env DOCKER_CONTAINER=1"
@@ -3143,7 +3213,13 @@ detect_and_deploy_agentcore_agents() {
             local deploy_script="${PROJECT_ROOT}/agentcore/deployment/build_and_deploy.sh"
             if [ -f "$deploy_script" ]; then
                 export AWS_REGION="$AWS_REGION"
-                export AWS_PROFILE="$AWS_PROFILE"
+                # Never export an empty AWS_PROFILE — the child would look for a
+                # profile named "" instead of using the default credential chain.
+                if [ -n "${AWS_PROFILE:-}" ]; then
+                    export AWS_PROFILE="$AWS_PROFILE"
+                else
+                    unset AWS_PROFILE
+                fi
                 export STACK_PREFIX="$STACK_PREFIX"
                 export UNIQUE_ID="$UNIQUE_ID"
                 export AGENTCORE_AGENT_NAME="$agentcore_agent_name"
@@ -3303,6 +3379,21 @@ generate_ui_config() {
     GLOBAL_CONFIG="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
     
     mkdir -p "$ANGULAR_ASSETS_DIR"
+
+    # Re-declare every already-wired external agent BEFORE the config is copied
+    # into the UI bundle. This step ships the config the UI reads, so it must not
+    # publish one in which a wired external agent looks unconnected: the Angular
+    # app derives an agent's collaborators from `tool_agent_names` and its chat
+    # bubble colour from `configured_colors`, and an `external_agent_configs`
+    # entry populates neither.
+    #
+    # Needs no ARNs, no credentials and no template — it only re-declares what the
+    # config already holds. So it is a no-op on a deployment that never installed
+    # the optional external agents, and it repairs a config that an earlier
+    # release stripped. DynamoDB is patched too, because the running UI and the
+    # agent runtimes read the live item rather than this file.
+    ensure_external_agent_connections_declared
+
     cp "$GLOBAL_CONFIG" "$ANGULAR_ASSETS_DIR"
     # Generate aws-config.json 
     CONFIG_FILE="$ANGULAR_ASSETS_DIR/aws-config.json"
@@ -5227,11 +5318,18 @@ WARMUP_SCRIPT
     
     local exit_code=$?
     
-    # Export environment variables for the Python script
+    # Export environment variables for the Python script.
+    # AWS_PROFILE stays guarded: this runs after the warmup subprocess and the
+    # export persists for every later phase, so exporting it empty here is what
+    # broke the Quick Gateway phase with "The config profile () could not be found".
     export STACK_PREFIX
     export UNIQUE_ID
     export AWS_REGION
-    export AWS_PROFILE
+    if [ -n "${AWS_PROFILE:-}" ]; then
+        export AWS_PROFILE
+    else
+        unset AWS_PROFILE
+    fi
     export PROJECT_ROOT
     
     if [ "$warmup_result" = "SUCCESS" ]; then
@@ -5684,13 +5782,27 @@ main() {
     # Parse command line arguments first
     parse_args "$@"
 
-    # Normalize the profile once, up front. Without --profile this was left as an
-    # empty string, and any phase that exported it handed boto3 and the AWS CLI a
-    # profile named "" — failing with "ProfileNotFound: The config profile ()
-    # could not be found" instead of using credentials. Fall back to "default".
+    # Resolve the profile once, up front, when --profile was not passed.
+    #
+    # Leaving it empty used to break the phases that export AWS_PROFILE: boto3 and
+    # the CLI looked for a profile named "" and failed with "ProfileNotFound: The
+    # config profile () could not be found", which silently skipped every warmup
+    # and broke the Quick Gateway phase. Unconditionally forcing "default" fixed
+    # that but broke the opposite case — env-var credentials, an instance role, or
+    # an SSO session on a machine with no "default" profile.
+    #
+    # So: keep it empty (and never exported) when the SDK can already resolve
+    # credentials on its own, and only fall back to "default" when it cannot.
     if [ -z "${AWS_PROFILE:-}" ]; then
-        AWS_PROFILE="default"
-        export AWS_PROFILE
+        unset AWS_PROFILE
+        if aws sts get-caller-identity --query Account --output text >/dev/null 2>&1; then
+            AWS_PROFILE=""
+            print_status "No --profile given; using the credentials the AWS SDK resolves by default."
+        else
+            AWS_PROFILE="default"
+            export AWS_PROFILE
+            print_status "No --profile given and no ambient credentials; falling back to the 'default' profile."
+        fi
     fi
 
     # Check if cleanup mode

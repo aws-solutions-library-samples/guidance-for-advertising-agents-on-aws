@@ -215,3 +215,4 @@ agentcore/deployment/agent/global_configuration.json
 *.aamp-orig
 .aamp-temperature-patched
 .aamp-patched-files
+*/adcp/

@@ -20,7 +20,7 @@ import logging
 import os
 import time
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
@@ -137,13 +137,26 @@ def search_seller_inventory(
     query: str,
     context_id: str = "",
     timeout: float = 240.0,
+    on_status: Optional[Callable[[str], None]] = None,
 ) -> str:
     """Send an A2A message/send to the seller runtime and return its text reply.
 
     ``query`` is a natural-language inventory request (channel, budget, dates,
     audience). Returns the seller's text, or an explicit error string. Never
     raises; fails closed on auth errors (BR-6).
+
+    ``on_status`` receives a short note when the call has to wait on the seller
+    (cold start), so callers can surface the real reason for the delay.
     """
+
+    def _status(message: str) -> None:
+        if on_status is None:
+            return
+        try:
+            on_status(message)
+        except Exception:  # noqa: BLE001
+            pass
+
     endpoint = _seller_endpoint()
     if not endpoint:
         return "Error: seller endpoint not configured (set AAMP_SELLER_RUNTIME_ARN or AAMP_SELLER_ENDPOINT)."
@@ -189,6 +202,11 @@ def search_seller_inventory(
             logger.warning(
                 "seller not ready (HTTP %s); retry %d/%d in %ds",
                 resp.status_code, attempt + 1, _COLDSTART_MAX_ATTEMPTS - 1, _COLDSTART_BACKOFF_SECONDS,
+            )
+            _status(
+                f"Seller runtime is still starting up; retrying in "
+                f"{_COLDSTART_BACKOFF_SECONDS}s "
+                f"(attempt {attempt + 1} of {_COLDSTART_MAX_ATTEMPTS - 1})"
             )
             time.sleep(_COLDSTART_BACKOFF_SECONDS)
             continue

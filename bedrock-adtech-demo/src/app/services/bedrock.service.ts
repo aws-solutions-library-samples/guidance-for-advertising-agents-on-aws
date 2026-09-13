@@ -162,6 +162,13 @@ export class BedrockService {
   // Accumulate complete responses before emitting
   private responseAccumulators = new Map<string, string>(); // Track accumulated responses per session
   private agentCoreAccumulators = new Map<string, string>(); // Track AgentCore accumulated text per session/agent
+  // toolUseId -> tool name, recorded when a toolUse block streams past.
+  // A Converse `toolResult` carries only toolUseId/content/status — no tool name —
+  // so this is the only way to tell at result time WHICH tool produced it. Needed to
+  // distinguish an internal specialist (invoke_specialist*) from an external A2A
+  // runtime (invoke_<entry>), because their replies are wrapped identically.
+  // Entries are consumed (deleted) when their result arrives.
+  private toolUseNames = new Map<string, string>();
   private chatMessages: any[] = []; // Track messages for AgentCore sources
   private cleanupInterval: any = null; // Track the cleanup interval
   memoryRecordId: any;
@@ -960,6 +967,7 @@ Example format:
     this.recentEvents.clear();
     this.responseAccumulators.clear();
     this.agentCoreAccumulators.clear();
+    this.toolUseNames.clear();
   }
 
   // Get current session ID (for debugging)
@@ -991,6 +999,7 @@ Example format:
     this.recentEvents.clear();
     this.responseAccumulators.clear();
     this.agentCoreAccumulators.clear();
+    this.toolUseNames.clear();
     this.sessionSources.clear();
   }
 
@@ -2256,16 +2265,18 @@ Example format:
 
     if (authUsesHeader(plan.authType)) {
       let token: string | null = null;
+      let failure: string | undefined;
       try {
-        token = await this.acquireInboundBearerToken(resolvedAgent);
+        ({ token, failure } = await this.acquireInboundBearerToken(resolvedAgent));
       } catch (err) {
         return { error: `token acquisition error (${(err as Error)?.name || 'unknown'})` };
       }
       if (!token) {
         return {
           error:
-            `no usable credentials were found in Parameter Store for "${agentName}". ` +
-            `Store them in the agent's Inbound Authentication settings.`
+            failure ??
+            `no credentials were found in Parameter Store for "${agentName}". ` +
+              `Store them in the agent's Inbound Authentication settings.`
         };
       }
       return { headers: { ...baseHeaders, Authorization: `Bearer ${token}` } };
@@ -2328,11 +2339,17 @@ Example format:
    * - anything that is not JSON is an operator-pasted static token, sent
    *   verbatim.
    *
-   * Returns null when no usable credentials were found.
+   * Returns `{ token: null }` when nothing was stored, and `{ token: null,
+   * failure }` when a credential document was found but did not yield a token.
+   * A rejected credential and an absent one need different fixes, so the caller
+   * reports the reason rather than a single "no credentials" message.
    */
-  private async acquireInboundBearerToken(resolvedAgent: EnrichedAgent): Promise<string | null> {
+  private async acquireInboundBearerToken(
+    resolvedAgent: EnrichedAgent
+  ): Promise<{ token: string | null; failure?: string }> {
     const namesToTry = this.resolveInboundCredentialNames(resolvedAgent);
     console.log(`🔑 Trying credential lookup for names: ${namesToTry.join(', ')}`);
+    let failure: string | undefined;
 
     for (const tryName of namesToTry) {
       const credentialsJson = await this.agentDynamoDBService.getA2AInboundOAuthCredentials(tryName);
@@ -2343,9 +2360,12 @@ Example format:
         try {
           const token = await acquireClientCredentialsToken(credentialsJson, `inbound:${tryName}`);
           console.log(`✅ OAuth (M2M) bearer token acquired using name: ${tryName}`);
-          return token;
+          return { token };
         } catch (err) {
           console.warn(`⚠️ Client-credentials exchange failed for ${tryName}:`, err);
+          failure =
+            `the OAuth (M2M) client-credentials exchange for the credentials stored ` +
+            `under "${tryName}" failed (${(err as Error)?.message || 'unknown error'}).`;
           continue;
         }
       }
@@ -2357,10 +2377,15 @@ Example format:
         // Not JSON: this is the static Bearer Token mode, which stores the token
         // verbatim at this same path. Send it as-is.
         console.log(`✅ Static bearer token found using name: ${tryName}`);
-        return credentialsJson.trim();
+        return { token: credentialsJson.trim() };
       }
       const { client_id: clientId, username, password } = creds;
-      if (!clientId || !username || !password) continue;
+      if (!clientId || !username || !password) {
+        failure =
+          `the credential document stored under "${tryName}" is missing ` +
+          `client_id, username or password.`;
+        continue;
+      }
 
       // Cognito IDP REST API — USER_PASSWORD_AUTH flow via direct HTTP
       const region = this.awsConfig.getRegion();
@@ -2382,15 +2407,34 @@ Example format:
         const bearerToken = tokenData?.AuthenticationResult?.AccessToken || null;
         if (bearerToken) {
           console.log(`✅ OAuth bearer token acquired using name: ${tryName}`);
-          return bearerToken;
+          return { token: bearerToken };
         }
+        // A challenge (e.g. NEW_PASSWORD_REQUIRED) answers 200 with no tokens.
+        failure =
+          `Cognito returned no access token for the credentials stored under ` +
+          `"${tryName}"${tokenData?.ChallengeName ? ` (challenge: ${tokenData.ChallengeName})` : ''}.`;
       } else {
         const errText = (await tokenResponse.text()).slice(0, 300);
         console.warn(`⚠️ Cognito auth failed (${tokenResponse.status}) for ${tryName}: ${errText}`);
+        // Cognito reports the reason in __type (e.g. NotAuthorizedException for a
+        // wrong password, InvalidParameterException when the app client does not
+        // allow USER_PASSWORD_AUTH). Surfacing it distinguishes a stale password
+        // from a missing credential.
+        let reason = `HTTP ${tokenResponse.status}`;
+        try {
+          const errJson = JSON.parse(errText);
+          const code = (errJson?.__type || '').split('#').pop();
+          if (code) reason = errJson?.message ? `${code}: ${errJson.message}` : code;
+        } catch {
+          // Non-JSON error body — the status code is all we have.
+        }
+        failure =
+          `Cognito rejected the credentials stored under "${tryName}" (${reason}). ` +
+          `Re-enter them in the agent's Inbound Authentication settings.`;
       }
     }
 
-    return null;
+    return { token: null, failure };
   }
 
   /**
@@ -2623,19 +2667,29 @@ Example format:
         });
       } else if (jsonRpcResponse.result) {
         // Extract text from result.artifacts[*].parts[*].text
+        //
+        // Parts within one artifact are streaming text deltas, not paragraphs.
+        // The peer's executor runs with A2A-compliant streaming, so a turn
+        // arrives as one part per delta and message/send hands back all of them
+        // accumulated. Concatenate them with no separator: a newline here lands
+        // mid-word wherever the tokenizer split, and one adjacent to a `**`
+        // stops CommonMark treating it as an emphasis delimiter. Only separate
+        // artifacts are distinct blocks.
         const artifacts = jsonRpcResponse.result.artifacts || [];
-        const textParts: string[] = [];
+        const artifactTexts: string[] = [];
 
         for (const artifact of artifacts) {
           const parts = artifact.parts || [];
-          for (const part of parts) {
-            if (part.text) {
-              textParts.push(part.text);
-            }
+          const artifactText = parts
+            .filter((part: any) => part.text)
+            .map((part: any) => part.text)
+            .join('');
+          if (artifactText) {
+            artifactTexts.push(artifactText);
           }
         }
 
-        const responseText = textParts.join('\n');
+        const responseText = artifactTexts.join('\n');
 
         if (responseText) {
           observer.next({
@@ -3051,6 +3105,16 @@ Example format:
                         const message = eventData.message;
                         // Handle reasoning content
                         if (message.content && Array.isArray(message.content)) {
+                          // Record toolUseId -> tool name first. The assistant message
+                          // carrying the toolUse always arrives before the message
+                          // carrying its toolResult, and the result itself has no name,
+                          // so this is what lets the result branch below tell an internal
+                          // specialist from an external A2A runtime.
+                          for (const contentItem of message.content) {
+                            if (contentItem.toolUse?.toolUseId && contentItem.toolUse?.name) {
+                              this.toolUseNames.set(contentItem.toolUse.toolUseId, contentItem.toolUse.name);
+                            }
+                          }
                           for (const contentItem of message.content) {
                             // Process reasoning content
                             if (contentItem.reasoningContent?.reasoningText?.text) {
@@ -3088,6 +3152,40 @@ Example format:
 
                                       // Convert tool agent name to display name
                                       const toolAgentDisplayName = toolAgentName;
+
+                                      // Is this an external A2A runtime rather than an internal
+                                      // specialist? Both wrap their reply identically, so we need a
+                                      // discriminator.
+                                      //
+                                      // Primary signal is the agent itself: an internal specialist
+                                      // has its own agent_configs entry (it is an enriched agent),
+                                      // while an external A2A peer is only wired as a tool on its
+                                      // orchestrator and never appears there. This needs no event
+                                      // correlation, so it holds even when the toolUse that started
+                                      // this result was never observed.
+                                      //
+                                      // Secondary signal is the originating tool name
+                                      // (invoke_specialist* = internal, invoke_<entry> = external),
+                                      // used only when the toolUse was seen.
+                                      //
+                                      // Why suppress: an external peer's reply is not a turn in the
+                                      // conversation. The orchestrator asked on the user's behalf and
+                                      // then answers in its own turn, so rendering the raw reply too
+                                      // put the whole plan in the peer's name AND again in the
+                                      // orchestrator's. The peer still appears as a participant and
+                                      // streams live progress via agent_status, and its visualization
+                                      // payloads are still extracted below and credited to it.
+                                      const originatingToolName = toolResult.toolUseId
+                                        ? this.toolUseNames.get(toolResult.toolUseId)
+                                        : undefined;
+                                      if (toolResult.toolUseId) {
+                                        this.toolUseNames.delete(toolResult.toolUseId);
+                                      }
+                                      const isKnownInternalAgent = this.agentConfig.getEnrichedAgents()
+                                        .some(a => a.name === toolAgentName);
+                                      const toolSaysExternal = !!originatingToolName &&
+                                        originatingToolName.indexOf('invoke_specialist') < 0;
+                                      const isExternalAgentReply = !isKnownInternalAgent || toolSaysExternal;
 
                                       console.log('✅ Found agent message in tool result:', {
                                         toolAgentName,
@@ -3135,7 +3233,14 @@ Example format:
                                         console.log('could not extract visualizations from wrapped agent message');
                                       }
 
-                                      if (toolAgentProse) {
+                                      if (isExternalAgentReply && toolAgentProse) {
+                                        console.log(
+                                          `⏭️ Suppressing external agent response bubble for ${toolAgentName} ` +
+                                          `(tool=${originatingToolName ?? 'unknown'}, ` +
+                                          `knownInternalAgent=${isKnownInternalAgent}); ` +
+                                          `the orchestrator answers in its own turn`
+                                        );
+                                      } else if (toolAgentProse) {
                                         observer.next({
                                           type: 'chunk',
                                           data: toolAgentProse,

@@ -645,6 +645,56 @@ JSON
     fi
 }
 
+# Resolve the progress-milestone table from the infrastructure-services stack.
+# Echoes the table name, or nothing when the stack/output is absent (older stack
+# not yet updated) — callers treat empty as "progress disabled".
+_aamp_progress_table_name() {
+    local name
+    name=$(get_stack_output "${STACK_PREFIX}-infrastructure-services" "AgentProgressTableName" 2>/dev/null | tr -d '[:space:]')
+    [ -n "$name" ] && [ "$name" != "None" ] && printf '%s' "$name"
+}
+
+# WHY: the buyer records real per-step progress (brief parsed, budget allocated,
+# seller responded) as rows in the progress table so the calling agent can show
+# what is actually happening during the ~1-2 min plan. The toolkit-created buyer
+# execution role has no DynamoDB access, so without this grant every write fails
+# (silently, by design) and the caller falls back to elapsed-time messages.
+# Least privilege: PutItem only, on that one table. Idempotent.
+_aamp_grant_buyer_progress_write() {
+    local buyer_arn="$1"
+    local table_name="$2"
+    [ -n "$buyer_arn" ] || return 0
+    [ -n "$table_name" ] || return 0
+
+    local runtime_id account_id role_arn role_name
+    runtime_id="${buyer_arn##*/}"
+    account_id=$(aws_cmd sts get-caller-identity --query Account --output text 2>/dev/null | tr -d '[:space:]')
+    role_arn=$(aws_cmd bedrock-agentcore-control get-agent-runtime \
+        --agent-runtime-id "$runtime_id" --query roleArn --output text 2>/dev/null | tr -d '[:space:]')
+
+    if [ -z "$role_arn" ] || [ "$role_arn" = "None" ] || [ -z "$account_id" ]; then
+        print_warning "   ⚠️  Could not resolve the buyer runtime role; skipping progress-table write grant."
+        print_warning "      Progress milestones will be skipped; callers fall back to elapsed-time updates."
+        return 0
+    fi
+    role_name="${role_arn##*/}"
+
+    local table_arn="arn:aws:dynamodb:${AWS_REGION}:${account_id}:table/${table_name}"
+    local policy
+    policy=$(cat <<JSON
+{"Version":"2012-10-17","Statement":[
+{"Sid":"WriteAgentProgress","Effect":"Allow","Action":"dynamodb:PutItem","Resource":"${table_arn}"}
+]}
+JSON
+)
+    if aws_cmd iam put-role-policy --role-name "$role_name" \
+        --policy-name "AampProgressWrite" --policy-document "$policy" >/dev/null 2>&1; then
+        print_success "   ✅ Granted buyer role ($role_name) write access to the progress table"
+    else
+        print_warning "   ⚠️  Could not attach progress-write policy to $role_name — progress milestones will be skipped."
+    fi
+}
+
 deploy_aamp_agents() {
     print_step "Step 9: Deploying AAMP agents (IAB buyer & seller)..."
 
@@ -852,6 +902,7 @@ REOF
     local aamp_auth_mode="iam"
     local aamp_pool_id="" aamp_client_id="" aamp_discovery_url=""
     local seller_ssm_path="" buyer_ssm_path=""
+    local seller_top_level_ssm_path="" buyer_top_level_ssm_path=""
 
     if [ "$AAMP_INBOUND_AUTH" = "oauth" ]; then
         # setup_a2a_auth (defined by the parent deploy-ecosystem.sh) resolves the
@@ -891,19 +942,29 @@ REOF
                 # truth for the credential schema and SSM path convention).
                 local provision_script="${SCRIPT_DIR}/provision_aamp_a2a_auth.py"
                 if [ -f "$provision_script" ]; then
+                    # Four logins, not two. Callers resolve the credential
+                    # parameter from the *name they know the agent by*, so the
+                    # top-level UI entries (AAMPSeller / AAMPBuyer, created by
+                    # wire_aamp_agents.py) need their own logins at their own
+                    # names — the runtime-name parameters below are never read
+                    # for them. Same pool and app client, so one JWT authorizer
+                    # accepts all four.
                     local prov_cmd="$PYTHON_CMD \"$provision_script\" \
                         --region $AWS_REGION \
                         --stack-prefix $STACK_PREFIX \
                         --unique-id $UNIQUE_ID \
                         --pool-id \"$aamp_pool_id\" \
                         --client-id \"$aamp_client_id\" \
-                        --agent AAMPSellerAgent --agent AAMPBuyerAgent"
+                        --agent AAMPSellerAgent --agent AAMPBuyerAgent \
+                        --agent AAMPSeller --agent AAMPBuyer"
                     if [ -n "$AWS_PROFILE" ]; then
                         prov_cmd="$prov_cmd --profile $AWS_PROFILE"
                     fi
                     if eval "$prov_cmd"; then
                         seller_ssm_path="/${STACK_PREFIX}/a2a-inbound-tokens/${UNIQUE_ID}/AAMPSellerAgent"
                         buyer_ssm_path="/${STACK_PREFIX}/a2a-inbound-tokens/${UNIQUE_ID}/AAMPBuyerAgent"
+                        seller_top_level_ssm_path="/${STACK_PREFIX}/a2a-inbound-tokens/${UNIQUE_ID}/AAMPSeller"
+                        buyer_top_level_ssm_path="/${STACK_PREFIX}/a2a-inbound-tokens/${UNIQUE_ID}/AAMPBuyer"
                         print_success "✅ Provisioned AAMP inbound A2A credentials in SSM"
                     else
                         print_warning "⚠️  Failed to provision AAMP inbound credentials — callers will have no stored login."
@@ -1023,7 +1084,15 @@ REOF
             export A2A_SELLER_SSM_PATH="$seller_ssm_path"
             export A2A_CLIENT_ID="$aamp_client_id"
             export AGENTCORE_A2A_PORT
+            # Progress table (created by the infrastructure-services stack): the
+            # buyer appends a row per completed step keyed by the A2A context id,
+            # and the calling agent polls it so the UI shows real progress during
+            # the ~1-2 min plan instead of a generic wait. Optional: if the stack
+            # output is missing, the buyer emits nothing and callers fall back to
+            # elapsed-time messages.
+            export AAMP_PROGRESS_TABLE="$(_aamp_progress_table_name)"
             print_status "   Buyer→seller wiring: ARN=${seller_runtime_arn:0:60}..., ssm=${A2A_SELLER_SSM_PATH:-<none>}"
+            print_status "   Progress table: ${AAMP_PROGRESS_TABLE:-<none, falls back to elapsed-time updates>}"
         fi
 
         # Run deploy from the buyer repo root (required by agentcore CLI).
@@ -1067,6 +1136,15 @@ REOF
     if [ "$AAMP_PROTOCOL" = "a2a" ] && [ "$aamp_auth_mode" = "oauth" ] && \
        [ -n "$buyer_runtime_arn" ] && [ -n "$seller_ssm_path" ]; then
         _aamp_grant_buyer_seller_cred_read "$buyer_runtime_arn" "$seller_ssm_path"
+    fi
+
+    # ── Grant the buyer runtime write access to the progress table ──────────
+    # A2A only: lets the buyer publish real milestones for the caller to poll.
+    # Non-fatal — without it the buyer's writes fail and the caller falls back
+    # to elapsed-time updates.
+    if [ "$AAMP_PROTOCOL" = "a2a" ] && [ -n "$buyer_runtime_arn" ] && \
+       [ -n "${AAMP_PROGRESS_TABLE:-}" ]; then
+        _aamp_grant_buyer_progress_write "$buyer_runtime_arn" "$AAMP_PROGRESS_TABLE"
     fi
 
     # ── Store runtime ARNs ──────────────────────────────────────────────
@@ -1199,6 +1277,9 @@ PYEOF2
     # patch each AAMP agent's entry — with its real runtime ARN — directly into
     #   (1) the local agentcore/.../global_configuration.json source, and
     #   (2) the live GLOBAL_CONFIG/v1 item in the DynamoDB AgentConfig table.
+    # Two entries per runtime: the consumer-side external_agent_configs entry
+    # (AgencyAgent's invoke tool) and a directly selectable top-level entry
+    # (AAMP Buyer / AAMP Seller in the UI's agent list). See wire_aamp_agents.py.
     # Per-agent and independent: a missing seller ARN no longer blocks the buyer,
     # nothing is written as a placeholder, and there is no all-or-nothing abort.
     # This replaces the old resolve_config.py (template placeholder) + general
@@ -1220,7 +1301,9 @@ PYEOF2
         --cognito-pool-id \"${aamp_pool_id}\" \
         --cognito-client-id \"${aamp_client_id}\" \
         --seller-ssm-path \"${seller_ssm_path}\" \
-        --buyer-ssm-path \"${buyer_ssm_path}\""
+        --buyer-ssm-path \"${buyer_ssm_path}\" \
+        --seller-top-level-ssm-path \"${seller_top_level_ssm_path}\" \
+        --buyer-top-level-ssm-path \"${buyer_top_level_ssm_path}\""
     if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
         wire_cmd="$wire_cmd --dynamodb-table $config_table"
     else

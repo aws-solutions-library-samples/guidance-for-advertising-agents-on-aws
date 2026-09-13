@@ -641,6 +641,242 @@ def offer_local_config_update(existing_config: Dict[str, Any],
 
 
 
+def backfill_template_colors(file_config: Dict[str, Any], config_dir: str) -> Dict[str, Any]:
+    """Add configured_colors the template defines but file_config is missing.
+
+    Colours are presentation-only and keyed by agent name, so this only ever adds
+    keys — an existing colour is left exactly as it is. Returns the config
+    unchanged if there is no template or nothing is missing.
+    """
+    template_path = os.path.join(config_dir, "global_configuration.template.json")
+    if not os.path.exists(template_path):
+        return file_config
+
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            template_colors = json.load(f).get("configured_colors") or {}
+    except Exception as e:
+        print(f"   ⚠️  Could not read template colours ({e}); continuing without backfill")
+        return file_config
+
+    colors = file_config.get("configured_colors")
+    if not isinstance(colors, dict):
+        colors = {}
+    missing = {k: v for k, v in template_colors.items() if k not in colors}
+    if not missing:
+        return file_config
+
+    print(f"   🎨 Backfilling {len(missing)} agent colour(s) from the template:")
+    for name, colour in sorted(missing.items()):
+        print(f"      + {name} → {colour}")
+    colors.update(missing)
+    file_config["configured_colors"] = colors
+    return file_config
+
+
+def _find_aamp_entry(config: Optional[Dict[str, Any]], name: str) -> Optional[Dict[str, Any]]:
+    """Return the first external_agent_configs entry named `name`, on any agent."""
+    for agent_cfg in ((config or {}).get("agent_configs") or {}).values():
+        if not isinstance(agent_cfg, dict):
+            continue
+        for entry in agent_cfg.get("external_agent_configs") or []:
+            if isinstance(entry, dict) and entry.get("name") == name:
+                return entry
+    return None
+
+
+def rewire_aamp_agents(file_config: Dict[str, Any], config_dir: str,
+                       existing_config: Optional[Dict[str, Any]],
+                       stack_prefix: str = None, unique_id: str = None,
+                       region: str = None) -> Dict[str, Any]:
+    """Re-apply the AAMP external-agent wiring to the config about to be published.
+
+    The AAMP runtimes' ARN and inbound-auth contract live only in the deployed
+    state, never in global_configuration.template.json — a template cannot carry
+    a per-deployment ARN or an SSM path namespaced by stack prefix and unique id.
+    So any writer that rebuilds the local file from the template leaves the AAMP
+    entries with `authType: "oauth"` and no credential reference, and
+    build_a2a_client_tools then SKIPS those entries outright (it requires
+    hasCredentials + ssmPath), so the AAMP tools silently disappear.
+
+    Re-wiring here, at the single point every upload funnels through, makes that
+    impossible regardless of which writer touched the file last — the same reason
+    backfill_template_colors lives here. Previously the wiring ran only in the
+    deploy's opt-in AAMP phase, so any deploy that skipped it published a config
+    with the AAMP entries reverted to their template shape.
+
+    Nothing is fabricated. The ARN and the auth contract are carried forward from
+    real recorded state, in this precedence:
+
+      1. the AAMP deploy record (.aamp-runtime-{prefix}-{unique_id}.json) — ARN only
+      2. the live DynamoDB config — what the running app is using now
+      3. the local file — last resort
+
+    When no ARN can be found for an agent, its live entry is carried forward
+    verbatim if one exists, and otherwise it is left alone and reported. An
+    operator's `enabled` choice is preserved rather than reset to the template's.
+    """
+    template_path = os.path.join(config_dir, "global_configuration.template.json")
+    if not os.path.exists(template_path):
+        return file_config
+
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from wire_aamp_agents import AAMP_AGENTS, apply_aamp_wire, load_template_defs
+
+        defs, consumers = load_template_defs(template_path)
+        if not defs or not consumers:
+            return file_config
+
+        # ARNs, per the precedence in the docstring.
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        deploy_record: Dict[str, Any] = {}
+        if stack_prefix and unique_id:
+            record_path = os.path.join(
+                project_root, f".aamp-runtime-{stack_prefix}-{unique_id}.json"
+            )
+            if os.path.exists(record_path):
+                try:
+                    with open(record_path, "r", encoding="utf-8") as f:
+                        deploy_record = json.load(f).get("agents") or {}
+                except (OSError, json.JSONDecodeError) as e:
+                    print(f"   ⚠️  Could not read AAMP deploy record ({e}); using recorded config")
+
+        arns: Dict[str, str] = {}
+        auth_by_agent: Dict[str, Dict[str, Any]] = {}
+        live_entries: Dict[str, Dict[str, Any]] = {}
+
+        # The top-level AAMP entries (AAMP Buyer / AAMP Seller) resolve their
+        # credentials under their own agent names, and that path is recorded
+        # nowhere but the config itself — the template cannot carry a path
+        # namespaced by stack prefix and unique id. Carry it forward from live,
+        # then local, so a Phase 7 re-run does not republish these entries with
+        # hasCredentials: false and lock the operator out of the agent.
+        from wire_aamp_agents import TOP_LEVEL_AGENTS
+
+        top_level_ssm_paths: Dict[str, str] = {}
+        for spec in TOP_LEVEL_AGENTS.values():
+            for source in (existing_config, file_config):
+                entry = ((source or {}).get("agent_configs") or {}).get(spec["id"])
+                if not isinstance(entry, dict):
+                    continue
+                path = ((entry.get("a2a_oauth_credentials") or {}).get("ssmPath") or "").strip()
+                if path:
+                    top_level_ssm_paths[spec["id"]] = path
+                    break
+
+        for name in AAMP_AGENTS:
+            live = _find_aamp_entry(existing_config, name)
+            local = _find_aamp_entry(file_config, name)
+            source = live or local or {}
+            if live:
+                live_entries[name] = live
+
+            arn = ((deploy_record.get(name) or {}).get("runtime_arn") or "").strip()
+            if not arn:
+                arn = (source.get("arn") or "").strip()
+            if arn:
+                arns[name] = arn
+
+            creds = source.get("oauthCredentials") or {}
+            auth_by_agent[name] = {
+                "auth_mode": (source.get("authType") or "iam").lower(),
+                "pool_id": source.get("cognitoPoolId") or "",
+                "client_id": source.get("cognitoClientId") or "",
+                "ssm_path": creds.get("ssmPath") or "",
+                "enabled": source.get("enabled"),
+                # apply_aamp_wire preserves this only from the local file, so a
+                # value set in the console (live-only) needs carrying forward here.
+                "inventory_endpoint": (source.get("aampInventoryEndpoint") or "").strip(),
+            }
+
+        if not arns:
+            print("   ⏭️  AAMP: no runtime ARN recorded anywhere — entries left as-is")
+            return file_config
+
+        # apply_aamp_wire takes one auth mode / pool / client for the pair (both
+        # runtimes sit behind the same authorizer); the SSM path is per agent.
+        # Prefer the buyer's recorded values, since it is the entry normally enabled.
+        primary = next(
+            (auth_by_agent[n] for n in ("AAMPBuyerAgent", "AAMPSellerAgent")
+             if n in arns and auth_by_agent[n]["auth_mode"] != "iam"),
+            auth_by_agent.get(next(iter(arns))) or {},
+        )
+        auth_mode = primary.get("auth_mode") or "iam"
+        if auth_mode == "oauth":
+            unresolved = [n for n in arns if not auth_by_agent[n]["ssm_path"]]
+            if unresolved:
+                print(
+                    f"   ⚠️  AAMP: oauth recorded but no credential path for "
+                    f"{', '.join(unresolved)} — those entries will be skipped by the "
+                    "runtime until credentials are provisioned"
+                )
+
+        print(f"   🔗 Re-applying AAMP wiring ({', '.join(sorted(arns))}, auth={auth_mode}):")
+        apply_aamp_wire(
+            file_config,
+            defs,
+            consumers,
+            arns,
+            region=region or "us-east-1",
+            auth_mode=auth_mode,
+            pool_id=primary.get("pool_id") or "",
+            client_id=primary.get("client_id") or "",
+            ssm_paths={n: auth_by_agent[n]["ssm_path"] for n in AAMP_AGENTS},
+            top_level_ssm_paths=top_level_ssm_paths,
+        )
+
+        # apply_aamp_wire rebuilds each entry from the template, which carries the
+        # template's `enabled` and inventory-endpoint sentinel. Restore the
+        # operator's choices where one was recorded.
+        from wire_aamp_agents import (
+            AAMP_INVENTORY_ENDPOINT_FIELD,
+            AAMP_INVENTORY_ENDPOINT_UNSET,
+        )
+
+        for name in AAMP_AGENTS:
+            recorded = auth_by_agent.get(name, {})
+            entry = _find_aamp_entry(file_config, name)
+            if entry is None:
+                continue
+
+            if recorded.get("enabled") is not None and entry.get("enabled") != recorded["enabled"]:
+                entry["enabled"] = recorded["enabled"]
+                print(f"      ↳ {name}: kept operator-set enabled={recorded['enabled']}")
+
+            endpoint = recorded.get("inventory_endpoint") or ""
+            if (
+                AAMP_INVENTORY_ENDPOINT_FIELD in entry
+                and endpoint
+                and endpoint != AAMP_INVENTORY_ENDPOINT_UNSET
+                and entry.get(AAMP_INVENTORY_ENDPOINT_FIELD) != endpoint
+            ):
+                entry[AAMP_INVENTORY_ENDPOINT_FIELD] = endpoint
+                print(f"      ↳ {name}: kept operator-set inventory endpoint")
+
+        # An agent with no ARN was skipped by apply_aamp_wire. If the live config
+        # has a working entry for it, carry that forward rather than publishing
+        # whatever the local file happened to hold.
+        for name, live in live_entries.items():
+            if name in arns:
+                continue
+            for agent_name in consumers:
+                agent_cfg = (file_config.get("agent_configs") or {}).get(agent_name)
+                if not isinstance(agent_cfg, dict):
+                    continue
+                ext = agent_cfg.setdefault("external_agent_configs", [])
+                ext[:] = [e for e in ext if e.get("name") != name]
+                ext.append(json.loads(json.dumps(live)))
+                print(f"      ↳ {name}: no ARN — carried the live entry forward unchanged")
+
+        return file_config
+
+    except Exception as e:
+        # Never let re-wiring break an upload; publish what we have and say so.
+        print(f"   ⚠️  Could not re-apply AAMP wiring ({e}); uploading config unchanged")
+        return file_config
+
+
 def upload_global_config(table, config_dir: str, mode: str = 'overwrite', 
                          existing_config: Optional[Dict[str, Any]] = None,
                          stack_prefix: str = None, unique_id: str = None,
@@ -675,7 +911,28 @@ def upload_global_config(table, config_dir: str, mode: str = 'overwrite',
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             file_config = json.load(f)
-        
+
+        # Backfill agent colours the template defines but this file lacks.
+        #
+        # global_configuration.json is a build artifact that several steps rewrite
+        # (template resolve, AAMP wiring, and the "save DynamoDB config to local
+        # file" prompt below). Any of those can leave it without a colour that was
+        # added to the template, and then this upload publishes a config where the
+        # new agent has no colour and renders grey — with no error anywhere.
+        # Backfilling here, at the single point every upload funnels through, makes
+        # that impossible regardless of which writer touched the file last.
+        # Additive only: an existing colour is never changed.
+        file_config = backfill_template_colors(file_config, config_dir)
+
+        # Re-apply the AAMP external-agent wiring (ARN + inbound auth). Neither can
+        # come from the template, so any template-driven rebuild of this file drops
+        # them and the runtime then skips the AAMP entries entirely. See
+        # rewire_aamp_agents.
+        file_config = rewire_aamp_agents(
+            file_config, config_dir, existing_config,
+            stack_prefix=stack_prefix, unique_id=unique_id, region=region
+        )
+
         # Resolve knowledge base name references to real KB IDs before uploading.
         # This uses the Bedrock API to look up KBs named <stack-prefix>-<value>-<unique-id>.
         if stack_prefix and unique_id and region:

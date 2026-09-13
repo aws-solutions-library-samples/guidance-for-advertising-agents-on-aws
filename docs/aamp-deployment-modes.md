@@ -88,22 +88,48 @@ the last-wired runtime.
 
 ## Progressive status & visualizations
 
-**Live progress.** During the long buyer call, the buyer's A2A `status-update`
-narration is relayed to the UI as a small, capped set of `⏳` milestone lines
-(`agent_status` events rendered as a transient "thinking" bubble). Relaying is
-capped (`_MAX_PROGRESS_LINES`) and skips long paragraph-like lines so the whole
-answer is not echoed as progress and then again as the final turn.
+**Live progress comes from a shared table, not from the A2A stream.** A Strands
+`A2AServer` maps the agent's own text deltas onto A2A `status-update` events, so
+the status channel carries the answer itself — relaying it reproduces the whole
+media plan as a series of partial "progress" bubbles and then again as the final
+turn. There is also no executor hook for injecting custom events into the stream.
 
-**Final plan as cards.** The buyer returns a media-plan JSON object. The relay
-deterministically converts it into the UI's `visualization-data` blocks so it
-renders as cards rather than raw JSON:
+So the two sides correlate out of band, through the `AgentProgress` DynamoDB
+table (`{stack-prefix}-AgentProgress-{unique-id}`, defined in
+`cloudformation/infrastructure-services.yml`):
 
-- `allocations-visualization` — per-channel budget split
-- `adcp_get_products-visualization` — recommended inventory (real product IDs,
-  publishers, CPMs, impressions)
+1. The caller (`shared/a2a_client_tools.py`) mints the A2A `contextId` itself and
+   sends it in the `message/stream` envelope. Both a2a-sdk and Strands key the
+   task context on the client-supplied id, so `agent_factory(context_id)` in the
+   buyer receives exactly the id the caller will poll. Letting the server
+   generate one is not usable: it only reaches the client mid-stream.
+2. The buyer's tools append milestones through
+   `ad_buyer/interfaces/agentcore/progress.py` — `pk = PROGRESS#{context_id}`,
+   `sk` = zero-padded sequence, plus `message`, `agent_name`, `ts` and an
+   `expires_at` TTL. Each `emit` sits next to the work it describes (brief
+   parsed, coverage mapped, budget allocated, seller asked, seller answered, and
+   the seller cold-start retry), so a milestone means that step actually ran.
+   Writes are best-effort and never fail a plan.
+3. `_ProgressPoller` in the caller queries forward from the last sort key every
+   `_PROGRESS_POLL_SECONDS` and forwards each new milestone as an `agent_status`
+   event attributed to the peer, capped by `_MAX_PROGRESS_LINES` and
+   `_MAX_PROGRESS_WINDOW_SECONDS`.
 
-Free-form seller/agent prose is additionally analyzed client-side against the
-agent's visualization templates (DynamoDB `VIZ_MAP#{agent}` / `VIZ_TEMPLATE#{agent}`).
+**Fallback.** When the table is unset, missing, or unreadable, the poller logs
+one warning, disables itself, and the caller reverts to rotating elapsed-time
+messages (`_WAITING_LINES`, every `_HEARTBEAT_SECONDS`, capped by
+`_MAX_HEARTBEATS`). Those same lines also fill any stretch where the peer
+publishes nothing.
+
+**IAM and env.** Phase 9 attaches `AampProgressWrite` (`dynamodb:PutItem` on the
+one table) to the buyer's toolkit-created execution role and passes
+`AAMP_PROGRESS_TABLE` to it; the orchestrator receives the same variable in
+Phase 8 and already holds `dynamodb:Query` through its execution-role policy.
+
+**Final plan.** The buyer returns the media plan as Markdown (its prompt forbids
+JSON), which the UI renders directly. Free-form agent prose is analyzed
+client-side against the agent's visualization templates (DynamoDB
+`VIZ_MAP#{agent}` / `VIZ_TEMPLATE#{agent}`) to produce cards where it matches.
 
 **AgencyAgent visualization map** (`agent-visualizations-library/agent-visualization-maps/AgencyAgent.json`)
 advertises these templates: `adcp_get_products`, `allocations`,

@@ -152,34 +152,40 @@ describe('Bug Condition: Storage key does not contain tab identifiers', () => {
    * contain any tab identifier. On UNFIXED code this MUST FAIL because
    * getStorageKey() embeds the tabId in the key.
    */
-  it('localStorage keys should not contain tab identifiers', () => {
+  it('nothing is written to browser storage at all', () => {
     const service = new SessionManagerService();
-    const tabId = 'tab-12345';
 
-    service.initializeSession('user@example.com', 'enterprise-customer', tabId);
+    service.initializeSession('user@example.com', 'enterprise-customer', 'tab-12345');
+    service.forceNewSession('tab-67890');
 
-    const keys = Object.keys(localStore);
-    for (const key of keys) {
-      expect(key).not.toContain('tab-12345');
-      expect(key).not.toContain('tab-');
-      expect(key).not.toMatch(/tab-[a-zA-Z0-9]/);
-    }
+    // Superseded the original "keys must not contain a tab identifier" check:
+    // sessions are no longer persisted, so there must be no key to inspect.
+    // Persisting them handed a reloaded page a session id whose server-side
+    // conversation it could no longer see.
+    expect(Object.keys(localStore)).toHaveLength(0);
+    expect(Object.keys(sessionStore)).toHaveLength(0);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Property 4 — SessionInfo Must Not Have tabId Populated
-// Validates: Requirements 1.5, 2.5
+// Property 4 — Sessions Are Owned By A Tab
+// Supersedes the original Requirements 1.5 / 2.5
 // ---------------------------------------------------------------------------
-describe('Bug Condition: SessionInfo does not have tabId field populated', () => {
+describe('Sessions are owned by a tab', () => {
   /**
-   * **Validates: Requirements 1.5, 2.5**
+   * REVERSAL, recorded deliberately. The original requirement was that
+   * SessionInfo must NOT carry a tabId: sessions were consolidated onto one
+   * app-wide active id to stop tab-scoped storage keys fragmenting them.
    *
-   * The EXPECTED behavior: SessionInfo returned from session creation does NOT
-   * have a tabId field populated. On UNFIXED code this MUST FAIL because
-   * createNewSessionInternal sets tabId on the SessionInfo object.
+   * That produced the opposite defect. Each tab runs its own conversation, so a
+   * single active id meant whichever tab initialised last silently re-keyed the
+   * others — a tab's transcript stayed on screen while the session id sent with
+   * its next message changed, and the agent had no history to restore.
+   *
+   * Sessions are therefore owned by a tab again. What is NOT coming back is the
+   * tab-scoped storage key, because nothing is persisted at all.
    */
-  it('SessionInfo should not have a tabId field populated', () => {
+  it('a session belongs to the tab that created it', () => {
     const service = new SessionManagerService();
     const session = service.initializeSession(
       'user@example.com',
@@ -187,7 +193,43 @@ describe('Bug Condition: SessionInfo does not have tabId field populated', () =>
       'tab-12345'
     );
 
-    // tabId should be undefined/absent — not populated from tab-tracking logic
-    expect(session.tabId).toBeUndefined();
+    expect(session.tabId).toBe('tab-12345');
+  });
+
+  it('two tabs get two different sessions, and neither steals the other', () => {
+    const service = new SessionManagerService();
+
+    const tabA = service.getOrCreateSession('tab-a');
+    const tabB = service.getOrCreateSession('tab-b');
+
+    expect(tabA.sessionId).not.toBe(tabB.sessionId);
+    // Re-asking for tab A's session must still return tab A's, not the one that
+    // happened to be created most recently.
+    expect(service.getOrCreateSession('tab-a').sessionId).toBe(tabA.sessionId);
+    expect(service.getOrCreateSession('tab-b').sessionId).toBe(tabB.sessionId);
+  });
+
+  it('a tab only lists and switches to its own sessions', () => {
+    const service = new SessionManagerService();
+
+    const tabA = service.getOrCreateSession('tab-a');
+    const tabB = service.getOrCreateSession('tab-b');
+
+    expect(service.getSessions('tab-a').map(s => s.sessionId)).toEqual([tabA.sessionId]);
+    expect(service.getSessions('tab-b').map(s => s.sessionId)).toEqual([tabB.sessionId]);
+    // tab B cannot adopt tab A's session
+    expect(service.switchSession(tabA.sessionId, 'tab-b')).toBeNull();
+  });
+
+  it('forceNewSession replaces only the calling tab\'s session', () => {
+    const service = new SessionManagerService();
+
+    const tabA = service.getOrCreateSession('tab-a');
+    const tabB = service.getOrCreateSession('tab-b');
+
+    const tabAFresh = service.forceNewSession('tab-a');
+
+    expect(tabAFresh.sessionId).not.toBe(tabA.sessionId);
+    expect(service.getOrCreateSession('tab-b').sessionId).toBe(tabB.sessionId);
   });
 });
