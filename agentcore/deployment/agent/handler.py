@@ -839,65 +839,343 @@ def get_agent_config(agent_name):
     return GLOBAL_CONFIG.get("agent_configs", {}).get(agent_name, {})
 
 
+def _session_checkpoint(
+    stage: str,
+    session_id: str,
+    sender: str,
+    recipient: str,
+    message: str = "",
+    detail: str = "",
+    elapsed_s: Optional[float] = None,
+) -> None:
+    """Log one hop of a conversation on a single greppable line.
+
+    Every hop a message crosses records the same fields, so `SESSION_TRACE` in
+    CloudWatch reconstructs a whole conversation in order and shows exactly where
+    a session id stops matching. Filter on the id itself to isolate one chat.
+
+    stage: RECV (arrived here), SEND (leaving for a peer), REPLY (peer answered),
+    RESPOND (answering our own caller).
+    """
+    try:
+        text = " ".join(str(message or "").split())
+        if len(text) > 300:
+            text = text[:300] + "..."
+        parts = [
+            f"🧭 SESSION_TRACE {stage}",
+            f"session_id={session_id or 'MISSING'}",
+            f"sender={sender or '-'}",
+            f"recipient={recipient or '-'}",
+            f"at={datetime.now().isoformat()}",
+        ]
+        if elapsed_s is not None:
+            parts.append(f"elapsed_s={elapsed_s:.1f}")
+        if detail:
+            parts.append(detail)
+        if text:
+            parts.append(f'message="{text}"')
+        print(" | ".join(parts), flush=True)
+        logger.info(" | ".join(parts))
+    except Exception as log_err:  # noqa: BLE001
+        print(f"SESSION_TRACE log failure: {log_err}", flush=True)
+
+
+def _external_entry_as_agent_config(entry: dict) -> dict:
+    """Normalize an ``external_agent_configs`` entry to the top-level agent shape.
+
+    The two config shapes name the same things differently (``arn`` vs
+    ``runtime_arn``, ``isA2A`` vs ``is_a2a``, ``oauthCredentials`` vs
+    ``a2a_oauth_credentials``), and ``_invoke_external_runtime`` reads the
+    top-level shape. Mapping here lets one entry be invoked through the same
+    plan/auth code as a top-level agent instead of a second implementation.
+    """
+    arn = entry.get("arn") or entry.get("runtime_arn") or ""
+    auth = (entry.get("a2a_auth_type") or entry.get("authType") or "none").lower()
+    normalized = {
+        "agent_name": entry.get("name", ""),
+        "runtime_arn": arn,
+        "agent_endpoint": arn,
+        "is_a2a": bool(entry.get("isA2A", entry.get("is_a2a", False))),
+        "a2a_auth_type": auth,
+    }
+    if entry.get("agent_protocol"):
+        normalized["agent_protocol"] = entry["agent_protocol"]
+    # Credentials stay on the entry: its ssmPath is populated at deploy time and
+    # is keyed by the ENTRY's name, which need not match any agent_configs key.
+    if entry.get("oauthCredentials"):
+        normalized["a2a_oauth_credentials"] = entry["oauthCredentials"]
+    if entry.get("oauthClientCredentials"):
+        normalized["a2a_oauth_client_credentials"] = entry["oauthClientCredentials"]
+    if entry.get("bearerToken") or entry.get("a2a_bearer_token"):
+        normalized["a2a_bearer_token"] = (
+            entry.get("bearerToken") or entry.get("a2a_bearer_token")
+        )
+    for key in ("cognitoClientId", "cognitoPoolId"):
+        if entry.get(key):
+            normalized[key] = entry[key]
+    return normalized
+
+
+def _resolve_specialist_target(agent_name: str):
+    """Resolve a requested specialist name to something we can actually invoke.
+
+    Returns ``(kind, config, runtime_arn)`` where kind is:
+    - ``"runtime"`` — the agent owns an AgentCore runtime; call it;
+    - ``"local"``   — a configured agent we build in-process;
+    - ``"unknown"`` — the name matches nothing.
+
+    "unknown" exists because the previous behavior was to build a local agent for
+    ANY name, including one that is not in the configuration at all. A request for
+    "AAMPBuyerAgent" — absent from ``agent_configs``, since the AAMP wiring writes
+    the selectable agent as ``AAMPBuyer`` — therefore produced an in-process agent
+    holding a knowledge base and no AAMP tools, whose invented output was returned
+    to the user labelled as the real buyer. The caller must refuse instead.
+
+    External entries are consulted because they are named independently of
+    ``agent_configs`` keys, and the orchestrator's instructions use the external
+    name.
+    """
+    config = get_agent_config(agent_name) or {}
+    arn = config.get("runtime_arn", "") or ""
+    if arn.startswith("arn:aws:bedrock-agentcore"):
+        return "runtime", config, arn
+
+    own_config = get_agent_config(getattr(orchestrator_instance, "agent_name", "orchestrator")) or {}
+    wanted = agent_name.strip().lower()
+    for entry in own_config.get("external_agent_configs", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("name") or "").strip().lower() != wanted:
+            continue
+        if entry.get("enabled") is False:
+            continue
+        entry_arn = entry.get("arn") or entry.get("runtime_arn") or ""
+        if str(entry_arn).startswith("arn:aws:bedrock-agentcore"):
+            return "runtime", _external_entry_as_agent_config(entry), entry_arn
+
+    if config:
+        return "local", config, ""
+    return "unknown", {}, ""
+
+
+def _unknown_specialist_message(agent_name: str) -> str:
+    """The response for a specialist name that resolves to nothing."""
+    known = sorted((GLOBAL_CONFIG or {}).get("agent_configs", {}).keys())
+    own_config = get_agent_config(getattr(orchestrator_instance, "agent_name", "orchestrator")) or {}
+    external = sorted(
+        str(e.get("name"))
+        for e in (own_config.get("external_agent_configs") or [])
+        if isinstance(e, dict) and e.get("name") and e.get("enabled") is not False
+    )
+    logger.error(
+        f"❌ TOOL: '{agent_name}' is not a configured agent and has no external "
+        f"entry — refusing to build a stand-in. Known external entries: {external}"
+    )
+    return (
+        f"<agent-message agent='{getattr(orchestrator_instance, "agent_name", "orchestrator")}'>"
+        f"Cannot reach '{agent_name}': it is not a configured agent and there is no "
+        f"external agent entry with that name, so no such agent was contacted and "
+        f"there is no result to report. Available external agents: "
+        f"{', '.join(external) if external else 'none'}. "
+        f"Configured agents: {', '.join(known) if known else 'none'}."
+        f"</agent-message>"
+    )
+
+
 def _invoke_external_runtime(
     agent_name: str,
     agent_config: dict,
     runtime_arn: str,
-    payload: bytes,
+    prompt: str,
     runtime_session_id: str,
 ) -> str:
-    """Invoke an external AgentCore runtime, honoring the agent's inbound auth.
+    """Invoke an external AgentCore runtime, honoring the agent's protocol + inbound auth.
 
-    Agents that own their own runtime (e.g. the IAB AAMP seller/buyer) declare
-    how callers must authenticate to them via the AGENT-LEVEL ``a2a_auth_type``
-    field — this is the inbound authorizer their runtime was actually deployed
-    with, not an ``external_agent_configs`` entry (those describe A2A peers the
-    Strands runtime invokes as tools).
+    Agents that own their own runtime (e.g. the IAB AAMP buyer/seller, the AdCP
+    buyer) declare how to reach them on their TOP-LEVEL agent config, not on an
+    ``external_agent_configs`` entry. Two independent settings decide the call,
+    and both are resolved through ``plan_for_agent`` so this path agrees with
+    ``shared/a2a_client_tools.py`` and the UI instead of re-deriving the rules:
 
-    - ``oauth``: the runtime is fronted by a Cognito JWT authorizer, so SigV4
-      would be rejected. Mint a bearer from the stored inbound credentials and
-      POST to the HTTPS data-plane endpoint (same path the UI uses).
-    - ``iam``/``none``: SigV4 ``invoke_agent_runtime``.
+    - **protocol** (``agent_protocol``/``is_a2a``) picks the request envelope:
+      A2A JSON-RPC ``message/stream`` (streamed as SSE, so a long answer does
+      not trip the data-plane single-response deadline) or the plain
+      ``{"prompt", "routing_mode"}`` envelope a crew/HTTP runtime expects.
+    - **auth** (``a2a_auth_type``) picks the transport. Any header-based
+      credential — ``oauth``, ``oauth_m2m``, ``bearer`` — must go over the HTTPS
+      data-plane endpoint, because ``invoke_agent_runtime`` only ever signs
+      SigV4 and cannot attach an Authorization header. Sending SigV4 to a
+      JWT-authorized runtime returns AccessDeniedException "Authorization
+      method mismatch", which is what an ``oauth_m2m`` agent hit while only the
+      exact string ``oauth`` was treated as header auth.
 
-    Returns the raw response body text. Raises on transport/auth failure so the
-    caller surfaces an explicit error instead of a fabricated answer.
+    Returns the response text: the final assembled answer for A2A (SSE already
+    consumed), or the raw body for a crew/HTTP runtime. Raises on transport/auth
+    failure so the caller surfaces an explicit error instead of a fabricated one.
     """
+    import json as _json
+    from uuid import uuid4 as _uuid4
+
+    from shared.a2a_client_tools import (
+        _consume_a2a_sse,
+        _invoke_agentcore_bearer,
+        _invoke_agentcore_oauth,
+        _resolve_oauth_ssm_path,
+    )
+    from shared.agent_invocation_plan import auth_uses_header, plan_for_agent
+
     region = os.environ.get("AWS_REGION", "us-west-2")
-    auth_type = (agent_config.get("a2a_auth_type") or "none").lower()
+    plan = plan_for_agent(agent_config, region)
+    if plan.problem:
+        raise RuntimeError(f"{agent_name} is not invokable: {plan.problem}")
+    endpoint = plan.endpoint or runtime_arn
+    auth_type = plan.auth_type
+    is_a2a = plan.is_a2a
 
-    if auth_type == "oauth":
-        # Reuse the same OAuth invoke path as the A2A tool builder so the two
-        # never drift (credential resolution, bearer minting, session header).
-        from shared.a2a_client_tools import (
-            _invoke_agentcore_oauth,
-            _resolve_oauth_ssm_path,
-        )
+    if is_a2a:
+        # contextId is what the peer keys its conversation on: strands'
+        # StrandsA2AExecutor caches one Agent per A2A context_id, and
+        # a2a.utils.task.new_task falls back to `str(uuid.uuid4())` when the
+        # message omits it. Sending the runtime session id — stable for the whole
+        # front-end conversation — is what makes turn 2 reach the same peer agent
+        # as turn 1. Omitting it gave the peer a fresh context, and so a fresh
+        # agent with no history, on every single call.
+        payload = _json.dumps({
+            "jsonrpc": "2.0",
+            "id": _uuid4().hex,
+            "method": "message/stream",
+            "params": {
+                "message": {
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": prompt}],
+                    "messageId": _uuid4().hex,
+                    "contextId": runtime_session_id,
+                }
+            },
+        }).encode("utf-8")
+    else:
+        # A crew/HTTP runtime reads these from the body; handler.py's own
+        # entrypoint reads `session_id` from the body and nowhere else, so
+        # omitting it made a runtime-to-runtime call sessionless.
+        payload = _json.dumps({
+            "prompt": prompt,
+            "routing_mode": "crew",
+            "session_id": runtime_session_id,
+            "agent_name": agent_name,
+        }).encode("utf-8")
 
-        creds = agent_config.get("a2a_oauth_credentials") or {}
-        # _resolve_oauth_ssm_path understands both an explicit ssmPath and the
-        # repo's /{STACK_PREFIX}/a2a-inbound-tokens/{UNIQUE_ID}/{name} convention.
-        ssm_path = creds.get("ssmPath") or _resolve_oauth_ssm_path(
-            {"name": agent_name, "oauthCredentials": creds}
-        )
-        client_id = agent_config.get("cognitoClientId") or os.environ.get(
-            "A2A_CLIENT_ID", ""
-        )
-        logger.info(
-            f"🔐 TOOL: {agent_name} runtime is OAuth-protected — invoking with a "
-            f"Cognito bearer (ssm={'set' if ssm_path else 'unresolved'})"
-        )
-        body, err = _invoke_agentcore_oauth(
-            arn=runtime_arn,
-            region=region,
-            payload=payload,
-            ssm_path=ssm_path,
-            client_id=client_id,
-            session_id=runtime_session_id,
-        )
+    logger.info(
+        f"🔗 TOOL: {agent_name} runtime call (protocol={'a2a' if is_a2a else 'crew'}, "
+        f"auth={auth_type}, transport={plan.transport})"
+    )
+    _session_checkpoint(
+        "SEND",
+        session_id=runtime_session_id,
+        sender=getattr(orchestrator_instance, "agent_name", "orchestrator"),
+        recipient=agent_name,
+        message=prompt,
+        detail=(
+            f"protocol={'a2a' if is_a2a else 'crew'} auth={auth_type} "
+            f"transport={plan.transport} "
+            f"contextId={runtime_session_id if is_a2a else '-'}"
+        ),
+    )
+    _send_started = datetime.now()
+
+    if auth_uses_header(auth_type):
+        # Header credential — the SigV4-only SDK cannot carry it, so POST to the
+        # data-plane endpoint. Reuses the A2A tool builder's helpers so
+        # credential resolution, bearer minting, and the session header never
+        # drift between the two paths.
+        if auth_type == "bearer":
+            ref = agent_config.get("a2a_bearer_token") or {}
+            ssm_path = ref.get("ssmPath", "")
+            if not ssm_path:
+                raise RuntimeError(
+                    f"{agent_name} is configured for bearer auth but no token "
+                    "parameter is recorded on its agent config."
+                )
+            from shared.dynamodb_config_loader import resolve_ssm_parameter
+
+            token = resolve_ssm_parameter(ssm_path, use_cache=False)
+            if not token:
+                raise RuntimeError(
+                    f"{agent_name}'s bearer token is not available in parameter "
+                    f"store ({ssm_path})."
+                )
+            logger.info(
+                f"🔐 TOOL: {agent_name} runtime is bearer-protected — invoking "
+                f"with the stored static token"
+            )
+            body, err = _invoke_agentcore_bearer(
+                arn=endpoint,
+                region=region,
+                payload=payload,
+                token=token,
+                session_id=runtime_session_id,
+                request_url=plan.request_url,
+                stream=is_a2a,
+            )
+        else:
+            # oauth (Cognito username/password) and oauth_m2m (client
+            # credentials) both resolve to a bearer; A2ATokenManager picks the
+            # exchange from the stored document's grant_type, so the only
+            # difference here is which field records the parameter path.
+            creds = (
+                agent_config.get("a2a_oauth_client_credentials")
+                or agent_config.get("a2a_oauth_credentials")
+                or {}
+            )
+            # _resolve_oauth_ssm_path understands both an explicit ssmPath and the
+            # repo's /{STACK_PREFIX}/a2a-inbound-tokens/{UNIQUE_ID}/{name} convention.
+            ssm_path = creds.get("ssmPath") or _resolve_oauth_ssm_path(
+                {
+                    "name": agent_name,
+                    "oauthClientCredentials": (
+                        creds if auth_type == "oauth_m2m" else {}
+                    ),
+                    "oauthCredentials": creds if auth_type == "oauth" else {},
+                }
+            )
+            client_id = agent_config.get("cognitoClientId") or os.environ.get(
+                "A2A_CLIENT_ID", ""
+            )
+            logger.info(
+                f"🔐 TOOL: {agent_name} runtime is OAuth-protected (auth={auth_type}) "
+                f"— invoking with a bearer (ssm={'set' if ssm_path else 'unresolved'})"
+            )
+            body, err = _invoke_agentcore_oauth(
+                arn=endpoint,
+                region=region,
+                payload=payload,
+                ssm_path=ssm_path,
+                client_id=client_id,
+                session_id=runtime_session_id,
+                request_url=plan.request_url,
+                stream=is_a2a,
+            )
         if err:
             # Fail closed and loudly — never silently fall back to SigV4, which
             # would misreport an auth misconfiguration as a working call.
-            raise RuntimeError(f"OAuth invocation failed: {err}")
+            _session_checkpoint(
+                "REPLY",
+                session_id=runtime_session_id,
+                sender=agent_name,
+                recipient=getattr(orchestrator_instance, "agent_name", "orchestrator"),
+                detail=f"status=error auth={auth_type}",
+                message=str(err),
+                elapsed_s=(datetime.now() - _send_started).total_seconds(),
+            )
+            raise RuntimeError(f"{auth_type} invocation failed: {err}")
+        _session_checkpoint(
+            "REPLY",
+            session_id=runtime_session_id,
+            sender=agent_name,
+            recipient=getattr(orchestrator_instance, "agent_name", "orchestrator"),
+            detail=f"status=ok chars={len(body or '')}",
+            message=body,
+            elapsed_s=(datetime.now() - _send_started).total_seconds(),
+        )
         return body
 
     from botocore.config import Config
@@ -908,17 +1186,40 @@ def _invoke_external_runtime(
         config=Config(read_timeout=300, connect_timeout=10),
     )
     response = agentcore_client.invoke_agent_runtime(
-        agentRuntimeArn=runtime_arn,
+        agentRuntimeArn=endpoint,
         payload=payload,
         contentType="application/json",
-        accept="application/json",
+        accept="text/event-stream" if is_a2a else "application/json",
         runtimeSessionId=runtime_session_id,
     )
+    if is_a2a:
+        stream = response.get("response", response.get("body", b""))
+        if hasattr(stream, "iter_lines"):
+            _a2a_text = _consume_a2a_sse(stream)
+            _session_checkpoint(
+                "REPLY",
+                session_id=runtime_session_id,
+                sender=agent_name,
+                recipient=getattr(orchestrator_instance, "agent_name", "orchestrator"),
+                detail=f"status=ok transport=sigv4 chars={len(_a2a_text or '')}",
+                message=_a2a_text,
+                elapsed_s=(datetime.now() - _send_started).total_seconds(),
+            )
+            return _a2a_text
     response_body = response.get("response", response.get("body", b""))
     if hasattr(response_body, "read"):
         response_body = response_body.read()
     if isinstance(response_body, bytes):
         response_body = response_body.decode("utf-8")
+    _session_checkpoint(
+        "REPLY",
+        session_id=runtime_session_id,
+        sender=agent_name,
+        recipient=getattr(orchestrator_instance, "agent_name", "orchestrator"),
+        detail=f"status=ok transport=sigv4 chars={len(response_body or '')}",
+        message=response_body,
+        elapsed_s=(datetime.now() - _send_started).total_seconds(),
+    )
     return response_body
 
 
@@ -1431,30 +1732,28 @@ def invoke_specialist_with_RAG(
     # ── Shortcut: If the agent has a runtime_arn, call the runtime directly ──
     # External runtimes (e.g., AAMPSellerAgent, AAMPBuyerAgent) have their
     # own tools and don't need local RAG. Route directly to the external runtime.
-    agent_config = get_agent_config(agent_name)
-    runtime_arn = agent_config.get("runtime_arn", "")
+    target_kind, agent_config, runtime_arn = _resolve_specialist_target(agent_name)
 
-    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+    if target_kind == "unknown":
+        return _unknown_specialist_message(agent_name)
+
+    if target_kind == "runtime":
         logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
         try:
             logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
-
-            payload = json.dumps({
-                "prompt": agent_prompt,
-                "routing_mode": "crew",
-            }).encode("utf-8")
 
             # Use one stable runtimeSessionId for the whole front-end conversation,
             # derived identically to shared/a2a_client_tools.py so the SAME session id
             # is sent regardless of whether the runtime is invoked here or via A2A
             # tools. This gives the external buyer/seller runtimes continuity across
             # turns (AgentCore keys its session per-runtime on this id).
-            # Auth follows the agent's own a2a_auth_type (oauth bearer vs SigV4).
+            # Envelope and auth both follow the agent's own config — see
+            # _invoke_external_runtime.
             response_body = _invoke_external_runtime(
                 agent_name=agent_name,
                 agent_config=agent_config,
                 runtime_arn=runtime_arn,
-                payload=payload,
+                prompt=agent_prompt,
                 runtime_session_id=_derive_runtime_session_id(
                     orchestrator_instance.session_id
                 ),
@@ -1464,6 +1763,8 @@ def invoke_specialist_with_RAG(
                 parsed = json.loads(response_body)
                 result_text = parsed.get("response", response_body)
             except json.JSONDecodeError:
+                # An A2A call returns already-extracted text, not a JSON
+                # envelope, so this is the normal successful path for A2A.
                 result_text = response_body
 
             # Sanitize external runtime response
@@ -1481,7 +1782,7 @@ def invoke_specialist_with_RAG(
     # Get memory configuration from the orchestrator instance if available
     session_id = orchestrator_instance.session_id
     memory_id = orchestrator_instance.memory_id
-    orchestrator_name = orchestrator_instance.agent_name
+    orchestrator_name = getattr(orchestrator_instance, "agent_name", "orchestrator")
     # Normalize actor_id to comply with validation pattern
     normalized_actor_id = agent_name.replace("_", "-")
     state = {
@@ -1526,31 +1827,29 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
     # This avoids creating a proxy Strands agent that would need A2A tools.
     # The runtime handles the request end-to-end (e.g., CrewAI crew with tools).
     # When A2A is available, this path is skipped (runtime_arn would be empty).
-    agent_config = get_agent_config(agent_name)
-    runtime_arn = agent_config.get("runtime_arn", "")
+    target_kind, agent_config, runtime_arn = _resolve_specialist_target(agent_name)
 
-    if runtime_arn and runtime_arn.startswith("arn:aws:bedrock-agentcore"):
+    if target_kind == "unknown":
+        return _unknown_specialist_message(agent_name)
+
+    if target_kind == "runtime":
         logger.info(f"🔗 TOOL: Direct runtime invoke for {agent_name} → {runtime_arn[:80]}")
         try:
             # Pass the prompt directly to the runtime
             logger.info(f"🔗 TOOL: Prompt to runtime: {agent_prompt[:80]}")
-
-            payload = json.dumps({
-                "prompt": agent_prompt,
-                "routing_mode": "crew",
-            }).encode("utf-8")
 
             # Use one stable runtimeSessionId for the whole front-end conversation,
             # derived identically to shared/a2a_client_tools.py so the SAME session id
             # is sent regardless of whether the runtime is invoked here or via A2A
             # tools. This gives the external buyer/seller runtimes continuity across
             # turns (AgentCore keys its session per-runtime on this id).
-            # Auth follows the agent's own a2a_auth_type (oauth bearer vs SigV4).
+            # Envelope and auth both follow the agent's own config — see
+            # _invoke_external_runtime.
             response_body = _invoke_external_runtime(
                 agent_name=agent_name,
                 agent_config=agent_config,
                 runtime_arn=runtime_arn,
-                payload=payload,
+                prompt=agent_prompt,
                 runtime_session_id=_derive_runtime_session_id(
                     orchestrator_instance.session_id
                 ),
@@ -1561,6 +1860,8 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
                 parsed = json.loads(response_body)
                 result_text = parsed.get("response", response_body)
             except json.JSONDecodeError:
+                # An A2A call returns already-extracted text, not a JSON
+                # envelope, so this is the normal successful path for A2A.
                 result_text = response_body
 
             logger.info(f"✅ TOOL: Direct runtime invoke succeeded for {agent_name} ({len(str(result_text))} chars)")
@@ -1869,7 +2170,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     model_inputs = {}
     if is_collaborator:
         model_inputs = get_collaborator_agent_model_inputs(
-            agent_name=agent_name, orchestrator_name=orchestrator_instance.agent_name
+            agent_name=agent_name, orchestrator_name=getattr(orchestrator_instance, "agent_name", "orchestrator")
         )
     else:
         agent_config = get_agent_config(agent_name=agent_name)
@@ -1908,7 +2209,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
     tools = build_tools_for_agent(agent_name)
     
     collaborator_config = get_collaborator_agent_config(
-        agent_name=agent_name, orchestrator_name=orchestrator_instance.agent_name
+        agent_name=agent_name, orchestrator_name=getattr(orchestrator_instance, "agent_name", "orchestrator")
     )
     if collaborator_config is None:
         collaborator_config = get_agent_config(agent_name=agent_name)
@@ -2458,6 +2759,28 @@ async def agent_invocation(payload, context):
             _flush_log(f"❌ AGENT_INVOCATION: Traceback: {traceback.format_exc()}", "ERROR")
             raise
 
+        # An agent-to-agent call that omits agent_name used to reload this runtime
+        # as agent_name=None: get_agent_config(None) is {}, so the orchestrator was
+        # rebuilt with no config and current_agent_name was set to None, forcing
+        # another rebuild on the next real request. Keep serving whoever is loaded.
+        if not agent_name and current_agent_name:
+            _flush_log(
+                f"⚠️ AGENT_INVOCATION: Payload carried no agent_name — keeping the "
+                f"loaded agent {current_agent_name} rather than reloading as None",
+                "WARNING",
+            )
+            agent_name = current_agent_name
+
+        _session_checkpoint(
+            "RECV",
+            session_id=session_id,
+            sender=payload.get("user_id") or "caller",
+            recipient=agent_name or "unknown",
+            message=user_input,
+            detail=f"memory_id={extracted_memory_id or 'MISSING'}",
+        )
+        _invocation_started = datetime.now()
+
         _flush_log("📂 AGENT_INVOCATION: Using pre-loaded global configuration...")
         # Use pre-loaded GLOBAL_CONFIG instead of loading again
         if not GLOBAL_CONFIG:
@@ -2503,16 +2826,30 @@ async def agent_invocation(payload, context):
                 _flush_log(f"🔄 Agent type changed from {current_agent_name} to {agent_name}")
             
             # Set up session info
+            orchestrator_instance.direct_mention_mode = direct_mention_mode
+            orchestrator_instance.direct_mention_target = direct_mention_target
             if session_id:
                 orchestrator_instance.session_id = session_id
                 orchestrator_instance.memory_id = extracted_memory_id
-                orchestrator_instance.direct_mention_mode = direct_mention_mode
-                orchestrator_instance.direct_mention_target = direct_mention_target
                 memory_id = extracted_memory_id
             else:
-                orchestrator_instance.session_id = "new_session-12345678901234567890"
-                orchestrator_instance.memory_id = "default"
-                memory_id = "default"
+                # No session id: this turn cannot be tied to a conversation, so
+                # nothing is restored. It is still persisted under a one-off id
+                # when a real memory is configured — the previous code forced
+                # memory_id to "default", which is a kill switch for the memory
+                # hook, the conversation manager, restore, and lookup_events, and
+                # it stuck for the whole warm instance, so one sessionless call
+                # silently disabled memory for every later caller too.
+                orchestrator_instance.session_id = f"no-session-{uuid.uuid4().hex}"
+                orchestrator_instance.memory_id = extracted_memory_id or "default"
+                memory_id = orchestrator_instance.memory_id
+                _flush_log(
+                    f"⚠️ AGENT_INVOCATION: No session_id in payload — this turn has no "
+                    f"conversation history and cannot be continued. Using ephemeral "
+                    f"{orchestrator_instance.session_id}, memory_id={memory_id}. "
+                    f"Payload keys: {list(payload.keys()) if isinstance(payload, dict) else type(payload)}",
+                    "WARNING",
+                )
             
             # RESTORE saved context for the new agent (if available)
             saved_messages = None
@@ -2737,6 +3074,14 @@ async def agent_invocation(payload, context):
                             yield {"type": "sources", "sources": collected_sources}
                 
                 _flush_log(f"✅ STREAM: Completed with {event_count} events")
+                _session_checkpoint(
+                    "RESPOND",
+                    session_id=orchestrator_instance.session_id,
+                    sender=agent_name or "unknown",
+                    recipient=payload.get("user_id") or "caller",
+                    detail=f"events={event_count}",
+                    elapsed_s=(datetime.now() - _invocation_started).total_seconds(),
+                )
                 
             except Exception as e:
                 _flush_log(f"❌ STREAM: Streaming failed: {e}", "ERROR")

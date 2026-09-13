@@ -1629,12 +1629,73 @@ deploy_lambda_functions() {
 #
 # Regenerating an existing file is deliberately avoided: it holds live values that
 # wire_aamp_agents.py and UI edits write back, and overwriting it would discard them.
+# Re-declare the external-agent connections the config already holds, in both the
+# local source file and the live DynamoDB item.
+#
+# Any step that publishes or rewrites the configuration must call this, because an
+# `external_agent_configs` entry alone is invisible to the UI: collaborators come
+# from `tool_agent_names` and bubble colours from `configured_colors`. Wiring an
+# external agent without declaring it there produced a deployment where the agent
+# answered but appeared unconnected and rendered grey.
+#
+# Idempotent and offline-safe: no ARNs, no credentials, no template. A deployment
+# with no external agents wired prints "already declared" and changes nothing.
+ensure_external_agent_connections_declared() {
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local config_file="${agent_config_dir}/global_configuration.json"
+
+    if [ ! -f "$config_file" ]; then
+        return 0
+    fi
+
+    setup_python_environment
+
+    local repair_cmd="$PYTHON_CMD ${SCRIPT_DIR}/wire_aamp_agents.py --repair-only \
+        --template ${agent_config_dir}/global_configuration.template.json \
+        --config ${config_file} \
+        --region $AWS_REGION"
+
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table
+    config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+    if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
+        repair_cmd="$repair_cmd --dynamodb-table $config_table"
+    else
+        repair_cmd="$repair_cmd --skip-dynamodb"
+    fi
+    if [ -n "$AWS_PROFILE" ]; then
+        repair_cmd="$repair_cmd --profile $AWS_PROFILE"
+    fi
+
+    print_status "Verifying external-agent connections are declared for the UI..."
+    if eval "$repair_cmd"; then
+        return 0
+    fi
+    # Never fail the deploy over this: the connection still works at runtime, it
+    # just may not be visible in the UI.
+    print_warning "⚠️  Could not verify external-agent connections (continuing)"
+    return 0
+}
+
 ensure_global_configuration() {
     local config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
     local resolved="${config_dir}/global_configuration.json"
     local template="${config_dir}/global_configuration.template.json"
 
     if [ -f "$resolved" ]; then
+        # The resolved file is deliberately kept as-is (see above), but that means a
+        # colour added to the template for a new agent never reaches a deployment that
+        # already has this file — the agent renders in the default grey forever.
+        # Backfill only the MISSING configured_colors keys: presentation-only, keyed by
+        # agent name, never overwriting an existing entry, so no live value is lost.
+        if [ -f "$template" ]; then
+            setup_python_environment
+            $PYTHON_CMD "${SCRIPT_DIR}/resolve_config.py" \
+                --stack-prefix "$STACK_PREFIX" --unique-id "$UNIQUE_ID" \
+                --region "$AWS_REGION" --config-dir "$config_dir" \
+                --backfill-colors-only || \
+                print_warning "   ⚠️  Could not backfill agent colours (continuing)."
+        fi
         return 0
     fi
 
@@ -2828,6 +2889,13 @@ print(arn)
     deploy_cmd="$deploy_cmd --env AWS_REGION=$AWS_REGION"
     deploy_cmd="$deploy_cmd --env AWS_DEFAULT_REGION=$AWS_REGION"
     deploy_cmd="$deploy_cmd --env AGENT_CONFIG_TABLE=${STACK_PREFIX}-AgentConfig-${UNIQUE_ID}"
+    # Progress-milestone table (infrastructure-services stack): external A2A peers
+    # append real per-step progress keyed by the A2A context id, and this agent's
+    # relay polls it while it waits so the UI shows what the peer is actually
+    # doing. Name is deterministic from the stack naming convention; if the table
+    # does not exist the relay logs one warning and falls back to elapsed-time
+    # updates.
+    deploy_cmd="$deploy_cmd --env AAMP_PROGRESS_TABLE=${STACK_PREFIX}-AgentProgress-${UNIQUE_ID}"
     deploy_cmd="$deploy_cmd --env MEMORY_ID=$memory_id"
     deploy_cmd="$deploy_cmd --env ACTOR_ID=AdFabricAgent"
     deploy_cmd="$deploy_cmd --env DOCKER_CONTAINER=1"
@@ -3311,6 +3379,21 @@ generate_ui_config() {
     GLOBAL_CONFIG="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
     
     mkdir -p "$ANGULAR_ASSETS_DIR"
+
+    # Re-declare every already-wired external agent BEFORE the config is copied
+    # into the UI bundle. This step ships the config the UI reads, so it must not
+    # publish one in which a wired external agent looks unconnected: the Angular
+    # app derives an agent's collaborators from `tool_agent_names` and its chat
+    # bubble colour from `configured_colors`, and an `external_agent_configs`
+    # entry populates neither.
+    #
+    # Needs no ARNs, no credentials and no template — it only re-declares what the
+    # config already holds. So it is a no-op on a deployment that never installed
+    # the optional external agents, and it repairs a config that an earlier
+    # release stripped. DynamoDB is patched too, because the running UI and the
+    # agent runtimes read the live item rather than this file.
+    ensure_external_agent_connections_declared
+
     cp "$GLOBAL_CONFIG" "$ANGULAR_ASSETS_DIR"
     # Generate aws-config.json 
     CONFIG_FILE="$ANGULAR_ASSETS_DIR/aws-config.json"

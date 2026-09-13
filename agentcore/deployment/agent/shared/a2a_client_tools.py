@@ -14,7 +14,7 @@ import hashlib
 import logging
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from strands_tools.a2a_client import A2AClientToolProvider
@@ -379,21 +379,24 @@ def _extract_a2a_text(parsed: dict, raw: str) -> str:
     if not isinstance(result, dict):
         return raw
 
+    # Parts within one artifact are streaming text deltas, not paragraphs, so
+    # _parts_text concatenates them with no separator. A newline between deltas
+    # lands mid-word wherever the tokenizer split, and one next to a `**` stops
+    # CommonMark reading it as an emphasis delimiter. Only separate artifacts
+    # are distinct blocks and get the newline.
     texts: List[str] = []
 
     # Task response: result.artifacts[].parts[].text
     for artifact in result.get("artifacts", []) or []:
-        for part in artifact.get("parts", []) or []:
-            text = part.get("text")
-            if text:
-                texts.append(text)
+        text = _parts_text(artifact.get("parts"))
+        if text:
+            texts.append(text)
 
     # Message response: result.parts[].text
     if not texts:
-        for part in result.get("parts", []) or []:
-            text = part.get("text")
-            if text:
-                texts.append(text)
+        text = _parts_text(result.get("parts"))
+        if text:
+            texts.append(text)
 
     return "\n".join(texts) if texts else raw
 
@@ -823,27 +826,177 @@ _PROGRESS_PREFIX = "[[AGENT_STATUS|"
 _PROGRESS_SUFFIX = "]] "
 
 
+def session_checkpoint(
+    stage: str,
+    session_id: str,
+    sender: str,
+    recipient: str,
+    message: str = "",
+    detail: str = "",
+    elapsed_s: Optional[float] = None,
+) -> None:
+    """Log one hop of a conversation on a single greppable line.
+
+    Same line format as handler.py's ``_session_checkpoint`` so that filtering
+    CloudWatch on ``SESSION_TRACE`` — or on a session id — reconstructs a whole
+    conversation across every runtime it touched, in order.
+    """
+    try:
+        from datetime import datetime as _datetime
+
+        text = " ".join(str(message or "").split())
+        if len(text) > 300:
+            text = text[:300] + "..."
+        parts = [
+            f"🧭 SESSION_TRACE {stage}",
+            f"session_id={session_id or 'MISSING'}",
+            f"sender={sender or '-'}",
+            f"recipient={recipient or '-'}",
+            f"at={_datetime.now().isoformat()}",
+        ]
+        if elapsed_s is not None:
+            parts.append(f"elapsed_s={elapsed_s:.1f}")
+        if detail:
+            parts.append(detail)
+        if text:
+            parts.append(f'message="{text}"')
+        line = " | ".join(parts)
+        print(line, flush=True)
+        logger.info(line)
+    except Exception as log_err:  # noqa: BLE001
+        print(f"SESSION_TRACE log failure: {log_err}", flush=True)
+
+
 def _progress_line(entry_name: str, message: str) -> str:
     """Format one interim progress line for handler.py to parse and strip."""
     return f"{_PROGRESS_PREFIX}{entry_name}{_PROGRESS_SUFFIX}{message}"
 
 
-# How often to report that a long external call is still running, and the cap on
-# how many such reports to send.
+# How often to check the progress table for new peer milestones while an A2A call
+# is in flight, and the cap on how many interim lines one call may produce
+# (milestones + heartbeats together) so a pathological peer cannot flood the chat.
+_PROGRESS_POLL_SECONDS = 5
+_MAX_PROGRESS_LINES = 40
+# Stop reporting after this long; the call itself keeps running to its own timeout.
+_MAX_PROGRESS_WINDOW_SECONDS = 600
+
+
+class _ProgressPoller:
+    """Read a peer's real milestones for one A2A context from DynamoDB.
+
+    The peer (e.g. the AAMP buyer) appends a row per completed step keyed by the
+    context id we send in the A2A envelope. We poll forward from the last sort key
+    we have seen, so each milestone is surfaced exactly once and in order.
+
+    Disabled (and silent) when no progress table is configured, in which case the
+    caller falls back to elapsed-time heartbeats.
+    """
+
+    def __init__(self, context_id: str) -> None:
+        self._context_id = (context_id or "").strip()
+        self._table_name = (os.environ.get("AAMP_PROGRESS_TABLE") or "").strip()
+        self._last_sk = "0"
+        self._table = None
+        self._broken = False
+        # The context id is now the conversation's session id, so it is stable
+        # across turns and this partition already holds earlier turns' rows (TTL
+        # is an hour). Start the cursor at whatever is already there so turn 2
+        # reports only its own milestones instead of replaying turn 1's.
+        self._seek_to_end()
+
+    def _seek_to_end(self) -> None:
+        """Advance the cursor past any rows already in this partition."""
+        if not self.enabled:
+            return
+        try:
+            from boto3.dynamodb.conditions import Key
+
+            resp = self._get_table().query(
+                KeyConditionExpression=Key("pk").eq(f"PROGRESS#{self._context_id}"),
+                ConsistentRead=True,
+                ScanIndexForward=False,
+                Limit=1,
+            )
+            items = resp.get("Items") or []
+            if items:
+                self._last_sk = str(items[0].get("sk") or self._last_sk)
+                logger.info(
+                    "A2A_PROGRESS: resuming context %s after sk=%s",
+                    self._context_id,
+                    self._last_sk,
+                )
+        except Exception as e:  # noqa: BLE001
+            # Same degradation as fetch(): no progress reporting, heartbeats only.
+            logger.warning(
+                "A2A_PROGRESS: cursor seek failed (%s: %s)", type(e).__name__, e
+            )
+            self._broken = True
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self._context_id and self._table_name and not self._broken)
+
+    def _get_table(self):
+        if self._table is None:
+            import boto3
+
+            region = os.environ.get("AWS_REGION", "us-east-1")
+            self._table = boto3.resource("dynamodb", region_name=region).Table(
+                self._table_name
+            )
+        return self._table
+
+    def fetch(self) -> List[str]:
+        """Return milestone messages recorded since the last call. Never raises."""
+        if not self.enabled:
+            return []
+        try:
+            from boto3.dynamodb.conditions import Key
+
+            resp = self._get_table().query(
+                KeyConditionExpression=(
+                    Key("pk").eq(f"PROGRESS#{self._context_id}")
+                    & Key("sk").gt(self._last_sk)
+                ),
+                ConsistentRead=True,
+                Limit=_MAX_PROGRESS_LINES,
+            )
+        except Exception as e:  # noqa: BLE001
+            # One failure (missing table, no permission) disables polling for the
+            # rest of the call so we degrade to heartbeats instead of retrying.
+            logger.warning(
+                "A2A_PROGRESS: polling disabled (%s: %s)", type(e).__name__, e
+            )
+            self._broken = True
+            return []
+
+        messages: List[str] = []
+        for item in resp.get("Items", []) or []:
+            sk = str(item.get("sk") or "")
+            if sk > self._last_sk:
+                self._last_sk = sk
+            text = str(item.get("message") or "").strip()
+            if text:
+                messages.append(text)
+        return messages
+
+
+# Fallback narration for when the peer publishes no milestones: how long to go
+# without news before saying the call is still running, and the cap on how many
+# such reports to send.
 #
-# We deliberately do NOT relay the peer's status text. A Strands A2AServer
+# We deliberately do NOT relay the peer's A2A status text. A Strands A2AServer
 # streams the agent's whole answer as status-update deltas, so echoing that text
 # reproduces the entire final answer as a series of partial "progress" bubbles
 # (every Markdown table row and rule arrives as its own short line) and then the
-# UI shows the same content again as the final turn. Instead we report the one
-# thing that is true and not already in the answer: that the call is in flight,
-# and for how long.
+# UI shows the same content again as the final turn. Real step-by-step progress
+# comes from the progress table instead (see _ProgressPoller).
 _HEARTBEAT_SECONDS = 20
 _MAX_HEARTBEATS = 9
 
 # Rotated so a long wait does not read as a stuck loop. Each line says who we are
 # waiting on and what we expect back; none of them claim to know which internal
-# step the peer is on, because the peer does not report that.
+# step the peer is on, because in this path the peer has not reported one.
 _WAITING_LINES = (
     "{name} is still working on it. Requests like this normally take one to two"
     " minutes, so this is expected.",
@@ -854,7 +1007,9 @@ _WAITING_LINES = (
 )
 
 
-def _make_runtime_tool(_do_invoke, _is_a2a, _entry_name, tool_name, description):
+def _make_runtime_tool(
+    _do_invoke, _is_a2a, _entry_name, tool_name, description, _session_id=""
+):
     """Create one decorated invoke tool bound to a single external-agent entry.
 
     Defining the tool inside this factory (rather than directly in the build
@@ -868,12 +1023,14 @@ def _make_runtime_tool(_do_invoke, _is_a2a, _entry_name, tool_name, description)
     async def _invoke_runtime(prompt: str):
         """Forward a request to the external agent runtime and return its response.
 
-        For A2A agents this reports that the call is running (and for how long) as
-        tool-stream events, so the UI shows activity during a long (~1-2 min)
-        call, then returns the agent's final answer as the tool result. The
-        peer's own status text is not relayed: it is the answer being streamed,
-        so echoing it would show the answer twice. Non-A2A runtimes just return
-        the final answer.
+        For A2A agents this streams real progress as tool-stream events while the
+        call runs (~1-2 min), then returns the agent's final answer as the tool
+        result. Progress comes from milestones the peer records against the
+        context id we send, polled from the progress table; when the peer records
+        nothing we fall back to saying the call is still in flight and for how
+        long. The peer's own A2A status text is never relayed: it is the answer
+        being streamed, so echoing it would show the answer twice. Non-A2A
+        runtimes just return the final answer.
 
         Args:
             prompt: The request to send to the agent runtime.
@@ -891,14 +1048,29 @@ def _make_runtime_tool(_do_invoke, _is_a2a, _entry_name, tool_name, description)
             return
 
         # A2A: run the blocking streamed invoke in a worker thread and report
-        # elapsed time while it runs. The final answer is the last yield
-        # (Strands treats it as the tool result).
+        # progress while it runs. The final answer is the last yield (Strands
+        # treats it as the tool result).
+        #
+        # We mint the A2A context id here instead of letting the server generate
+        # one: it is the correlation key the peer writes its milestones under, and
+        # a server-generated id only reaches us mid-stream, too late to poll with.
+        #
+        # It is the conversation's session id, not a fresh uuid. The peer keys its
+        # conversation state on this value (strands' StrandsA2AExecutor caches one
+        # Agent per A2A context_id), so a per-call id gave the peer a brand-new
+        # agent with no history on every turn. Reusing the session id means the
+        # peer's continuity matches the front-end conversation. Falls back to a
+        # random id when there is no session — continuity is impossible then, and
+        # colliding unrelated conversations would be worse.
+        context_id = get_active_runtime_session_id(_session_id) or uuid4().hex
+        poller = _ProgressPoller(context_id)
+
         holder: dict = {}
         done = threading.Event()
 
         def _run() -> None:
             try:
-                holder["result"] = _do_invoke(prompt)
+                holder["result"] = _do_invoke(prompt, context_id=context_id)
             except Exception as e:  # noqa: BLE001
                 holder["result"] = wrap_as_agent_message(
                     _entry_name,
@@ -916,21 +1088,50 @@ def _make_runtime_tool(_do_invoke, _is_a2a, _entry_name, tool_name, description)
             " This usually takes a minute or two.",
         )
 
+        # Poll on a short interval so real milestones appear promptly, and only
+        # fall back to a heartbeat after _HEARTBEAT_SECONDS of actual silence.
+        wait_step = _PROGRESS_POLL_SECONDS if poller.enabled else _HEARTBEAT_SECONDS
         beats = 0
-        while beats < _MAX_HEARTBEATS:
+        lines = 0
+        last_news = started
+        while lines < _MAX_PROGRESS_LINES:
+            if time.monotonic() - started >= _MAX_PROGRESS_WINDOW_SECONDS:
+                break
             finished = await loop.run_in_executor(
-                None, lambda: done.wait(_HEARTBEAT_SECONDS)
+                None, lambda: done.wait(wait_step)
             )
             if finished:
                 break
-            elapsed = int(time.monotonic() - started)
-            message = _WAITING_LINES[beats % len(_WAITING_LINES)].format(
-                name=_entry_name
+
+            milestones = (
+                await loop.run_in_executor(None, poller.fetch)
+                if poller.enabled
+                else []
             )
-            beats += 1
-            yield _progress_line(
-                _entry_name, f"{message} (Waiting {elapsed}s so far.)"
-            )
+            if milestones:
+                for milestone in milestones:
+                    lines += 1
+                    last_news = time.monotonic()
+                    yield _progress_line(_entry_name, milestone)
+                continue
+
+            if (
+                time.monotonic() - last_news >= _HEARTBEAT_SECONDS
+                and beats < _MAX_HEARTBEATS
+            ):
+                elapsed = int(time.monotonic() - started)
+                message = _WAITING_LINES[beats % len(_WAITING_LINES)].format(
+                    name=_entry_name
+                )
+                beats += 1
+                lines += 1
+                last_news = time.monotonic()
+                yield _progress_line(
+                    _entry_name, f"{message} (Waiting {elapsed}s so far.)"
+                )
+            elif not poller.enabled and beats >= _MAX_HEARTBEATS:
+                # Nothing left to report and nothing to poll: wait quietly.
+                break
 
         # Make sure the worker has published its result before returning it.
         await loop.run_in_executor(None, done.wait)
@@ -1024,6 +1225,7 @@ def _build_agentcore_invoke_tools(
         def _do_invoke(
             prompt: str,
             on_status=None,
+            context_id: str = "",
             # Bind every per-entry value as a default so each tool closes over
             # ITS OWN entry. Without this, these names resolve from the enclosing
             # loop scope at call time and all hold the LAST entry's values — so
@@ -1041,6 +1243,7 @@ def _build_agentcore_invoke_tools(
             _client_id=_client_id,
             _bearer_ssm_path=_bearer_ssm_path,
             _session_id=_session_id,
+            _caller_name=agent_name,
         ) -> str:
             """Forward a request to the external agent runtime; return final text.
 
@@ -1048,9 +1251,15 @@ def _build_agentcore_invoke_tools(
             status-update text as it streams (progress narration), so a caller
             can surface live progress. It never affects the returned answer.
 
+            ``context_id``, when given, is sent as the A2A message ``contextId``.
+            The peer uses it as its task context and as the key it records
+            progress milestones under, so the caller can poll them while waiting.
+
             Args:
                 prompt: The request to send to the agent runtime.
             """
+            import time as _time
+
             import boto3
             import json as _json
             from uuid import uuid4
@@ -1067,22 +1276,31 @@ def _build_agentcore_invoke_tools(
                     # (~1-2 min) plan does not trip the data-plane single-response
                     # deadline that returns 424 for message/send. AgentCore passes
                     # this body through to the A2A container unmodified.
+                    a2a_message = {
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": prompt}],
+                        "messageId": uuid4().hex,
+                    }
+                    # Send our own contextId so the peer's task context matches the
+                    # key we poll for progress milestones. Without it the server
+                    # mints one and only reveals it mid-stream, too late to use.
+                    if context_id:
+                        a2a_message["contextId"] = context_id
                     payload = _json.dumps({
                         "jsonrpc": "2.0",
                         "id": uuid4().hex,
                         "method": "message/stream",
-                        "params": {
-                            "message": {
-                                "role": "user",
-                                "parts": [{"kind": "text", "text": prompt}],
-                                "messageId": uuid4().hex,
-                            }
-                        },
+                        "params": {"message": a2a_message},
                     }).encode("utf-8")
                 else:
+                    # handler.py reads session_id from the body and nowhere else,
+                    # so a crew/HTTP peer that is itself a handler.py runtime was
+                    # being called without any conversation identity.
                     payload = _json.dumps({
                         "prompt": prompt,
                         "routing_mode": "crew",
+                        "session_id": active_session_id,
+                        "agent_name": _entry_name,
                     }).encode("utf-8")
 
                 logger.info(
@@ -1095,6 +1313,19 @@ def _build_agentcore_invoke_tools(
                     _plan.transport,
                     _auth_type,
                 )
+                session_checkpoint(
+                    "SEND",
+                    session_id=active_session_id,
+                    sender=_caller_name,
+                    recipient=_entry_name,
+                    message=prompt,
+                    detail=(
+                        f"protocol={'a2a' if _is_a2a else 'crew'} auth={_auth_type} "
+                        f"transport={_plan.transport} "
+                        f"contextId={context_id if _is_a2a else '-'}"
+                    ),
+                )
+                _hop_started = _time.monotonic()
 
                 # OAuth runtimes are fronted by a JWT authorizer and must be
                 # invoked over the HTTPS data-plane endpoint with a bearer token
@@ -1222,6 +1453,19 @@ def _build_agentcore_invoke_tools(
                         if isinstance(response_body, bytes):
                             response_body = response_body.decode("utf-8")
 
+                session_checkpoint(
+                    "REPLY",
+                    session_id=active_session_id,
+                    sender=_entry_name,
+                    recipient=_caller_name,
+                    message=str(response_body),
+                    detail=(
+                        f"status=ok chars={len(str(response_body or ''))} "
+                        f"contextId={context_id if _is_a2a else '-'}"
+                    ),
+                    elapsed_s=_time.monotonic() - _hop_started,
+                )
+
                 # Parse the response to extract the actual content
                 try:
                     parsed = _json.loads(response_body)
@@ -1264,6 +1508,7 @@ def _build_agentcore_invoke_tools(
                 _entry_name=_entry_name,
                 tool_name=tool_name,
                 description=description,
+                _session_id=_session_id,
             )
         )
         logger.info(

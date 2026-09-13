@@ -2059,7 +2059,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // Initialize session with user information
   private initializeSession(): void {
-    this.currentSessionInfo = this.sessionManager.getOrCreateSession();
+    this.currentSessionInfo = this.sessionManager.getOrCreateSession(this.tabId);
     console.log(`💬 Chat Interface initialized session: ${this.currentSessionInfo.sessionId}`);
   }
 
@@ -2409,7 +2409,9 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
   // Get current session ID from session manager
   private getCurrentSessionId(): string {
-    return this.sessionManager.getOrCreateSession().sessionId;
+    // Sessions are per tab: pass ours so two open tabs never share one id.
+    this.sessionManager.setActiveTab(this.tabId);
+    return this.sessionManager.getOrCreateSession(this.tabId).sessionId;
   }
 
   // Helper method to create a hash of message content for duplicate detection
@@ -2735,6 +2737,12 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       const customSessionId = this.getCurrentSessionId();
 
       // Use streaming method for real-time feedback with custom session ID
+
+      // Count the turn against the session. This is what makes "does this
+      // session have activity" true, which is how a tab decides whether an
+      // existing session is worth resuming — the counter previously had no
+      // callers, so every session looked empty and tabs always started a new one.
+      this.sessionManager.updateSessionMessageCount(customSessionId);
 
       const streamingSubscription = this.bedrockService.invokeAgentWithStreaming(agent, finalQuery, customSessionId, attachedFiles).subscribe({
         next: (event) => {
@@ -3071,6 +3079,16 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
               case 'rationale':
               case 'reasoning':
               case 'thinking':
+                // This switch runs for every event carrying an agentName, not
+                // only trace events, and the `event.type === 'chunk'` handler
+                // below is a sibling that runs for the same event. A chunk
+                // reasoning event (how relayed sub-agent status arrives) was
+                // therefore rendered twice: once accumulated here and once as
+                // its own bubble. The chunk handler owns those; only genuine
+                // trace reasoning accumulates into a thinking bubble.
+                if (event.type === 'chunk') {
+                  break;
+                }
                 // Update existing message in place to prevent flashing.
                 // Sub-agent status keeps its own slot so it never shares (and so
                 // never steals) the orchestrator's in-progress message.
@@ -3461,6 +3479,17 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 console.log('✅ Processing chunk event', event);
                 // Handle regular streaming chunks - create new message for each chunk
                 const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
+                // External agents (e.g. the AAMP buyer) have no agent_configs
+                // entry, so the lookup above misses and crediting `agent` would
+                // put the sub-agent's messages on the orchestrator's chip.
+                // Reuse the orchestrator's theme, keep the speaker's identity.
+                const speakingAgent = resolvedAgent
+                  || (agentName !== agent.name
+                    ? ({ ...agent, id: agentName, name: agentName } as EnrichedAgent)
+                    : agent);
+                const isStatusLine = messageType === 'reasoning'
+                  || messageType === 'rationale'
+                  || messageType === 'thinking';
                 const newMessageId = `${agentName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const newMessage: Message = {
                   id: newMessageId,
@@ -3478,10 +3507,11 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                     messageType: messageType
                   }
                 };
-                this.addMessageIfNotDuplicate(newMessage, resolvedAgent || agent);
+                this.addMessageIfNotDuplicate(newMessage, speakingAgent);
 
-                // Trigger client-side visualization analysis for chunk final-response
-                if (messageText &&messageText.trim()) {
+                // Trigger client-side visualization analysis for chunk final-response.
+                // Status lines are one-line progress notes with nothing to chart.
+                if (!isStatusLine && messageText && messageText.trim()) {
                   this.triggerVisualizationAnalysis(agentName, messageText, newMessageId);
                 }
               }
@@ -3615,7 +3645,81 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     // If no matching previous message found, return the full message
     return messageText;
   }
+  // Status lines relayed from a long-running sub-agent (e.g. the AAMP buyer's
+  // "Asking the seller for ctv inventory") arrive as one chunk event each, so
+  // each one used to open its own bubble and a single plan flooded the
+  // transcript. Consecutive lines of the same kind from the same agent are
+  // folded into the bubble already on screen instead.
+  private static readonly GROUPABLE_MESSAGE_TYPES = new Set(['reasoning', 'rationale', 'thinking']);
+
+  private canGroupIntoPrevious(candidate: Message, previous: Message | undefined): boolean {
+    if (!previous) return false;
+    if (candidate.sender !== 'agent' || previous.sender !== 'agent') return false;
+    if (!candidate.text?.trim() || !previous.text?.trim()) return false;
+
+    const type = candidate.data?.messageType;
+    if (!type || type !== previous.data?.messageType) return false;
+    if (!ChatInterfaceComponent.GROUPABLE_MESSAGE_TYPES.has(type)) return false;
+    if ((candidate.agentName || '') !== (previous.agentName || '')) return false;
+
+    // A bubble that carries a visualization, sources, or is still being
+    // streamed into keeps its own slot.
+    if (previous.data?.visualizationAnalysis || previous.sources) return false;
+    if (previous.data?.isThinking) return false;
+    if ((previous.data?.thinkingHistory?.length ?? 0) > 0) return false;
+
+    return true;
+  }
+
+  private invalidateMessageCache(messageId: string): void {
+    if (!this.messageCache) return;
+    for (const key of Array.from(this.messageCache.keys())) {
+      if (key.startsWith(messageId)) {
+        this.messageCache.delete(key);
+      }
+    }
+  }
+
+  /** Returns true when the line was folded into the previous bubble. */
+  private appendToPreviousMessage(candidate: Message, agent: EnrichedAgent): boolean {
+    const previous = this.messages[this.messages.length - 1];
+    if (!this.canGroupIntoPrevious(candidate, previous)) return false;
+
+    const addition = candidate.text.trim();
+    // Blank-line separated so each status line renders on its own line; a
+    // single newline would be collapsed into the same markdown paragraph.
+    const existingLines = previous.text.split('\n\n').map(line => line.trim());
+    if (!existingLines.includes(addition)) {
+      const mergedText = `${previous.text.trimEnd()}\n\n${addition}`;
+      const mergedMessage: Message = {
+        ...previous,
+        text: mergedText,
+        data: { ...previous.data, finalResponse: mergedText }
+      };
+
+      this.messages = [...this.messages.slice(0, -1), mergedMessage];
+      this.invalidateMessageCache(previous.id);
+      this.messagesUpdated.emit(this.messages);
+      this.bedrockService.updateChatMessages(this.messages);
+    }
+
+    this.updateAgentParticipant(agent);
+
+    if (!this.changeDetectionPending) {
+      this.changeDetectionPending = true;
+      this.safeSetTimeout(() => {
+        this.changeDetectorRef.detectChanges();
+        this.changeDetectionPending = false;
+      }, 50);
+    }
+
+    return true;
+  }
+
   addMessageIfNotDuplicate(newMessage: Message, agent: EnrichedAgent) {
+    if (this.appendToPreviousMessage(newMessage, agent)) {
+      return;
+    }
     var messageTextOfOlder = this.messages.find(m => newMessage.text.indexOf(m.text) >= -1 && m.text.length > 0 && (m.agent?.name == agent.name && m.agent?.teamName == m.agent?.teamName));
     if (messageTextOfOlder) {
       console.log('found existing message as the starting portion of this text', messageTextOfOlder)
@@ -6071,9 +6175,8 @@ ${formattedJson}
 
   getBorderColor(agentName: string) {
     if (!agentName) return null;
-    let agent = this.agentConfig.getEnrichedAgents().find(a => a.name == agentName);
-    if (!agent) return null;
-    let color = agent.color;
+    let color = this.resolveAgentColor(agentName);
+    if (!color) return null;
     if (color.indexOf('#') > -1) {
       color = color.substring(0, 7);
       return (color += "4D"); // 30% opacity in hex (77 in decimal = 4D in hex)
@@ -7447,6 +7550,27 @@ ${formattedJson}
   showVisibilitySettingsModal(): void {
     this.showVisibilitySettings = true;
   }
+  /**
+   * Resolve an agent's colour by name, or null when nothing is configured.
+   *
+   * Looks in the enriched agents first (so an agent_configs colour keeps
+   * priority), then falls back to the global `configured_colors` map.
+   *
+   * The fallback matters for agents that speak in a conversation without having
+   * their own agent_configs entry — an external A2A peer such as AAMPBuyerAgent
+   * is wired as a tool on its orchestrator, so it is never an enriched agent.
+   * Without this, every such agent resolved to the literal "gray" and its
+   * configured_colors entry was silently ignored no matter what was deployed.
+   */
+  private resolveAgentColor(agentName: string): string | null {
+    if (!agentName) return null;
+    const enriched = this.agentConfig.getEnrichedAgents()
+      .find(a => a.name == agentName)?.color;
+    if (enriched) return enriched;
+    const configured = this.agentConfig.global_config?.configured_colors?.[agentName];
+    return configured || null;
+  }
+
   getAgentColor(agentType: string = ''): string {
     // Nova Sonic voice assistant gets a distinct fuchsia/purple color
     if (agentType === 'Nova Sonic') {
@@ -7454,7 +7578,7 @@ ${formattedJson}
     }
     // Normalize the agent name to ensure consistent color assignment
     // Use the normalized agent name for color calculation
-    const color = this.agentConfig.getEnrichedAgents().find(agent => agent.name == agentType)?.color || "gray";
+    const color = this.resolveAgentColor(agentType) || "gray";
 
     // Debug logging for color consistency (only log if names differ)
     //if (normalizedAgentName !== agentType) {
@@ -8115,7 +8239,7 @@ This analysis shows the impact of weather on audience behavior.`;
 
   // Session management methods
   loadAvailableSessions(): void {
-    this.availableSessions = this.sessionManager.getSessions();
+    this.availableSessions = this.sessionManager.getSessions(this.tabId);
   }
 
   toggleSessionsPanel(): void {
@@ -8157,7 +8281,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.agentConfig.clearAgentColorCache();
     this.shouldScrollToBottom = true;
 
-    const newSession = this.sessionManager.forceNewSession();
+    const newSession = this.sessionManager.forceNewSession(this.tabId);
     this.currentSessionInfo = newSession;
     this.loadAvailableSessions();
     this.changeDetectorRef.markForCheck();
@@ -8190,7 +8314,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.shouldScrollToBottom = true;
 
     // Create new session via forceNewSession
-    const newSession = this.sessionManager.forceNewSession();
+    const newSession = this.sessionManager.forceNewSession(this.tabId);
     this.currentSessionInfo = newSession;
 
     // Refresh available sessions
@@ -8207,7 +8331,7 @@ This analysis shows the impact of weather on audience behavior.`;
 
   switchToSession(sessionId: string): void {
     // Switch to the selected session
-    const session = this.sessionManager.switchSession(sessionId);
+    const session = this.sessionManager.switchSession(sessionId, this.tabId);
     if (session) {
       // Clear current messages (they'll be loaded from the new session context)
       this.messages = [];
@@ -8258,7 +8382,7 @@ This analysis shows the impact of weather on audience behavior.`;
 
     // If we deleted the current session, update local state
     if (this.currentSessionInfo?.sessionId === sessionId) {
-      this.currentSessionInfo = this.sessionManager.getOrCreateSession();
+      this.currentSessionInfo = this.sessionManager.getOrCreateSession(this.tabId);
     }
 
     // Refresh the available sessions

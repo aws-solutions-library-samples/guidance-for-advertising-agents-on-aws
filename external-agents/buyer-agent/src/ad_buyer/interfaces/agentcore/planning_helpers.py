@@ -18,13 +18,22 @@ _REQUIRED_BRIEF_FIELDS = ["objectives", "budget", "start_date", "end_date", "tar
 def parse_brief_from_prompt(prompt: str) -> dict[str, Any]:
     """Extract a structured campaign brief from a natural-language prompt."""
     budget = 100000.0
-    m = re.search(r"\$\s*([\d,]+)\s*K\b", prompt, re.IGNORECASE)
+    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)\s*K\b", prompt, re.IGNORECASE)
     if m:
         budget = float(m.group(1).replace(",", "")) * 1000
     else:
         m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)\s*M\b", prompt, re.IGNORECASE)
         if m:
             budget = float(m.group(1).replace(",", "")) * 1_000_000
+        else:
+            # Plain figure, e.g. "$500,000". Checked last so it cannot strip the
+            # multiplier off "$500K". This is the common shape in practice: an
+            # orchestrating agent usually expands the user's "$500K" before
+            # forwarding the brief, and without this the amount was silently
+            # dropped and the default above was planned against instead.
+            m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", prompt)
+            if m:
+                budget = float(m.group(1).replace(",", ""))
 
     start_date, end_date = "2026-10-01", "2026-12-31"
     quarter_map = {

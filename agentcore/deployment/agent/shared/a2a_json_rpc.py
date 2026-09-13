@@ -71,6 +71,11 @@ def parse_json_rpc_response(response: dict) -> str:
     if not isinstance(artifacts, list) or len(artifacts) == 0:
         return "Error: Malformed response from remote agent — missing or empty 'artifacts'"
 
+    # Parts within one artifact are streaming text deltas, not paragraphs, so
+    # they are concatenated with no separator. A newline between deltas lands
+    # mid-word wherever the tokenizer split, and one next to a `**` stops
+    # CommonMark reading it as an emphasis delimiter. Only separate artifacts
+    # are distinct blocks and get the newline.
     texts = []
     for artifact in artifacts:
         if not isinstance(artifact, dict):
@@ -78,9 +83,13 @@ def parse_json_rpc_response(response: dict) -> str:
         parts = artifact.get("parts")
         if not isinstance(parts, list):
             continue
-        for part in parts:
-            if isinstance(part, dict) and part.get("kind") == "text" and "text" in part:
-                texts.append(part["text"])
+        deltas = [
+            part["text"]
+            for part in parts
+            if isinstance(part, dict) and part.get("kind") == "text" and "text" in part
+        ]
+        if deltas:
+            texts.append("".join(deltas))
 
     if not texts:
         return "Error: Malformed response from remote agent — no text content found in artifacts"

@@ -126,7 +126,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | Amazon Bedrock — Nova Sonic (voice) | Bidirectional speech-to-speech streaming for the voice interface, priced per minute of audio in/out; occasional demo use | $6.00 |
 | Amazon Bedrock — Image models (Nova Canvas / SD 3.5) | Creative generation via the asynchronous image pipeline | $3.00 |
 | Amazon OpenSearch Serverless | Knowledge base vector collection, indexing and search OCUs (dominant fixed cost) | $219.00 |
-| Amazon DynamoDB | 3 on-demand (pay-per-request) tables: AgentConfig (instructions, cards, visualization maps, global/tab config), ImageStatus (async job state), Visualizations (maps + templates); config read on every agent invocation | $70.31 |
+| Amazon DynamoDB | 4 on-demand (pay-per-request) tables: AgentConfig (instructions, cards, visualization maps, global/tab config), ImageStatus (async job state), Visualizations (maps + templates), and AgentProgress (transient cross-agent progress milestones, TTL-expired — a few writes and reads per external-agent request, which does not move this figure); config read on every agent invocation | $70.31 |
 | Amazon S3 | 4 buckets: knowledge base source data (5GB), UI static hosting (OAC), generated content, and services bucket | $3.00 |
 | AWS Lambda | Pipeline and MCP tool-target functions: creative image request, async image processor, demo user custom resource, and the `a4a-mcp-handler` MCP target behind the optional Quick Gateway. The MCP handler is deployed with every stack but is only invoked when Phase 12 is enabled, so it contributes nothing to this figure otherwise | $2.50 |
 | AWS WAF | Web ACL with AWS common managed rule set fronting the CloudFront distribution | $6.00 |
@@ -1119,11 +1119,46 @@ aws cognito-idp admin-create-user \
   hops retry on cold-start (`424`/`503`). The `AgencyAgent` calls **only the
   buyer** — the buyer plans the campaign and returns real inventory/pricing that
   it sources from the seller internally, so the seller's orchestrator tool entry
-  is wired but `enabled: false`. During the long buyer call the UI shows capped
-  live `⏳` progress milestones, and the final media plan renders as
-  budget-allocation and inventory cards. Full details, including the auth/protocol
-  and re-enabling direct seller calls, are in
+  is wired but `enabled: false`. During the long buyer call the UI shows real,
+  capped progress milestones (see below); the buyer returns the finished media
+  plan as Markdown tables, which the UI can additionally match against the
+  agent's visualization templates to render as cards. Full details, including the
+  auth/protocol and re-enabling direct seller calls, are in
   [`docs/aamp-deployment-modes.md`](docs/aamp-deployment-modes.md).
+
+  **Live progress milestones (the `AgentProgress` table):**
+  A campaign plan takes one to two minutes, and A2A gives the caller no way to
+  see inside it: a Strands `A2AServer` streams the agent's own answer text as
+  status updates, so there is no separate channel the orchestrator could read
+  progress from without also duplicating the answer. Instead the two sides share
+  a small transactional DynamoDB table:
+
+  | Aspect | Detail |
+  | --- | --- |
+  | **Table** | `{stack-prefix}-AgentProgress-{unique-id}`, created by `cloudformation/infrastructure-services.yml` (on-demand billing) |
+  | **Key schema** | `pk` = `PROGRESS#{a2a-context-id}` (HASH), `sk` = zero-padded sequence number (RANGE), so a Query returns milestones in the order they happened |
+  | **Attributes** | `message` (the milestone text shown in the UI), `agent_name` (which agent wrote it), `ts`, `expires_at` |
+  | **Lifetime** | Rows self-delete via TTL on `expires_at` (default 1 hour, `AAMP_PROGRESS_TTL_SECONDS`). Nothing here is a source of record, so the table has no point-in-time recovery and is safe to empty at any time |
+  | **Correlation key** | The orchestrator mints the A2A `contextId` itself and sends it in the `message/stream` envelope, so both sides agree on the key before the call starts |
+  | **IAM** | Buyer runtime role: `dynamodb:PutItem` on this table only (attached by Phase 9 as `AampProgressWrite`). Orchestrator runtime role: `dynamodb:Query`, already covered by its execution-role policy |
+  | **Env** | `AAMP_PROGRESS_TABLE` on both runtimes — resolved from the stack output for the buyer (Phase 9) and from the stack naming convention for the orchestrator (Phase 8) |
+
+  Milestones are only written where the work actually happens — the brief is
+  parsed, the budget is allocated, the seller is asked for a channel's inventory,
+  the seller answers — so a milestone in the chat means that step ran. The
+  orchestrator polls the key every few seconds while it waits and forwards each
+  new milestone, attributed to the peer agent.
+
+  Both sides degrade quietly. Writes are best-effort and never fail a plan, and
+  if the table is missing or unreadable (for example an older stack that has not
+  been updated) the orchestrator logs one warning, stops polling, and falls back
+  to elapsed-time waiting messages. Interim lines are capped per request so a
+  long call cannot flood the transcript.
+
+  > **Upgrading an existing deployment:** the table is created by the
+  > `infrastructure-services` stack, so run **Phase 2** before Phases 8 and 9.
+  > Until the stack is updated the table does not exist and you get the
+  > elapsed-time fallback instead of milestones.
 
   **It is opt-in.** The phase does nothing unless you ask for it:
 

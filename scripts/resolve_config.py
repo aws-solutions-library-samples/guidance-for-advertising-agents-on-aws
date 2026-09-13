@@ -76,6 +76,53 @@ def load_runtime_arns(project_root, stack_prefix, unique_id):
     return arns
 
 
+def backfill_colors(config_dir, dry_run=False):
+    """Add configured_colors entries the template has but the resolved config lacks.
+
+    The resolved config is generated from the template only when absent, because it
+    also holds live values (AAMP endpoints, UI edits) that a regeneration would
+    discard. That means a new agent colour added to the template never reaches an
+    existing deployment, and the agent renders in the default grey.
+
+    Colours are presentation-only and keyed by agent name, so adding missing keys
+    cannot discard anything: existing keys are left exactly as they are.
+
+    Returns the number of colours added.
+    """
+    template_path = os.path.join(config_dir, "global_configuration.template.json")
+    resolved_path = os.path.join(config_dir, "global_configuration.json")
+    if not (os.path.exists(template_path) and os.path.exists(resolved_path)):
+        return 0
+
+    with open(template_path) as f:
+        template = json.load(f)
+    with open(resolved_path) as f:
+        resolved = json.load(f)
+
+    template_colors = template.get("configured_colors") or {}
+    resolved_colors = resolved.get("configured_colors")
+    if not isinstance(resolved_colors, dict):
+        resolved_colors = {}
+
+    missing = {k: v for k, v in template_colors.items() if k not in resolved_colors}
+    if not missing:
+        return 0
+
+    for name, colour in missing.items():
+        print(f"  🎨 configured_colors += {name} → {colour}")
+    if dry_run:
+        print(f"  🔍 Dry run — {len(missing)} colour(s) would be added. No file written.")
+        return len(missing)
+
+    resolved_colors.update(missing)
+    resolved["configured_colors"] = resolved_colors
+    with open(resolved_path, "w", encoding="utf-8") as f:
+        json.dump(resolved, f, indent=4, ensure_ascii=False)
+        f.write("\n")
+    print(f"  ✅ Added {len(missing)} missing colour(s) to {resolved_path}")
+    return len(missing)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Resolve AAMP template to live config")
     parser.add_argument("--stack-prefix", required=True)
@@ -93,11 +140,24 @@ def main():
             "later if AAMP is deployed."
         ),
     )
+    parser.add_argument(
+        "--backfill-colors-only",
+        action="store_true",
+        help=(
+            "Do not regenerate the config. Only add configured_colors entries that "
+            "the template defines and the existing resolved config is missing, so a "
+            "new agent colour reaches deployments that already have a resolved file."
+        ),
+    )
     args = parser.parse_args()
 
     project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
     template = os.path.join(args.config_dir, "global_configuration.template.json")
     output = os.path.join(args.config_dir, "global_configuration.json")
+
+    if args.backfill_colors_only:
+        backfill_colors(args.config_dir, dry_run=args.dry_run)
+        return
 
     if not os.path.exists(template):
         print(f"❌ Template not found: {template}")

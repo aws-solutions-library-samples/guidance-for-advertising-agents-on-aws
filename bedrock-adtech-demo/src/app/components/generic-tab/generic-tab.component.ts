@@ -1276,7 +1276,8 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
 
     try {
       // Get existing sessions (no tab-specific filtering)
-      const sessions = this.sessionManager.getSessions();
+      this.sessionManager.setActiveTab(this.tabId);
+      const sessions = this.sessionManager.getSessions(this.tabId);
       
       if (sessions.length > 0) {
         // Found existing session(s) - get the most recent one
@@ -1295,16 +1296,24 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       }
       
-      // No existing session with messages - create a new one
-      if (this.chatInterface) {
-        this.chatInterface.createNewSession();
+      // No session worth resuming. Adopt whatever session is already active
+      // instead of forcing a new one: this runs from every tab's
+      // ngAfterViewInit, and createNewSession() calls forceNewSession(), which
+      // mints a new id and makes it active for the whole app. Because
+      // messageCount is never incremented the branch above never fires, so
+      // forcing here re-keyed the conversation whenever any tab initialized —
+      // the agent then looked up memory under a session id that had no history.
+      // getOrCreateSession() still creates one when none exists.
+      if (sessions.length === 0) {
+        this.chatInterface?.createNewSession();
+      } else {
+        this.currentSessionInfo = this.sessionManager.getOrCreateSession(this.tabId);
       }
     } catch (error) {
       console.error('Error checking for existing session:', error);
-      // On error, create a new session to ensure the chat works
-      if (this.chatInterface) {
-        this.chatInterface.createNewSession();
-      }
+      // On error, make sure a session exists so the chat works, without
+      // discarding one that is already active.
+      this.currentSessionInfo = this.sessionManager.getOrCreateSession(this.tabId);
     }
   }
 
@@ -1352,7 +1361,7 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   onContinueSession(session: SessionInfo): void {
     // Switch to the existing session
-    this.sessionManager.switchSession(session.sessionId);
+    this.sessionManager.switchSession(session.sessionId, this.tabId);
     this.showSessionPrompt = false;
     
     // Notify chat interface to load the session

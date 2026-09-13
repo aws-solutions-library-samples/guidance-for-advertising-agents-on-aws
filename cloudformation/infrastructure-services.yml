@@ -151,7 +151,31 @@ Resources:
             ProjectionType: ALL
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
-      
+
+  # DynamoDB Table for cross-agent progress milestones (AAMP A2A).
+  # Transactional, short-lived rows: the remote peer (e.g. AAMPBuyerAgent) appends
+  # real milestones as its tools execute, and the calling agent's relay polls them
+  # while it waits so the UI can show honest progress instead of a generic spinner.
+  # Rows self-expire via TTL on expires_at; no PITR (nothing here is a source of record).
+  AgentProgressTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackPrefix}-AgentProgress-${UniqueId}'
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
   # IAM Role for Async Image Processor
   AsyncImageProcessorRole:
     Type: AWS::IAM::Role
@@ -641,6 +665,18 @@ Outputs:
     Value: !GetAtt AgentConfigTable.Arn
     Export:
       Name: !Sub '${StackPrefix}-AgentConfigTableArn-${UniqueId}'
+
+  AgentProgressTableName:
+    Description: 'Name of the cross-agent progress milestone DynamoDB table'
+    Value: !Ref AgentProgressTable
+    Export:
+      Name: !Sub '${StackPrefix}-AgentProgressTableName-${UniqueId}'
+
+  AgentProgressTableArn:
+    Description: 'ARN of the cross-agent progress milestone DynamoDB table'
+    Value: !GetAtt AgentProgressTable.Arn
+    Export:
+      Name: !Sub '${StackPrefix}-AgentProgressTableArn-${UniqueId}'
 
   CreativeImageGeneratorLambdaArn:
     Description: 'ARN of the Creative Image Generator Lambda function'

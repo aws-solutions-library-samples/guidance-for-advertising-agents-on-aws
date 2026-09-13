@@ -188,6 +188,10 @@ if [[ "${TEST_ONLY}" == "false" ]]; then
     [[ -n "${AAMP_SELLER_RUNTIME_ARN:-}" ]] && _deploy_env+=(--env "AAMP_SELLER_RUNTIME_ARN=${AAMP_SELLER_RUNTIME_ARN}")
     [[ -n "${A2A_SELLER_SSM_PATH:-}" ]] && _deploy_env+=(--env "A2A_SELLER_SSM_PATH=${A2A_SELLER_SSM_PATH}")
     [[ -n "${A2A_CLIENT_ID:-}" ]] && _deploy_env+=(--env "A2A_CLIENT_ID=${A2A_CLIENT_ID}")
+    # Progress milestones: table the buyer appends real per-step progress to,
+    # keyed by A2A context id, for the caller to poll while it waits. Optional —
+    # unset simply disables emission.
+    [[ -n "${AAMP_PROGRESS_TABLE:-}" ]] && _deploy_env+=(--env "AAMP_PROGRESS_TABLE=${AAMP_PROGRESS_TABLE}")
     agentcore deploy "${_deploy_env[@]}" --auto-update-on-conflict
   else
     agentcore deploy \
