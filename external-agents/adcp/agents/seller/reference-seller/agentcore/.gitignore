@@ -1,0 +1,18 @@
+# Secrets (local environment files are never committed)
+.env.local
+
+# CDK Build Artifacts
+cdk/cdk.out/
+cdk/node_modules/
+
+# CLI Internals
+.cli/*
+
+# Ephemeral Staging
+.cache/*
+
+# Deliberate deviation from the `agentcore create` default, which commits this file.
+# It records the runtime and IAM role ARNs of the last deploy, so it is per-account state
+# and it embeds the account number. This repo is published, so it stays ignored and the
+# deploy captures what it needs from the live file instead.
+# .cli/* above already covers it; no negation.

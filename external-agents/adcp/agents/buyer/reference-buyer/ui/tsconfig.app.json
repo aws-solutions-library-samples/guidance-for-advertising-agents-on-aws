@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    // `vite/client` supplies the ambient declarations for asset and CSS side-effect imports.
+    // "node" is here for TESTS ONLY: two of them read `.kiro/specs/journey.html` off disk to
+    // prove the journey view's stylesheet and its authored strings still match the prototype,
+    // which keeps that file the source of truth rather than a copy that can silently diverge.
+    // Application source must not import node builtins; Vite fails the browser build if it does,
+    // so the guard is downstream rather than in the type-check. The alternative was an
+    // ever-growing per-file exclusion list, which a future test author would not know about.
+    "types": ["vitest/globals", "vite/client", "node"],
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // The payloads this UI renders come from sellers over the wire, so an index access can
+    // genuinely be undefined. Having the compiler say so is the point.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "RefSeller",
+  "runtime": {
+    "codeLocation": "app/adcpRefSeller/",
+    "protocol": "MCP",
+    "envVars": [
+      {
+        "name": "STATE_TABLE_NAME",
+        "value": "{prefix}-reference-seller-state"
+      },
+      {
+        "name": "SESSIONS_TABLE_NAME",
+        "value": "{prefix}-buyer-agent-sessions"
+      }
+    ],
+    "additionalPolicies": [
+      "state-table-policy.json",
+      "sessions-table-policy.json"
+    ],
+    "requestHeaderAllowlist": [
+      "Authorization",
+      "X-Adcp-Buyer-Session-Id"
+    ]
+  }
+}

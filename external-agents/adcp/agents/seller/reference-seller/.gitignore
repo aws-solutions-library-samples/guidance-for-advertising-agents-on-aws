@@ -1,0 +1,7 @@
+
+
+# Vendored by deploy_all.py's vendor-session-module step from
+# agents/buyer/reference-buyer/. Generated build artifacts - the single
+# source lives there; never hand-edit these copies.
+app/adcpRefSeller/session_records.py
+app/adcpRefSeller/seller_session_recorder.py

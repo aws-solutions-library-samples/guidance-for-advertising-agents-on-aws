@@ -1,0 +1,407 @@
+/*
+ * The Media Buy panel's package strip.
+ *
+ * NOT authored, and in its own file for the same reason as `journey-products.css` and
+ * `journey-gravity.css`: `journey.css` is generated from `.kiro/specs/journey.html` and diffed
+ * against it by a fidelity test, so it may not gain rules. This file is ours.
+ *
+ * The structure is harvested from the "Package Strip Chart" mockup — a header, a scroll of package
+ * cards each with a budget bar and an expandable drawer, a pacing legend. The mockup's own dark
+ * palette and hardcoded hexes are dropped: everything below borrows the journey's variables
+ * (`--peri`, `--cyan`, `--orange`, `--magenta-2`, `--purple-lt`, the `--mono` stack, and the muted
+ * purples `#a99fce` / `#8d84ad` the authored panels already use for secondary text), so the strip
+ * reads as part of the same view rather than a second theme.
+ *
+ * Pacing has one colour used everywhere it appears — pill, bar and legend dot — set once as `--pc`
+ * on the pacing class so the three cannot drift:
+ *   even = --peri, asap = --cyan, front_loaded = --orange.
+ */
+
+.journey-root .mbstrip {
+  margin-top: 16px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+}
+.journey-root .mbstrip.on {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- header ---- */
+.journey-root .mb-head {
+  margin-bottom: 14px;
+}
+.journey-root .mb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.journey-root .mb-chip {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #d7d2e8;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.journey-root .mb-chip .mb-lbl {
+  font-family: var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: #a99fce;
+  margin-right: 4px;
+}
+.journey-root .mb-chip.budget {
+  color: #ffe9b8;
+  box-shadow: inset 0 0 0 1px rgba(240, 108, 0, 0.35);
+  font-weight: 600;
+}
+
+/* flight window: a span between two ticks, no fill implying elapsed delivery */
+.journey-root .mb-flight-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8d84ad;
+  margin-bottom: 4px;
+}
+.journey-root .mb-flight-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.journey-root .mb-flight-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--peri), var(--cyan));
+  opacity: 0.7;
+}
+.journey-root .mb-flight-dates {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #8d84ad;
+  margin-top: 3px;
+}
+
+/* ---- the list of package cards ----
+ * Capped at roughly three package cards so a large buy never makes the panel run off the page; the
+ * rest are reached by scrolling. This element is the scroll-spy root (useScrollSpyActive): the card
+ * most in view is the active one. At 4+ cards MediaBuyStripBody also auto-scrolls the list
+ * (useAutoScrollLoop) so the overflow is seen without manual scrolling, pausing on hover; under
+ * prefers-reduced-motion nothing auto-scrolls and every card is rendered active.
+ * A little top/bottom padding so the active card's ring/shadow is not clipped by the scroll edge. */
+.journey-root .mb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 316px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.journey-root .mb-pkg {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 12px 14px;
+  opacity: 0.42;
+  transition:
+    opacity 0.5s ease,
+    box-shadow 0.5s ease,
+    transform 0.5s ease;
+}
+.journey-root .mb-pkg.active {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(238, 140, 252, 0.5),
+    0 18px 50px -30px rgba(140, 42, 252, 0.8);
+}
+.journey-root .mb-pkg.paused {
+  opacity: 0.28;
+}
+.journey-root .mb-pkg.paused.active {
+  opacity: 0.85;
+}
+
+.journey-root .mb-pkg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.journey-root .mb-pkg-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  min-width: 0;
+}
+.journey-root .mb-fmt-ic {
+  display: inline-flex;
+  flex: none;
+  font-size: 15px;
+}
+.journey-root .mb-fmt-ic svg {
+  width: 1em;
+  height: 1em;
+}
+.journey-root .mb-fmt-ic.audio {
+  color: var(--purple-lt);
+}
+.journey-root .mb-fmt-ic.display {
+  color: var(--cyan);
+}
+
+.journey-root .mb-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.journey-root .mb-pill {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.journey-root .mb-pill.pricing {
+  background: rgba(140, 140, 250, 0.14);
+  color: var(--peri);
+}
+.journey-root .mb-pill.format {
+  background: rgba(140, 42, 252, 0.16);
+  color: var(--purple-lt);
+}
+.journey-root .mb-pill.paused {
+  background: rgba(228, 0, 108, 0.16);
+  color: #ff6b9d;
+}
+.journey-root .mb-pill.pace {
+  background: color-mix(in srgb, var(--pc, var(--purple-lt)) 16%, transparent);
+  color: var(--pc, var(--purple-lt));
+  text-transform: capitalize;
+}
+
+/* pacing colour, defined once and reused by pill, bar and legend dot */
+.journey-root .pace-even {
+  --pc: var(--peri);
+}
+.journey-root .pace-asap {
+  --pc: var(--cyan);
+}
+.journey-root .pace-front_loaded {
+  --pc: var(--orange);
+}
+.journey-root .pace-none {
+  --pc: var(--purple-lt);
+}
+
+/* ---- budget bar ---- */
+.journey-root .mb-bar-wrap {
+  position: relative;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.journey-root .mb-bar {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
+  background: linear-gradient(
+    90deg,
+    var(--pc, var(--purple-lt)),
+    color-mix(in srgb, var(--pc, var(--purple-lt)) 45%, transparent)
+  );
+  transition: width 0.8s ease;
+}
+.journey-root .mb-bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #04010f;
+  white-space: nowrap;
+}
+.journey-root .mb-bar-right {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #a99fce;
+}
+/* a paused package's bar is striped, so "paused" reads even at a glance */
+.journey-root .mb-pkg.paused .mb-bar {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(0, 0, 20, 0.28) 4px,
+    rgba(0, 0, 20, 0.28) 8px
+  );
+}
+
+/* ---- non-booked card states ---- */
+.journey-root .mb-state {
+  font-size: 14px;
+  color: #cfc7e6;
+  padding: 3px 0 5px;
+}
+.journey-root .mb-state.failed .mb-state-line,
+.journey-root .mb-state.failed {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+.journey-root .mb-state.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cyan);
+  font-weight: 600;
+}
+.journey-root .mb-state-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: #a99fce;
+  margin-top: 3px;
+}
+.journey-root .mb-state-sub.mono {
+  font-family: var(--mono);
+}
+
+/* ---- footer ---- */
+.journey-root .mb-pkg-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #8d84ad;
+}
+.journey-root .mb-pkg-foot .mb-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55%;
+}
+
+/* ---- detail drawer ---- */
+.journey-root .mb-detail {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.45s ease,
+    opacity 0.35s ease 0.1s,
+    margin-top 0.35s ease;
+}
+.journey-root .mb-detail.open {
+  max-height: 460px;
+  opacity: 1;
+  margin-top: 10px;
+}
+.journey-root .mb-detail-inner {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+  display: grid;
+  /* auto-fit, not a fixed 1fr 1fr: real buys often fill only one section (the rest need buyer-sent
+   * targeting/creatives this flow does not send), and a fixed two-column grid left that lone section
+   * marooned beside an empty column. auto-fit gives two columns when two sections fit and a single
+   * full-width section otherwise, so a sparse drawer reads as intentional rather than broken. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 18px;
+}
+.journey-root .mb-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8d84ad;
+  margin-bottom: 5px;
+}
+.journey-root .mb-drow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.journey-root .mb-dk {
+  color: #8d84ad;
+  flex: none;
+}
+.journey-root .mb-dv {
+  font-family: var(--mono);
+  color: #cfc7e6;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* One column when the card is narrow (it is a query container, see journeyFlow.css). */
+@container panel (max-width: 470px) {
+  .journey-root .mb-detail-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- legend ---- */
+.journey-root .mb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.journey-root .mb-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: #8d84ad;
+}
+.journey-root .mb-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--pc, var(--purple-lt));
+}
+.journey-root .mb-legend-dot.paused {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--magenta-2);
+}
+
+/*
+ * Reduced motion: the strip and its cards arrive at their finished state with no fade or bar growth,
+ * and every card is rendered active by the component so nothing cycles and all data is visible.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .mbstrip,
+  .journey-root .mb-pkg,
+  .journey-root .mb-bar,
+  .journey-root .mb-detail {
+    transition: none;
+  }
+}

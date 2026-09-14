@@ -30,7 +30,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# AAMP Phase 9 (optional; IAB buyer & seller) deploy function lives in its own
+# AAMP Phase 8 (optional; IAB buyer & seller) deploy function lives in its own
 # file to keep this script manageable. It defines deploy_aamp_agents() which
 # relies on helpers/vars defined below (print_*, aws_cmd, PYTHON_CMD, etc.) at
 # call time. The phase is opt-in — see prompt_and_deploy_aamp_agents().
@@ -59,13 +59,15 @@ SKIP_CONFIRMATIONS="${SKIP_CONFIRMATIONS:-false}"
 RESUME_AT_STEP=1
 UNIQUE_ID="${UNIQUE_ID:-}"
 CLEAN_DEPLOYMENT=true
-# AAMP (Phase 9, optional) deploy inputs — see scripts/deploy_aamp_agents.sh
+# AAMP (Phase 8, optional) deploy inputs — see scripts/deploy_aamp_agents.sh
 LOCAL_AAMP_PATH="${LOCAL_AAMP_PATH:-}"
 AAMP_BRANCH="${AAMP_BRANCH:-main}"
 # Whether to run the optional AAMP phase. "true"/"false" decide outright;
 # empty means ask in interactive mode and skip otherwise.
 DEPLOY_AAMP="${DEPLOY_AAMP:-}"
-# Whether to run the optional Quick MCP Gateway phase (Phase 12). Same tri-state as
+# Whether to run the optional AdCP phase (Phase 9). Same tri-state as DEPLOY_AAMP.
+DEPLOY_ADCP="${DEPLOY_ADCP:-}"
+# Whether to run the optional Quick MCP Gateway phase (Phase 13). Same tri-state as
 # DEPLOY_AAMP: "true"/"false" decide outright; empty means ask in interactive mode and
 # skip otherwise.
 DEPLOY_QUICK_GATEWAY="${DEPLOY_QUICK_GATEWAY:-}"
@@ -1497,8 +1499,8 @@ deploy_infrastructure() {
     # Add Lambda S3 parameters for services stack
     services_parameters="$services_parameters ParameterKey=AsyncImageProcessorS3Bucket,ParameterValue=$lambda_bucket"
     services_parameters="$services_parameters ParameterKey=AsyncImageProcessorS3Key,ParameterValue=lambda/async-image-processor.zip"
-    # A4A MCP handler — target behind the optional Quick MCP Gateway (Phase 12).
-    # Deployed with every stack; inert until Phase 12 wires it to a runtime and puts a
+    # A4A MCP handler — target behind the optional Quick MCP Gateway (Phase 13).
+    # Deployed with every stack; inert until Phase 13 wires it to a runtime and puts a
     # gateway in front of it.
     services_parameters="$services_parameters ParameterKey=A4AMCPHandlerS3Bucket,ParameterValue=$lambda_bucket"
     services_parameters="$services_parameters ParameterKey=A4AMCPHandlerS3Key,ParameterValue=lambda/a4a-mcp-handler.zip"
@@ -1624,7 +1626,7 @@ deploy_lambda_functions() {
 #
 # The resolved config is a build artifact, not a source file: it is gitignored, and
 # a clean checkout does not have it. Several steps read it directly — the DynamoDB
-# upload (Step 7), the AAMP wiring (Step 9), and the UI config copy (Step 10) — so
+# upload (Step 7), the AAMP wiring (Step 8), and the UI config copy (Step 11) — so
 # without this a fresh clone fails partway through with a bare "No such file".
 #
 # Regenerating an existing file is deliberately avoided: it holds live values that
@@ -3106,7 +3108,7 @@ TOOLKIT_TRACKING_EOF
 }
 
 detect_and_deploy_agentcore_agents() {
-    print_step "Step 8: Deploying AgentCore agents (after config upload)..."
+    print_step "Step 10: Deploying AgentCore agents (after config upload)..."
     
     
     local agentcore_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
@@ -3352,17 +3354,17 @@ EOF
     # Add user prompt after AgentCore deployment completion
     if [ "$INTERACTIVE_MODE" = true ] && [ "$SKIP_CONFIRMATIONS" != true ]; then
         echo ""
-        print_success "🎉 Step 8 Complete: AgentCore agents have been deployed!"
+        print_success "🎉 Step 10 Complete: AgentCore agents have been deployed!"
         print_status "The following steps remain:"
-        print_status "  - Step 9: Deploy AAMP agents (optional — you will be asked)"
-        print_status "  - Step 10: Generate AWS configuration"
-        print_status "  - Step 11: Warm up agent runtimes"
+        print_status "  - Step 11: Generate AWS configuration"
+        print_status "  - Step 12: Warm up agent runtimes"
+        print_status "  - Step 13: Deploy Quick MCP Gateway (optional — you will be asked)"
         echo ""
         printf "Continue with remaining deployment steps? (Y/n): "
         read -r continue_response
         if [[ "$continue_response" =~ ^[Nn]$ ]]; then
-            print_status "Deployment paused after Step 8. You can resume later by running the script again."
-            print_status "Current progress has been saved and the script will resume from Step 9 (AAMP agents)."
+            print_status "Deployment paused after Step 10. You can resume later by running the script again."
+            print_status "Current progress has been saved and the script will resume from Step 11 (UI configuration)."
             exit 0
         fi
         print_status "Continuing with remaining deployment steps..."
@@ -3372,7 +3374,7 @@ EOF
 
 # Function to generate UI configuration
 generate_ui_config() {
-    print_step "Step 10: Generating UI configuration..."
+    print_step "Step 11: Generating UI configuration..."
     
     # Create assets directory
     ANGULAR_ASSETS_DIR="${PROJECT_ROOT}/bedrock-adtech-demo/src/assets"
@@ -3646,7 +3648,7 @@ cleanup_ecosystem() {
     # Step 2: Remove any AdCP MCP Gateway left over from a pre-removal deployment
     cleanup_adcp_gateway
 
-    # Step 2b: Remove the optional Quick MCP Gateway (Phase 12) if it was deployed
+    # Step 2b: Remove the optional Quick MCP Gateway (Phase 13) if it was deployed
     cleanup_quick_gateway
     
     # Step 3: Delete data sources
@@ -3677,9 +3679,9 @@ cleanup_ecosystem() {
     print_status "All resources have been successfully removed."
 }
 
-# Tear down the optional Quick MCP Gateway (Phase 12) and its Cognito resources.
+# Tear down the optional Quick MCP Gateway (Phase 13) and its Cognito resources.
 #
-# Does NOT delete the Cognito user pool domain. Phase 12 is the only thing that
+# Does NOT delete the Cognito user pool domain. Phase 13 is the only thing that
 # creates that domain, but the UI's SSO sign-in reads the same one, so removing it
 # here would break federated login on a stack where SSO is configured. It goes with
 # the user pool when the CloudFormation stack is deleted.
@@ -4758,6 +4760,14 @@ parse_args() {
                 DEPLOY_AAMP=true
                 shift
                 ;;
+            --deploy-adcp)
+                DEPLOY_ADCP=true
+                shift
+                ;;
+            --skip-adcp)
+                DEPLOY_ADCP=false
+                shift
+                ;;
             --skip-aamp)
                 DEPLOY_AAMP=false
                 shift
@@ -4814,13 +4824,15 @@ show_usage() {
     echo "  --profile PROFILE        AWS CLI profile to use"
     echo "  --demo-email EMAIL       Email for demo user account"
     echo "  --image-model MODEL      Image generation model ID (default: amazon.nova-canvas-v1:0)"
-    echo "  --resume-at STEP         Resume deployment at specific step (1-12)"
+    echo "  --resume-at STEP         Resume deployment at specific step (1-13)"
     echo "  --local-aamp PATH        Use local IAB AAMP repos (dir containing seller-agent/ and buyer-agent/) instead of cloning"
     echo "  --aamp-branch BRANCH     Branch to checkout in IAB repos when cloning (default: main)"
-    echo "  --deploy-aamp            Deploy the optional AAMP agents (Phase 9) without prompting"
-    echo "  --skip-aamp              Skip the optional AAMP agents (Phase 9) without prompting"
-    echo "  --deploy-quick-gateway   Deploy the optional Quick MCP Gateway (Phase 12) without prompting"
-    echo "  --skip-quick-gateway     Skip the optional Quick MCP Gateway (Phase 12) without prompting"
+    echo "  --deploy-aamp            Deploy the optional AAMP agents (Phase 8) without prompting"
+    echo "  --skip-aamp              Skip the optional AAMP agents (Phase 8) without prompting"
+    echo "  --deploy-adcp            Deploy the optional AdCP agents (Phase 9) without prompting"
+    echo "  --skip-adcp              Skip the optional AdCP agents (Phase 9) without prompting"
+    echo "  --deploy-quick-gateway   Deploy the optional Quick MCP Gateway (Phase 13) without prompting"
+    echo "  --skip-quick-gateway     Skip the optional Quick MCP Gateway (Phase 13) without prompting"
     echo "  --sso-provider NAME      Identity provider name as registered in the Cognito user pool"
     echo "                           (e.g. 'MyCompanySSO'). Enables the SSO button in the UI."
     echo "                           Requires a hosted-UI domain — see docs/SSO_SETUP_GUIDE.md"
@@ -4836,10 +4848,11 @@ show_usage() {
     echo "  $0 --unique-id abc123                # Use specific unique ID"
     echo "  $0 --region us-east-1                # Deploy in specific region"
     echo "  $0 --resume-at 5                     # Resume from step 5"
-    echo "  $0 --resume-at 8                     # Resume from step 8 (Deploy AgentCore agents)"
+    echo "  $0 --resume-at 10                    # Resume from step 10 (Deploy AgentCore agents)"
     echo "  $0 --resume-at 7 --skip-confirmations # Resume from step 7 (DynamoDB upload) without update confirmations"
-    echo "  $0 --resume-at 9 --deploy-aamp       # Deploy just the optional AAMP agents (then UI + warmup)"
-    echo "  $0 --resume-at 12 --deploy-quick-gateway # Deploy just the optional Quick MCP Gateway"
+    echo "  $0 --resume-at 8 --deploy-aamp       # Deploy just the optional AAMP agents (then AgentCore + UI + warmup)"
+    echo "  $0 --resume-at 9 --deploy-adcp       # Deploy just the optional AdCP agents (then AgentCore + UI + warmup)"
+    echo "  $0 --resume-at 13 --deploy-quick-gateway # Deploy just the optional Quick MCP Gateway"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
     echo ""
@@ -4920,18 +4933,23 @@ confirm_deployment_steps() {
         "Phase 5: Sync data sources (start ingestion jobs)"
         "Phase 6: Upload agent configurations to S3"
         "Phase 7: Upload agent configurations to DynamoDB"
-        "Phase 8: Deploy AgentCore agents"
-        "Phase 9: Deploy AAMP agents (optional — you will be asked)"
-        "Phase 10: Generate UI configuration"
-        "Phase 11: Warmup agent runtimes"
-        "Phase 12: Deploy Quick MCP Gateway (optional — you will be asked)"
+        "Phase 8: Deploy AAMP agents (optional — you will be asked)"
+        "Phase 9: Deploy AdCP agents (optional — you will be asked)"
+        "Phase 10: Deploy AgentCore agents"
+        "Phase 11: Generate UI configuration"
+        "Phase 12: Warmup agent runtimes"
+        "Phase 13: Deploy Quick MCP Gateway (optional — you will be asked)"
     )
     
     print_status "The following steps will be executed:"
     echo ""
     
+    # The phase number comes from each label, NOT from the array index. The list happens to be
+    # contiguous now, but it was not while Phase 9 was held vacant, and an index-derived number
+    # mislabels every phase after any gap.
     for i in "${!steps[@]}"; do
-        local step_num=$((i + 1))
+        local step_num="${steps[$i]#Phase }"
+        step_num="${step_num%%:*}"
         if [ "$step_num" -ge "$RESUME_AT_STEP" ]; then
             print_status "  ✅ ${steps[$i]}"
         else
@@ -4969,7 +4987,7 @@ confirm_deployment_steps() {
 # Function to warm up agent runtimes by sending test prompts
 # This helps initialize the agent containers and reduces cold start latency
 warmup_agent_runtimes() {
-    print_step "Step 11: Warming up agent runtimes..."
+    print_step "Step 12: Warming up agent runtimes..."
     
     local global_config_file="${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
     local agentcore_info_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
@@ -5346,7 +5364,7 @@ WARMUP_SCRIPT
     return 0
 }
 
-# Phase 9 (optional): deploy the IAB AAMP buyer & seller agents.
+# Phase 8 (optional): deploy the IAB AAMP buyer & seller agents.
 #
 # Gates deploy_aamp_agents() behind an explicit choice, because the phase clones
 # the IAB repos (or reads --local-aamp) and provisions two additional AgentCore
@@ -5355,7 +5373,7 @@ WARMUP_SCRIPT
 # how the external A2A agents step behaves.
 prompt_and_deploy_aamp_agents() {
     if [ "$DEPLOY_AAMP" = "false" ]; then
-        print_status "⏭️  Step 9: Skipping AAMP agents (--skip-aamp)."
+        print_status "⏭️  Step 8: Skipping AAMP agents (--skip-aamp)."
         return 0
     fi
 
@@ -5377,7 +5395,7 @@ prompt_and_deploy_aamp_agents() {
         if [ "$INTERACTIVE_MODE" != true ] || [ "$SKIP_CONFIRMATIONS" = true ]; then
             print_status "Non-interactive mode: skipping AAMP agents."
             print_status "Deploy later with:"
-            print_status "  $0 --resume-at 9 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            print_status "  $0 --resume-at 8 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
             return 0
         fi
 
@@ -5386,7 +5404,7 @@ prompt_and_deploy_aamp_agents() {
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             print_status "Skipping AAMP agents."
             print_status "You can deploy them later with:"
-            print_status "  $0 --resume-at 9 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            print_status "  $0 --resume-at 8 --deploy-aamp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
             return 0
         fi
     fi
@@ -5395,7 +5413,164 @@ prompt_and_deploy_aamp_agents() {
 }
 
 # =============================================================================
-# Phase 12 (optional): Quick MCP Gateway
+# ---------------------------------------------------------------------------
+# Phase 9 (optional): the AdCP reference agents.
+#
+# Three agents come up: the reference buyer (with its own UI), the reference seller, and the reference
+# governance agent. Only the buyer speaks A2A, so only the buyer is wired into this repo's config —
+# see aidlc-docs/construction/adcp-config-wiring/functional-design/.
+#
+# The subtree keeps its own Cognito pool and its own deploy driver
+# (external-agents/adcp/deploy_all.py), so this phase runs that driver whole and wires the result in.
+# It does not reimplement any of it, and does not drive it step by step: those step numbers are the
+# subtree's own and are referenced by its docs.
+#
+# Runs BEFORE the AgentCore deploy at Phase 10 for the same reason AAMP does — the AgentCore agents
+# read their configuration at deploy time, so a buyer wired in afterwards is absent from the config
+# they loaded.
+# ---------------------------------------------------------------------------
+ADCP_DIR="${PROJECT_ROOT}/external-agents/adcp"
+ADCP_BUYER_ENV="${ADCP_DIR}/agents/buyer/reference-buyer/.env"
+
+deploy_adcp_agents() {
+    print_step "Step 9: Deploying AdCP reference agents (buyer + UI, seller, governance)..."
+
+    if [ ! -f "${ADCP_DIR}/deploy_all.py" ]; then
+        print_error "❌ ${ADCP_DIR}/deploy_all.py not found — cannot deploy the AdCP agents."
+        print_status "   The AdCP subtree ships with this repo, so a missing driver means an incomplete checkout."
+        return 1
+    fi
+
+    # The AdCP subtree names EVERY resource from its own "instance prefix", so that prefix has to be
+    # derived from this stack rather than left to the subtree's default. Passing it explicitly is also
+    # what stops `resolve_prefix` falling back to whatever `deployments.local.json` happens to hold —
+    # a manifest copied from another checkout was silently adopted that way once, and the deploy then
+    # updated another project's runtimes because every name matched theirs.
+    #
+    # Derived as <STACK_PREFIX><UNIQUE_ID>, sanitised to the subtree's rule: lowercase letters and
+    # digits, starting with a letter, 20 characters or fewer. Including the unique id keeps two stacks
+    # in one account apart — dm1 and dm2 would otherwise collide on a bare stack prefix.
+    local adcp_prefix
+    adcp_prefix=$(printf '%s%s' "$STACK_PREFIX" "$UNIQUE_ID" \
+        | tr '[:upper:]' '[:lower:]' \
+        | tr -cd 'a-z0-9' \
+        | cut -c1-20)
+    # A leading digit is invalid there; prefix a letter rather than dropping information.
+    case "$adcp_prefix" in
+        [0-9]*) adcp_prefix="a${adcp_prefix}"; adcp_prefix=$(printf '%s' "$adcp_prefix" | cut -c1-20) ;;
+    esac
+    if [ -z "$adcp_prefix" ]; then
+        print_error "❌ Could not derive an AdCP instance prefix from STACK_PREFIX='$STACK_PREFIX' and UNIQUE_ID='$UNIQUE_ID'."
+        return 1
+    fi
+
+    print_status "  Running the AdCP deploy driver (provisions its own Cognito pool, runtimes and UI)..."
+    print_status "  AdCP instance prefix: ${adcp_prefix} (derived from ${STACK_PREFIX}/${UNIQUE_ID})"
+    if ! (cd "$ADCP_DIR" && $PYTHON_CMD deploy_all.py --prefix "$adcp_prefix"); then
+        print_error "❌ The AdCP deploy failed. Nothing was wired into this repo's configuration."
+        print_status "   Re-run just this phase:"
+        print_status "     $0 --resume-at 9 --deploy-adcp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+        print_status "   Or drive it directly:  cd external-agents/adcp && $PYTHON_CMD deploy_all.py"
+        return 1
+    fi
+
+    # Wire the deployed buyer in: two SSM credential parameters, an external_agent_configs entry on
+    # AgencyAgent, and the directly selectable AdCPBuyer entry. wire_adcp_agents.py is a no-op when the
+    # buyer's A2A runtime ARN is absent, so a partial AdCP deploy cannot leave a config entry pointing
+    # at a runtime that does not exist.
+    print_status "  Wiring the AdCP buyer into the agent configuration..."
+    local agent_config_dir="${PROJECT_ROOT}/agentcore/deployment/agent"
+    local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
+    local config_table
+    config_table=$(get_stack_output "$infrastructure_services_stack" "AgentConfigTableName")
+
+    local wire_args=(
+        --config "${agent_config_dir}/global_configuration.json"
+        --region "$AWS_REGION"
+        --stack-prefix "$STACK_PREFIX"
+        --unique-id "$UNIQUE_ID"
+        --adcp-env "$ADCP_BUYER_ENV"
+    )
+    if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
+        wire_args+=(--dynamodb-table "$config_table")
+    else
+        print_warning "  ⚠️  AgentConfig table not resolved — patching the local config only."
+        print_warning "      The running UI reads DynamoDB, so it will not see the AdCP buyer until a"
+        print_warning "      later phase uploads the config."
+    fi
+    if [ -n "$AWS_PROFILE" ]; then
+        wire_args+=(--profile "$AWS_PROFILE")
+    fi
+
+    if ! $PYTHON_CMD "${SCRIPT_DIR}/wire_adcp_agents.py" "${wire_args[@]}"; then
+        print_error "❌ AdCP agents deployed, but wiring them into the configuration failed."
+        print_status "   The runtimes exist; only this repo's config is missing them. Re-run the wiring:"
+        print_status "     $PYTHON_CMD scripts/wire_adcp_agents.py \\"
+        print_status "       --config ${agent_config_dir}/global_configuration.json \\"
+        print_status "       --region $AWS_REGION --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID \\"
+        print_status "       --adcp-env $ADCP_BUYER_ENV"
+        return 1
+    fi
+
+    # A running AdFabricAgent caches GLOBAL_CONFIG at cold start, so writing the config is not enough
+    # on its own. In a full deployment this is harmless: Phase 10 deploys the AgentCore agents after
+    # this phase, and a fresh container loads the config written here. It matters when Phase 9 is run
+    # alone against an already-deployed stack -- the warm container goes on using the config it started
+    # with, and the AdCP buyer stays unreachable while every config check looks correct.
+    #
+    # Cost us real time to diagnose: an invocation kept reporting protocol=crew, and therefore kept
+    # being rejected by the AdCP runtime, after the config had already been corrected.
+    if [ "$RESUME_AT_STEP" -gt 1 ]; then
+        print_warning "  ⚠️  A running AdFabricAgent caches its configuration at start-up."
+        print_status  "      If you ran this phase on its own, the AdCP buyer will not be reachable"
+        print_status  "      until that cache is refreshed. Either continue through Phase 10, which"
+        print_status  "      redeploys the AgentCore agents, or send one invocation carrying"
+        print_status  "      {\"refresh_cache\": true} to pick up the new configuration."
+    fi
+
+    print_success "✅ Step 9 Complete: AdCP agents deployed and wired."
+    return 0
+}
+
+# Gates deploy_adcp_agents() behind an explicit choice, because the phase provisions a separate Cognito
+# pool, three AgentCore runtimes and a CloudFront-hosted UI, all of which add to cost. Precedence
+# matches AAMP: --deploy-adcp/--skip-adcp win outright; otherwise interactive runs are asked and
+# non-interactive runs skip.
+prompt_and_deploy_adcp_agents() {
+    if [ "$DEPLOY_ADCP" = "false" ]; then
+        print_status "⏭️  Step 9: Skipping AdCP agents (--skip-adcp)."
+        return 0
+    fi
+
+    if [ "$DEPLOY_ADCP" != "true" ]; then
+        echo ""
+        print_status "=========================================="
+        print_status "🧩 OPTIONAL: AdCP reference agents (Phase 9)"
+        print_status "=========================================="
+        print_status "Deploys the AdCP reference buyer (with its own UI), reference seller and"
+        print_status "reference governance agent from external-agents/adcp."
+        print_warning "⚠️  Provisions a separate Cognito user pool, three AgentCore runtimes and a"
+        print_warning "    CloudFront-hosted UI, which add to cost."
+        print_status "Skipping is safe — the rest of the deployment does not depend on these agents."
+        if [ "$INTERACTIVE_MODE" != true ] || [ "$SKIP_CONFIRMATIONS" = true ]; then
+            print_status "Non-interactive mode: skipping AdCP agents."
+            print_status "Deploy later with:"
+            print_status "  $0 --resume-at 9 --deploy-adcp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+        printf "Deploy the AdCP agents now? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            print_status "Skipping AdCP agents."
+            print_status "You can deploy them later with:"
+            print_status "  $0 --resume-at 9 --deploy-adcp --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+            return 0
+        fi
+    fi
+    deploy_adcp_agents
+}
+
+# Phase 13 (optional): Quick MCP Gateway
 # =============================================================================
 # Puts an AgentCore MCP Gateway in front of the a4a-mcp-handler Lambda so Amazon
 # Quick Suite web, Quick Desktop, Kiro and Claude Desktop can call the agents.
@@ -5405,10 +5580,10 @@ prompt_and_deploy_aamp_agents() {
 # has no caller and an empty GUIDANCE_RUNTIME_ARN, so it is inert.
 #
 # Ordering: the gateway target points at the Lambda, and the Lambda invokes the
-# AgentCore runtime, so this must run after Phase 2 (Lambda) and Phase 8 (runtime).
+# AgentCore runtime, so this must run after Phase 2 (Lambda) and Phase 10 (runtime).
 # That is why it sits at the end rather than next to the other Lambda work.
 
-# Resolve the deployed AdFabricAgent runtime ARN from the Phase 8 state file.
+# Resolve the deployed AdFabricAgent runtime ARN from the Phase 10 state file.
 # Echoes the ARN, or nothing if it cannot be determined.
 _quick_gw_runtime_arn() {
     local state_file="${PROJECT_ROOT}/.agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json"
@@ -5516,7 +5691,7 @@ print(json.dumps(policy))
 }
 
 deploy_quick_gateway() {
-    print_step "Step 12: Deploying Quick MCP Gateway..."
+    print_step "Step 13: Deploying Quick MCP Gateway..."
 
     local mcp_deploy_script="${PROJECT_ROOT}/agentcore/deployment/deploy_a4a_mcp_handler.py"
     local lambda_name="${STACK_PREFIX}-a4a-mcp-handler-${UNIQUE_ID}"
@@ -5551,8 +5726,8 @@ deploy_quick_gateway() {
     runtime_arn=$(_quick_gw_runtime_arn)
     if [ -z "$runtime_arn" ]; then
         print_error "❌ Could not determine the AgentCore runtime ARN."
-        print_error "   It is recorded by Phase 8 (Deploy AgentCore agents) in"
-        print_error "   .agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json. Run Phase 8 first."
+        print_error "   It is recorded by Phase 10 (Deploy AgentCore agents) in"
+        print_error "   .agentcore-agents-${STACK_PREFIX}-${UNIQUE_ID}.json. Run Phase 10 first."
         return 1
     fi
     print_status "   Runtime: ${runtime_arn}"
@@ -5603,12 +5778,12 @@ deploy_quick_gateway() {
     return 0
 }
 
-# Phase 12 (optional): gate deploy_quick_gateway() behind an explicit choice.
+# Phase 13 (optional): gate deploy_quick_gateway() behind an explicit choice.
 # Precedence matches the AAMP phase: --deploy-quick-gateway/--skip-quick-gateway win
 # outright; otherwise interactive runs are asked and non-interactive runs skip.
 prompt_and_deploy_quick_gateway() {
     if [ "$DEPLOY_QUICK_GATEWAY" = "false" ]; then
-        print_status "⏭️  Step 12: Skipping Quick MCP Gateway (--skip-quick-gateway)."
+        print_status "⏭️  Step 13: Skipping Quick MCP Gateway (--skip-quick-gateway)."
         return 0
     fi
 
@@ -5857,12 +6032,18 @@ main() {
     # Phase 5: Sync data sources (start ingestion jobs)
     # Phase 6: Upload agent configurations to S3
     # Phase 7: Upload agent configurations to DynamoDB
-    # Phase 8: Deploy AgentCore agents
-    # Phase 9: Deploy AAMP agents (optional, opt-in)
-    # Phase 10: Generate UI configuration
-    # Phase 11: Warm up agent runtimes with test prompts
+    # Phase 8: Deploy AAMP agents (optional, opt-in)
+    # Phase 9: Deploy AdCP agents (optional, opt-in)
+    # Phase 10: Deploy AgentCore agents
+    # Phase 11: Generate UI configuration
+    # Phase 12: Warm up agent runtimes with test prompts
+    # Phase 13: Deploy Quick MCP Gateway (optional, opt-in)
     #
-    # Phase 9 is where the AdCP MCP Gateway used to sit. The gateway has been
+    # The optional external-agent phases (8, 9) run BEFORE the AgentCore deploy at 10, because the
+    # AgentCore agents read their configuration at deploy time and would not see a pair deployed
+    # after them.
+    #
+    # An earlier layout had the AdCP MCP Gateway at Phase 9. The gateway has been
     # removed: AdCP is served by the AdCP-compliant reference agents
     # AdCPBuyerAgent and AdCPSellerAgent instead. cleanup_adcp_gateway() is the
     # only gateway code left, so `--cleanup` still tears down a gateway left over
@@ -5920,31 +6101,39 @@ main() {
         upload_tab_configurations_to_dynamodb
     fi
     
+    # Phase 8 (optional): deploy the AAMP agents (IAB buyer & seller), resolve config from template
+    # with their runtime ARNs, and upload to DynamoDB.
+    #
+    # This runs BEFORE the AgentCore agents (Phase 10), not after. AdFabricAgent and the other
+    # AgentCore agents read their configuration at deploy time, so an AAMP pair deployed after them
+    # is absent from the config they loaded. Ordering the optional external agents first means the
+    # AgentCore deploy sees whatever exists.
     if [ "$RESUME_AT_STEP" -le 8 ]; then
-        # Deploy AgentCore agents AFTER configs are uploaded
+        prompt_and_deploy_aamp_agents
+    fi
+
+    # Phase 9 (optional): the AdCP reference agents (buyer + its UI, seller, governance). Between
+    # AAMP and the AgentCore deploy for the same reason as Phase 8.
+    if [ "$RESUME_AT_STEP" -le 9 ]; then
+        prompt_and_deploy_adcp_agents
+    fi
+
+    if [ "$RESUME_AT_STEP" -le 10 ]; then
+        # Deploy AgentCore agents AFTER configs are uploaded and after any optional external agents
         detect_and_deploy_agentcore_agents
     fi
 
-    # Phase 9 (optional): deploy the AAMP agents (IAB buyer & seller), resolve
-    # config from template with their runtime ARNs, and upload to DynamoDB.
-    # Runs before the UI config is generated so a deployed AAMP pair is picked up
-    # by the UI build in Phase 10.
-    if [ "$RESUME_AT_STEP" -le 9 ]; then
-        prompt_and_deploy_aamp_agents
-    fi
-    
-    if [ "$RESUME_AT_STEP" -le 10 ]; then
+    if [ "$RESUME_AT_STEP" -le 11 ]; then
         generate_ui_config
     fi
-    
-    if [ "$RESUME_AT_STEP" -le 11 ]; then
+
+    if [ "$RESUME_AT_STEP" -le 12 ]; then
         warmup_agent_runtimes
     fi
 
-    # Phase 12: optional Quick MCP Gateway. Appended after warmup so no existing phase
-    # number changes — the gateway is only consumed by MCP clients via the setup guide,
-    # not by the UI config generated in Phase 10.
-    if [ "$RESUME_AT_STEP" -le 12 ]; then
+    # Phase 13: optional Quick MCP Gateway. Last because the gateway is consumed by MCP clients via
+    # the setup guide, not by the UI config generated in Phase 11.
+    if [ "$RESUME_AT_STEP" -le 13 ]; then
         prompt_and_deploy_quick_gateway
     fi
     
@@ -5972,15 +6161,24 @@ main() {
     print_status "  ✅ Visualization Data: Migrated to DynamoDB for AgentCore agents"
     print_status "  ✅ Agent Runtimes: Warmed up for faster response times"
     
-    # AAMP agents are optional (Step 9) — report only what was actually deployed
+    # AAMP agents are optional (Step 8) — report only what was actually deployed
     local aamp_runtime_file="${PROJECT_ROOT}/.aamp-runtime-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$aamp_runtime_file" ]; then
         print_status "  ✅ AAMP Agents: Deployed (IAB buyer & seller runtimes)"
     else
-        print_status "  ⏭️  AAMP Agents: Not deployed (optional Step 9 — re-run with --resume-at 9 --deploy-aamp)"
+        print_status "  ⏭️  AAMP Agents: Not deployed (optional Step 8 — re-run with --resume-at 8 --deploy-aamp)"
     fi
 
-    # Quick MCP Gateway is optional (Step 12) — report only what was actually deployed
+    # AdCP agents are optional (Step 9). Detected from the buyer's .env holding an A2A runtime ARN,
+    # not from a flag set earlier in this process: a run that resumed past Phase 9 never set the flag
+    # but the agents may well be deployed. Same reasoning as the AAMP state-file check above.
+    if [ -f "$ADCP_BUYER_ENV" ] && grep -q "^BUYER_AGENT_A2A_RUNTIME_ARN=arn:" "$ADCP_BUYER_ENV" 2>/dev/null; then
+        print_status "  ✅ AdCP Agents: Deployed (reference buyer + UI, seller, governance)"
+    else
+        print_status "  ⏭️  AdCP Agents: Not deployed (optional Step 9 — re-run with --resume-at 9 --deploy-adcp)"
+    fi
+
+    # Quick MCP Gateway is optional (Step 13) — report only what was actually deployed
     local quick_gw_file="${PROJECT_ROOT}/.oauth-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     if [ -f "$quick_gw_file" ]; then
         local quick_gw_url
@@ -6002,7 +6200,7 @@ except Exception:
         fi
         print_status "     Setup guide: docs/QUICK_SETUP_GUIDE.md"
     else
-        print_status "  ⏭️  Quick MCP Gateway: Not deployed (optional Step 12 — re-run with --resume-at 12 --deploy-quick-gateway)"
+        print_status "  ⏭️  Quick MCP Gateway: Not deployed (optional Step 13 — re-run with --resume-at 13 --deploy-quick-gateway)"
     fi
 
     # Check if AgentCore agents were actually deployed by looking at the file

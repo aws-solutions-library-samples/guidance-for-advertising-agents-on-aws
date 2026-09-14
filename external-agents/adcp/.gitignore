@@ -1,0 +1,77 @@
+# This subtree is version-controlled in the parent repo, which is public. It was
+# previously excluded wholesale by the parent's `*/adcp/` rule, so everything
+# below became publishable the moment that rule was removed.
+#
+# Eight per-project .gitignore files already exist further down (buyer, seller,
+# governance, each agentcore/ and cdk/ dir). They cover their own subtree only.
+# This file is the root-level net for artifacts that appear in more than one of
+# them, or outside all of them.
+#
+# Each entry is either machine-local state or an artifact that a deploy step
+# renders. Classification follows this project's own tooling — see
+# render_aws_config.py, whose module docstring states which files are generated
+# and which are committed.
+#
+# Deliberately NOT ignored here: the seller's vendored session_records.py and
+# seller_session_recorder.py. The canonical copies live in the buyer package and
+# are committed; deploy_all.py's step_vendor_session_module copies them into each
+# seller before it deploys, and the seller's own .gitignore ignores its copy.
+#
+# Verify with: python3 check_no_hardcoded_identity.py
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# No real .env exists in the tree today; this is prevention, not cleanup. The
+# .env.example files ARE committed and use the reserved 123456789012 account.
+.env
+.env.local
+*.env
+!.env.example
+
+# ── Machine-local state ──────────────────────────────────────────────────────
+# Maps an instance prefix to the account+region that deployed it. The README
+# describes this as local and gitignored; it holds a real account number.
+deployments.local.json
+
+# AgentCore CLI state for a specific deployment, including runtime ids. The whole
+# directory rather than deployed-state.json and logs/ by name: only the seller's
+# agentcore/.gitignore has a local `.cli/*`, so for governance this net was the
+# only rule, and it had to enumerate every file the CLI happens to write.
+**/.cli/
+
+# ── Deploy logs ──────────────────────────────────────────────────────────────
+# Full deploy transcripts: real ARNs, account ids, runtime ids.
+*.log
+
+# ── Test caches ──────────────────────────────────────────────────────────────
+# pytest writes .pytest_cache/.gitignore containing `*`, so these directories have
+# been ignoring themselves. Naming them here does not depend on that file
+# surviving a clean, and three of them exist (buyer, seller app, governance app).
+.pytest_cache/
+
+# ── Rendered deploy artifacts ────────────────────────────────────────────────
+# The account+region the agentcore CLI deploys to. render_aws_config.py has a
+# section headed "Why aws-targets.json cannot simply be committed".
+**/agentcore/aws-targets.json
+
+# Assembled by render_agentcore_json.py from agents/_shared/agentcore.base.json
+# plus each agent's agentcore.fragment.json (deploy_all.py step 0.2,
+# materialize-agentcore), then filled in place by the governance-origin,
+# buyer-ui-origin and propagate-cognito steps. render_agentcore_json.py's
+# docstring and deploy_all.py's step 0.2 comment both already describe this file
+# as gitignored; until this rule existed it was not, and the two on-disk copies
+# carried a CloudFront distribution id, two distribution domains and a Cognito
+# user pool id. The fragments and the base stay tracked — the glob does not match
+# their names.
+**/agentcore/agentcore.json
+
+# IAM policy documents rendered from their committed *-policy.template.json
+# sibling, with the account substituted in. The templates stay tracked — the
+# negation below is load-bearing, since the glob above would otherwise swallow
+# them and a deploy would have nothing to render from.
+**/app/*/*-policy.json
+!**/app/*/*-policy.template.json
+
+# ── OS / editor residue ──────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db

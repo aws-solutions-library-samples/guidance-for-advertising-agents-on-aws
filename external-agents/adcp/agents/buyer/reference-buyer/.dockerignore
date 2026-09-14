@@ -1,0 +1,93 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Python cache
+__pycache__/
+__pycache__*
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+.env
+venv/
+env/
+ENV/
+
+# Node.js
+node_modules/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage*
+htmlcov/
+.tox/
+*.cover
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Development
+*.log
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Project specific
+tests/
+
+# Bedrock AgentCore specific - keep config but exclude runtime files
+.bedrock_agentcore.yaml
+.dockerignore
+.bedrock_agentcore/
+
+# Keep wheelhouse for offline installations
+# wheelhouse/
+
+# Monorepo directories
+cdk/
+terraform/
+mcp/lambda/
+
+# The React UI source and build.
+#
+# Excluded because the container never serves it: like the vanilla static/index.html in a deployed
+# setup, the built React app is published to S3 and served by CloudFront (deploy_ui.py). app.py's
+# /react route exists for local development, and reports that the build is absent rather than
+# failing when it is, which is exactly the right answer inside the container.
+#
+# node_modules/ and dist/ are already covered above; this makes the intent explicit and keeps ~2 MB
+# of TypeScript source out of every image build.
+ui/
+
+# Tests. Both bare and **/-prefixed: Docker matches .dockerignore patterns root-relative, so a bare
+# pattern misses nested copies. requirements-dev.txt is excluded for the same reason the image carries no
+# test runner.
+test_*.py
+**/test_*.py
+requirements-dev.txt

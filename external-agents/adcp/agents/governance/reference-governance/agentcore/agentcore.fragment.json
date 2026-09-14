@@ -1,0 +1,37 @@
+{
+  "name": "RefGovernance",
+  "runtime": {
+    "codeLocation": "app/adcpRefGovernance/",
+    "protocol": "MCP",
+    "enableOtel": true,
+    "envVars": [
+      {
+        "name": "STATE_TABLE_NAME",
+        "value": "{prefix}-reference-governance-state"
+      },
+      {
+        "name": "GOVERNANCE_MODE",
+        "value": "enforce"
+      },
+      {
+        "name": "GOVERNANCE_SIGNING_KMS_KEY_ID",
+        "value": "alias/{prefix}-governance-signing"
+      },
+      {
+        "name": "GOVERNANCE_SIGNING_ALG",
+        "value": "ecdsa-p256-sha256"
+      },
+      {
+        "name": "GOVERNANCE_SIGNING_KID",
+        "value": "adcp-gov-2026-08"
+      }
+    ],
+    "additionalPolicies": [
+      "state-table-policy.json",
+      "signing-key-policy.json"
+    ],
+    "requestHeaderAllowlist": [
+      "Authorization"
+    ]
+  }
+}

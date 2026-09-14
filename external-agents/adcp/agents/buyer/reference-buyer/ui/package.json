@@ -1,0 +1,43 @@
+{
+  "name": "adcp-buyer-agent-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React UI for the AdCP buyer agent. Built alongside the existing static/index.html, which stays deployable until this reaches parity.",
+  "//versionNotes": {
+    "jsdom": "Held at 29.0.0 rather than latest: 30.x requires node ^22.22.2 and this machine runs 22.19.0, which installs with an EBADENGINE warning onto an unsupported runtime. 29.0.0 supports ^22.13.0. Raise once node is newer.",
+    "all": "Exact versions, no ranges, so a fresh install cannot silently pick up a different build than the one verified here."
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1126.0",
+    "@aws-sdk/credential-provider-cognito-identity": "^3.972.69",
+    "dompurify": "3.4.13",
+    "marked": "18.0.9",
+    "motion": "13.0.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.18.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "fast-check": "4.9.0",
+    "jsdom": "29.0.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,8 @@
+# Dev-only dependencies. Deliberately NOT in requirements.txt, which is the container image's manifest:
+# the deployed buyer runtime has no reason to carry a test runner.
+#
+# The buyer's main test suite is the UI's vitest run (agents/buyer/reference-buyer/ui). This file exists
+# for the Python-side unit tests that grew alongside the governance tools, where the behaviour under test
+# is pure logic worth pinning (flight-window normalisation, governance-agent resolution).
+-r requirements.txt
+pytest==9.1.1
