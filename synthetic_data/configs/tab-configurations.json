@@ -905,7 +905,7 @@
       "icon": "shopping_cart",
       "defaultAgent": "AdCPBuyerAgent",
       "availableAgents": [
-        "AdCPBuyerAgent",
+        "AdCPBuyer",
         "AgencyAgent"
       ],
       "scenarios": [
@@ -948,7 +948,7 @@
         {
           "id": "adcp-sync-governance",
           "title": "5. Bind Governance to the Sellers",
-          "description": "sync_governance — the seller-side bind step that tells each seller which governance agent owns this buyer's plans.",
+          "description": "sync_governance \u2014 the seller-side bind step that tells each seller which governance agent owns this buyer's plans.",
           "query": "Register your governance agent with every seller, for brand domain acmeenergy.example and operator Omnicom Media Group. This is the seller-side bind step: it tells each seller which governance agent owns our plans so it can consult that agent before executing a spend commit. Confirm per seller. If any seller returns ACCOUNT_NOT_FOUND, name it so we can re-run the account sync for that seller before retrying.",
           "category": "AdCP Accounts & Governance",
           "agentType": "AdCPBuyerAgent",
@@ -967,7 +967,7 @@
           "id": "adcp-check-governance",
           "title": "7. Authorize the Buy (Intent Check)",
           "description": "check_governance before any spend commit. The payload mirrors the full create_media_buy body so every governed dimension is actually checked.",
-          "query": "Before we spend anything, run the intent-phase governance check for the buy we are about to place on plan plan-acme-q4-2026. Scope it to the seller that owns the first product you recommended, with tool_name create_media_buy, and a payload that mirrors the FULL create_media_buy body — not just a budget: the package with its product_id, budget and pricing_option_id, the flight window as start_time 2026-10-01 and end_time 2026-12-31, and a targeting_overlay with geo_countries ['US'] and geo_regions ['US-CA','US-TX']. Report the verdict, the check_id, and whether a governance_context token was issued. If the verdict is 'conditions', list the conditions and treat it as NOT approved.",
+          "query": "Before we spend anything, run the intent-phase governance check for the buy we are about to place on plan plan-acme-q4-2026. Scope it to the seller that owns the first product you recommended, with tool_name create_media_buy, and a payload that mirrors the FULL create_media_buy body \u2014 not just a budget: the package with its product_id, budget and pricing_option_id, the flight window as start_time 2026-10-01 and end_time 2026-12-31, and a targeting_overlay with geo_countries ['US'] and geo_regions ['US-CA','US-TX']. Report the verdict, the check_id, and whether a governance_context token was issued. If the verdict is 'conditions', list the conditions and treat it as NOT approved.",
           "category": "AdCP Media Buy",
           "agentType": "AdCPBuyerAgent",
           "stepOrder": 7
@@ -985,7 +985,7 @@
           "id": "adcp-report-outcome",
           "title": "9. Close the Governance Loop",
           "description": "report_plan_outcome with the seller's actual confirmed budget, so the plan's tracked spend matches reality.",
-          "query": "Close the governance loop for plan plan-acme-q4-2026. Report the outcome of that booking with outcome 'completed', the check_id that authorised it, the governance_context, the seller reference, and the seller's ACTUAL confirmed budget from its response — never the amount we originally requested, since a seller may confirm a different figure. Confirm the plan's tracked budget now reflects the commitment.",
+          "query": "Close the governance loop for plan plan-acme-q4-2026. Report the outcome of that booking with outcome 'completed', the check_id that authorised it, the governance_context, the seller reference, and the seller's ACTUAL confirmed budget from its response \u2014 never the amount we originally requested, since a seller may confirm a different figure. Confirm the plan's tracked budget now reflects the commitment.",
           "category": "AdCP Media Buy",
           "agentType": "AdCPBuyerAgent",
           "stepOrder": 9
@@ -994,7 +994,7 @@
           "id": "adcp-idempotent-retry",
           "title": "10. Idempotent Retry",
           "description": "Re-send the same create_media_buy with the same idempotency_key and confirm the seller returns the existing buy instead of double-booking.",
-          "query": "Re-send the exact same create_media_buy for idempotency key acme-q4-2026-ctv-pkg-001 — same seller, product, pricing option, budget and flight. AdCP specifies that a repeated idempotency key for the same account returns the EXISTING media buy rather than creating a second one. Tell me whether you got the same media_buy_id back, and confirm no duplicate buy and no duplicate commitment were created. If the seller instead created a second buy, report that as a conformance problem on the seller's side.",
+          "query": "Re-send the exact same create_media_buy for idempotency key acme-q4-2026-ctv-pkg-001 \u2014 same seller, product, pricing option, budget and flight. AdCP specifies that a repeated idempotency key for the same account returns the EXISTING media buy rather than creating a second one. Tell me whether you got the same media_buy_id back, and confirm no duplicate buy and no duplicate commitment were created. If the seller instead created a second buy, report that as a conformance problem on the seller's side.",
           "category": "AdCP Media Buy",
           "agentType": "AdCPBuyerAgent",
           "stepOrder": 10
@@ -1021,7 +1021,7 @@
           "id": "adcp-governance-denial",
           "title": "13. Governance Denial: Out-of-Market Buy",
           "description": "Attempt a buy targeting a market the plan never authorised, and show the governance agent refusing it.",
-          "query": "We have a request to extend the campaign into Canada. Run the governance check for an additional $100,000 USD buy on plan plan-acme-q4-2026 against the same seller and product, tool_name create_media_buy, flight 2026-10-01 to 2026-12-31, with targeting_overlay geo_countries ['CA']. The plan authorises only US, US-CA and US-TX, so I expect this to be denied. Report the verdict and the governance agent's stated reason. Do NOT send anything to the seller, and do not resize or retarget the buy to get it through — the boundary is the plan's, not yours to move.",
+          "query": "We have a request to extend the campaign into Canada. Run the governance check for an additional $100,000 USD buy on plan plan-acme-q4-2026 against the same seller and product, tool_name create_media_buy, flight 2026-10-01 to 2026-12-31, with targeting_overlay geo_countries ['CA']. The plan authorises only US, US-CA and US-TX, so I expect this to be denied. Report the verdict and the governance agent's stated reason. Do NOT send anything to the seller, and do not resize or retarget the buy to get it through \u2014 the boundary is the plan's, not yours to move.",
           "category": "AdCP Governance Enforcement",
           "agentType": "AdCPBuyerAgent",
           "stepOrder": 13
@@ -1048,7 +1048,7 @@
           "title": "LuxeChoco RFP: Christmas Campaign",
           "description": "Atlas Media Group RFP for Acme Consumer Goods' LuxeChoco premium chocolate Q4 Christmas campaign across European markets.",
           "stage": 0,
-          "query": "We received an RFP from Atlas Media Group for Acme Consumer Goods' LuxeChoco premium chocolate Q4 Christmas campaign targeting affluent adults 25-55 in Germany, UK, France, Netherlands, Belgium. Budget €2.5M across 8 weeks Nov-Dec. They want CTV, digital video, and native across lifestyle and premium editorial content. Build a media plan proposal with our available inventory, pricing, and audience reach estimates.",
+          "query": "We received an RFP from Atlas Media Group for Acme Consumer Goods' LuxeChoco premium chocolate Q4 Christmas campaign targeting affluent adults 25-55 in Germany, UK, France, Netherlands, Belgium. Budget \u20ac2.5M across 8 weeks Nov-Dec. They want CTV, digital video, and native across lifestyle and premium editorial content. Build a media plan proposal with our available inventory, pricing, and audience reach estimates.",
           "category": "Publisher Revenue Operations",
           "agentType": "MediaPlanningAgent"
         },

@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "adcpRefGovernance"
+version = "0.1.0"
+description = "AdCP reference campaign-governance agent, deployed as an AgentCore MCP server"
+readme = "README.md"
+# Matches the Triton seller's reasoning: pinned to the LOWER of the two candidates so code that
+# works locally also works on the runtime's Python. See that package's note.
+requires-python = ">=3.12"
+dependencies = [
+    # The AdCP SDK. `adcp.server.governance.GovernanceHandler` is the base class this agent
+    # subclasses, and `adcp.server.serve` runs it as an MCP server. Same pin as both sellers, so
+    # one protocol version is in play across the whole repo.
+    "adcp==6.6.0",
+    # Pinned to match both sellers, so all three agents run the same MCP transport rather than whatever
+    # each lockfile resolves to independently.
+    #
+    # Honest history: this pin was introduced while chasing a `421 Misdirected Request` and I wrongly
+    # blamed the version difference (governance had resolved 1.29.0, the working sellers 1.28.1).
+    # Redeploying on 1.28.1 did NOT fix it. The real cause was a missing
+    # `enable_dns_rebinding_protection=False` in `main.py`'s `serve()` call -- FastMCP's host-header
+    # check. The pin is kept because version parity across the three agents is worth having on its own,
+    # not because it fixed anything.
+    "mcp==1.28.1",
+    "boto3==1.43.56",
+    # Imported DIRECTLY by runtime modules, so declared rather than relied on transitively -- the same
+    # reasoning already applied to `httpx` below. All three do arrive via `boto3` / `adcp` today, and that
+    # is exactly what makes the omission easy to miss: nothing fails until a dependency bump changes what
+    # gets pulled in, and then it fails as an ImportError on the first request in a container that built
+    # and deployed clean.
+    #
+    #   botocore      `aggregation.py` and `idempotency_backend.py` -> `botocore.config.Config`
+    #                 (connect/read timeouts on the aggregate's client)
+    #   pydantic      `state.py` -> `AnyUrl`
+    #   cryptography  `jws.py` -> `load_der_public_key`, for the KMS-signed governance_context
+    #
+    # Pinned to the versions already resolved, so declaring them changes nothing about what is installed.
+    "botocore==1.43.67",
+    "pydantic==2.13.4",
+    "cryptography==50.0.0",
+    # The governance_context this agent ISSUES is signed with the SDK's own `adcp.signing` primitives,
+    # so the algorithm set and the byte-exact signing input match what AdCP verifiers expect. Nothing
+    # below replaces that, and signing must not move to a general-purpose JWT library.
+    #
+    # `pyjwt` is here for the opposite direction: DECODING the inbound Cognito access token's claims to
+    # recover the authenticated caller and the credential a plan is registered under (M12 -- AdCP requires
+    # the agent to verify the bearer token matches a registered credential for the account). Claims only:
+    # AgentCore Runtime's Cognito authorizer verifies the signature, expiry and client allowlist before
+    # the request reaches this container, and re-verifying would mean holding the pool's JWKS here to
+    # repeat work the platform already did as the security boundary. Same version and same purpose as the
+    # reference seller's pin.
+    #
+    # An earlier version of this comment said "no separate JWT library", which stopped being true when the
+    # inbound identity was wired up.
+    "pyjwt==2.13.0",
+    "python-dotenv==1.1.1",
+    # Imported directly by `httpx` -- already resolved transitively via `adcp`/`mcp`, but declared
+    # here because `handle_get_creative_features` (U4/Part 1) calls it itself to fetch a submitted
+    # creative's image bytes over HTTPS.
+    "httpx==0.28.1",
+    # U4/Part 1: real, computed creative evaluation (dimension conformance, WCAG contrast) needs real
+    # pixel access -- Pillow reads the fetched image bytes without a system-level dependency beyond
+    # what the Dockerfile already installs for it (libjpeg/libpng ship in the slim base's wheel).
+    "pillow==11.1.0",
+    # Real OCR for the urgency-claim/text-extraction feature (R22.1) -- a Python binding over the
+    # `tesseract-ocr` system binary the Dockerfile installs. Without a real OCR pass, "does this image
+    # contain an urgency claim" would have to be answered by something other than reading the image,
+    # which this project's no-fabricated-data rule does not allow for a feature claiming to be
+    # genuinely computed.
+    "pytesseract==0.3.13",
+    # OpenTelemetry, via AWS's distro. Required by `instrumentation.enableOtel: true` in agentcore.json
+    # and by the Dockerfile's `opentelemetry-instrument` CMD -- all three are needed and none works
+    # alone: enableOtel supplies the environment and the export endpoint, the distro supplies the
+    # instrumentation libraries, and the CMD wrapper is what activates them. `opentelemetry-instrument`
+    # exits non-zero if this package is absent, so a missing pin here is a startup failure rather than a
+    # quietly untraced agent.
+    #
+    # An exception to NFR-17's "no new runtime dependencies", taken deliberately: the alternative is
+    # hand-instrumenting spans in every handler, which is more code in the request path for a worse
+    # result. Pinned exactly, like everything else here.
+    "aws-opentelemetry-distro==0.19.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "moto==5.2.2",
+    "hypothesis==6.145.1",
+    "pytest-asyncio==1.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

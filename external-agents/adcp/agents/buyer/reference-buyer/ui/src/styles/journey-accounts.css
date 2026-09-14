@@ -1,0 +1,188 @@
+/*
+ * The Accounts panel's per-seller strip.
+ *
+ * NOT authored, and in its own file for the same reason as `journey-mediabuy.css`: `journey.css` is
+ * generated from `.kiro/specs/journey.html` and diffed against it by a fidelity test, so it may not
+ * gain rules. This file is ours.
+ *
+ * Same visual grammar as the Media Buy strip (`journey-mediabuy.css`): a header carrying the facts
+ * that are shared across the cards, then a scroll of cards with exactly one at full opacity while the
+ * rest are dimmed. The palette borrows the journey's variables (`--peri`, `--cyan`, `--purple-lt`,
+ * the `--mono` stack, and the muted purples `#a99fce` / `#8d84ad` the authored panels use for
+ * secondary text), so it reads as part of the same view rather than a second theme.
+ *
+ * `sync_accounts` returns the SAME account from every seller — same brand and operator, a different
+ * account_id each — so the account's natural key is lifted to the header and shown once, and each
+ * card carries only what actually differs: the seller, its account_id, and the action/status it
+ * reported.
+ */
+
+.journey-root .acctstrip {
+  margin-top: 16px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+}
+.journey-root .acctstrip.on {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- header: the shared account key, shown once ---- */
+.journey-root .acct-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.journey-root .acct-account {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.journey-root .acct-account-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8d84ad;
+}
+.journey-root .acct-account-key {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: #d7d2e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-root .acct-chip {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #d7d2e8;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.journey-root .acct-chip .acct-lbl {
+  font-family: var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: #a99fce;
+  margin-right: 4px;
+}
+
+/* ---- the scroll of seller cards ----
+ * A fixed max height with its own scroll, so a run with many sellers stays contained rather than
+ * pushing the rest of the panel down. */
+.journey-root .acct-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.journey-root .acct-card {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 12px 14px;
+  opacity: 0.42;
+  transition:
+    opacity 0.5s ease,
+    box-shadow 0.5s ease,
+    transform 0.5s ease;
+}
+.journey-root .acct-card.active {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(238, 140, 252, 0.5),
+    0 18px 50px -30px rgba(140, 42, 252, 0.8);
+}
+
+.journey-root .acct-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.journey-root .acct-seller {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journey-root .acct-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: none;
+}
+.journey-root .acct-pill {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+/* action: created/updated/unchanged read as progress in the journey's cyan; a failed action is the
+ * one negative value in the enum and is tinted like the failed card state. */
+.journey-root .acct-pill.action {
+  background: rgba(0, 179, 164, 0.16);
+  color: var(--cyan);
+}
+.journey-root .acct-pill.action.action-failed {
+  background: rgba(255, 107, 107, 0.16);
+  color: #ff6b6b;
+}
+.journey-root .acct-pill.status {
+  background: rgba(140, 140, 250, 0.14);
+  color: var(--peri);
+}
+
+/* the account id: the one thing that differs per seller, so it is the card's body line */
+.journey-root .acct-id {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #cfc7e6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- failed card state ---- */
+.journey-root .acct-state.failed .acct-state-line {
+  color: #ff6b6b;
+  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.journey-root .acct-state-sub {
+  font-size: 13px;
+  color: #a99fce;
+  margin-top: 3px;
+}
+
+/*
+ * Reduced motion: the strip and its cards arrive at their finished state with no fade, and every
+ * card is rendered active by the component so nothing cycles and all data is visible.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .acctstrip,
+  .journey-root .acct-card {
+    transition: none;
+  }
+}

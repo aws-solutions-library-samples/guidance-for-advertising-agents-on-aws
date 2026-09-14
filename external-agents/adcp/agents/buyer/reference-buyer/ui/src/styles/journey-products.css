@@ -1,0 +1,381 @@
+/*
+ * The Discover panel's product rows.
+ *
+ * NOT authored, and kept in its own file for that reason. `journey.css` is generated from
+ * `.kiro/specs/journey.html` and diffed against it by a fidelity test, so adding rules there would
+ * either break that test or quietly make the prototype no longer the source of truth. This file is
+ * ours, and it says so. Same arrangement as its sibling `journey-session.css`.
+ *
+ * The prototype laid products out as a wrap of bare icons (`.dotrow`), which showed how many there
+ * were and nothing about any of them. These rules put a label beside each icon instead. The icon
+ * itself is untouched: `.dot-t`, its `.fill` tint and its reveal transition all still come from the
+ * authored stylesheet, so the marks look exactly as designed.
+ *
+ * Two carousel-style layouts were tried here and both were reverted — see FormatGridBody.tsx's
+ * module doc for why. This is the plain list, wrapped in a box (`.fmtscroll`) that caps its height to
+ * match the constellation below it and, for a long list, autoscrolls on a bare CSS animation rather
+ * than any JS timer.
+ *
+ * The authored vocabulary is borrowed rather than replaced: `var(--mono)` for the factual metadata,
+ * `var(--fc)` for the format's own colour (set per row by the component, as `.dot-t` expects), and
+ * `#a99fce` — the muted purple `.fglabel` and `.dg-note` already use — for secondary text.
+ */
+
+/*
+ * The Discover panel's grid: format groups two to a row, with the constellation as a sibling item
+ * rather than a block underneath.
+ *
+ * Being one grid is the whole point. The constellation is the grid's last item, so when the group
+ * count is odd it lands in the half-empty cell the last group leaves behind, which is the compact
+ * case — one list, graph beside it. When the count is even there is no free cell, and the component
+ * adds `.fmtgraph-wide` to give the graph its own full-width row instead.
+ *
+ * `minmax(0, 1fr)` rather than `1fr`: a `1fr` track has an automatic minimum of `min-content`, and a
+ * product row's longest unbreakable token would then push a column wider than half the panel and
+ * squeeze its neighbour. This is the mistake that blanked the lists on the first attempt at a
+ * side-by-side layout — a flex row let the graph claim its max-content width, the list column
+ * collapsed to zero, and `.fmtscroll`'s `overflow-x: hidden` clipped every row out of sight. A
+ * floored track cannot collapse a neighbour that way.
+ */
+.journey-root .fmtgrids {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 22px;
+  /* Each cell sizes to its own content; a short group must not stretch to match a tall one. */
+  align-items: start;
+}
+
+/*
+ * One column once two cannot hold the constellation's fixed 320px square side by side. Below this the
+ * grid is a single stack and `.fmtgraph-wide` is a no-op, which is the correct degenerate case.
+ */
+@media (max-width: 900px) {
+  .journey-root .fmtgrids {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* No free cell to sit in, so the graph takes the row. */
+.journey-root .fmtgrids .fmtgraph-wide {
+  grid-column: 1 / -1;
+}
+
+/*
+ * Both items carry a 16px top margin of their own — `.fmtgroup` from the authored stylesheet,
+ * `.gravity` from journey-gravity.css. Inside the grid that margin would stack on top of `row-gap`
+ * and misalign a group against the graph beside it, so the grid owns the spacing instead.
+ */
+.journey-root .fmtgrids > .fmtgroup,
+.journey-root .fmtgrids > .gravity {
+  margin-top: 0;
+}
+
+/* The rows of one format group. `.dotrow`'s horizontal wrap is deliberately not reused. */
+.journey-root .fmtitems {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.journey-root .fmtitem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  /* Matches `.dot-t`'s own transition timing, so the label and its icon arrive together rather than
+     the text appearing to lead or trail the mark it belongs to. */
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity 0.4s,
+    transform 0.4s;
+}
+
+.journey-root .fmtitem.on {
+  opacity: 1;
+  transform: none;
+}
+
+/* The icon must not shrink when a long title competes for the row's width. */
+.journey-root .fmtitem .dot-t {
+  flex: none;
+}
+
+.journey-root .fmtitem-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* The product's own name, in the body font: it is prose the seller wrote, not a code. */
+.journey-root .fmtitem-title {
+  font-size: 14px;
+  color: var(--white);
+  line-height: 1.25;
+}
+
+.journey-root .fmtitem-meta {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #a99fce;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 7px;
+}
+
+/* Attribution, tinted with the group's own colour so the seller reads as the row's primary fact. */
+.journey-root .fmtitem-seller {
+  color: var(--fc, var(--purple-lt));
+}
+
+/*
+ * Each further detail, separated by a middot drawn in CSS rather than written into the markup.
+ *
+ * In the markup the separator would be a text node between elements, which a screen reader reads
+ * aloud and a copy-paste picks up. As generated content it is decoration.
+ *
+ * It hangs off the fact rather than being written between facts, which is what keeps a row with
+ * fewer facts clean: the seller is always present, so every `.fmtitem-fact` has something to its
+ * left to separate from, and a row whose seller quoted no price simply ends after the seller with no
+ * orphaned punctuation.
+ */
+.journey-root .fmtitem-fact::before {
+  content: '\00b7';
+  margin-right: 7px;
+  color: #6f6591;
+}
+
+/*
+ * A fact's label, when it needs one.
+ *
+ * Most facts identify themselves — `right-rail`, `300×250`, `30s` — and carry no label. A few do not
+ * (`group: Granite Peak Audio`), so the label is dimmed to keep the value the thing being read.
+ */
+.journey-root .fmtitem-fact-label {
+  color: #6f6591;
+}
+
+/*
+ * The seller's measurements, on their own line below the description.
+ *
+ * Separate from `.fmtitem-meta` because these are numbers the seller produced rather than facts about
+ * what the inventory is, and because a progress bar sitting inline with running text reads as
+ * decoration. The whole line is absent when the seller measured nothing.
+ */
+.journey-root .fmtitem-measures {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #8d84ad;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 14px;
+}
+
+.journey-root .fmtitem-reach b {
+  color: var(--white);
+  font-weight: 600;
+}
+
+/*
+ * The similarity pair, named.
+ *
+ * The label is not decoration. Two bare decimals beside part-filled bars were read as percentages
+ * by the first person who saw them, which is a reasonable reading of that visual and the wrong one:
+ * these are cosines on a -1..1 scale, and the only figure on this row that is a count of people is
+ * `reachable`.
+ */
+.journey-root .fmtitem-sims {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 12px;
+}
+
+.journey-root .fmtitem-sims-label {
+  color: #6f6591;
+}
+
+/* One colour per axis, so a figure is readable as its axis without re-reading the label. Matches the
+   chat-side card's blue-for-content, purple-for-audience. */
+.journey-root .fmtitem-sim.content .fmtitem-sim-value {
+  color: var(--cyan);
+}
+
+.journey-root .fmtitem-sim.audience .fmtitem-sim-value {
+  color: var(--purple-lt);
+}
+
+.journey-root .fmtitem-sim-axis {
+  color: #6f6591;
+}
+
+.journey-root .fmtitem-sim-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The scroll box a format group's rows sit in.
+ *
+ * `max-height` is set inline by the component to the constellation's own square footprint
+ * (`SCROLL_MAX_HEIGHT_PX`, read off `DEFAULT_LAYOUT.size`), so this rule supplies everything else:
+ * the overflow behaviour and, for the two states `.fmtscroll-auto` distinguishes, either nothing
+ * (short list, no scrolling needed) or the looping animation below.
+ */
+.journey-root .fmtscroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/*
+ * The autoscroll itself.
+ *
+ * `.fmtitems` under an autoscrolling group is rendered as TWO consecutive copies of the same rows
+ * (the component's job; see ProductGroupList), and this animation scrolls the whole doubled list
+ * upward by exactly one copy's height before jumping back to 0 and repeating. Because the second
+ * copy is identical to the first, the jump lands on visually identical content and the loop is
+ * imperceptible — the alternative, scrolling to 100% and jumping to 0%, would visibly snap from the
+ * last row back to the first.
+ *
+ * `animation-play-state: paused` on hover, so a reader who has moved the mouse over the list to read
+ * something is not fighting a moving target; nothing here needs a click, a pause button, or any
+ * state beyond `:hover` to get that.
+ */
+.journey-root .fmtscroll-auto .fmtitems {
+  animation: journey-products-autoscroll var(--fmtscroll-duration, 22s) linear infinite;
+}
+
+.journey-root .fmtscroll-auto:hover .fmtitems {
+  animation-play-state: paused;
+}
+
+@keyframes journey-products-autoscroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    /* Half the doubled list's height, i.e. exactly one copy, computed via CSS rather than by the
+       component measuring the DOM: the row count and therefore the true pixel height varies per
+       group and per product (facts, reach and similarity lines are each optional), so a fixed or
+       JS-measured figure would drift out of sync with a font size change or a translation. */
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .fmtitem {
+    transition: none;
+  }
+  .journey-root .fmtscroll-auto .fmtitems {
+    animation: none;
+  }
+}
+
+/*
+ * The similarity scatter: one plot per format group, one dot per product.
+ *
+ * Replaces two per-row widgets that could not work — a progress bar, then an angle dial. Both drew
+ * each row on an absolute scale, and the values are too close together for that: content similarity
+ * spans 0.412 to 0.457 across every recorded Gotham row, so every row looked the same. Fitting one
+ * plot to the whole group is what makes the spread visible.
+ *
+ * The axis extents are rendered as HTML rather than SVG text, so they inherit the panel's own type
+ * and need no SVG font metrics to line up.
+ */
+.journey-root .fmtscatter {
+  margin: 12px 0 2px 35px; /* Indented to the rows' text column, past the format icon. */
+}
+
+.journey-root .fmtscatter-cap {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #a99fce;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-bottom: 5px;
+}
+
+/* The scaling caveat. Dimmer than the caption, never absent: the axes do not start at zero, and a
+   reader who assumes they do reads a small spread as a large one. */
+.journey-root .fmtscatter-sub {
+  color: #6f6591;
+}
+
+.journey-root .fmtscatter-plot {
+  position: relative;
+  display: inline-block;
+  /* Room for the axis figures sitting outside the plot area. */
+  padding: 0 0 14px 34px;
+}
+
+.journey-root .fmtscatter-axis {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+}
+
+/* Hollow, so overlapping dots stay countable: a tight cluster is a real and common reading here, and
+   filled dots would merge into one blob. Tinted with the group's own format colour, set per row by
+   the component as `--fc`. */
+.journey-root .fmtscatter-dot {
+  fill: none;
+  stroke: var(--fc, var(--cyan));
+  stroke-width: 1.5;
+}
+
+.journey-root .fmtscatter-x,
+.journey-root .fmtscatter-y,
+.journey-root .fmtscatter-xlabel,
+.journey-root .fmtscatter-ylabel {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #6f6591;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.journey-root .fmtscatter-y {
+  left: 0;
+  width: 30px;
+  text-align: right;
+}
+
+.journey-root .fmtscatter-y-hi {
+  top: 4px;
+}
+
+.journey-root .fmtscatter-y-lo {
+  bottom: 18px;
+}
+
+.journey-root .fmtscatter-ylabel {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
+  color: #8d84ad;
+}
+
+.journey-root .fmtscatter-x {
+  bottom: 0;
+}
+
+.journey-root .fmtscatter-x-lo {
+  left: 36px;
+}
+
+.journey-root .fmtscatter-x-hi {
+  right: 4px;
+}
+
+.journey-root .fmtscatter-xlabel {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #8d84ad;
+}

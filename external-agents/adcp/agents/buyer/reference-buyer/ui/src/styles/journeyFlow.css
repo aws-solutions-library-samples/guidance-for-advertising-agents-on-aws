@@ -1,0 +1,352 @@
+/*
+ * The flow, laid out horizontally.
+ *
+ * A SEPARATE stylesheet from `journey.css` for the same reason `journeyGovernance.css` is: that file is
+ * a byte-checked 1:1 port of `.kiro/specs/journey.html` and `journey.css.fidelity.test.ts` asserts
+ * `ported.length === source.length`. The `.flow` rule there is `display:flex; flex-direction:column`,
+ * and it stays that way — this file overrides it. Later import order in `main.tsx` is what makes the
+ * override win, at equal specificity, which is deliberate: the selectors match the ported ones exactly
+ * so the two can be read side by side.
+ *
+ * The prototype was a single 960px column and read top-to-bottom. The stage is now 1600px, and a
+ * column that wide wastes most of it on cards that are a few key/value rows tall. So the flow becomes
+ * a grid that fills across before it fills down.
+ *
+ * Two properties are load-bearing and easy to remove by accident:
+ *
+ *   1. **No `grid-auto-flow: dense`.** Dense packing backfills earlier gaps with later items, which
+ *      would put a phase that happened fifth to the left of one that happened fourth. The flow is a
+ *      chronology; a gap before a full-width panel is the correct rendering of "nothing else happened
+ *      in that row", not a hole to be filled.
+ *   2. **`auto-fill`, not `auto-fit`.** `auto-fit` collapses empty tracks, so the first card to arrive
+ *      would be full width and then jump to a third of it as the second and third arrived, dragging
+ *      every already-placed card with it. `auto-fill` keeps the tracks, so a card lands at its final
+ *      width and stays there for the rest of the run. Reveal is animated; relayout of what is already
+ *      on screen is not part of the animation.
+ */
+
+.journey-root .flow {
+  /* The connector overlay's containing block, which also makes the flow every cell's `offsetParent` so
+     `useFlowGeometry` can read positions without correcting for scroll. */
+  position: relative;
+  display: grid;
+  /*
+   * The column floor, chosen so the stage resolves to exactly TWO tracks — never three.
+   *
+   * Two is what makes the rows pack: eight card phases fill four rows completely, with no leftover
+   * track to either strand a card in or stretch one across. Three tracks left a gap on every second
+   * row and split the pairs that belong together — Bind and Plan are one step of the story told from
+   * two sides, and Govern and Score are the same check from either end of it.
+   *
+   * The arithmetic, since it is the whole reason for the number: the stage caps at 1600px with 34px of
+   * padding either side, so 1532px is the widest the flow can ever be. Three 560px tracks plus two
+   * 20px gaps need 1720px, which cannot happen; two need 1140px, which fits from roughly a 1210px
+   * viewport upward. So this is two tracks on any desktop and one below that, with no width in between
+   * where it becomes three.
+   *
+   * It is also wider than the widest card body's min-content — Bind's two 190px nodes either side of a
+   * 74px link — so no card has to wrap internally at column width.
+   */
+  grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+  /*
+   * One row unit per pixel, so a card can be given a row span equal to its own measured height and sit
+   * flush under the card above it. This is what makes the columns independent: without it every card in a
+   * row shares that row's height, and a short card leaves dead space beneath it the size of the
+   * difference.
+   */
+  grid-auto-rows: 1px;
+  /*
+   * `row-gap` MUST be zero. It would otherwise be inserted between every one of the thousands of 1px rows
+   * a card spans, so a 300px card would gain 300 gaps. The vertical gap is added to each card's span
+   * instead — see `FLOW_GAP_PX` in lib/journey/flowLayout.ts, which is the single definition of it.
+   */
+  row-gap: 0;
+  column-gap: 20px;
+  /*
+   * A card fills the width of its column but keeps its own height, so it does not stretch to the span it
+   * was given. `stretch` would defeat the point: the span is rounded up and carries the gap, so a
+   * stretched card would grow into the space meant to separate it from the next one.
+   */
+  align-items: start;
+}
+
+/*
+ * Anything that is not a phase card takes the whole row.
+ *
+ * The session status line and the other-sellers notice are prose about the run, not cards in it. The
+ * notice in particular must stay immediately above the Discover panel it describes — a full-row span
+ * is what keeps it there instead of letting it sit in a column beside an unrelated phase.
+ */
+.journey-root .flow > .dg-note,
+.journey-root .flow > .flow-cell-wide {
+  grid-column: 1 / -1;
+}
+
+/*
+ * `SellerJourneyNotice` renders its own root, so it is targeted by test id rather than by a class this
+ * stylesheet would otherwise have to reach into the component to add.
+ */
+.journey-root .flow > [data-testid='seller-journey-notice'] {
+  grid-column: 1 / -1;
+}
+
+/*
+ * The authored `padding-bottom: 40vh` exists so the last panel in a tall column can still be scrolled
+ * to the top of the viewport. That is still true of the last ROW, so the padding is kept — it is on the
+ * ported `.flow` rule and is not overridden here. Stated because its absence from this file looks like
+ * an omission.
+ */
+
+/*
+ * One column once two 560px tracks plus their gap no longer fit.
+ *
+ * Load-bearing rather than belt-and-braces: `auto-fill` with a `minmax` floor keeps ONE track at the
+ * floor width even when the container is narrower than that, so without this the flow would overflow
+ * horizontally on a phone instead of collapsing. `minmax(0, 1fr)` is what lets the single track shrink.
+ */
+@media (max-width: 1208px) {
+  .journey-root .flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/*
+ * Each panel is a query container, so a body can respond to the width of the CARD it is in rather than
+ * to the viewport.
+ *
+ * The two are no longer the same thing, and that is the point: a panel is roughly half the stage at
+ * desktop widths and the full stage below 1208px, so a viewport media query cannot tell a body how much
+ * room it actually has. Bind's arrow is the case that needs this — see `@container` in
+ * journeyGovernance.css.
+ */
+.journey-root .flow .panel {
+  container-type: inline-size;
+  container-name: panel;
+}
+
+/* ==========================================================================================
+ * The reveal sequence: arrow draws, then the card fades, then the card pulses once or twice.
+ *
+ * The three are timed against each other by delay alone, with no JavaScript clock and no change to
+ * `useJourneyPlayback`. That matters: the playback hook deliberately distinguishes a paced Replay walk
+ * from an instant catch-up, on the grounds that animating an already-finished session claims work is
+ * happening now. Sequencing here rather than there leaves that distinction intact — the card is placed
+ * in the grid the moment its phase is revealed, and only its OPACITY waits.
+ *
+ *   0ms ---------- 500ms ---------- 1000ms ---------- 2250ms
+ *   arrow draws    card fades in    wake pulse x2
+ * ========================================================================================== */
+
+/** Set once here so the three stages cannot drift apart when one of them is retuned. */
+.journey-root .flow {
+  --flow-draw-ms: 460ms;
+  --flow-hold-ms: 500ms;
+  --flow-fade-ms: 500ms;
+}
+
+/*
+ * The card holds at zero opacity for the length of the arrow draw, then fades.
+ *
+ * This overrides the transition on the ported `.panel` rule, whose values are otherwise reproduced: the
+ * only change is the delay on `opacity` and `transform`. `box-shadow` keeps its own undelayed .4s,
+ * because that is the hover/awake response and a delayed one feels broken to a pointer.
+ */
+.journey-root .flow .panel {
+  transition:
+    box-shadow 0.4s,
+    opacity var(--flow-fade-ms) cubic-bezier(0.2, 0.6, 0.2, 1) var(--flow-hold-ms),
+    transform var(--flow-fade-ms) cubic-bezier(0.2, 0.6, 0.2, 1) var(--flow-hold-ms);
+}
+
+/*
+ * The wake pulse, as an inset ring on a pseudo-element rather than by animating `.awake`'s own
+ * box-shadow.
+ *
+ * Animating the box-shadow would mean restating `.awake`'s exact values as the keyframe's start and end
+ * — a second copy of a ported declaration, which would then be free to drift from it. An overlay
+ * animating only its own opacity leaves the authored glow as the single definition of what the glow is.
+ *
+ * Runs twice and stops. `.awake` persists until the next phase reveals, so an infinite pulse would
+ * leave the last card of a finished run throbbing indefinitely.
+ */
+.journey-root .flow .panel.awake::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px var(--rc, var(--purple-lt)),
+    inset 0 0 34px -12px var(--rc, var(--purple-lt));
+  opacity: 0;
+  animation: journey-flow-wake 1.25s ease-out calc(var(--flow-hold-ms) + var(--flow-fade-ms)) 2;
+}
+
+@keyframes journey-flow-wake {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* ---- the dashed arrows ---- */
+
+/*
+ * The overlay. Absolutely positioned, so it is NOT a grid item — an in-flow container would take a cell
+ * and push every card one place along.
+ */
+.journey-root .flow-arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Above the flow's background but below the cards, which are opaque `var(--ink)`. An arrow that
+     strays under a card is hidden rather than drawn over its text. */
+  z-index: 0;
+}
+
+/*
+ * One arrow. Dashes are a repeating gradient rather than a `border-style: dashed`, so the dash length
+ * and gap are set in one place and do not change with the border width.
+ */
+.journey-root .flow-arrow {
+  position: absolute;
+  /*
+   * The draw-on. A `clip-path` wipe, not `transform: scaleX` — scaling would stretch each dash as the
+   * line grew, so the dashes would start long and shrink, which reads as a rendering fault rather than
+   * as a line being drawn.
+   */
+  animation: journey-flow-draw var(--flow-draw-ms) ease-out both;
+}
+
+.journey-root .flow-arrow-h {
+  width: var(--flow-arrow-len);
+  height: 2px;
+  /* The measured `top` is the line's centre, so pull up by half its thickness. */
+  margin-top: -1px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--rc) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+.journey-root .flow-arrow-v {
+  width: 2px;
+  height: var(--flow-arrow-len);
+  /* The measured `left` is the line's centre. */
+  margin-left: -1px;
+  background-image: repeating-linear-gradient(
+    180deg,
+    var(--rc) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+/*
+ * The head. A CSS triangle, matching `.glink .gtip` in journeyGovernance.css rather than introducing an
+ * SVG marker for the same shape. It fades in as the line lands instead of travelling with it, which
+ * would need the head's position animated in step with the clip and give two things to keep in sync.
+ */
+.journey-root .flow-arrow-head {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  animation: journey-flow-arrive 200ms ease-out
+    calc(var(--flow-draw-ms) - 120ms) forwards;
+}
+
+.journey-root .flow-arrow-h .flow-arrow-head {
+  top: 50%;
+  right: -1px;
+  margin-top: -4px;
+  border-left: 6px solid var(--rc);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+/* A right-to-left row. The line is identical; only the head swaps ends and direction. */
+.journey-root .flow-arrow-back .flow-arrow-head {
+  right: auto;
+  left: -1px;
+  border-left: none;
+  border-right: 6px solid var(--rc);
+}
+
+.journey-root .flow-arrow-v .flow-arrow-head {
+  left: 50%;
+  bottom: -1px;
+  margin-left: -4px;
+  border-top: 6px solid var(--rc);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+@keyframes journey-flow-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Reversed rows wipe from the right, so the line still grows away from the card it leaves. */
+.journey-root .flow-arrow-back {
+  animation-name: journey-flow-draw-back;
+}
+
+@keyframes journey-flow-draw-back {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Vertical arrows wipe downward. */
+.journey-root .flow-arrow-v {
+  animation-name: journey-flow-draw-down;
+}
+
+@keyframes journey-flow-draw-down {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/*
+ * Reduced motion: every stage arrives at its finished state immediately.
+ *
+ * The hold is dropped as well as the animations. A 1s wait before a card becomes legible is not motion
+ * a reader asked to be spared, it is a delay — and leaving it in would make the reduced-motion path
+ * slower to read than the default one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .flow .panel {
+    transition:
+      box-shadow 0.4s,
+      opacity 0.2s,
+      transform 0.2s;
+  }
+  .journey-root .flow .panel.awake::after {
+    animation: none;
+  }
+  .journey-root .flow-arrow,
+  .journey-root .flow-arrow-back,
+  .journey-root .flow-arrow-v {
+    animation: none;
+    clip-path: none;
+  }
+  .journey-root .flow-arrow-head {
+    animation: none;
+    opacity: 1;
+  }
+}

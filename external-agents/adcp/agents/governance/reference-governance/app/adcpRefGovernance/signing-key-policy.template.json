@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GovernanceSigningKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Sign",
+        "kms:GetPublicKey"
+      ],
+      "Resource": "arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:RequestAlias": "alias/${INSTANCE_PREFIX}-governance-signing"
+        }
+      }
+    }
+  ]
+}
