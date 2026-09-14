@@ -1,0 +1,203 @@
+/*
+ * Styling for the session sheet.
+ *
+ * NOT authored, and kept in its own file for that reason. `journey.css` is generated from
+ * `.kiro/specs/journey.html` and diffed against it by a fidelity test, so adding rules there would
+ * either break that test or quietly make the prototype no longer the source of truth. This file is
+ * ours, and it says so.
+ *
+ * It borrows the authored vocabulary rather than adding a second one: `var(--ink)`, `var(--mono)`,
+ * `var(--purple-lt)`, and the `inset 0 0 0 1px rgba(255,255,255,.08)` hairline plus the
+ * `0 24px 70px -34px rgba(140,42,252,.7)` bloom that `.panel` and `.panel.awake` use. Everything is
+ * scoped under `.journey-root`, where the prototype's custom properties are defined.
+ */
+
+/* The hover-sensitive strip. Invisible until it is opened, which is the point of it. */
+.journey-root .session-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 5vh;
+  z-index: 60;
+}
+
+.journey-root .session-zone:focus-visible {
+  outline: 2px solid var(--purple-lt);
+  outline-offset: -2px;
+}
+
+/* The sheet that drops from the top edge. */
+.journey-root .session-sheet {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 14px 26px 16px;
+  border-radius: 0 0 18px 18px;
+  background: rgba(0, 0, 20, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 70px -34px rgba(140, 42, 252, 0.7);
+}
+
+/* Top line: what is selected, and how it came to be selected. */
+.journey-root .session-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.journey-root .session-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6a5f86;
+}
+
+.journey-root .session-current {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #fff;
+}
+
+.journey-root .session-following {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #8a83a6;
+  margin-left: auto;
+}
+
+/* Secondary notes: other seller journeys, and a stale-list warning. */
+.journey-root .session-notes {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.journey-root .session-note {
+  font-size: 13px;
+  font-family: var(--mono);
+  color: #a99fce;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+/* The list. Scrolls rather than growing past the viewport. */
+.journey-root .session-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 44vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journey-root .session-option {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  text-align: left;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: #cfc7e6;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s,
+    color 0.2s;
+}
+
+.journey-root .session-option:hover,
+.journey-root .session-option:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  outline: none;
+}
+
+/* The selected row carries the same accent ring an awake panel does. */
+.journey-root .session-option[aria-selected='true'] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(238, 140, 252, 0.5);
+}
+
+/*
+ * Agent and id travel together, at a fixed share of the row, so the brief beside them starts at the
+ * same x on every row. Ragged start columns are what make a list of similar rows hard to scan, which
+ * is the whole reason the brief is here.
+ */
+.journey-root .session-option .so-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.journey-root .session-option .so-id {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #8a83a6;
+}
+
+/*
+ * The brief.
+ *
+ * Takes the slack in the row and truncates with an ellipsis when it runs out. `sessionBriefLabel`
+ * already shortens the text, so this is the second line of defence for a narrow viewport rather than
+ * the primary one — and either way the ellipsis is visible, so a shortened brief never reads as the
+ * whole request.
+ */
+.journey-root .session-option .so-brief {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #a99fce;
+}
+
+.journey-root .session-option:hover .so-brief,
+.journey-root .session-option:focus-visible .so-brief,
+.journey-root .session-option[aria-selected='true'] .so-brief {
+  color: #ded7f0;
+}
+
+.journey-root .session-option .so-status {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: auto;
+  color: #8a83a6;
+}
+
+/* Only two states are tinted, and both are facts the recorder wrote down. */
+.journey-root .session-option .so-status[data-status='active'] {
+  color: var(--cyan);
+}
+
+.journey-root .session-option .so-status[data-status='error'] {
+  color: #ff6b6b;
+}
+
+.journey-root .session-empty {
+  margin: 12px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #a99fce;
+}

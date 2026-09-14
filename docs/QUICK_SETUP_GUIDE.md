@@ -51,7 +51,7 @@ Connect Quick Suite (web and desktop) to the A4A agents via the OAuth MCP Gatewa
 
 ### Prerequisites
 
-From the deployment script output (Phase 12), you'll need:
+From the deployment script output (Phase 13), you'll need:
 - **Gateway URL** (e.g., `https://a4a-oauth-gw-xxxxx.gateway.bedrock-agentcore.<REGION>.amazonaws.com/mcp`)
 - **Client ID**
 - **Client Secret**
@@ -246,12 +246,12 @@ For a full list of scenario prompts by agent, see the [`tab-configurations.json`
 Creates a Cognito resource server, app client and OAuth gateway on the user pool your stack
 already has, and registers the `a4a-mcp-handler` Lambda as the gateway's single target.
 
-**Via the deployment script (recommended).** This is **Phase 12**, and it is optional. You are
+**Via the deployment script (recommended).** This is **Phase 13**, and it is optional. You are
 prompted at the end of a normal deployment run, or you can drive it directly:
 
 ```bash
-# Deploy just Phase 12 against an existing stack
-scripts/deploy-ecosystem.sh --resume-at 12 --deploy-quick-gateway \
+# Deploy just Phase 13 against an existing stack
+scripts/deploy-ecosystem.sh --resume-at 13 --deploy-quick-gateway \
   --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE>
 
 # Or skip it without being asked
@@ -259,7 +259,7 @@ scripts/deploy-ecosystem.sh --skip-quick-gateway ...
 ```
 
 Skipping is safe. Nothing else in the deployment depends on the gateway. The
-`a4a-mcp-handler` Lambda is created in Phase 2 with every stack, but without Phase 12 it has
+`a4a-mcp-handler` Lambda is created in Phase 2 with every stack, but without Phase 13 it has
 no gateway in front of it and an empty `GUIDANCE_RUNTIME_ARN`, so it is never invoked.
 
 #### Manual deployment (no orchestrator)
@@ -280,7 +280,7 @@ aws lambda get-function \
   --function-name <PREFIX>-a4a-mcp-handler-<UID> \
   --region <REGION> --profile <PROFILE>
 
-# 2. Read the AgentCore runtime ARN (recorded by Phase 8)
+# 2. Read the AgentCore runtime ARN (recorded by Phase 10)
 python -c "import json;print(json.load(open('.agentcore-agents-<PREFIX>-<UID>.json'))['deployed_agents'][0]['runtime_arn'])"
 
 # 3. Point the Lambda at the runtime

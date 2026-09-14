@@ -1,0 +1,121 @@
+@import 'tailwindcss';
+
+/*
+  Design tokens from .kiro/steering/ui-style-guide.md, verbatim.
+
+  Declared in Tailwind's `@theme` rather than a plain `:root` block so one definition serves
+  both plain CSS (`var(--color-ink)`) and generated utilities (`text-ink`, `bg-surface`,
+  `border-line`). Two parallel palettes, one for the style guide and one for Tailwind, is the
+  arrangement that drifts.
+*/
+@theme {
+  --color-ink: #0f1729;
+  --color-ink-2: #33415c;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-line-soft: #eef2f7;
+  --color-surface: #fff;
+  --color-canvas: #f6f8fb;
+
+  /* Accents. Reserved for status, phase and icon tinting, never large surface fills. */
+  --color-pink: #ec4899;
+  --color-purple: #8b5cf6;
+  --color-blue: #3b82f6;
+  --color-orange: #f59e0b;
+  --color-green: #10b981;
+  --color-red: #ef4444;
+  --color-sky: #0ea5e9;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+
+  /* Cards and panels: 14px radius with the soft shadow from the guide. */
+  --radius-card: 14px;
+  --shadow-card: 0 24px 60px -24px rgb(15 23 41 / 0.28);
+  --shadow-raised: 0 8px 20px -14px rgb(15 23 41 / 0.28);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  The flex discipline the vanilla UI needed, kept as a utility so it is applied deliberately
+  rather than rediscovered.
+
+  A scrolling child inside a flex column needs `min-height:0` on its ancestors, or the column
+  grows past the viewport and its tail is clipped unreachably; and the scrolling child's own
+  children need `flex:none`, or they compress to share the height instead of overflowing. Both
+  cost real debugging time in the vanilla version: the log panel silently stopped scrolling and
+  squeezed every card thinner as more arrived.
+*/
+@utility scroll-column {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@utility scroll-column-item {
+  flex: none;
+}
+
+/*
+  The seller product track's seamless loop.
+
+  Travels LEFT TO RIGHT: the track starts shifted one copy's width to the left and slides back to
+  zero, so cards enter at the left edge and drift rightwards.
+
+  `-50%` is exactly one copy of the list, because the track always holds two identical copies (see
+  lib/marquee.ts). At the end of the travel the second copy sits precisely where the first began, so
+  restarting the animation is invisible -- the two keyframes are the same picture. Percentages are of
+  the TRACK's own width, which is why the track must size to its content (`width: max-content`) rather
+  than stretch to its container.
+*/
+@keyframes marquee-ltr {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@utility marquee-track {
+  width: max-content;
+  animation-name: marquee-ltr;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  /* Promoted so the loop is composited rather than repainting the whole row of cards each frame. */
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /*
+    The blanket rule above would leave the track parked at its end keyframe. That is a valid resting
+    position, but the component also drops the animation entirely and makes the row scrollable in this
+    mode -- so the transform is cleared here to keep the two from disagreeing about where the track
+    sits.
+  */
+  .marquee-track {
+    animation-name: none !important;
+    transform: none !important;
+  }
+}

@@ -1,0 +1,236 @@
+/*
+ * The inventory constellation.
+ *
+ * Its own file rather than more of `journey-products.css`, which is already carrying the row layout.
+ * Nothing here touches `journey.css`, which is diffed against the prototype.
+ *
+ * Every colour is a journey token or one of the two greys the panels already use for dim metadata
+ * (`#a99fce`, `#6f6591`). The node stroke is the only computed colour, set inline by the component
+ * from the CPM ramp.
+ */
+
+.journey-root .gravity {
+  margin: 16px 0 4px;
+}
+
+.journey-root .gravity-cap {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #a99fce;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-bottom: 8px;
+}
+
+/* The scaling caveat and the channel legend. Dimmer, never absent: the radial scale is fitted, and a
+   reader who assumed it was absolute would read a 0.1 spread as the whole range. */
+.journey-root .gravity-sub {
+  color: #6f6591;
+}
+
+.journey-root .gravity-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.journey-root .gravity-svg {
+  flex: none;
+  overflow: visible;
+}
+
+/* ---- reference rings ---- */
+
+.journey-root .gravity-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.11);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.journey-root .gravity-ring-label {
+  fill: #6f6591;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+/* ---- the brief at the centre ---- */
+
+.journey-root .gravity-core {
+  fill: var(--ink);
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+
+/* Reuses the journey's own pulse keyframe rather than defining a second one. */
+.journey-root .gravity-core-halo {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1;
+  opacity: 0.3;
+  animation: journey-pulse 2.4s ease-in-out infinite;
+}
+
+.journey-root .gravity-core-label {
+  fill: #a99fce;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+/* ---- tethers ---- */
+
+/*
+ * Uniform, deliberately. The specification weights these by an outcome probability and no seller here
+ * returns one, so a varying thickness would be an invented measurement. Opacity changes only on
+ * interaction, which is state rather than data.
+ */
+.journey-root .gravity-tether {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1;
+}
+
+.journey-root .gravity-tether.on {
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+  opacity: 0.85;
+}
+
+.journey-root .gravity-tether.out {
+  opacity: 0.05;
+}
+
+/* ---- product nodes ---- */
+
+/* Hollow, so a tight cluster stays countable and the ring colour reads cleanly against the dark
+   ground. The stroke colour is set inline from the CPM ramp. */
+.journey-root .gravity-node {
+  fill: var(--ink);
+  fill-opacity: 0.55;
+  stroke-width: 1.6;
+  cursor: pointer;
+  transition:
+    opacity 0.18s ease,
+    stroke-width 0.18s ease;
+}
+
+.journey-root .gravity-node:focus-visible {
+  outline: none;
+  stroke-width: 3;
+}
+
+.journey-root .gravity-node.on {
+  stroke-width: 3;
+}
+
+.journey-root .gravity-node.picked {
+  fill-opacity: 0.9;
+}
+
+/* Nothing measured this product's reach, so its radius is the floor rather than a small measurement.
+   Dashed to keep those two readings apart. */
+.journey-root .gravity-node.unmeasured {
+  stroke-dasharray: 2 2;
+}
+
+/* Filtered out by the CPM ceiling. Faded rather than removed, so the shape of the answer stays
+   visible and the count in the slider label can be checked against it. */
+.journey-root .gravity-node.out {
+  opacity: 0.14;
+}
+
+/*
+ * The node the automatic tour is presenting.
+ *
+ * Same treatment as a pointer hover, because it means the same thing - this is the product whose
+ * figures are in the panel. A separate visual would imply a separate kind of state. The class is
+ * distinct only so the two can be told apart in a test, and so the halo below can single it out.
+ */
+.journey-root .gravity-node.toured {
+  /* Matched to DEFAULT_TOUR_INTERVAL_MS, so one pulse completes per node rather than being
+     cut off partway. */
+  animation: journey-pulse 1.3s ease-in-out infinite;
+}
+
+/* Which item of the cycle is showing. Dimmed: it is a position in a sequence, not a figure the
+   seller reported. */
+.journey-root .gravity-detail .gravity-touring {
+  color: #6f6591;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .gravity-node.toured {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .gravity-core-halo {
+    animation: none;
+  }
+
+  .journey-root .gravity-node {
+    transition: none;
+  }
+}
+
+/* ---- side panel ---- */
+
+.journey-root .gravity-side {
+  flex: 1 1 200px;
+  min-width: 190px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: #a99fce;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journey-root .gravity-hint {
+  color: #6f6591;
+  line-height: 1.5;
+}
+
+.journey-root .gravity-detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  align-items: baseline;
+}
+
+.journey-root .gravity-detail dt {
+  color: #6f6591;
+}
+
+.journey-root .gravity-detail dd {
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ---- CPM filter ---- */
+
+.journey-root .gravity-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.journey-root .gravity-filter-label b {
+  color: var(--white);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.journey-root .gravity-filter input[type='range'] {
+  width: 100%;
+  accent-color: var(--cyan);
+}
+
+.journey-root .gravity-legend {
+  color: #6f6591;
+  line-height: 1.5;
+}

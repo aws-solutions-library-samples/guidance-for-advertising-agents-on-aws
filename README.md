@@ -6,16 +6,16 @@
 >
 > ### What v3 adds
 >
-> - **Access from AI desktop apps (optional)** — a new opt-in Phase 12 deploys an MCP Gateway that exposes the agents as tools to Amazon Quick Suite, Kiro, and Claude Desktop. Add `--deploy-quick-gateway`. See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md).
+> - **Access from AI desktop apps (optional)** — a new opt-in Phase 13 deploys an MCP Gateway that exposes the agents as tools to Amazon Quick Suite, Kiro, and Claude Desktop. Add `--deploy-quick-gateway`. See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md).
 > - **Quick Suite skill definitions** — ready-made guided flows for media planning and deal negotiation, under [`quick-skill/`](quick-skill/).
 > - **Federated sign-in (optional)** — SSO through any OIDC provider registered in the Cognito user pool (Okta, Microsoft Entra ID, Ping, or your own), alongside email and password. Entirely configuration-driven, with no identity provider details in application code. See [`docs/SSO_SETUP_GUIDE.md`](docs/SSO_SETUP_GUIDE.md).
 > - **Agent instruction versioning** — append-only version snapshots with a version dropdown in the agent editor. Selecting a version loads it; saving publishes a new version rather than rewinding.
-> - **AdCP-compliant reference agents** — `AdCPBuyerAgent` and `AdCPSellerAgent` under [`external-agents/`](external-agents/) take over the role of the removed AdCP MCP Gateway, speaking AdCP 3.1 between peer agents over A2A and MCP rather than flattening it into gateway tool calls. Note that **neither is a working default yet** — see [what ships today](#adcp-migration-status) before relying on them.
+> - **AdCP reference agents, deployable end to end (optional)** — a new opt-in **Phase 9** deploys a complete AdCP 3.1 ecosystem from [`external-agents/adcp/`](external-agents/adcp/): a reference **buyer** (with its own React UI, on two runtimes — HTTP for the UI, A2A for other agents), a reference **seller**, and a reference **governance** agent that mints KMS-signed intent tokens. Add `--deploy-adcp`. The buyer is wired into `AgencyAgent`, replacing the removed AdCP MCP Gateway with peer-to-peer AdCP over A2A and MCP rather than flattened gateway tool calls. See [AdCP Reference Agents](#10-adcp-reference-agents-optional).
 > - **External agents decoupled from AgentCore** — hosting, wire protocol, and authentication are now independent (`agent_hosting` / `agent_protocol` / `agent_endpoint`), so an external agent can be a non-AgentCore endpoint and authentication no longer determines the invocation path.
 >
 > ### ⚠️ Breaking changes from v2
 >
-> - **Deployment phases were renumbered.** If you script `--resume-at`, the numbers have moved: configs→S3 is now 6, DynamoDB 7, AgentCore agents 8, AAMP 9, UI config 10, warmup 11, Quick Gateway 12. See the phase list under [Deployment Steps](#deployment-steps).
+> - **Deployment phases were renumbered.** If you script `--resume-at`, the numbers have moved: configs→S3 is 6, DynamoDB 7, **AAMP 8**, **AdCP 9 (new)**, **AgentCore agents 10**, **UI config 11**, **warmup 12**, **Quick Gateway 13**. Both optional external-agent phases now run *before* the AgentCore deploy, because the AgentCore agents read their configuration at deploy time and cannot see an agent wired in after them. See the phase list under [Deployment Steps](#deployment-steps).
 > - **The AdCP MCP Gateway has been removed.** `deploy_adcp_gateway.py`, `adcp_tool_schema.json`, `lambda/adcp_mcp_handler.py`, and the agent-side `adcp_tools.py` / `adcp_mcp_client.py` are deleted, along with the 8 gateway-backed tools and their declarations on `AgencyAgent`, `PublisherAgent`, `SignalAgent`, `VerificationAgent`, `MeasurementAgent`, and `IdentityAgent`. Teardown is retained, so `--cleanup` still removes a gateway left over from a pre-v3 deployment instead of leaving it billing.
 > - **AAMP is now opt-in rather than automatic.** Use `--deploy-aamp` to include it or `--skip-aamp` to exclude it. The interactive prompt defaults to No, and it is skipped entirely in non-interactive runs. Its default model is now `bedrock/global.anthropic.claude-sonnet-5`, and AAMP runtime names are capped at 26 characters to stay within the CloudWatch Logs delivery name limit.
 > - **`AgencyAgent`'s Mode A / Mode B split is gone.** It was built on calling the removed gateway tools directly. `AgencyAgent` now always delegates inventory to `PublisherAgent` and signals to `SignalAgent` over A2A.
@@ -83,14 +83,15 @@ This guidance provides an agentic solution that delivers:
 - **Nova Sonic Voice Interface**: Real-time speech-to-speech agent interaction using Amazon Nova Sonic with bidirectional streaming, tool-use routing, and turn management
 - **External API Integration**: Real-time data from weather services, social media platforms, and competitive intelligence feeds
 - **External A2A Agents**: Optionally deploy standalone agents (e.g. AdCreationAgent, AAMP Seller Agent) to their own AgentCore runtime, invoked by the main agents over the A2A protocol with IAM, Cognito OAuth, or static Bearer Token inbound auth (see [`external-agents/`](external-agents/README.md))
+- **AdCP Reference Ecosystem (Optional)**: A self-contained [AdCP 3.1](https://docs.adcontextprotocol.org) buyer/seller/governance trio in [`external-agents/adcp/`](external-agents/adcp/), deployed by Phase 9 onto four AgentCore runtimes with its own Cognito user pool. The buyer runs the buy journey (discover inventory → check governance → book a media buy) and is reachable from `AgencyAgent` via `invoke_specialist`; the seller and governance agents are MCP services the buyer calls internally. Governance decisions are signed with a KMS asymmetric key and verified against a published JWKS (see [AdCP Reference Agents](#10-adcp-reference-agents-optional))
 - **Invocation Notification Hook**: Optionally configure any agent to fire a webhook notification (fire-and-forget, no response awaited) to an external endpoint every time it's invoked with a real user prompt — useful for driving an external display, log sink, or workflow trigger
-- **Quick MCP Gateway (Optional)**: An AgentCore MCP Gateway fronting a single Lambda target, exposing four tools — `list_agents`, `get_agent_schema`, `invoke_agent` and `get_agent_conversation`. Inbound auth is a Cognito JWT authorizer scoped to one app client. Long-running orchestrator calls fall back to an async polling pattern so MCP clients are never left waiting on a timeout (see [Quick MCP Gateway](#10-quick-mcp-gateway-optional))
+- **Quick MCP Gateway (Optional)**: An AgentCore MCP Gateway fronting a single Lambda target, exposing four tools — `list_agents`, `get_agent_schema`, `invoke_agent` and `get_agent_conversation`. Inbound auth is a Cognito JWT authorizer scoped to one app client. Long-running orchestrator calls fall back to an async polling pattern so MCP clients are never left waiting on a timeout (see [Quick MCP Gateway](#11-quick-mcp-gateway-optional))
 - **Quick Suite Skills**: Uploadable skill definitions in [`quick-skill/`](quick-skill/) that drive guided demo flows — a full platform skill, a media planning assistant with an RFP response flow, and a 3-step AAMP deal negotiation walkthrough
-- **Cognito Federated Identity (Optional)**: OIDC federation on the existing user pool, with the identity provider name and hosted-UI domain supplied at deploy time rather than compiled in (see [Enabling SSO](#11-enabling-sso-optional))
+- **Cognito Federated Identity (Optional)**: OIDC federation on the existing user pool, with the identity provider name and hosted-UI domain supplied at deploy time rather than compiled in (see [Enabling SSO](#12-enabling-sso-optional))
 
 ### Cost 
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of July 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $371.41 per month, assuming daily usage (see cost breakdown for details)._
+_You are responsible for the cost of the AWS services used while running this Guidance. As of July 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) region is approximately $373.86 per month, assuming daily usage (see cost breakdown for details). All three optional phases are opt-in and none is deployed unless you ask for it; with all three skipped the figure is approximately $371.31._
 
 The AgentCore deployment model provides cost advantages through:
 - **Pay-per-use container runtime**: Only pay when agents are actively processing requests
@@ -98,13 +99,21 @@ The AgentCore deployment model provides cost advantages through:
 - **Optimized model usage**: Intelligent foundation model assignment (Claude Sonnet 5 for orchestrators, with the option to switch specialists to Claude Haiku 4.5 for further cost savings)
 - **Dynamic scaling**: Container-based agents scale automatically based on demand
 
-**Cost of the optional capabilities.** Both optional features are close to free at demo scale, and
-neither is deployed unless you opt in:
+**Cost of the optional capabilities.** None is deployed unless you opt in:
 
-- **Quick MCP Gateway (Phase 12)** adds a gateway priced per API call — `InvokeTool` at $5 per
+- **AdCP reference agents (Phase 9)** is the most expensive optional phase, and the only one with a
+  standing cost that does not fall to zero when idle: **roughly $2.45/month**. Four AgentCore
+  runtimes bill per session, so they are $0 idle, and the three DynamoDB tables and two CloudFront
+  distributions round to $0 at demo scale. What actually bills is a **KMS asymmetric signing key**
+  ($1.00/month — the governance agent will not start without one), a **Secrets Manager** secret for
+  the machine-to-machine client ($0.40/month), and the **ECR** images for its runtimes (up to
+  ~$1.00/month, and this is the line that creeps: every redeploy pushes a new image and old ones
+  persist without a lifecycle policy). Usage adds roughly **$0.22 per buyer conversation**, ~99% of
+  which is Bedrock tokens. ⚠️ **`--cleanup` does not remove these resources** — see
+  [Cleanup](#cleanup).
+- **Quick MCP Gateway (Phase 13)** adds a gateway priced per API call — `InvokeTool` at $5 per
   million and gateway operations such as `ListTools` and health checks — plus one Lambda. With
-  four tools, no semantic-search indexing, and demo-scale usage, this is cents per month. It is
-  the only optional capability that creates billable resources.
+  four tools, no semantic-search indexing, and demo-scale usage, this is cents per month.
 - **Federated sign-in (SSO)** creates **no new AWS resources at all**. It uses the Cognito user
   pool the stack already has, and a Cognito prefix hosted-UI domain carries no charge. Federated
   users do count toward Cognito monthly-active-user pricing, which has a smaller free tier for
@@ -122,19 +131,20 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | ----------- | ------------ | ------------ |
 | Amazon Bedrock Foundation Models | Claude Sonnet 5 (orchestrators) + Haiku 4.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
 | Amazon Bedrock AgentCore | AgentCore Runtime (container invocations) and AgentCore Memory (short-term + summary/semantic); average session duration of 45 minutes | $24.00 |
-| Amazon Bedrock AgentCore Gateway | **Optional (Phase 12)** — Quick MCP Gateway. Priced per API call: `InvokeTool` at $5 per million, plus gateway operations (`ListTools`, health checks). 4 tools registered from a static schema, so no semantic-search indexing charge. Demo-scale Quick Suite, Kiro and Claude Desktop use. **$0.00 if the phase is skipped** | $0.10 |
+| AdCP reference agents (KMS + Secrets Manager + ECR + S3) | **Optional (Phase 9)** — the standing cost of the AdCP ecosystem in `external-agents/adcp/`. One KMS asymmetric signing key for governance intent tokens ($1.00), one Secrets Manager secret for the M2M client ($0.40), ECR images for its 4 runtimes and the revocations Lambda (≤$1.00), S3 (<$0.05). The 4 AgentCore runtimes, 3 DynamoDB tables and 2 CloudFront distributions are $0 idle. Usage adds ~$0.22 per buyer conversation on top, almost entirely Bedrock tokens. **$0.00 if the phase is skipped** — but note `--cleanup` does not remove these | $2.45 |
+| Amazon Bedrock AgentCore Gateway | **Optional (Phase 13)** — Quick MCP Gateway. Priced per API call: `InvokeTool` at $5 per million, plus gateway operations (`ListTools`, health checks). 4 tools registered from a static schema, so no semantic-search indexing charge. Demo-scale Quick Suite, Kiro and Claude Desktop use. **$0.00 if the phase is skipped** | $0.10 |
 | Amazon Bedrock — Nova Sonic (voice) | Bidirectional speech-to-speech streaming for the voice interface, priced per minute of audio in/out; occasional demo use | $6.00 |
 | Amazon Bedrock — Image models (Nova Canvas / SD 3.5) | Creative generation via the asynchronous image pipeline | $3.00 |
 | Amazon OpenSearch Serverless | Knowledge base vector collection, indexing and search OCUs (dominant fixed cost) | $219.00 |
 | Amazon DynamoDB | 4 on-demand (pay-per-request) tables: AgentConfig (instructions, cards, visualization maps, global/tab config), ImageStatus (async job state), Visualizations (maps + templates), and AgentProgress (transient cross-agent progress milestones, TTL-expired — a few writes and reads per external-agent request, which does not move this figure); config read on every agent invocation | $70.31 |
 | Amazon S3 | 4 buckets: knowledge base source data (5GB), UI static hosting (OAC), generated content, and services bucket | $3.00 |
-| AWS Lambda | Pipeline and MCP tool-target functions: creative image request, async image processor, demo user custom resource, and the `a4a-mcp-handler` MCP target behind the optional Quick Gateway. The MCP handler is deployed with every stack but is only invoked when Phase 12 is enabled, so it contributes nothing to this figure otherwise | $2.50 |
+| AWS Lambda | Pipeline and MCP tool-target functions: creative image request, async image processor, demo user custom resource, and the `a4a-mcp-handler` MCP target behind the optional Quick Gateway. The MCP handler is deployed with every stack but is only invoked when Phase 13 is enabled, so it contributes nothing to this figure otherwise | $2.50 |
 | AWS WAF | Web ACL with AWS common managed rule set fronting the CloudFront distribution | $6.00 |
 | Amazon CloudWatch | AgentCore observability — logs, metrics, and traces | $5.00 |
 | AWS CloudFront | Global content delivery for the demo interface | $0.50 |
 | Amazon Cognito | User Pool + Identity Pool for authentication, the hosted-UI prefix domain (no charge), and — when SSO is enabled — OIDC federated sign-in. Within free tier at demo scale. Note that federated OIDC/SAML monthly active users have a smaller free tier than native user-pool users | $0.00 |
 | AWS Systems Manager | Parameter Store standard parameters for runtime config, plus a `SecureString` holding the Quick Gateway app-client secret (AWS-managed key, no charge). Additional authenticated connections (bearer-token notification hooks, A2A credential providers) add SSM SecureString / Secrets Manager charges — see the Invocation Notification Hook cost note | $0.00 |
-| **Total** | Includes both optional capabilities. Skipping Phase 12 brings this to ~$371.31 | **~$371.41** |
+| **Total** | Includes all three optional capabilities at demo scale. Skipping Phase 9 brings this to ~$371.41; skipping both Phase 9 and Phase 13 brings it to ~$371.31 | **~$373.86** |
 
 ## Prerequisites 
 
@@ -314,15 +324,33 @@ The deployment process uses a single comprehensive script that handles all infra
 5. **Phase 5**: Sync data sources (start ingestion jobs)
 6. **Phase 6**: Upload agent configurations to S3
 7. **Phase 7**: Upload agent configurations to DynamoDB
-8. **Phase 8**: Deploy AgentCore agents
-9. **Phase 9**: Deploy AAMP agents _(**optional, opt-in** — you are prompted; see [AAMP Agents](#9-aamp-agents-optional))_
-10. **Phase 10**: Generate UI configuration
-11. **Phase 11**: Warm up agent runtimes _(after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
-12. **Phase 12**: Deploy Quick MCP Gateway _(**optional, opt-in** — you are prompted; see [Quick MCP Gateway](#10-quick-mcp-gateway-optional))_
+8. **Phase 8**: Deploy AAMP agents _(**optional, opt-in** — you are prompted; see [AAMP Agents](#9-aamp-agents-optional))_
+9. **Phase 9**: Deploy AdCP agents _(**optional, opt-in** — you are prompted; reference buyer + its UI, reference seller, reference governance — see [AdCP Reference Agents](#10-adcp-reference-agents-optional))_
+10. **Phase 10**: Deploy AgentCore agents
+11. **Phase 11**: Generate UI configuration
+12. **Phase 12**: Warm up agent runtimes _(after the optional, opt-in external A2A agents step below, so it also warms any external runtimes and never targets agents that are deployed later)_
+13. **Phase 13**: Deploy Quick MCP Gateway _(**optional, opt-in** — you are prompted; see [Quick MCP Gateway](#11-quick-mcp-gateway-optional))_
 
-> **Note:** Between Phase 10 and Phase 11 the script runs the **optional, opt-in external A2A agents** step (it prompts in interactive mode and is skipped with `--skip-confirmations`). It is not one of the 11 numbered phases — see [External Agents (A2A)](#7-external-agents-a2a). Warmup (Phase 11) deliberately runs after it.
+> **Note:** Between Phase 11 and Phase 12 the script runs the **optional, opt-in external A2A agents** step (it prompts in interactive mode and is skipped with `--skip-confirmations`). It is not one of the numbered phases — see [External Agents (A2A)](#7-external-agents-a2a). Warmup (Phase 12) deliberately runs after it.
 
-> **Note:** Phase 9 is where the AdCP MCP Gateway used to sit. The gateway has been **removed** — AdCP is served by the AdCP-compliant reference agents `AdCPBuyerAgent` and `AdCPSellerAgent` instead, and nothing in the deployment provisions, configures, or looks for a gateway. `--cleanup` still removes a gateway left over from a deployment made before the removal. The successor agents are not yet a working default — see [what ships today](#adcp-migration-status).
+> **Note:** Phase 9 deploys the optional AdCP reference agents from `external-agents/adcp/`. An earlier layout had the AdCP MCP Gateway at this number. The gateway has been **removed** — AdCP is now served by peer agents speaking the protocol directly, and nothing in the deployment provisions, configures, or looks for a gateway. `--cleanup` still removes a gateway left over from a deployment made before the removal. See [AdCP Reference Agents](#10-adcp-reference-agents-optional).
+
+#### Phase numbering changed
+
+The optional external-agent phases now run **before** the AgentCore deploy, because the AgentCore
+agents read their configuration at deploy time and could not see a pair deployed after them. Phases
+1–7 are unchanged. If you have a `--resume-at` value in a script or shell history, remap it:
+
+| Phase | Old | New |
+|---|---|---|
+| Deploy AAMP agents (optional) | 9 | **8** |
+| Deploy AdCP agents (optional) | — | **9** (new) |
+| Deploy AgentCore agents | 8 | **10** |
+| Generate UI configuration | 10 | **11** |
+| Warm up agent runtimes | 11 | **12** |
+| Deploy Quick MCP Gateway (optional) | 12 | **13** |
+
+`--resume-at` accepts 1–13.
 
 ### Prerequisites Setup
 
@@ -415,11 +443,12 @@ The deployment script automatically handles:
 - **Phase 5**: Sync data sources (start ingestion jobs)
 - **Phase 6**: Upload agent configurations to S3
 - **Phase 7**: Upload agent configurations to DynamoDB
-- **Phase 8**: Deploy AgentCore agents
-- **Phase 9**: Deploy AAMP agents _(optional, opt-in — skipped by `--skip-confirmations`)_
-- **Phase 10**: Generate UI configuration
-- **Phase 11**: Warm up agent runtimes _(after the optional external A2A agents step)_
-- **Phase 12**: Deploy Quick MCP Gateway _(optional, opt-in — skipped by `--skip-confirmations`)_
+- **Phase 8**: Deploy AAMP agents _(optional, opt-in — skipped by `--skip-confirmations`)_
+- **Phase 9**: Deploy AdCP agents _(optional, opt-in — skipped by `--skip-confirmations`)_
+- **Phase 10**: Deploy AgentCore agents
+- **Phase 11**: Generate UI configuration
+- **Phase 12**: Warm up agent runtimes _(after the optional external A2A agents step)_
+- **Phase 13**: Deploy Quick MCP Gateway _(optional, opt-in — skipped by `--skip-confirmations`)_
 
 If you are partially through the deployment process and want to recover from an error, use below configurations for the deployment script so that it handles idempotency. You can find the unique Id from a config file that the script creates during the initial run, ex: `.unique-id-a4a-us-east-1`. The name of the file depends on stack-prefix and region.
 
@@ -432,11 +461,12 @@ If you are partially through the deployment process and want to recover from an 
 # Phase 5: Sync data sources (start ingestion jobs)
 # Phase 6: Upload agent configurations to S3
 # Phase 7: Upload agent configurations to DynamoDB
-# Phase 8: Deploy AgentCore agents
-# Phase 9: Deploy AAMP agents (optional, opt-in — add --deploy-aamp to include it)
-# Phase 10: Generate UI configuration
-# Phase 11: Warm up agent runtimes (after the optional external A2A agents step)
-# Phase 12: Deploy Quick MCP Gateway (optional, opt-in — add --deploy-quick-gateway to include it)
+# Phase 8: Deploy AAMP agents (optional, opt-in — add --deploy-aamp to include it)
+# Phase 9: Deploy AdCP agents (optional, opt-in — add --deploy-adcp to include it)
+# Phase 10: Deploy AgentCore agents
+# Phase 11: Generate UI configuration
+# Phase 12: Warm up agent runtimes (after the optional external A2A agents step)
+# Phase 13: Deploy Quick MCP Gateway (optional, opt-in — add --deploy-quick-gateway to include it)
 
 ./scripts/deploy-ecosystem.sh \
   --stack-prefix a4a \
@@ -749,11 +779,16 @@ aws cognito-idp admin-create-user \
 ### 2. External API Integration
 
   **AdCP (Ad Context Protocol):**
-  AdCP is served by the AdCP-compliant reference agents `AdCPBuyerAgent` and `AdCPSellerAgent`, which speak
-  AdCP as peer agents over A2A:
+  AdCP is served by the reference agents in [`external-agents/adcp/`](external-agents/adcp/), which speak
+  the protocol as peers rather than through a gateway. `AgencyAgent` reaches the buyer over A2A; the buyer
+  reaches the seller and the governance agent over MCP:
   ```
-  Agent → A2A (OAuth bearer) → AdCPBuyerAgent / AdCPSellerAgent → AdCP
+  AgencyAgent --A2A (OAuth M2M bearer)--> AdCP reference buyer
+                                              |
+                                              +--MCP--> AdCP reference seller     (inventory, media buys)
+                                              +--MCP--> AdCP reference governance (signed intent tokens)
   ```
+  Deployed by the optional [Phase 9](#10-adcp-reference-agents-optional).
 
   > **The AdCP MCP Gateway has been removed.** Earlier versions provisioned an AgentCore MCP Gateway plus an
   > `adcp-handler` Lambda that exposed AdCP as MCP tool calls. No deployment phase creates them, and
@@ -765,11 +800,16 @@ aws cognito-idp admin-create-user \
 
   | | Status in this repository |
   |---|---|
-  | `AdCPBuyerAgent` | Registered in `global_configuration.json` as an A2A agent (`agent_protocol: 'a2a'`, `a2a_auth_type: 'oauth'`) whose endpoint points at a runtime hosted **outside this stack**. It carries no instructions and no tools — it is a pointer to an endpoint you supply. The committed ARN belongs to the authoring account, so it will not resolve in yours until you replace it and populate the inbound token at its `a2a_oauth_credentials.ssmPath`. |
-  | `AdCPSellerAgent` | Deployable by `external-agents/deploy_external_agents.py --agent AdCPSellerAgent`, but `external-agents/AdCPSellerAgent/` is in `.gitignore` — the source is not tracked here, so a clean checkout has the deployer and nothing to deploy. Its design and task surface are documented in [`external-agents/README.md`](external-agents/README.md#adcp-seller-agent). Wiring into `PublisherAgent` is pending buyer-side AdCP client support. |
+  | AdCP reference **buyer** | Fully deployable by Phase 9, onto **two** AgentCore runtimes from one codebase: an **HTTP** runtime serving its own React chat/journey UI, and an **A2A** runtime other agents call. Runs the buy journey and is the only AdCP runtime wired into this stack. |
+  | AdCP reference **seller** | Fully deployable by Phase 9. An **MCP** service with fixed fixtures (`get_products`, `create_media_buy`, …). Called by the AdCP buyer, not by this repo's agents. |
+  | AdCP reference **governance** | Fully deployable by Phase 9. An **MCP** service that mints KMS-signed intent tokens and publishes a JWKS and revocation list from its own CloudFront origin, so a seller can verify a buy was authorized. |
+  | `AdCPBuyerAgent` (config entry) | Ships in `global_configuration.template.json` as an inert stub — `agent_protocol: 'a2a'`, `a2a_auth_type: 'oauth_m2m'`, empty `agent_endpoint`/`runtime_arn`, no instructions, no tools. Phase 9 fills in the ARN and the credential automatically; you do not supply an endpoint by hand. |
+  | `AdCPBuyer` (config entry) | Created by Phase 9, not committed. This is the directly UI-selectable agent, carrying the resolvable A2A runtime ARN. It is configured and coloured but **absent from the UI until you add it to a tab** — see [AdCP Reference Agents](#10-adcp-reference-agents-optional). |
+  | `AdCPSellerAgent` | **No longer a thing.** It was an `external-agents/AdCPSellerAgent/` directory reached through `deploy_external_agents.py`, still listed in `.gitignore` and absent from the tree. The reference seller above replaced it. Nothing references the old name. |
 
-  Neither reference agent is a working default yet. Until they are, this repository has no end-to-end AdCP
-  path — the gateway that previously provided one is gone.
+  There is now an end-to-end AdCP path, provided you opt into Phase 9: `AgencyAgent` →
+  `invoke_specialist(agent_name="AdCPBuyerAgent")` → the buyer's A2A runtime → the seller and
+  governance agents over MCP.
 
   **WeatherImpactAnalysis Agent API Key:**
   The WeatherImpactAnalysis agent integrates with Visual Crossing Weather API to provide weather-based campaign insights. By default, the agent works with US locations, but for international locations, you'll need to configure a valid API key.
@@ -888,7 +928,7 @@ aws cognito-idp admin-create-user \
       --stack-prefix a4a \
       --region us-east-1 \
       --profile agnts4ad \
-      --resume-at 10
+      --resume-at 11
   ```
 
 ### 5. Add Custom Visualizations
@@ -991,26 +1031,25 @@ aws cognito-idp admin-create-user \
   can find the table. See [`external-agents/README.md`](external-agents/README.md)
   for inbound-auth details, cross-account notes, and the full flag reference.
 
-  **Note — what is actually tracked in git:** `external-agents/` tracks only
-  `README.md` and `deploy_external_agents.py`. The per-agent source directories
-  (`external-agents/AdCreationAgent/`, `external-agents/SellerAgent/`,
-  `external-agents/AdCPSellerAgent/`) are listed in `.gitignore`, so a clean
-  checkout has the deployer but nothing for it to deploy — `--agent <Name>`
-  names a directory you must supply. Three reference agents are *designed for*
-  this mechanism: `AdCreationAgent` and `AAMPSellerAgent` (described above,
-  wired into the main agent graph), plus `AdCPSellerAgent`, a
-  [AdCP 3.1](https://docs.adcontextprotocol.org)-compliant sell-side agent.
-  End-to-end wiring of `AdCPSellerAgent` into `PublisherAgent` is pending
-  buyer-side AdCP client support.
+  **Note — what is actually tracked in git:** the per-agent source directories
+  reached by `deploy_external_agents.py --agent <Name>`
+  (`external-agents/AdCreationAgent/`, `external-agents/SellerAgent/`) are
+  listed in `.gitignore`, so a clean checkout has the deployer but nothing for
+  it to deploy — `--agent <Name>` names a directory you must supply. Two
+  reference agents are designed for this mechanism: `AdCreationAgent` and
+  `AAMPSellerAgent`, both described above.
 
-  > **AdCP agents.** `AdCPSellerAgent`, together with `AdCPBuyerAgent` (a
-  > config-only pointer in `global_configuration.json`), is what replaced the
-  > removed [AdCP MCP Gateway](#2-external-api-integration). Neither is a working
-  > default yet — see [what ships today](#adcp-migration-status).
+  > **AdCP does not use this mechanism.** An earlier `AdCPSellerAgent` was
+  > deployed this way; it is gone. The AdCP reference agents live in the tracked
+  > [`external-agents/adcp/`](external-agents/adcp/) subtree with their own
+  > deploy driver, and are deployed by **Phase 9** rather than by
+  > `deploy_external_agents.py`. They are what replaced the removed
+  > [AdCP MCP Gateway](#2-external-api-integration) — see
+  > [AdCP Reference Agents](#10-adcp-reference-agents-optional).
 
-  > **Don't confuse this with Phase 9.** The `AAMPSellerAgent` described here is
+  > **Don't confuse this with Phase 8.** The `AAMPSellerAgent` described here is
   > a reference **external agent** that lives in this repo under
-  > `external-agents/`. It is unrelated to **Phase 9**, which deploys the
+  > `external-agents/`. It is unrelated to **Phase 8**, which deploys the
   > upstream **IAB Tech Lab AAMP buyer and seller** agents from the IAB repos —
   > see [AAMP Agents](#9-aamp-agents-optional). Both are optional and opt-in,
   > but they are separate features deployed by separate code paths.
@@ -1103,7 +1142,7 @@ aws cognito-idp admin-create-user \
 ### 9. AAMP Agents (Optional)
 
   **What they are:**
-  **Phase 9** of `scripts/deploy-ecosystem.sh` deploys the [IAB Tech Lab AAMP](https://iabtechlab.com)
+  **Phase 8** of `scripts/deploy-ecosystem.sh` deploys the [IAB Tech Lab AAMP](https://iabtechlab.com)
   buyer and seller agents to their own AgentCore runtimes and registers their
   runtime ARNs with the `AAMPBuyerAgent` / `AAMPSellerAgent` entries in this
   stack's agent configuration. The agents come from the upstream IAB repos, which
@@ -1140,8 +1179,8 @@ aws cognito-idp admin-create-user \
   | **Attributes** | `message` (the milestone text shown in the UI), `agent_name` (which agent wrote it), `ts`, `expires_at` |
   | **Lifetime** | Rows self-delete via TTL on `expires_at` (default 1 hour, `AAMP_PROGRESS_TTL_SECONDS`). Nothing here is a source of record, so the table has no point-in-time recovery and is safe to empty at any time |
   | **Correlation key** | The orchestrator mints the A2A `contextId` itself and sends it in the `message/stream` envelope, so both sides agree on the key before the call starts |
-  | **IAM** | Buyer runtime role: `dynamodb:PutItem` on this table only (attached by Phase 9 as `AampProgressWrite`). Orchestrator runtime role: `dynamodb:Query`, already covered by its execution-role policy |
-  | **Env** | `AAMP_PROGRESS_TABLE` on both runtimes — resolved from the stack output for the buyer (Phase 9) and from the stack naming convention for the orchestrator (Phase 8) |
+  | **IAM** | Buyer runtime role: `dynamodb:PutItem` on this table only (attached by Phase 8 as `AampProgressWrite`). Orchestrator runtime role: `dynamodb:Query`, already covered by its execution-role policy |
+  | **Env** | `AAMP_PROGRESS_TABLE` on both runtimes — resolved from the stack output for the buyer (Phase 8) and from the stack naming convention for the orchestrator (Phase 10) |
 
   Milestones are only written where the work actually happens — the brief is
   parsed, the budget is allocated, the seller is asked for a channel's inventory,
@@ -1162,7 +1201,7 @@ aws cognito-idp admin-create-user \
 
   **It is opt-in.** The phase does nothing unless you ask for it:
 
-  | How you run the script | What Phase 9 does |
+  | How you run the script | What Phase 8 does |
   | --- | --- |
   | Interactive (no `--skip-confirmations`) | Prompts `Deploy the AAMP agents now? (y/N)` — default **No** |
   | Non-interactive / `--skip-confirmations` | **Skipped**, printing the command to run it later |
@@ -1176,11 +1215,11 @@ aws cognito-idp admin-create-user \
   **Deploy it on its own** (after a completed deployment):
   ```bash
   ./scripts/deploy-ecosystem.sh \
-    --resume-at 9 --deploy-aamp \
+    --resume-at 8 --deploy-aamp \
     --stack-prefix a4a --unique-id abc123 \
     --region us-east-1 --profile agnts4ad
   ```
-  Resuming at 9 also re-runs Phase 10 (UI config) and Phase 11 (warmup), which is
+  Resuming at 8 also re-runs Phase 10 (AgentCore), Phase 11 (UI config) and Phase 12 (warmup), which is
   what makes the newly deployed AAMP runtimes visible in the UI.
 
   **Useful flags:**
@@ -1194,9 +1233,115 @@ aws cognito-idp admin-create-user \
   the ones in the standard deployment. They are not included in the cost estimate
   in the [Cost](#cost) section above.
 
-### 10. Quick MCP Gateway (Optional)
+### 10. AdCP Reference Agents (Optional)
 
-  **Phase 12** of `scripts/deploy-ecosystem.sh` puts an Amazon Bedrock AgentCore MCP Gateway in
+  **What they are:**
+  **Phase 9** deploys a self-contained [AdCP 3.1](https://docs.adcontextprotocol.org) ecosystem from
+  the [`external-agents/adcp/`](external-agents/adcp/) subtree. It is the successor to the removed
+  AdCP MCP Gateway: instead of flattening AdCP into gateway tool calls, real agents speak the
+  protocol to each other.
+
+  Three agents come up, on **four AgentCore runtimes** (the buyer gets two from one codebase):
+
+  | Agent | Runtime | Protocol | What it does |
+  |---|---|---|---|
+  | Reference **buyer** | `<prefix>_buyer_agent` | HTTP | Serves its own React chat + "journey" UI on CloudFront, and runs the buy journey |
+  | Reference **buyer** (A2A) | `<prefix>_buyer_agent_a2a` | A2A (JSON-RPC `message/send`) | The same agent exposed so other agents can call it. **The only AdCP runtime wired into this stack** |
+  | Reference **seller** | `<prefix>RefSeller` | MCP | Sandbox seller with fixed fixtures — `get_products`, `create_media_buy`, and the AdCP Media Buy + Accounts surface |
+  | Reference **governance** | `<prefix>RefGovernance` | MCP | Mints KMS-signed intent tokens and publishes a JWKS + revocation list from its own CloudFront origin, so a seller can verify a buy was authorized |
+
+  All four use **Cognito `CUSTOM_JWT`** inbound auth against the subtree's **own** user pool — the
+  AdCP ecosystem does not share this stack's pool.
+
+  **How they connect to the main agent graph:**
+  Only the buyer is wired in. After the driver succeeds, `scripts/wire_adcp_agents.py` writes four
+  things:
+  - Two **SSM SecureString** parameters holding a `client_credentials` document, at
+    `/<PREFIX>/a2a-inbound-tokens/<UID>/AdCPBuyerAgent` and `.../AdCPBuyer`. Two paths for one
+    runtime because the reader derives the path from the name it is invoking under.
+  - An `external_agent_configs` entry **`AdCPBuyerAgent` on `AgencyAgent`**
+    (`protocol: a2a`, `authType: oauth_m2m`), reached with
+    `invoke_specialist(agent_prompt="...", agent_name="AdCPBuyerAgent")`.
+  - A top-level `agent_configs` entry **`AdCPBuyer`** — the directly UI-selectable one, carrying the
+    same runtime ARN. The two ids must differ: a name that appears in `external_agent_configs` but
+    not in `agent_configs` makes the orchestrator build a local stub that fabricates a reply.
+  - The live **`GLOBAL_CONFIG`** item in the `AgentConfig` DynamoDB table, which is what the running
+    UI actually reads.
+
+  The wiring is a no-op (exit 0) when the buyer's A2A runtime ARN is absent, so a partial AdCP deploy
+  cannot leave a config entry pointing at a runtime that does not exist.
+
+  **⚠️ Two follow-ups Phase 9 does not do for you:**
+  1. **`AdCPBuyer` will not appear in the UI** until its tab config reaches DynamoDB. The AdCP tab in
+     `synthetic_data/configs/tab-configurations.json` already lists it in `availableAgents`, but the
+     running UI reads tab config from DynamoDB rather than that file, so you also need
+     `python scripts/upload_tab_configs_to_dynamodb.py --force` (the script silently skips without
+     `--force`). Reaching the buyer via `AgencyAgent` needs none of this.
+  2. **A running `AdFabricAgent` caches `GLOBAL_CONFIG` at cold start.** In a full deployment this is
+     harmless, because Phase 10 redeploys the AgentCore agents right after. If you run Phase 9 *on its
+     own* against a live stack, the buyer stays unreachable while every config check looks correct —
+     either continue through Phase 10, or send one invocation carrying `{"refresh_cache": true}`.
+
+  **It is opt-in:**
+
+  | How you run the script | What Phase 9 does |
+  | --- | --- |
+  | Interactive (no `--skip-confirmations`) | Prompts `Deploy the AdCP agents now? (y/N)` — default **No** |
+  | Non-interactive / `--skip-confirmations` | **Skipped**, printing the command to run it later |
+  | `--deploy-adcp` | Deploys without prompting |
+  | `--skip-adcp` | Skips without prompting |
+
+  Skipping is safe — no later phase depends on these agents.
+
+  **Deploy it on its own** (after a completed deployment):
+  ```bash
+  ./scripts/deploy-ecosystem.sh \
+    --resume-at 9 --deploy-adcp \
+    --stack-prefix a4a --unique-id abc123 \
+    --region us-east-1 --profile agnts4ad
+  ```
+  Resuming at 9 also re-runs Phase 10 (AgentCore), Phase 11 (UI config) and Phase 12 (warmup), which
+  is what makes the newly wired buyer visible and refreshes the config cache.
+
+  **Instance prefix.** The AdCP subtree names *every* resource from its own instance prefix, so
+  Phase 9 derives one as `<STACK_PREFIX><UNIQUE_ID>`, lowercased, reduced to `[a-z0-9]` and truncated
+  to 20 characters, then passes it explicitly as `deploy_all.py --prefix`. Including the unique id is
+  what keeps two stacks in one account apart. Passing it explicitly is also load-bearing: without it
+  the subtree falls back to whatever its local `deployments.local.json` holds, which once caused a
+  deploy to update *another* project's runtimes because every derived name matched.
+
+  **Driving the subtree directly.** Phase 9 runs the subtree's own driver whole rather than
+  reimplementing it. You can run it yourself, including one step at a time:
+  ```bash
+  cd external-agents/adcp
+  python3 deploy_all.py --dry-run                # print the plan, change nothing
+  python3 deploy_all.py --prefix a4aabc123       # full run against one instance
+  python3 deploy_all.py --only deploy-ref-seller # or --only 5; steps take names or numbers
+  ```
+  The step numbers are the subtree's own and are unrelated to this repo's phase numbers. See
+  [`external-agents/adcp/README.md`](external-agents/adcp/README.md) for the full step table, the
+  cost breakdown, and how account-scoped values are derived rather than committed.
+
+  **Prerequisites Phase 9 does not preflight:** the subtree needs `uv`, the `agentcore` CLI on
+  `PATH`, Docker (it builds container images), and Node.js with the CDK for the governance agent's
+  stack. It creates its own Python virtual environments in its first step.
+
+  **Sellers referenced but not included.** `deploy_all.py` carries inactive, commented-out steps for
+  `poseidon-seller`, `gotham-seller`, a reach service and a retired `triton-seller`. Those are not
+  part of this repository — only the reference buyer, seller and governance agents are. The
+  semantic-cache steps (`cache-buckets`, `publish-cache`, `corpus`) are disabled for the same reason,
+  since they served only those sellers.
+
+  **⚠️ Cost and cleanup.** This provisions four AgentCore runtimes, three DynamoDB tables, three S3
+  buckets, two CloudFront distributions, a KMS asymmetric signing key, a Secrets Manager secret and a
+  separate Cognito user pool. Standing cost is roughly **$2.45/month** (see [Cost](#cost)), and
+  **`./scripts/deploy-ecosystem.sh --cleanup` does not remove any of it** — its teardown matches
+  `<STACK_PREFIX>-*` resources, while these are named from the AdCP instance prefix. See
+  [Cleanup](#cleanup) for what to remove by hand.
+
+### 11. Quick MCP Gateway (Optional)
+
+  **Phase 13** of `scripts/deploy-ecosystem.sh` puts an Amazon Bedrock AgentCore MCP Gateway in
   front of the agents so **Amazon Quick Suite** (web and desktop), **Kiro** and **Claude
   Desktop** can call them as MCP tools — no AWS CLI needed for business users.
 
@@ -1205,7 +1350,7 @@ aws cognito-idp admin-create-user \
 
   The phase is **optional and opt-in**:
 
-  | How you run the script | What Phase 12 does |
+  | How you run the script | What Phase 13 does |
   | --- | --- |
   | Interactive, no flag | Asks you |
   | `--deploy-quick-gateway` | Deploys without prompting |
@@ -1215,7 +1360,7 @@ aws cognito-idp admin-create-user \
   ```bash
   # Deploy just the gateway against an existing stack
   scripts/deploy-ecosystem.sh \
-    --resume-at 12 --deploy-quick-gateway \
+    --resume-at 13 --deploy-quick-gateway \
     --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE>
   ```
 
@@ -1225,7 +1370,7 @@ aws cognito-idp admin-create-user \
   `/<PREFIX>/quick-gateway/<UID>/client-secret` and is never printed to the deploy log.
 
   **Skipping is safe.** The `a4a-mcp-handler` Lambda behind the gateway is created in Phase 2
-  with every stack, but without Phase 12 it has no gateway in front of it and an empty
+  with every stack, but without Phase 13 it has no gateway in front of it and an empty
   `GUIDANCE_RUNTIME_ARN`, so nothing invokes it.
 
   **Skills:** ready-made Amazon Quick Suite skill definitions live in
@@ -1234,7 +1379,7 @@ aws cognito-idp admin-create-user \
   Full setup instructions for all four access methods, including a manual path that does not
   use the deployment script: **[docs/QUICK_SETUP_GUIDE.md](docs/QUICK_SETUP_GUIDE.md)**
 
-### 11. Enabling SSO (Optional)
+### 12. Enabling SSO (Optional)
 
   The UI signs users in with a Cognito email and password by default. It can also offer
   **federated sign-in** through any OIDC identity provider registered in the Cognito user pool —
@@ -1251,8 +1396,8 @@ aws cognito-idp admin-create-user \
     --sso-provider <IDP_NAME> \
     --sso-label "Sign in with SSO"
 
-  # Or just regenerate the UI config on an existing stack (Phase 10)
-  scripts/deploy-ecosystem.sh --resume-at 10 \
+  # Or just regenerate the UI config on an existing stack (Phase 11)
+  scripts/deploy-ecosystem.sh --resume-at 11 \
     --stack-prefix <PREFIX> --unique-id <UID> --region <REGION> --profile <PROFILE> \
     --sso-provider <IDP_NAME>
   ```
@@ -1268,7 +1413,7 @@ aws cognito-idp admin-create-user \
   and the UI falls back to email and password with no error. The generator tells you which one
   is missing.
 
-  > If you deployed the optional Quick MCP Gateway (Phase 12), the Cognito domain already exists
+  > If you deployed the optional Quick MCP Gateway (Phase 13), the Cognito domain already exists
   > — it creates one as a side effect. Both features share that single domain.
 
   Step-by-step for any OIDC provider: **[docs/SSO_SETUP_GUIDE.md](docs/SSO_SETUP_GUIDE.md)**
@@ -1407,6 +1552,33 @@ The automated cleanup removes:
 
 **Note:** The cleanup script queries AWS directly to find resources matching your stack prefix, so it works even if local tracking files are missing.
 
+> ### ⚠️ Cleanup does NOT remove the AdCP agents (Phase 9)
+>
+> If you deployed [Phase 9](#10-adcp-reference-agents-optional), `--cleanup` leaves all of it behind.
+> The teardown matches `<STACK_PREFIX>-*`, but the AdCP subtree names everything from its own instance
+> prefix — `<STACK_PREFIX><UNIQUE_ID>`, lowercased and stripped to `[a-z0-9]` (so `a4a` + `abc123`
+> becomes `a4aabc123`). Nothing matches, so nothing is deleted, and the KMS key and ECR images keep
+> billing.
+>
+> With `ADCP=<that prefix>`, the resources to remove are:
+>
+> | Resource | Name |
+> |---|---|
+> | CloudFormation stacks | `AgentCore-${ADCP}RefSeller-default`, `AgentCore-${ADCP}RefGovernance-default` |
+> | AgentCore runtimes | `${ADCP}_buyer_agent`, `${ADCP}_buyer_agent_a2a` (the two above are removed with their stacks) |
+> | DynamoDB tables | `${ADCP}-reference-seller-state`, `${ADCP}-reference-governance-state`, `${ADCP}-buyer-agent-sessions` |
+> | S3 buckets | `${ADCP}-buyer-agent-sessions`, `${ADCP}-buyer-agent-ui`, plus the governance origin bucket |
+> | CloudFront | the buyer UI and governance origin distributions |
+> | Cognito | the AdCP user pool, its hosted domain, app clients and identity pool |
+> | Secrets Manager | the M2M client secret |
+> | KMS | `alias/${ADCP}-governance-signing` — **$1.00/month until scheduled for deletion** |
+> | ECR | one repository per runtime, plus one for the revocations Lambda |
+> | SSM | `/<STACK_PREFIX>/a2a-inbound-tokens/<UNIQUE_ID>/AdCPBuyerAgent` and `.../AdCPBuyer` (these *do* follow the main stack prefix) |
+>
+> Scheduling the KMS key for deletion is irreversible after the waiting period, and the governance
+> runtime will not start without a resolvable key — treat that one as a deliberate decision rather
+> than routine cleanup.
+
 ### 2. Verify Cleanup
 
 **Check remaining resources:**
@@ -1525,7 +1697,7 @@ aws ssm delete-parameter \
 
 **Issue: AgentCore container build failures**
 - **Symptom**: Docker build fails during AgentCore deployment
-- **Resolution**: Ensure Docker is installed and running, check ECR permissions. Resume deploy script at step 8.
+- **Resolution**: Ensure Docker is installed and running, check ECR permissions. Resume deploy script at step 10.
 - **Command**: `docker --version` and verify ECR push permissions
 
 **Issue: Knowledge base creation failures**

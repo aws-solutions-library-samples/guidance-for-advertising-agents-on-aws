@@ -1,0 +1,397 @@
+/**
+ * Bind and Plan panel visuals.
+ *
+ * A SEPARATE stylesheet from `journey.css` on purpose. That file is a strict 1:1 port of the
+ * prototype's `<style>` block, and `journey.css.fidelity.test.ts` asserts
+ * `ported.length === source.length` -- "none added and none dropped". Adding a rule there would fail
+ * that test, and rightly: it exists so the authored design cannot drift. Phases the prototype never
+ * drew need their own file rather than an exception to that rule.
+ *
+ * Everything here reuses the prototype's tokens (`--cyan`, `--peri`, `--purple`, `--mono`, `--rc`) and
+ * its existing `journey-pulse` keyframe, so these panels sit in the same visual language rather than
+ * introducing a second palette. Every rule is scoped to `.journey-root` for the same reason the ported
+ * ones are: nothing may leak into the chat view.
+ *
+ * Two constraints shaped the design, and both are worth stating because they ruled out the
+ * more obvious visuals:
+ *
+ * 1. **The flight window is not a progress bar.** A filled bar would read as elapsed delivery, which
+ *    nothing here measures. It is drawn as a span between two end ticks, with no fill.
+ * 2. **`will evaluate` is not a verdict.** Those chips are the categories the governance agent said it
+ *    will assess. They are tinted neutrally, never green, and carry no tick.
+ */
+
+/* ---- Bind: the sync flow ---- */
+
+.journey-root .gbind {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .55s, transform .55s;
+}
+.journey-root .gbind.on { opacity: 1; transform: none; }
+
+/* A party in the binding. Left is the governance agent, right is the account at the seller. */
+.journey-root .gnode {
+  flex: 1;
+  min-width: 190px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+  padding: 13px 15px;
+}
+.journey-root .gnode .gk {
+  font-size: 13px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #8a83a6;
+}
+.journey-root .gnode .gv {
+  margin-top: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  word-break: break-word;
+}
+.journey-root .gnode .gv.mono { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+.journey-root .gnode .gsub { margin-top: 3px; font-size: 13px; color: #a99fce; font-family: var(--mono); }
+
+/* The link between them, with a pulse travelling from the agent to the account -- the direction the
+   registration actually travels. */
+.journey-root .glink {
+  flex: none;
+  width: 74px;
+  position: relative;
+  height: 22px;
+}
+.journey-root .glink .gtrack {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(128, 240, 248, .15), rgba(128, 240, 248, .45));
+}
+.journey-root .glink .gtip {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 0;
+  height: 0;
+  margin-top: -4px;
+  border-left: 6px solid var(--cyan);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: .8;
+}
+.journey-root .glink .gdot {
+  position: absolute;
+  top: 50%;
+  margin-top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px -1px var(--cyan);
+}
+.journey-root .gbind.on .glink .gdot { animation: journey-gbind-travel 1.9s ease-in-out infinite; }
+
+@keyframes journey-gbind-travel {
+  0% { left: 0; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: calc(100% - 6px); opacity: 0; }
+}
+
+/*
+ * When the card is too narrow for one row, the binding stacks — and the arrow has to turn with it.
+ *
+ * `.gbind` is a wrapping flex row, so at narrow widths the account node drops below the agent node
+ * while the link stays on the first row beside the agent. The arrow then pointed rightward into empty
+ * space, at a target that was underneath it. An arrow that points at nothing is worse than no arrow:
+ * it asserts a direction for the registration, and the direction is the one piece of information it
+ * exists to carry.
+ *
+ * A CONTAINER query, not a media query. The panel is about half the stage above 1208px and the whole
+ * stage below it, so the viewport says nothing useful about how much room this body has. The threshold
+ * is the row's own min-content — two 190px nodes either side of a 74px link, plus the gaps and the
+ * panel's 24px padding — rounded up to leave the status pill somewhere to sit.
+ *
+ * Everything here re-points the SAME three elements rather than rendering a second variant, so there is
+ * one arrow to keep correct.
+ */
+@container panel (max-width: 620px) {
+  .journey-root .gbind {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* A pill stretched to the card's full width reads as another box rather than as a status. */
+  .journey-root .gbind .gstatus {
+    align-self: flex-start;
+  }
+
+  /* Now a vertical channel between the node above and the node below. */
+  .journey-root .glink {
+    width: 100%;
+    height: 30px;
+  }
+
+  .journey-root .glink .gtrack {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: auto;
+    margin: 0 0 0 -1px;
+    /* Same fade as the horizontal track, turned to run downward: faint at the source, solid where it
+       arrives. */
+    background: linear-gradient(180deg, rgba(128, 240, 248, 0.15), rgba(128, 240, 248, 0.45));
+  }
+
+  /* The head, pointing down at the account it binds to. */
+  .journey-root .glink .gtip {
+    top: auto;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    margin: 0 0 0 -4px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid var(--cyan);
+    border-bottom: none;
+  }
+
+  .journey-root .glink .gdot {
+    top: 0;
+    left: 50%;
+    margin: 0 0 0 -3px;
+  }
+
+  .journey-root .gbind.on .glink .gdot {
+    animation-name: journey-gbind-descend;
+  }
+}
+
+/* The travelling pulse, going down. Same timing and same fade as the horizontal one. */
+@keyframes journey-gbind-descend {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 6px);
+    opacity: 0;
+  }
+}
+
+/* The seller's own word for the binding state. Never hardcoded: `synced` is what came back. */
+.journey-root .gstatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(128, 240, 248, .12);
+  color: var(--cyan);
+}
+.journey-root .gstatus .live-dot { animation: journey-pulse 1.4s ease-in-out infinite; }
+
+/* Several sellers bound in one call get one row each. */
+.journey-root .gbindset { display: flex; flex-direction: column; gap: 12px; }
+.journey-root .gseller {
+  font-size: 13px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #8a83a6;
+  font-family: var(--mono);
+}
+
+/* ---- Plan: the registered campaign ---- */
+
+.journey-root .gplan {
+  margin-top: 14px;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .55s, transform .55s;
+}
+.journey-root .gplan.on { opacity: 1; transform: none; }
+
+/*
+ * The budget, given the same gradient treatment the prototype uses for its one big figure.
+ *
+ * `.gamount` is capped at 26px, smaller than the summary `h1` (`clamp(22px, 3.2vw, 34px)`). It was
+ * 40px, which at every viewport above ~740px wide made a per-panel budget figure the single largest
+ * piece of type on the whole screen -- larger than the product's own headline. A demo's own name
+ * has to outrank a number inside one of nine panels below it.
+ */
+.journey-root .gbudget { flex: none; display: flex; flex-direction: column; align-items: flex-start; }
+.journey-root .gbudget .gamount {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1;
+  background: linear-gradient(180deg, var(--peri), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.journey-root .gbudget .gcur {
+  margin-top: 3px;
+  font-size: 13px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #a99fce;
+}
+
+.journey-root .gplan-main { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 10px; }
+
+/* The flight WINDOW. Two ticks and a span, deliberately not a fill: see this file's header. */
+.journey-root .gflight .gfrow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-family: var(--mono);
+  color: #cfc7e6;
+}
+.journey-root .gflight .gspan {
+  margin-top: 6px;
+  height: 10px;
+  position: relative;
+}
+.journey-root .gflight .gspan::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--peri), var(--purple));
+  opacity: .55;
+}
+.journey-root .gflight .gtick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--peri);
+}
+.journey-root .gflight .gtick.s { left: 0; }
+.journey-root .gflight .gtick.e { right: 0; background: var(--purple); }
+.journey-root .gflight .glabel {
+  margin-top: 4px;
+  font-size: 13px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #8a83a6;
+}
+
+/* Channel and category chips. */
+.journey-root .gchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.journey-root .gchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(140, 140, 250, .14);
+  color: #cfc7e6;
+  box-shadow: inset 0 0 0 1px rgba(140, 140, 250, .28);
+}
+/* Categories the agent WILL assess. Neutral by design -- a green chip here would read as a pass. */
+.journey-root .gchip.willeval {
+  background: rgba(255, 255, 255, .05);
+  color: #a99fce;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+
+/* Small mono badges for the plan's identity. */
+.journey-root .gmeta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.journey-root .gbadge {
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+  color: #cfc7e6;
+}
+.journey-root .gbadge b { color: #fff; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-root .gbind,
+  .journey-root .gplan { transition: none; }
+  .journey-root .gbind.on .glink .gdot { animation: none; left: calc(50% - 3px); }
+  .journey-root .gstatus .live-dot { animation: none; }
+}
+
+/*
+ * The parked pulse, for the stacked form.
+ *
+ * The rule above parks the dot mid-TRACK by setting `left`, which is the midpoint of a horizontal link.
+ * On a vertical one that lands it half a card to the side of the channel, so the axis it is parked on
+ * has to turn along with the arrow.
+ */
+@container panel (max-width: 620px) {
+  @media (prefers-reduced-motion: reduce) {
+    .journey-root .gbind.on .glink .gdot {
+      left: calc(50% - 3px);
+      top: calc(50% - 3px);
+    }
+  }
+}
+
+/* ---- Summary header: the AWS mark beside the headline ---- */
+
+.journey-root .summary-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+/* Sized in `em` against the h1's own clamped font-size, so the mark tracks the headline as it scales
+   with the viewport instead of needing its own breakpoints. `flex-none` keeps it from being squeezed
+   when the headline wraps to two lines. */
+.journey-root .summary-head .summary-logo {
+  flex: none;
+  height: 2.1em;
+  width: auto;
+  font-size: clamp(22px, 3.2vw, 34px);
+  opacity: .92;
+}
+/* min-width:0 so a long headline wraps inside the row rather than forcing the row wider than the
+   sticky summary, which would push the mark off the left edge. */
+.journey-root .summary-head .summary-head-text { min-width: 0; }
+/* `align-items:center` centres the mark against the whole column, which now includes the dek. Without
+   this the three lines are vertically centred as a block and the mark floats level with the headline
+   rather than with the group. */
+.journey-root .summary-head { align-items: center; }
+/* The h1's authored top and bottom margins belong to a stacked layout where the dek was a sibling of the
+   row. In the column the eyebrow sits directly above and the dek directly below, so both gaps are
+   tightened here rather than by editing the ported rule. */
+.journey-root .summary-head h1 { margin-top: 2px; margin-bottom: 2px; }

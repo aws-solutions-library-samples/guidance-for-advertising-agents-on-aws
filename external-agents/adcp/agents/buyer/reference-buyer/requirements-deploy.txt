@@ -1,0 +1,13 @@
+# Deploy-time dependencies. Deliberately NOT in requirements.txt, which is the container image's
+# manifest (the Dockerfile installs that file) — the deployed buyer runtime has no reason to carry the
+# tool that deployed it. Same separation requirements-dev.txt documents for the test runner.
+#
+# This buyer is deployed with the **Python** starter toolkit (deploy_configure.py / deploy_launch.py
+# call Runtime.configure() and Runtime.launch() in one process), unlike the reference seller and
+# governance agents, which use the npm `@aws/agentcore` CLI. Both CLIs install a command called
+# `agentcore`; see deploy_all.agentcore_cli() for how the npm one is resolved when both are present.
+#
+# deploy_all.py's step 0.1 (bootstrap-venvs) installs THIS file into the buyer's .venv, so the deploy
+# scripts can import the toolkit while the image stays free of it.
+-r requirements.txt
+bedrock-agentcore-starter-toolkit==0.3.9

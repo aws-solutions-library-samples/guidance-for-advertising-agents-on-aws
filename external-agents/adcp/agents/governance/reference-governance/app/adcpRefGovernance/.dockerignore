@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and environment files
+.env
+.env.*
+
+# Version control
+.git/
+
+# AgentCore build artifacts
+.agentcore/artifacts/
+*.zip
+
+# Tests. Written both bare and **/-prefixed: Docker matches .dockerignore patterns root-relative, so a
+# bare pattern misses nested copies. This agent's tests sit beside main.py inside codeLocation, so
+# without these they would ship in the image.
+test_*.py
+**/test_*.py

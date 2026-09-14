@@ -1,0 +1,3567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AdCP Buyer Agent</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@18.0.6/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.11/dist/purify.min.js"></script>
+<!--
+  Motion 13.0.0, vendored under static/vendor/ rather than loaded from a CDN. See
+  static/vendor/README.md for why, and for the upgrade procedure.
+
+  Relative path deliberately: the same file is served both from S3/CloudFront by
+  deploy_ui.py and straight off disk by app.py's FileResponse, and a root-relative
+  "/vendor/..." would only resolve under one of them.
+
+  Exposes window.Motion. Every use is guarded (see renderProductStack): if this
+  script fails to load, cards render in their final state without animation, so a
+  missing asset costs the motion and not the content.
+-->
+<script src="./vendor/motion.js"></script>
+<style>
+  :root {
+    --ink:#0f1729; --ink-2:#33415c; --muted:#64748b; --line:#e2e8f0; --line-soft:#eef2f7;
+    --surface:#fff; --canvas:#f6f8fb;
+    --pink:#ec4899; --purple:#8b5cf6; --blue:#3b82f6; --orange:#f59e0b; --green:#10b981; --red:#ef4444; --sky:#0ea5e9;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    font-family:var(--font); color:var(--ink); background:var(--canvas);
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+
+  .ic { display:inline-flex; align-items:center; justify-content:center; }
+  .ic svg { width:1em; height:1em; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; fill:none; display:block; }
+
+  /* ---------- Header ---------- */
+  header {
+    display:flex; align-items:center; gap:14px;
+    padding:14px 22px; background:var(--surface); border-bottom:1px solid var(--line);
+    flex:none;
+  }
+  header h1 { font-size:15px; font-weight:800; letter-spacing:-.01em; }
+  header .sub { font-size:12px; color:var(--muted); font-family:var(--mono); }
+  .conn-badge {
+    display:flex; align-items:center; gap:7px;
+    font-size:12px; font-weight:600; color:var(--muted);
+    border:1px solid var(--line); border-radius:999px; padding:5px 12px;
+    background:var(--line-soft);
+  }
+  .conn-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex:none; }
+  .conn-badge.ok { color:var(--green); border-color:#c9f2e0; background:#effaf5; }
+  .conn-badge.ok .conn-dot { background:var(--green); }
+  .conn-badge.error { color:var(--red); border-color:#fdd; background:#fef2f2; }
+  .conn-badge.error .conn-dot { background:var(--red); }
+  .conn-badge.checking .conn-dot { background:var(--sky); animation:pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  .seller-select, .session-select {
+    font-size:12.5px; font-weight:600; color:var(--ink-2);
+    border:1px solid var(--line); border-radius:9px; padding:6px 10px;
+    background:var(--surface); font-family:var(--font); cursor:pointer;
+    max-width:220px;
+  }
+  .seller-select:focus, .session-select:focus { outline:none; border-color:var(--blue); }
+  .seller-select:disabled, .session-select:disabled { color:var(--muted); cursor:not-allowed; }
+
+  /* ---------- Form controls (used by the admin panel) ----------
+     These were the Direct-call form's styles. That form is gone from the UI
+     (one control now chooses the agent you're talking to), but the field and
+     submit-button styles are reused by the Users panel. */
+  .direct-field { margin-bottom:12px; max-width:420px; }
+  .direct-field label {
+    display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:5px;
+  }
+  .direct-field input, .direct-field select {
+    width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+    font-size:13.5px; font-family:var(--font); color:var(--ink);
+  }
+  .direct-field input:focus, .direct-field select:focus { outline:none; border-color:var(--blue); }
+  .direct-submit {
+    background:var(--ink); color:#fff; border:none; border-radius:9px;
+    padding:10px 20px; font-size:13.5px; font-weight:700; cursor:pointer; margin-top:6px;
+  }
+  .direct-submit:disabled { background:var(--line); color:var(--muted); cursor:not-allowed; }
+
+  /* ---------- Session viewer ----------
+     A remotely-initiated session is replayed into the MAIN chat column,
+     using the same message bubbles a live conversation uses, with its tool
+     calls in the side panel exactly as live ones appear. The only
+     difference is that the composer is replaced by a read-only bar, since
+     there's nothing to type into someone else's conversation. */
+  .viewer-banner {
+    padding:8px 16px; font-size:11.5px; color:var(--sky); background:#e8f6fc;
+    border-bottom:1px solid var(--line); display:none;
+  }
+  .viewer-banner.show { display:block; }
+
+  /* Replaces the composer while viewing — the affordance that says "this is
+     someone else's conversation, you're watching it" and the way back. */
+  .viewer-bar {
+    flex:none; display:none; align-items:center; gap:12px;
+    padding:13px 18px; border-top:1px solid var(--line);
+    background:#e8f6fc; color:#0b6a8f; font-size:12.5px;
+  }
+  .viewer-bar.show { display:flex; }
+  .viewer-bar .vb-text { flex:1; line-height:1.5; }
+  .viewer-bar .vb-text strong { font-weight:700; }
+  .viewer-bar .vb-id { font-family:var(--mono); font-size:11.5px; opacity:.8; }
+  .viewer-bar button {
+    flex:none; background:var(--surface); border:1px solid #b8dff0; border-radius:9px;
+    padding:8px 14px; font-family:var(--font); font-size:12.5px; font-weight:700;
+    color:#0b6a8f; cursor:pointer;
+  }
+  .viewer-bar button:hover { border-color:var(--sky); }
+  .viewer-loading { margin:auto; color:var(--muted); font-size:13.5px; }
+
+  /* Interleaved model reasoning recorded on a viewed session. The live
+     chat shows this same pre-tool-call commentary inline in the agent's
+     bubble as it streams; on replay it's a distinct recorded step type
+     ("thought"), so it's labeled as reasoning rather than passed off as
+     the final answer. */
+  .msg.thought .bubble {
+    background:var(--line-soft); border:1px solid var(--line);
+    color:var(--muted); font-style:italic; font-size:13px;
+    border-radius:14px 14px 14px 4px;
+  }
+  .msg.thought .role-label { color:var(--muted); }
+  .msg.sysnote { align-self:center; max-width:560px; }
+  .msg.sysnote .bubble {
+    background:#fef2f2; border:1px solid #fdd; color:var(--red);
+    font-size:12.5px; border-radius:10px;
+  }
+  .msg.sysnote .role-label { text-align:center; }
+
+  /* ---------- Layout ---------- */
+  main {
+    flex:1; display:flex; min-height:0; overflow:hidden;
+  }
+  /* min-height:0 on both columns so the scrolling child (.chat-body /
+     .log-body) is what overflows, rather than the column growing past the
+     viewport and having its tail clipped by main's overflow:hidden — a long
+     run of tool cards is otherwise unreachable no matter where you scroll. */
+  .chat-col {
+    flex:1; display:flex; flex-direction:column; min-width:0; min-height:0;
+    border-right:1px solid var(--line);
+  }
+  .log-col {
+    width:380px; flex:none; display:flex; flex-direction:column; min-height:0;
+    background:var(--surface);
+  }
+  @media (max-width:900px) {
+    .log-col { display:none; }
+  }
+
+  .log-head {
+    padding:12px 16px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--muted); flex:none;
+  }
+  .log-build {
+    padding:5px 16px; border-bottom:1px solid var(--line-soft); flex:none;
+    font-family:var(--mono); font-size:10.5px; color:var(--muted);
+  }
+  .log-build:empty { display:none; }
+  .log-body { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .log-empty { color:var(--muted); font-size:13px; padding:8px 4px; }
+
+  .tool-card {
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;
+    background:var(--surface);
+    /* `.log-body` is a flex column, where children default to `flex-shrink:1`. Without this
+       the cards compress to share the panel's height instead of overflowing it, so the panel
+       never scrolls and every card is squeezed thinner as more arrive. It was masked while
+       `.tc-body` capped itself at 220px; anything taller exposes it. */
+    flex:none;
+    opacity:0; transform:translateY(10px); transition:opacity .35s ease-out, transform .35s ease-out;
+  }
+  .tool-card.in { opacity:1; transform:none; }
+  .tool-card .tc-head {
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    background:var(--line-soft); border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:12px; font-weight:600;
+  }
+  .tool-card .tc-status {
+    margin-left:auto; font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.03em; padding:2px 8px; border-radius:999px;
+  }
+  .tool-card .tc-status.pending { color:var(--sky); background:#e8f6fc; }
+  .tool-card .tc-status.success { color:var(--green); background:#e3f8ee; }
+  .tool-card .tc-status.error { color:var(--red); background:#fde8e8; }
+  .tool-card .tc-body {
+    padding:10px 12px; font-family:var(--mono); font-size:11.5px; color:var(--ink-2);
+    max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+  }
+  .tool-card .spinner {
+    width:11px; height:11px; border:2px solid #cfe9f5; border-top-color:var(--sky);
+    border-radius:50%; animation:spin .7s linear infinite; flex:none;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ---------- Product stack ----------
+     A seller's get_products result, rendered as cards instead of raw JSON. Every
+     element here is driven by a field the seller actually returned: a product with
+     no pricing_options gets no price chip, and one with no ext.gotham_measurement
+     gets no similarity bars, rather than a zero standing in for "not supplied".
+     The raw JSON stays reachable behind "Show JSON" so nothing is hidden. */
+  .ps { display:flex; flex-direction:column; }
+  .ps-head {
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .ps-count { font-size:12px; font-weight:700; color:var(--ink); }
+  .ps-note { font-size:11px; color:var(--orange); font-weight:600; }
+  .ps-actions { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  .ps-btn {
+    font:inherit; font-size:11px; font-weight:600; color:var(--ink-2);
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:3px 10px; cursor:pointer;
+  }
+  .ps-btn:hover { background:var(--line-soft); }
+  .ps-btn:focus-visible { outline:2px solid var(--sky); outline-offset:1px; }
+
+  .ps-list { list-style:none; margin:0; padding:8px; display:flex; flex-direction:column; gap:8px; }
+  /* Collapsed: the first cards form a pile, the rest are out of the flow entirely so a
+     50-product result costs nothing to render until it's opened. */
+  .ps-list.collapsed { gap:0; padding-bottom:16px; }
+  .ps-list.collapsed .ps-item.pile-hidden { display:none; }
+  .ps-list.collapsed .ps-item.pile-1 { transform:scale(.97) translateY(-6px); z-index:2; opacity:.72; }
+  .ps-list.collapsed .ps-item.pile-2 { transform:scale(.94) translateY(-12px); z-index:1; opacity:.45; }
+
+  .ps-item {
+    position:relative; display:flex; gap:10px; align-items:flex-start;
+    padding:10px 11px; background:var(--surface);
+    border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 8px 20px -14px rgba(15,23,41,.28);
+  }
+  .ps-ico {
+    flex:none; width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--line-soft); font-size:15px;
+  }
+  .ps-main { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+  .ps-title { font-size:12.5px; font-weight:700; color:var(--ink); line-height:1.3; }
+  .ps-desc {
+    font-size:11.5px; color:var(--muted); line-height:1.45;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .ps-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:2px; }
+  .ps-chip {
+    font-family:var(--mono); font-size:10.5px; font-weight:700;
+    padding:2px 7px; border-radius:999px; background:var(--line-soft); color:var(--ink-2);
+  }
+  .ps-chip.price { background:#e3f8ee; color:#0b6b4f; }
+  .ps-chip.fmt { background:#eef2ff; color:#4338ca; }
+  .ps-id { font-family:var(--mono); font-size:10px; color:var(--muted); }
+
+  /* Two similarity bars: content and audience, the dual-vector scores the seller
+     returned. Rendered only when present. */
+  .ps-bars { display:flex; flex-direction:column; gap:3px; margin-top:5px; }
+  .ps-bar { display:flex; align-items:center; gap:6px; }
+  .ps-bar-label { font-size:10px; color:var(--muted); width:58px; flex:none; }
+  .ps-bar-track {
+    flex:1; height:4px; border-radius:999px; background:var(--line-soft); overflow:hidden;
+  }
+  .ps-bar-fill { height:100%; width:0; border-radius:999px; }
+  .ps-bar.content .ps-bar-fill { background:var(--blue); }
+  .ps-bar.audience .ps-bar-fill { background:var(--purple); }
+  .ps-bar-val { font-family:var(--mono); font-size:10px; color:var(--ink-2); width:38px; text-align:right; flex:none; }
+
+  .ps-json {
+    margin:0; padding:10px 12px; border-top:1px solid var(--line-soft);
+    font-family:var(--mono); font-size:11px; color:var(--ink-2);
+    max-height:220px; overflow:auto; white-space:pre-wrap; word-break:break-word;
+  }
+  .ps-json[hidden] { display:none; }
+
+  /* Motion is applied by script (see renderProductStack). This is the fallback for a
+     browser that honours reduced motion: the script skips its animations and the cards
+     are already in their final state, so nothing depends on a transition running. */
+  @media (prefers-reduced-motion: reduce) {
+    .ps-item { transition:none !important; }
+  }
+
+  /* ---------- Chat ---------- */
+  .chat-body { flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:16px; }
+  /* `flex:none` for the same reason as `.tool-card`: `.chat-body` is a flex column, and
+     without it a tall message (a product stack, a long reply) is compressed to fit the
+     column rather than extending it and scrolling. */
+  .msg { max-width:720px; display:flex; flex-direction:column; gap:4px; flex:none; }
+  .msg.user { align-self:flex-end; }
+  .msg.agent { align-self:flex-start; }
+  .msg .bubble {
+    padding:12px 16px; border-radius:14px; font-size:14.5px; line-height:1.55;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .msg.user .bubble { background:var(--ink); color:#fff; border-radius:14px 14px 4px 14px; }
+  .msg.agent .bubble {
+    background:var(--surface); border:1px solid var(--line); color:var(--ink);
+    border-radius:14px 14px 14px 4px;
+    box-shadow:0 8px 20px -12px rgba(15,23,41,.15);
+  }
+  .msg .role-label { font-size:11px; color:var(--muted); font-weight:600; padding:0 4px; }
+  .msg.user .role-label { text-align:right; }
+
+  /* ---------- Seller-agent response bubbles (in the main conversation) ---------- */
+  .msg.seller .bubble {
+    background:var(--surface); border:1px solid var(--line); color:var(--ink-2);
+    border-radius:14px 14px 14px 4px; font-family:var(--mono); font-size:12.5px;
+    white-space:pre-wrap; word-break:break-word; max-height:280px; overflow-y:auto;
+  }
+  .msg.seller .role-label { color:var(--sky); }
+  /* A bubble holding a product stack rather than a raw payload: drops the monospace,
+     pre-wrap and 280px scroll cap, all of which exist for JSON text. */
+  .msg.seller .bubble.stack-bubble {
+    font-family:var(--font); white-space:normal; max-height:none; overflow:visible;
+    padding:0; overflow:hidden;
+  }
+  /* Wider than the 720px default: the stack carries a title, chips and two score bars per
+     row, which read badly wrapped into a narrow column. */
+  .msg.seller:has(.stack-bubble) { max-width:860px; }
+
+  /* ---------- Rendered markdown (agent responses only) ---------- */
+  .bubble.markdown { white-space:normal; }
+  .bubble.markdown p { margin:0 0 8px; }
+  .bubble.markdown p:last-child { margin-bottom:0; }
+  .bubble.markdown ul, .bubble.markdown ol { margin:4px 0 8px 20px; }
+  .bubble.markdown li { margin-bottom:4px; }
+  .bubble.markdown li:last-child { margin-bottom:0; }
+  .bubble.markdown h1, .bubble.markdown h2, .bubble.markdown h3 {
+    font-size:1em; font-weight:800; margin:12px 0 6px;
+  }
+  .bubble.markdown h1:first-child, .bubble.markdown h2:first-child, .bubble.markdown h3:first-child { margin-top:0; }
+  .bubble.markdown code {
+    font-family:var(--mono); font-size:.9em; background:var(--line-soft);
+    padding:1px 5px; border-radius:4px;
+  }
+  .bubble.markdown pre {
+    font-family:var(--mono); font-size:.85em; background:var(--line-soft);
+    padding:10px 12px; border-radius:8px; overflow-x:auto; margin:8px 0;
+  }
+  .bubble.markdown pre code { background:none; padding:0; }
+  .bubble.markdown a { color:var(--blue); text-decoration:underline; }
+  .bubble.markdown strong { font-weight:700; }
+  .bubble.markdown hr { border:none; border-top:1px solid var(--line); margin:10px 0; }
+  .bubble.markdown table { border-collapse:collapse; margin:8px 0; font-size:.9em; }
+  .bubble.markdown th, .bubble.markdown td { border:1px solid var(--line); padding:4px 8px; }
+
+  .typing-dots { display:inline-flex; gap:4px; padding:4px 2px; }
+  .typing-dots span {
+    width:6px; height:6px; border-radius:50%; background:var(--muted);
+    animation:bounce 1.1s ease-in-out infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay:.15s; }
+  .typing-dots span:nth-child(3) { animation-delay:.3s; }
+  @keyframes bounce { 0%,60%,100%{ transform:translateY(0); opacity:.4; } 30%{ transform:translateY(-4px); opacity:1; } }
+
+  .empty-state {
+    margin:auto; text-align:center; color:var(--muted); max-width:780px;
+  }
+  .empty-state h2 { font-size:16px; color:var(--ink); margin-bottom:8px; font-weight:700; }
+  .empty-state p { font-size:13.5px; line-height:1.6; }
+  .empty-state p + p { margin-top:8px; }
+
+  /* ---------- Per-seller scenario catalog (empty state) ---------- */
+  .scen-groups { text-align:left; margin-top:20px; display:flex; flex-direction:column; gap:18px; }
+  .scen-group-label {
+    font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-2); margin-bottom:8px;
+  }
+  .scen-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:8px; }
+  .scen {
+    border:1px solid var(--line); background:var(--surface); border-radius:10px;
+    padding:10px 12px; text-align:left; cursor:pointer; font-family:var(--font);
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .scen:hover { border-color:var(--blue); }
+  .scen.gap { border-style:dashed; }
+  .scen-head { display:flex; align-items:baseline; gap:7px; }
+  .scen-n { font-family:var(--mono); font-size:10.5px; font-weight:700; color:var(--muted); flex:none; }
+  .scen-title { font-size:12.5px; font-weight:700; color:var(--ink); line-height:1.3; }
+  .scen-body { font-size:11.5px; color:var(--muted); line-height:1.45; }
+  .scen-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:2px; }
+  .scen-tag {
+    font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:4px;
+    background:var(--line-soft); color:var(--ink-2);
+  }
+  .scen-tag.gap { background:#fff7ed; color:#b45309; border:1px solid #fde3c2; }
+  .scen-note { font-size:10.5px; color:#b45309; line-height:1.4; }
+
+  /* ---------- Composer ---------- */
+  .composer {
+    flex:none; padding:14px 18px; border-top:1px solid var(--line); background:var(--surface);
+    display:flex; gap:10px; align-items:flex-end;
+  }
+  .composer textarea {
+    flex:1; resize:none; border:1px solid var(--line); border-radius:10px;
+    padding:11px 14px; font-family:var(--font); font-size:14px; color:var(--ink);
+    max-height:120px; min-height:44px;
+  }
+  .composer textarea:focus { outline:none; border-color:var(--blue); }
+  .composer button {
+    flex:none; background:var(--ink); color:#fff; border:none; border-radius:10px;
+    padding:0 18px; height:44px; font-size:13.5px; font-weight:700; cursor:pointer;
+  }
+  .composer button:disabled { background:var(--line); color:var(--muted); cursor:not-allowed; }
+
+  /* ---------- Login screen ---------- */
+  #loginScreen {
+    height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--canvas); padding:24px;
+  }
+  .login-card {
+    width:100%; max-width:360px; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:28px 26px; box-shadow:0 24px 60px -24px rgba(15,23,41,.28);
+  }
+  .login-card .login-icon {
+    width:40px; height:40px; border-radius:10px; background:#dbeafe; color:var(--blue);
+    display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:16px;
+  }
+  .login-card h1 { font-size:17px; font-weight:800; margin-bottom:4px; }
+  .login-card .login-sub { font-size:12.5px; color:var(--muted); margin-bottom:20px; }
+  .login-field { margin-bottom:14px; }
+  .login-field label {
+    display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:6px;
+  }
+  .login-field input {
+    width:100%; border:1px solid var(--line); border-radius:9px; padding:10px 12px;
+    font-size:14px; font-family:var(--font); color:var(--ink);
+  }
+  .login-field input:focus { outline:none; border-color:var(--blue); }
+  .login-submit {
+    width:100%; background:var(--ink); color:#fff; border:none; border-radius:9px;
+    padding:11px 0; font-size:13.5px; font-weight:700; cursor:pointer; margin-top:4px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .login-submit:disabled { background:var(--line); color:var(--muted); cursor:not-allowed; }
+  .login-cancel {
+    width:100%; background:none; border:none; color:var(--muted); font-family:var(--font);
+    font-size:12.5px; font-weight:600; padding:10px 0 0; cursor:pointer;
+  }
+  .login-cancel:hover { color:var(--ink-2); }
+
+  /* Live checklist for the pool's real password policy (min 8, upper,
+     lower, digit — see deploy_cognito_setup.py's PasswordPolicy). Cognito
+     remains the authority: this only mirrors the policy so the user isn't
+     guessing, and a rejection from Cognito is still surfaced verbatim. */
+  .pw-rules { margin:2px 0 14px; display:flex; flex-direction:column; gap:5px; }
+  .pw-rule { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted); }
+  .pw-mark {
+    width:13px; height:13px; border-radius:50%; border:1.5px solid var(--line);
+    flex:none; display:inline-flex; align-items:center; justify-content:center;
+    font-size:9px; line-height:1; color:#fff;
+  }
+  .pw-rule.met { color:var(--green); }
+  .pw-rule.met .pw-mark { background:var(--green); border-color:var(--green); }
+  .pw-rule.met .pw-mark::after { content:"\2713"; }
+
+  .login-error {
+    display:none; background:#fef2f2; border:1px solid #fdd; color:var(--red);
+    border-radius:8px; padding:9px 12px; font-size:12.5px; margin-bottom:14px;
+  }
+  .login-error.show { display:block; }
+  .login-hint {
+    margin-top:18px; padding-top:14px; border-top:1px solid var(--line-soft);
+    font-size:11.5px; color:var(--muted); line-height:1.6;
+  }
+  .login-spinner {
+    width:13px; height:13px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff;
+    border-radius:50%; animation:spin .7s linear infinite;
+  }
+  #appShell { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+  #appShell.visible { display:flex; }
+  .signout-btn {
+    background:none; border:1px solid var(--line); border-radius:8px; padding:6px 12px;
+    font-size:12px; font-weight:600; color:var(--ink-2); cursor:pointer; margin-left:10px;
+  }
+  .signout-btn:hover { border-color:var(--red); color:var(--red); }
+  .admin-btn {
+    display:none; background:none; border:1px solid var(--line); border-radius:8px;
+    padding:6px 12px; font-size:12px; font-weight:600; color:var(--ink-2); cursor:pointer;
+  }
+  .admin-btn.show { display:inline-block; }
+  .admin-btn:hover { border-color:var(--blue); color:var(--blue); }
+
+  /* ---------- Admin panel (Cognito user management) ---------- */
+  .modal-backdrop {
+    position:fixed; inset:0; background:rgba(15,23,41,.45); display:none;
+    align-items:flex-start; justify-content:center; padding:48px 20px; z-index:50;
+    overflow-y:auto;
+  }
+  .modal-backdrop.show { display:flex; }
+  .modal {
+    width:100%; max-width:620px; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; box-shadow:0 30px 70px -30px rgba(15,23,41,.45); overflow:hidden;
+  }
+  .modal-head {
+    display:flex; align-items:center; gap:10px; padding:16px 20px;
+    border-bottom:1px solid var(--line);
+  }
+  .modal-head h2 { font-size:15px; font-weight:800; }
+  .modal-head .modal-sub { font-size:12px; color:var(--muted); font-family:var(--mono); }
+  .modal-close {
+    margin-left:auto; background:none; border:none; color:var(--muted); cursor:pointer;
+    font-size:16px; line-height:1; padding:4px 6px;
+  }
+  .modal-close:hover { color:var(--ink); }
+  .modal-body { padding:18px 20px 22px; }
+  .modal-section-label {
+    font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 10px;
+  }
+  .modal-section + .modal-section { margin-top:24px; padding-top:20px; border-top:1px solid var(--line-soft); }
+  .admin-form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .admin-form-row .direct-field { margin-bottom:0; flex:1 1 190px; max-width:none; }
+  .admin-note { font-size:11.5px; color:var(--muted); line-height:1.55; margin-top:10px; }
+
+  .admin-alert { border-radius:9px; padding:10px 12px; font-size:12.5px; margin-bottom:14px; display:none; }
+  .admin-alert.show { display:block; }
+  .admin-alert.error { background:#fef2f2; border:1px solid #fdd; color:var(--red); }
+  .admin-alert.ok { background:#effaf5; border:1px solid #c9f2e0; color:#0f7a55; }
+
+  /* The one-time temporary password handoff. Monospace + selectable, since
+     it has to be transcribed accurately by a human. */
+  .cred-box {
+    border:1px solid #c9f2e0; background:#effaf5; border-radius:10px; padding:12px 14px;
+    margin-bottom:14px; font-size:12.5px; color:#0f7a55;
+  }
+  .cred-box .cred-line { display:flex; gap:8px; align-items:baseline; margin-top:6px; }
+  .cred-box .cred-key { font-size:11px; text-transform:uppercase; letter-spacing:.04em; min-width:96px; }
+  .cred-box .cred-val { font-family:var(--mono); font-size:13px; color:var(--ink); user-select:all; }
+  .cred-box .cred-warn { margin-top:10px; font-size:11.5px; color:#0f7a55; }
+
+  .user-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .user-table th {
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); padding:0 8px 7px; border-bottom:1px solid var(--line);
+  }
+  .user-table td { padding:8px; border-bottom:1px solid var(--line-soft); color:var(--ink-2); }
+  .user-table td.u-name { font-family:var(--mono); font-size:12px; color:var(--ink); }
+  .pill {
+    font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
+  }
+  .pill.confirmed { color:var(--green); background:#e3f8ee; }
+  .pill.pending { color:var(--orange); background:#fff7ed; }
+  .pill.unknown { color:var(--muted); background:var(--line-soft); }
+  .pill.admin { color:var(--purple); background:#f3ebff; }
+  .pill.live { color:var(--sky); background:#e8f6fc; }
+  .pill.failed { color:var(--red); background:#fde8e8; }
+
+  /* ---------- All-sessions panel ----------
+     The header dropdown carries only the 4 newest sessions, so it stays a
+     glanceable control rather than a wall of ids; the rest of the recent
+     list lives here, opened from the "View all sessions…" entry under
+     those four. Same read-only viewer either way — this panel only picks
+     which session to replay. */
+  .sess-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .sess-table th {
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); padding:0 8px 7px; border-bottom:1px solid var(--line);
+  }
+  .sess-table td {
+    padding:8px; border-bottom:1px solid var(--line-soft); color:var(--ink-2);
+    vertical-align:top;
+  }
+  .sess-table tr.viewing td { background:#e8f6fc; }
+  .sess-table td.s-agent { color:var(--ink); font-weight:600; }
+  .sess-table td.s-preview { color:var(--muted); max-width:240px; }
+  .sess-table td.s-when { font-family:var(--mono); font-size:11.5px; white-space:nowrap; }
+  .sess-table td.s-act { text-align:right; }
+  .sess-view-btn {
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:5px 11px; font-family:var(--font); font-size:12px; font-weight:700;
+    color:var(--ink-2); cursor:pointer; white-space:nowrap;
+  }
+  .sess-view-btn:hover { border-color:var(--blue); color:var(--blue); }
+  .sess-view-btn:disabled { color:var(--muted); border-color:var(--line-soft); cursor:default; }
+  .sess-toggle {
+    display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted);
+    margin:0 0 12px; cursor:pointer; user-select:none;
+  }
+  .sess-toggle input { margin:0; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-icon" data-ic="lock"></div>
+    <h1>AdCP Buyer Agent</h1>
+    <div class="login-sub">Sign in with your Cognito account to continue.</div>
+    <div class="login-error" id="loginError"></div>
+    <form id="loginForm">
+      <div class="login-field">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="login-submit" id="loginSubmit">Sign in</button>
+    </form>
+
+    <!-- Second step, shown only when Cognito answers InitiateAuth with the
+         NEW_PASSWORD_REQUIRED challenge — i.e. a user created by an admin
+         with a temporary password (create_cognito_user.py) signing in for
+         the first time. Cognito issues no tokens until the challenge is
+         answered, so there is no way to skip this and get in. -->
+    <form id="newPasswordForm" style="display:none;">
+      <div class="login-sub" id="newPasswordIntro"></div>
+      <div class="login-field">
+        <label for="newPassword">New password</label>
+        <input type="password" id="newPassword" autocomplete="new-password" required>
+      </div>
+      <div class="login-field">
+        <label for="newPasswordConfirm">Confirm new password</label>
+        <input type="password" id="newPasswordConfirm" autocomplete="new-password" required>
+      </div>
+      <div class="pw-rules" id="pwRules">
+        <div class="pw-rule" data-rule="length"><span class="pw-mark"></span>At least 8 characters</div>
+        <div class="pw-rule" data-rule="upper"><span class="pw-mark"></span>An uppercase letter</div>
+        <div class="pw-rule" data-rule="lower"><span class="pw-mark"></span>A lowercase letter</div>
+        <div class="pw-rule" data-rule="digit"><span class="pw-mark"></span>A number</div>
+        <div class="pw-rule" data-rule="match"><span class="pw-mark"></span>Both entries match</div>
+      </div>
+      <button type="submit" class="login-submit" id="newPasswordSubmit">Set password and sign in</button>
+      <button type="button" class="login-cancel" id="newPasswordCancel">Back to sign in</button>
+    </form>
+
+    <div class="login-hint">
+      Authenticated against a real Amazon Cognito user pool
+      (<span id="cognitoPoolLabel">loading…</span>). Credentials are sent
+      directly to Cognito's <code>InitiateAuth</code> /
+      <code>RespondToAuthChallenge</code> APIs; this server never sees your
+      password.
+    </div>
+  </div>
+</div>
+
+<div id="appShell">
+<header>
+  <span class="ic" style="font-size:18px;color:var(--blue)" data-ic="network"></span>
+  <div>
+    <h1>AdCP Buyer Agent</h1>
+    <div class="sub" id="endpointLabel">connecting…</div>
+  </div>
+  <!-- Which agent you're chatting to. Built from /config's `agents`
+       (agents_registry.py), so adding an agent is a config change. -->
+  <select class="seller-select" id="agentSelect" title="Agent to chat with" style="margin-left:auto;"></select>
+  <select class="session-select" id="sessionSelect" title="Other active/recent agent sessions">
+    <option value="">— My session —</option>
+  </select>
+  <div class="conn-badge checking" id="connBadge">
+    <span class="conn-dot"></span>
+    <span id="connLabel">Checking connection</span>
+  </div>
+  <span id="userLabel" style="font-size:12px;color:var(--muted);"></span>
+  <!-- Shown only for members of the Cognito 'admin' group. Hiding it is a
+       convenience, not the access control: every admin action is re-checked
+       server-side against the verified token (user_admin.require_admin). -->
+  <button class="admin-btn" id="adminBtn" title="Manage Cognito users">Users</button>
+  <button class="signout-btn" id="signoutBtn">Sign out</button>
+</header>
+
+<main>
+  <section class="chat-col">
+    <div class="chat-body" id="chatBody">
+      <!-- Scenario list is rendered per selected seller agent (see
+           renderScenarios / SCENARIO_CATALOGS) rather than hardcoded, since
+           a scenario that makes sense against one seller's inventory and
+           tool set is meaningless against another's. -->
+      <div class="empty-state" id="emptyState">
+        <h2 id="emptyTitle">Ask the agent to find inventory</h2>
+        <p id="emptyIntro">Pick a scenario or type your own request.</p>
+        <p>This agent calls the selected AdCP seller agent (over MCP or A2A,
+        depending on the seller) for every response. Nothing here is
+        simulated: tool calls and results on the right are the real
+        request/response traffic.</p>
+        <div class="scen-groups" id="scenarioPanel"></div>
+      </div>
+    </div>
+
+    <form class="composer" id="composerForm">
+      <textarea id="promptInput" placeholder="Ask about inventory, pricing, formats…" rows="1"></textarea>
+      <button type="submit" id="sendBtn">Send</button>
+    </form>
+
+    <!-- Shown instead of the composer (or the direct-call form) while the
+         chat column is replaying a session that was started somewhere else.
+         There is no input because there is nothing to send: the viewer is
+         read-only, per R3 ("the user does not interact with the session"). -->
+    <div class="viewer-bar" id="viewerBar">
+      <div class="vb-text" id="viewerBarText"></div>
+      <button type="button" id="viewerExitBtn">Back to my chat</button>
+    </div>
+  </section>
+
+  <aside class="log-col">
+    <div class="log-head" id="logHead">Live tool activity</div>
+    <!-- Which build the browser is actually running. Filled from config.json's
+         ui_published_at (deploy_ui.py); says "served locally" under app.py, which has no
+         publish time to report. Empty until config loads rather than guessing. -->
+    <div class="log-build" id="logBuild"></div>
+    <div class="viewer-banner" id="viewerBanner"></div>
+    <div class="log-body" id="logBody">
+      <div class="log-empty" id="logEmpty">No tool calls yet. Tool calls to the selected seller agent (over MCP or A2A) will appear here as they happen.</div>
+    </div>
+  </aside>
+</main>
+
+<!-- Admin panel: create Cognito users and see who exists. Every action here
+     goes through the authenticated /invocations entrypoint (app.py's
+     create_user / list_users actions), which performs the Cognito admin API
+     call with the runtime's execution role — the browser never holds AWS
+     credentials. Granting admin, resetting passwords and deleting users are
+     intentionally absent: those stay CLI-only (create_cognito_user.py) so
+     the runtime role has no privilege-escalation or takeover permission. -->
+<div class="modal-backdrop" id="adminBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="adminTitle">Users</h2>
+        <div class="modal-sub" id="adminPoolLabel"></div>
+      </div>
+      <button type="button" class="modal-close" id="adminCloseBtn" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="admin-alert error" id="adminError"></div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Add a user</div>
+        <div class="cred-box" id="adminCreds" style="display:none;"></div>
+        <form id="adminCreateForm">
+          <div class="admin-form-row">
+            <div class="direct-field">
+              <label for="adminNewUsername">Username</label>
+              <input type="text" id="adminNewUsername" autocomplete="off" required>
+            </div>
+            <div class="direct-field">
+              <label for="adminNewEmail">Email</label>
+              <input type="email" id="adminNewEmail" autocomplete="off" required>
+            </div>
+            <button type="submit" class="direct-submit" id="adminCreateBtn" style="margin-top:0;">Create user</button>
+          </div>
+        </form>
+        <div class="admin-note">
+          The user is created with a temporary password, shown here once. They
+          must set their own password at first sign-in before Cognito issues
+          any token. To make someone an admin, or to reset a password, use
+          <code>create_cognito_user.py</code> — both are deliberately
+          CLI-only.
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Existing users</div>
+        <div id="adminUsers"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- All sessions: the full recent list behind the header dropdown's four
+     newest entries. Same list_sessions action and the same read-only viewer;
+     this only offers a wider choice of which session to replay, so nothing
+     here is privileged or interactive beyond picking one. -->
+<div class="modal-backdrop" id="sessionsBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sessionsTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="sessionsTitle">All sessions</h2>
+        <div class="modal-sub" id="sessionsSubLabel"></div>
+      </div>
+      <button type="button" class="modal-close" id="sessionsCloseBtn" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="admin-alert error" id="sessionsError"></div>
+      <label class="sess-toggle">
+        <input type="checkbox" id="sessionsShowToolCalls">
+        Include standalone tool calls
+      </label>
+      <div id="sessionsList"></div>
+      <div class="admin-note">
+        Every agent's sessions, most recently active first, whoever started them.
+        Session records are removed 24 hours after they start, so this list is recent
+        activity only. Viewing one is read-only.
+        <br><br>
+        A seller tool call that arrives without a buyer correlation id is recorded as a
+        session of its own — one call, not a conversation. Those are excluded above
+        unless you ask for them, because a client calling a seller directly can produce
+        hundreds of them and crowd out every real conversation.
+      </div>
+    </div>
+  </div>
+</div>
+</div> <!-- /#appShell -->
+
+<script>
+  const ICONS = {
+    network: '<rect x="9" y="2" width="6" height="6" rx="1"/><rect x="3" y="16" width="6" height="6" rx="1"/><rect x="15" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/>',
+    'arrow-right': '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+    check: '<polyline points="20 6 9 17 4 12"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  };
+  function svg(name) { return '<svg viewBox="0 0 24 24">' + (ICONS[name] || '') + '</svg>'; }
+  document.querySelectorAll('[data-ic]').forEach(el => { el.innerHTML = svg(el.dataset.ic); });
+
+  // ============================================================
+  // Per-seller scenario catalog
+  //
+  // The starter scenarios shown in the empty state are specific to the
+  // seller agent selected in the header, because they aren't
+  // interchangeable: Triton sells audio (radio / streaming / podcast) and
+  // implements the signals + media_buy protocols, while the reference seller
+  // only has four fixture products. Offering a "rewarded video for US gaming
+  // apps" scenario against an audio-only seller produced a prompt that could
+  // never match real inventory.
+  //
+  // `task` names the AdCP task a scenario actually needs. BUYER_AGENT_TASKS
+  // below is the buyer agent's real tool set (adcp_tools.py::build_adcp_tools
+  // plus DIRECT_CALL_TOOL_NAMES) — scenarios whose task isn't in it are
+  // marked as a gap rather than presented as working, since the agent has
+  // no tool to call for them and will say so. The seller may well implement
+  // the task; the buyer agent just doesn't expose it yet.
+  // ============================================================
+  const BUYER_AGENT_TASKS = new Set([
+    'get_products',
+    'get_adcp_capabilities',
+    'list_creative_formats',
+  ]);
+
+  // Triton Inventory Seller — the 23 scenarios documented in Part Seven
+  // ("Seller-agent interaction scenarios") of the AdCP on AWS architecture
+  // doc, in the same four groups and the same order/numbering.
+  const SCENARIOS_TRITON = {
+    title: 'Ask the Triton seller agent about audio inventory',
+    intro: 'Radio, streaming audio, and podcast inventory, CPM-priced. The 23 scenarios below are the documented buyer-to-seller exchanges from Part Seven of the architecture doc.',
+    groups: [
+      {
+        label: 'Discovery and planning',
+        items: [
+          {
+            n: '01', title: 'Natural-language discovery', task: 'get_products',
+            desc: 'A plain-English brief. The fine-tuned model picks and ranks product ids; every other field is rebuilt from the real catalog and availability comes from a fresh forecast.',
+            prompt: 'Find premium true crime and news podcast inventory for adults 25-54, US national, mid-roll, roughly 4M impressions in August.',
+          },
+          {
+            n: '02', title: 'Availability forecasting', task: 'get_products',
+            desc: 'Exact targeting, and the can-I-promise-this question before money is discussed.',
+            prompt: 'For women 25-49 on true crime podcasts, 30-second mid-roll spots over a 30-day flight — how much inventory is actually available?',
+          },
+          {
+            n: '03', title: 'Reach and frequency planning', task: 'get_products',
+            desc: 'Trade reach against frequency before booking by asking for capped availability.',
+            prompt: 'Same true crime podcast targeting, but capped at two impressions per listener per break — how does that change available impressions?',
+          },
+          {
+            n: '04', title: 'Audience and contextual signals', task: 'get_signals',
+            desc: 'Targetable audience segments and contextual tags, so the buyer can target beyond show level.',
+            prompt: 'What audience segments and contextual signals can I target on your podcast inventory?',
+          },
+          {
+            n: '05', title: 'Budget-constrained discovery', task: 'get_products',
+            desc: 'Lead with money and work backward from budget at prevailing CPMs.',
+            prompt: 'I have $60,000 for US audio in Q3. What combination of stations and podcasts can I get, and roughly how many impressions each?',
+          },
+        ],
+      },
+      {
+        label: 'Negotiation and booking',
+        items: [
+          {
+            n: '06', title: 'Straightforward media buy', task: 'create_media_buy',
+            desc: 'Commit budget across packages and get back a media buy id plus planned delivery.',
+            prompt: 'Book $125,000 across the two strongest podcasts you found, CPM, August flight, adults 25-54 US, capped at two per break.',
+          },
+          {
+            n: '07', title: 'Seller adjusts on acceptance', task: 'create_media_buy',
+            desc: 'Planned delivery comes back different from the request (adjusted geo, an added cap) instead of an outright rejection.',
+            prompt: 'Book US national coverage on Country radio for September. If you cannot cover every market, tell me what you can actually deliver.',
+          },
+          {
+            n: '08', title: 'Buy fails targeting validation', task: 'create_media_buy',
+            desc: 'An audio-only seller rejects unsupported features and names them, before any campaign is created.',
+            prompt: 'Book that same flight but for connected TV video with IAB display categories.',
+          },
+          {
+            n: '09', title: 'Programmatic guaranteed vs direct', task: 'create_media_buy',
+            desc: 'Same task shape, different flight type: a guaranteed deal at a fixed rate rather than an open flight.',
+            prompt: 'I want a guaranteed deal at a fixed rate on News/Talk radio rather than an open flight.',
+          },
+          {
+            n: '10', title: 'Reseller / reach extension', task: 'create_media_buy',
+            desc: 'Inventory the publisher does not own but can resell, booked against a reseller contract.',
+            prompt: 'Do you have reach-extension inventory you can resell that you do not own directly? Book against the reseller contract if so.',
+          },
+        ],
+      },
+      {
+        label: 'Creative and in-flight management',
+        items: [
+          {
+            n: '11', title: 'Creative sync', task: 'sync_creatives',
+            desc: 'Upload audio assets after booking and associate them with the right flights.',
+            prompt: 'Here are my 30-second audio spots — attach them to the flights on my August podcast buy.',
+            note: 'This seller agent does not advertise sync_creatives either.',
+          },
+          {
+            n: '12', title: 'Human-in-the-loop approval', task: 'create_media_buy',
+            desc: 'A high-value buy is held in a submitted state pending internal review, surfaced as a normal async task status.',
+            prompt: 'Submit a $500,000 sponsorship buy that needs your team to sign an IO before it is confirmed.',
+          },
+          {
+            n: '13', title: 'Pause and resume', task: 'update_media_buy',
+            desc: 'Move a buy between active and paused mid-flight without cancelling it.',
+            prompt: 'Pause my August podcast buy while we swap creative, then tell me how to resume it.',
+          },
+          {
+            n: '14', title: 'Budget or goal change', task: 'update_media_buy',
+            desc: 'Added budget converts to an incremental impressions goal at the flight CPM.',
+            prompt: 'Add $25,000 to the running flight and tell me the new impression goal.',
+          },
+          {
+            n: '15', title: 'Pacing intervention', task: 'update_media_buy',
+            desc: 'Trade smooth delivery for goal completion when delivery is behind.',
+            prompt: 'Delivery is behind — switch that flight from even pacing to front-loaded.',
+          },
+          {
+            n: '16', title: 'Mid-flight targeting refinement', task: 'update_media_buy',
+            desc: 'Narrow targeting when early delivery skews wrong, and re-validate.',
+            prompt: 'Delivery is skewing to the wrong markets — narrow targeting to the top 10 metros and add a health and wellness segment.',
+          },
+        ],
+      },
+      {
+        label: 'Reporting and yield optimization',
+        items: [
+          {
+            n: '17', title: 'Delivery reporting', task: 'get_media_buy_delivery',
+            desc: 'Per-package impressions, spend, and pacing status for a running buy.',
+            prompt: 'How is my August podcast buy performing? Give me impressions, spend, and pacing per package.',
+          },
+          {
+            n: '18', title: 'Delivery reconciliation', task: 'get_media_buy_delivery',
+            desc: 'Compare delivered against plan so drift surfaces early rather than at flight end.',
+            prompt: 'Compare what you actually delivered last week against the plan and flag any drift.',
+          },
+          {
+            n: '19', title: 'Post-campaign performance', task: 'get_media_buy_delivery',
+            desc: 'Final numbers after the flight: impressions, sell-through, effective CPM.',
+            prompt: 'The flight has ended — give me final impressions, sell-through, and effective CPM.',
+          },
+          {
+            n: '20', title: 'Priority and contention transparency', task: 'get_products',
+            desc: 'Accessible inventory depends on flight priority; a remnant buy sees less than a sponsorship buy for the same targeting.',
+            prompt: 'If I buy at remnant priority instead of sponsorship priority, how much of that inventory is actually accessible to me?',
+          },
+          {
+            n: '21', title: 'Missed-opportunity-aware forecasting', task: 'get_products',
+            desc: 'Ad duration changes the math, because duration determines how many spots fit a break.',
+            prompt: 'Compare available impressions for 15-second versus 30-second spots on the same mid-roll inventory.',
+          },
+          {
+            n: '22', title: 'Bulk and filler inventory', task: 'create_media_buy',
+            desc: 'A bulk-priority flight delivering after higher-priority flights at a contracted lower rate — the yield floor.',
+            prompt: 'I am price-sensitive — book remnant audio inventory at a lower CPM, delivering after your higher-priority flights.',
+          },
+          {
+            n: '23', title: 'Competitive separation and brand safety', task: 'get_products',
+            desc: 'An explicit reach-versus-suitability trade: fewer avails, safer placements.',
+            prompt: 'Show inventory that excludes competitor adjacency and stays under a moderate brand-safety severity ceiling.',
+          },
+        ],
+      },
+    ],
+  };
+
+  // AdCP Reference Test Seller — a four-product fixture catalog (CTV sports
+  // pre-roll, mobile rewarded video, news display, podcast mid-roll audio),
+  // so the scenarios are scoped to what that catalog can actually return.
+  const SCENARIOS_REFERENCE = {
+    title: 'Ask the reference test seller for fixture inventory',
+    intro: 'A sandbox seller with a small fixed catalog: CTV sports, mobile rewarded video, news display, and podcast audio.',
+    groups: [
+      {
+        label: 'Fixture catalog discovery',
+        items: [
+          {
+            n: '01', title: 'CTV sports pre-roll', task: 'get_products',
+            desc: 'The CTV fixture product.',
+            prompt: 'Find CTV sports pre-roll inventory.',
+          },
+          {
+            n: '02', title: 'Mobile rewarded video', task: 'get_products',
+            desc: 'The casual-gaming rewarded fixture product.',
+            prompt: 'Find rewarded video inventory in casual mobile games.',
+          },
+          {
+            n: '03', title: 'News site display', task: 'get_products',
+            desc: 'The display fixture product.',
+            prompt: 'Find display banner inventory on news sites.',
+          },
+          {
+            n: '04', title: 'Podcast mid-roll audio', task: 'get_products',
+            desc: 'The audio fixture product.',
+            prompt: 'Find mid-roll audio inventory across a podcast network.',
+          },
+        ],
+      },
+      {
+        label: 'Protocol checks',
+        items: [
+          {
+            n: '05', title: 'Capabilities', task: 'get_adcp_capabilities',
+            desc: 'Declared protocols, versions, channels, and idempotency support.',
+            prompt: 'What are your AdCP capabilities?',
+          },
+          {
+            n: '06', title: 'Creative formats', task: 'list_creative_formats',
+            desc: 'The fixed format catalog behind those four products.',
+            prompt: 'What creative formats do you support?',
+          },
+        ],
+      },
+    ],
+  };
+
+  // Fallback for a seller agent added to SELLER_AGENTS_JSON that has no
+  // catalog here: only the three core AdCP tasks every conformant seller is
+  // expected to expose, with no assumptions about its inventory.
+  const SCENARIOS_GENERIC = {
+    title: 'Ask the agent to find inventory',
+    intro: 'No scenario catalog is defined for this seller agent, so these are the core AdCP tasks any conformant seller should answer.',
+    groups: [
+      {
+        label: 'Core AdCP tasks',
+        items: [
+          {
+            n: '01', title: 'Capabilities', task: 'get_adcp_capabilities',
+            desc: 'Confirms the connection and auth work, and reports what this seller supports.',
+            prompt: 'What are your AdCP capabilities?',
+          },
+          {
+            n: '02', title: 'Inventory discovery', task: 'get_products',
+            desc: 'A natural-language brief. Adjust it to whatever this seller actually sells.',
+            prompt: 'What advertising inventory do you have available?',
+          },
+          {
+            n: '03', title: 'Creative formats', task: 'list_creative_formats',
+            desc: 'Which creative formats this seller accepts.',
+            prompt: 'What creative formats do you support?',
+          },
+        ],
+      },
+    ],
+  };
+
+  const SCENARIO_CATALOGS = {
+    'triton': SCENARIOS_TRITON,
+    'reference': SCENARIOS_REFERENCE,
+  };
+
+  function getScenarioCatalog(sellerAgentId) {
+    return SCENARIO_CATALOGS[sellerAgentId] || SCENARIOS_GENERIC;
+  }
+
+  // Rebuilds the empty state's scenario list for the currently selected
+  // seller. No-op once the conversation has started (the empty state is
+  // removed on the first message), so switching sellers mid-chat doesn't
+  // resurrect it.
+  function renderScenarios() {
+    const panel = document.getElementById('scenarioPanel');
+    if (!panel) return;
+    const catalog = getScenarioCatalog(sellerAgents.length === 1 ? sellerAgents[0].id : '');
+    document.getElementById('emptyTitle').textContent = catalog.title;
+    document.getElementById('emptyIntro').textContent = catalog.intro;
+    panel.innerHTML = '';
+
+    for (const group of catalog.groups) {
+      const section = document.createElement('div');
+      const label = document.createElement('div');
+      label.className = 'scen-group-label';
+      label.textContent = group.label;
+      section.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'scen-grid';
+      for (const item of group.items) {
+        const unsupported = !BUYER_AGENT_TASKS.has(item.task);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'scen' + (unsupported ? ' gap' : '');
+        card.dataset.prompt = item.prompt;
+        if (unsupported) {
+          card.title =
+            `The buyer agent has no ${item.task} tool yet, so it will report that ` +
+            'it cannot run this rather than performing it.';
+        }
+
+        const head = document.createElement('div');
+        head.className = 'scen-head';
+        const n = document.createElement('span');
+        n.className = 'scen-n';
+        n.textContent = item.n;
+        const title = document.createElement('span');
+        title.className = 'scen-title';
+        title.textContent = item.title;
+        head.appendChild(n);
+        head.appendChild(title);
+
+        const body = document.createElement('div');
+        body.className = 'scen-body';
+        body.textContent = item.desc;
+
+        const meta = document.createElement('div');
+        meta.className = 'scen-meta';
+        const taskTag = document.createElement('span');
+        taskTag.className = 'scen-tag';
+        taskTag.textContent = item.task;
+        meta.appendChild(taskTag);
+        if (unsupported) {
+          const gapTag = document.createElement('span');
+          gapTag.className = 'scen-tag gap';
+          gapTag.textContent = 'no buyer tool yet';
+          meta.appendChild(gapTag);
+        }
+
+        card.appendChild(head);
+        card.appendChild(body);
+        card.appendChild(meta);
+        if (item.note) {
+          const note = document.createElement('div');
+          note.className = 'scen-note';
+          note.textContent = item.note;
+          card.appendChild(note);
+        }
+        card.addEventListener('click', () => {
+          // Same as submitting from the composer: sending your own message
+          // means watching your own turn, so stop viewing anyone else's
+          // session first.
+          const sel = document.getElementById('sessionSelect');
+          if (sel && sel.value) { sel.value = ''; stopViewingSession(); }
+          sendPrompt(item.prompt);
+        });
+        grid.appendChild(card);
+      }
+      section.appendChild(grid);
+      panel.appendChild(section);
+    }
+  }
+
+  // ============================================================
+  // Auth: real Cognito login. No mock "logged in" state exists —
+  // the app shell only becomes visible after a genuine InitiateAuth
+  // call to Cognito succeeds and returns a real access token, which
+  // is then sent as a Bearer token on every /invocations call. The
+  // server independently re-verifies that same token (see auth.py);
+  // this client-side gate is a UX convenience, not the security
+  // boundary.
+  // ============================================================
+  const loginScreen = document.getElementById('loginScreen');
+  const appShell = document.getElementById('appShell');
+  const loginForm = document.getElementById('loginForm');
+  const loginUsername = document.getElementById('loginUsername');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginSubmit = document.getElementById('loginSubmit');
+  const loginError = document.getElementById('loginError');
+  const cognitoPoolLabel = document.getElementById('cognitoPoolLabel');
+  const userLabel = document.getElementById('userLabel');
+  const signoutBtn = document.getElementById('signoutBtn');
+
+  const SESSION_KEY = 'adcp_buyer_agent_session';
+  const RUNTIME_SESSION_KEY = 'adcp_buyer_agent_runtime_session_id';
+  let cognitoConfig = null; // { region, clientId } — fetched from /config or ./config.json
+
+  // AgentCore Runtime's runtimeSessionId (X-Amzn-Bedrock-AgentCore-Runtime-Session-Id)
+  // ties multiple /invocations calls into one ongoing conversation and must
+  // be >= 33 characters. Generated once per browser tab session and reused
+  // on every call so the agent's S3-backed conversation memory (agent.py's
+  // S3SessionManager) actually accumulates turns instead of starting fresh
+  // every message. Cleared on sign-out so a new login starts a new
+  // conversation rather than inheriting a stranger's history.
+  function getRuntimeSessionId() {
+    let id = sessionStorage.getItem(RUNTIME_SESSION_KEY);
+    // Guard against a blank/short value ever being sent - AgentCore Runtime
+    // requires >= 33 characters and will reject anything shorter, so a
+    // stale or corrupted stored value must not silently pass through.
+    if (!id || id.length < 33) {
+      id = 'adcp-buyer-agent-ui-' + crypto.randomUUID();
+      sessionStorage.setItem(RUNTIME_SESSION_KEY, id);
+    }
+    return id;
+  }
+
+  function saveSession(session) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }
+  function loadSession() {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+    } catch {
+      return null;
+    }
+  }
+  function clearSession() {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
+  function showLogin() {
+    loginScreen.style.display = 'flex';
+    appShell.classList.remove('visible');
+    // Always land on the username/password step, never on a stale
+    // first-login password-change step whose Cognito Session has since
+    // expired (see showNewPasswordStep).
+    showSignInStep();
+  }
+  function showApp(username) {
+    loginScreen.style.display = 'none';
+    appShell.classList.add('visible');
+    userLabel.textContent = username;
+    startSessionsPolling();
+    applyAdminVisibility();
+  }
+
+  // Cognito puts a user's group memberships in the access token itself
+  // (cognito:groups). Reading them here decides whether to offer the admin
+  // panel — it is NOT the access control: app.py re-checks the same claim on
+  // the verified token for every admin action, so editing this in a console
+  // gets you a button that returns 403.
+  function tokenGroups() {
+    const session = loadSession();
+    if (!session || !session.accessToken) return [];
+    try {
+      const payload = session.accessToken.split('.')[1];
+      const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      const claims = JSON.parse(json);
+      const groups = claims['cognito:groups'];
+      if (Array.isArray(groups)) return groups.map(String);
+      if (typeof groups === 'string') return groups.split(/[,\s]+/).filter(Boolean);
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  function isAdminUser() { return tokenGroups().includes('admin'); }
+
+  let runtimeConfig = null; // { arn, region } — the deployed AgentCore Runtime to call
+
+  // The sales agents this project's buyer agent represents, from /config.
+  // There is no "selected" seller any more: the buyer agent queries every one
+  // of them and decides which inventory fits (agent.py, matching AdCP's own
+  // ADCPMultiAgentClient, which runs a task across all agents in parallel).
+  // Kept here only to label results and build the starter scenarios.
+  let sellerAgents = [];
+
+  function setSellerAgents(agents) {
+    sellerAgents = agents || [];
+    if (sellerAgents.length === 0) {
+      const panel = document.getElementById('scenarioPanel');
+      if (panel) panel.innerHTML = '';
+      document.getElementById('emptyTitle').textContent = 'No seller agents configured';
+      document.getElementById('emptyIntro').textContent =
+        'SELLER_AGENTS_JSON is empty, so the buyer agent has no sales agent to query.';
+      return;
+    }
+    renderScenarios();
+  }
+
+  function sellerNameForId(sellerAgentId) {
+    if (!sellerAgentId) return '';
+    const match = sellerAgents.find(s => s.id === sellerAgentId);
+    // Fall back to the raw id rather than inventing a name.
+    return match ? match.name : sellerAgentId;
+  }
+
+  // ============================================================
+  // Which agent you're chatting to.
+  //
+  // Every chat target is an A2A agent (agents_registry.py): this project's
+  // buyer agent over its A2A runtime, and remote agents registered in
+  // AGENTS_JSON. Two properties drive the UI:
+  //
+  //   kind === 'buyer'    -> the agent talks to a seller on your behalf, so
+  //                          the seller dropdown stays active for it.
+  //   records_sessions    -> we deploy it, so its reasoning steps are in our
+  //                          sessions table and its tool activity can be
+  //                          shown. False for remote agents: we can't see
+  //                          inside someone else's deployment, and the side
+  //                          panel says so rather than looking empty.
+  //   requires_proxy      -> its credential must not reach a browser, so the
+  //                          turn is relayed through our own runtime
+  //                          (app.py's a2a_chat action) instead of being
+  //                          called directly.
+  //
+  // The "Direct client" mode this replaced is gone from the UI. app.py still
+  // accepts mode=direct over the API for a raw single tool call.
+  // ============================================================
+  const AGENT_KEY = 'adcp_buyer_agent_selected_agent_id';
+  const agentSelect = document.getElementById('agentSelect');
+  let agentsById = {};
+
+  function getSelectedAgentId() {
+    return sessionStorage.getItem(AGENT_KEY) || '';
+  }
+  function setSelectedAgentId(id) {
+    sessionStorage.setItem(AGENT_KEY, id);
+  }
+  function selectedAgent() {
+    return agentsById[getSelectedAgentId()] || null;
+  }
+
+  function populateAgentSelect(agents, defaultAgentId, agentsError) {
+    agentSelect.innerHTML = '';
+    agentsById = {};
+    if (!agents || agents.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      // Report the registry's own error rather than an empty dropdown that
+      // gives no clue why.
+      opt.textContent = agentsError ? 'No agents (config error)' : 'No agents configured';
+      agentSelect.appendChild(opt);
+      agentSelect.disabled = true;
+      agentSelect.title = agentsError || 'AGENTS_JSON is empty.';
+      return;
+    }
+    agentSelect.disabled = false;
+    for (const agent of agents) {
+      agentsById[agent.id] = agent;
+      const opt = document.createElement('option');
+      opt.value = agent.id;
+      opt.textContent = agent.name;
+      agentSelect.appendChild(opt);
+    }
+    const stored = getSelectedAgentId();
+    const chosen = agentsById[stored] ? stored : defaultAgentId || agents[0].id;
+    agentSelect.value = chosen;
+    setSelectedAgentId(chosen);
+    applyAgentSelection();
+  }
+
+  function applyAgentSelection() {
+    const agent = selectedAgent();
+    agentSelect.title = agent
+      ? `${agent.name} — ${agent.kind}, ${agent.origin}` +
+        (agent.records_sessions ? '' : ' (tool activity not visible: not our deployment)')
+      : '';
+    renderScenarios();
+    refreshSessionsList();
+  }
+
+  agentSelect.addEventListener('change', () => {
+    setSelectedAgentId(agentSelect.value);
+    // A different agent means a different conversation: keep its history
+    // separate rather than replaying this one's context at it.
+    sessionStorage.removeItem(RUNTIME_SESSION_KEY);
+    applyAgentSelection();
+  });
+
+  // ============================================================
+  // Sessions dropdown (R1) + session viewer (R3): lists the Buyer Agent's
+  // other active/recent sessions (any invoker - this browser tab's own
+  // chat, another tab, or a real external agent calling in over A2A -
+  // see a2a_runtime/a2a_entrypoint.py) via action=list_sessions, and lets you view
+  // one's full reasoning timeline via action=get_session_steps. There is
+  // no separate real-time transport (no IoT/WebSocket): viewing your own
+  // in-flight turn already streams live over the same SSE connection
+  // sendPrompt()/direct-mode already use; viewing anyone else's session
+  // (including your own past ones) polls get_session_steps on a short
+  // interval instead, since this tab has no open connection to it. Purely
+  // read-only, per R3's "the user does not interact with the session."
+  // ============================================================
+  const sessionSelect = document.getElementById('sessionSelect');
+  const logHead = document.getElementById('logHead');
+  const viewerBanner = document.getElementById('viewerBanner');
+  const viewerBar = document.getElementById('viewerBar');
+  const viewerBarText = document.getElementById('viewerBarText');
+  const viewerExitBtn = document.getElementById('viewerExitBtn');
+
+  let viewedSessionId = null;
+  let viewerPollTimer = null;
+  let viewerLastStepIndex = -1;
+  let viewerToolCardsByCallId = {};
+  let viewerErrorShown = false;
+  // Consecutive failed viewer polls, and the note shown once a run of them means the
+  // transcript on screen has stopped tracking the session (see pollViewedSession).
+  let viewerPollFailures = 0;
+  let viewerStaleNote = null;
+  // Whether a viewer poll is already outstanding. See pollViewedSession: without this, a poll
+  // slower than the 2s interval let the next tick request and render the same steps again.
+  let viewerPollInFlight = false;
+  // Bumped every time a different session is opened, so a poll started for a previous session
+  // can be told apart from one for the current view. Without it, a stale poll completing would
+  // clear `viewerPollInFlight` while the current session's poll was still outstanding, letting
+  // a second poll start against the same step index.
+  let viewerGeneration = 0;
+  // The user's own live conversation, detached (not discarded) while a
+  // remote session takes over the chat column, and put back verbatim when
+  // they return — including scroll-relevant DOM state and the scenario
+  // empty state if they hadn't started chatting yet.
+  let savedLiveChat = null;
+  let savedLiveLog = null;
+
+  async function postInvoke(payload) {
+    const authHeader = getAuthHeader();
+    if (!authHeader) throw new Error('Not signed in.');
+    const res = await fetch(getInvokeUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        // A single JSON action isn't tied to any particular conversation,
+        // but AgentCore Runtime still requires >= 33 chars on this header.
+        'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': 'adcp-buyer-agent-ui-action-' + crypto.randomUUID(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+    const events = [];
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const jsonStr = trimmed.slice(5).trim();
+        if (!jsonStr) continue;
+        try { events.push(JSON.parse(jsonStr)); } catch { /* skip unparsable */ }
+      }
+    }
+    return events;
+  }
+
+  function shortSessionId(id) {
+    return id ? (id.length > 16 ? id.slice(0, 8) + '…' + id.slice(-4) : id) : '';
+  }
+
+  function agentLabelFor(session) {
+    // agent_name is absent on records written by a writer that didn't report
+    // its identity. Say "unknown agent" rather than assuming it was the buyer
+    // agent — see session_store._session_summary.
+    return session.agent_name || (session.agent_id ? session.agent_id : 'unknown agent');
+  }
+
+  function sessionOptionLabel(session) {
+    const invoker = session.invoker || 'Unknown invoker';
+    const preview = session.request_preview || '';
+    return `${agentLabelFor(session)} · ${invoker} — ` +
+      `${preview.slice(0, 32)}${preview.length > 32 ? '…' : ''} [${session.status}]`;
+  }
+
+  // How many sessions the header dropdown itself carries. Beyond a handful
+  // the control stops being glanceable, so the rest of the list lives in the
+  // all-sessions panel behind its "View all sessions…" entry.
+  const SESSION_DROPDOWN_LIMIT = 4;
+  // How many the poll fetches — the dropdown shows the newest few of these
+  // and the panel shows all of them.
+  const SESSION_LIST_LIMIT = 50;
+  // Sentinel option value. Not a session id, so the change handler has to
+  // intercept it before it ever reaches startViewingSession().
+  const VIEW_ALL_VALUE = '__view_all__';
+
+  // The last list_sessions result, so opening the panel paints from what the
+  // poll already has instead of an empty panel with a request in flight.
+  let recentSessions = [];
+  // Whether to include standalone tool-call records (`adcp-seller-uncorrelated-…`).
+  // Off by default: they are real records but they are not conversations, and a
+  // verification run generated 95 of them, which is enough to fill the whole page
+  // the dropdown reads from. The panel exposes this as a checkbox.
+  let showToolCallSessions = false;
+  // Why the last poll produced nothing, when it failed. Kept so the panel can
+  // say "unavailable" instead of showing an empty list as though the answer
+  // were "no sessions".
+  let sessionsListError = null;
+
+  function addSessionOption(session) {
+    const opt = document.createElement('option');
+    opt.value = session.session_id;
+    opt.dataset.session = '1';
+    opt.textContent = sessionOptionLabel(session);
+    sessionSelect.appendChild(opt);
+    return opt;
+  }
+
+  // The dropdown's contents: the newest few sessions, the one being replayed
+  // if it isn't among them, then the way to the full list.
+  function renderSessionsDropdown() {
+    sessionSelect.querySelectorAll('option[data-session], option[data-view-all]')
+      .forEach(o => o.remove());
+    const shown = recentSessions.slice(0, SESSION_DROPDOWN_LIMIT);
+    for (const session of shown) addSessionOption(session);
+    // The session on screen stays selectable even once it's older than the
+    // newest few — otherwise a refresh would leave the header claiming "My
+    // session" while the chat column still replays someone else's.
+    if (viewedSessionId && !shown.some(s => s.session_id === viewedSessionId)) {
+      const known = recentSessions.find(s => s.session_id === viewedSessionId);
+      if (known) {
+        addSessionOption(known);
+      } else {
+        // Aged past the query window, TTLed, or — since the list defaults to conversations
+        // — a standalone tool-call record that the current filter excludes. The label says
+        // "not in this list" rather than "no longer listed", because the second claims the
+        // record is gone when it may simply be filtered out.
+        const opt = document.createElement('option');
+        opt.value = viewedSessionId;
+        opt.dataset.session = '1';
+        opt.textContent = `${shortSessionId(viewedSessionId)} — not in this list`;
+        sessionSelect.appendChild(opt);
+      }
+    }
+    // Sits under the listed sessions and is the only route to the rest. No
+    // count on it: the poll fetches a page, so the number of sessions beyond
+    // what's listed isn't something this control knows.
+    if (recentSessions.length) {
+      const opt = document.createElement('option');
+      opt.value = VIEW_ALL_VALUE;
+      opt.dataset.viewAll = '1';
+      opt.textContent = 'View all sessions…';
+      sessionSelect.appendChild(opt);
+    }
+    // The value is purely a view of what's on screen, so a periodic refresh
+    // can't kick the user out of a session they're watching, and can't leave
+    // a stale id selected either.
+    sessionSelect.value = viewedSessionId || '';
+  }
+
+  // Always every agent's sessions, each labelled with the agent that ran it.
+  // Filtering this by the selected agent was a second, unrelated control that
+  // hid the very thing the list exists to reveal: something else driving one of
+  // your agents. The server still supports an agent_id filter for API callers.
+  async function refreshSessionsList() {
+    try {
+      const events = await postInvoke({
+        action: 'list_sessions',
+        limit: SESSION_LIST_LIMIT,
+        // Conversations, not individual tool calls. A seller call arriving without a
+        // buyer correlation id is recorded as its own session, which is right for the
+        // record and wrong for this list: one verification run put 95 single-call
+        // records on top and pushed every real conversation off the page. The panel
+        // has a toggle, so nothing is hidden — see showToolCallSessions.
+        conversations_only: !showToolCallSessions,
+      });
+      const sessionsEvent = events.find(e => e.type === 'sessions');
+      if (!sessionsEvent) {
+        const errorEvent = events.find(e => e.type === 'error');
+        sessionsListError = errorEvent ? errorEvent.message : 'The runtime returned no session list.';
+      } else {
+        // Newest *activity* first — list_recent_sessions orders by last activity, so a
+        // conversation being used now sorts above one started later and abandoned.
+        recentSessions = sessionsEvent.sessions || [];
+        sessionsListError = null;
+      }
+      renderSessionsDropdown();
+    } catch (err) {
+      // Best-effort for the dropdown - a failed refresh just means it goes
+      // stale until the next poll, not a UI error worth surfacing there. The
+      // panel does surface it, since an empty list there reads as an answer.
+      sessionsListError = err.message || String(err);
+    }
+    if (isSessionsPanelOpen()) renderSessionsPanel();
+  }
+  let sessionsPollTimer = null;
+  function startSessionsPolling() {
+    if (sessionsPollTimer) return; // already running (e.g. re-login without a reload)
+    refreshSessionsList();
+    sessionsPollTimer = setInterval(refreshSessionsList, 5000);
+  }
+
+  function isViewingSession() { return viewedSessionId !== null; }
+
+  // Which input surface (if any) the chat column shows. While a remote
+  // session is on screen there is no input at all — only the read-only bar.
+  function applyInputVisibility() {
+    const viewing = isViewingSession();
+    composerForm.style.display = viewing ? 'none' : 'flex';
+    viewerBar.classList.toggle('show', viewing);
+    // You can't send into a conversation you're only watching, so choosing a
+    // different agent to send to is meaningless while viewing one.
+    agentSelect.disabled = viewing;
+  }
+
+  function detachLiveTranscript() {
+    savedLiveChat = document.createDocumentFragment();
+    while (chatBody.firstChild) savedLiveChat.appendChild(chatBody.firstChild);
+    savedLiveLog = document.createDocumentFragment();
+    while (logBody.firstChild) savedLiveLog.appendChild(logBody.firstChild);
+  }
+
+  function restoreLiveTranscript() {
+    chatBody.innerHTML = '';
+    logBody.innerHTML = '';
+    if (savedLiveChat) { chatBody.appendChild(savedLiveChat); savedLiveChat = null; }
+    if (savedLiveLog) { logBody.appendChild(savedLiveLog); savedLiveLog = null; }
+    scrollToBottom(chatBody);
+    scrollToBottom(logBody);
+  }
+
+  function stopViewingSession() {
+    if (viewerPollTimer) { clearInterval(viewerPollTimer); viewerPollTimer = null; }
+    if (!isViewingSession()) return;
+    viewedSessionId = null;
+    viewerLastStepIndex = -1;
+    viewerToolCardsByCallId = {};
+    viewerErrorShown = false;
+    logHead.textContent = 'Live tool activity';
+    viewerBanner.classList.remove('show');
+    restoreLiveTranscript();
+    applyInputVisibility();
+    // Drops any "no longer listed" entry that only existed to keep the
+    // watched session selectable, and puts the control back on "My session".
+    renderSessionsDropdown();
+  }
+
+  function renderTimestamp(ts) {
+    try { return new Date(ts).toLocaleTimeString(); } catch { return ''; }
+  }
+
+  // Renders one recorded reasoning step of a viewed session into the MAIN
+  // chat column, using the same bubbles a live conversation uses, so a
+  // remotely-initiated conversation reads as a conversation rather than as
+  // a list of cards in the side panel:
+  //
+  //   incoming_request -> the caller's message (right-aligned, like "You")
+  //   thought          -> the model's interleaved reasoning, labeled as such
+  //   tool_call        -> a tool card in the side panel (same as live)
+  //   tool_result      -> that card completed, plus the seller's actual
+  //                       response inline in the conversation (same as live)
+  //   response         -> the agent's reply, markdown-rendered (same as live)
+  function renderViewerStep(step, meta) {
+    const c = step.content || {};
+    const ts = renderTimestamp(step.timestamp);
+    const withTime = (label) => (ts ? `${label} · ${ts}` : label);
+
+    if (step.step_type === 'incoming_request') {
+      addMessage('user', c.text || '', withTime(c.from || 'Unknown caller'));
+    } else if (step.step_type === 'thought') {
+      addMessage('thought', c.text || '', withTime('Agent — reasoning'));
+    } else if (step.step_type === 'tool_call') {
+      const card = addToolCard(c.toolName || 'tool');
+      card.querySelector('.tc-body').textContent = c.input ? JSON.stringify(c.input, null, 2) : '';
+      if (c.callId) viewerToolCardsByCallId[c.callId] = card;
+    } else if (step.step_type === 'tool_result') {
+      // A tool_call step always precedes its result, but a card can be
+      // missing if the viewer attached mid-session (steps before
+      // since_index were never rendered) — create one so the result is
+      // still shown attributed, rather than dropped.
+      const card = (c.callId && viewerToolCardsByCallId[c.callId]) || addToolCard(c.toolName || '');
+      const toolLabel = c.toolName || card.toolLabel || '';
+      if (c.callId) delete viewerToolCardsByCallId[c.callId];
+      const unrecorded = notRecordedNote(c);
+      if (unrecorded) {
+        finishToolCard(card, false, unrecorded);
+        return;
+      }
+      finishToolCardPerSeller(
+        card, toolLabel, c.output, c.durationMs, c.status === 'success', recordingTrimNote(c)
+      );
+      // Same per-seller attribution the live path uses. The seller name comes
+      // from the response itself, not from the session's recorded
+      // seller_agent_id: a fan-out turn queried every sales agent, so a single
+      // recorded seller would mislabel most of the bubbles.
+      for (const el of buildFanOutSellerMessages(toolLabel, c.output)) {
+        chatBody.appendChild(el);
+      }
+      scrollToBottom(chatBody);
+    } else if (step.step_type === 'response') {
+      const bubble = addMessage('agent', '', withTime(`Agent → ${c.to || 'caller'}`));
+      // Same markdown rendering (and same DOMPurify sanitizing) the live
+      // chat applies to streamed model output.
+      renderMarkdown(bubble, c.text || '');
+      scrollToBottom(chatBody);
+    }
+  }
+
+  function updateViewerChrome(sessionId, meta) {
+    const statusLabel = meta ? (meta.status === 'active' ? 'live' : meta.status) : 'loading…';
+    const invoker = (meta && meta.invoker) || 'Unknown caller';
+    logHead.textContent = meta
+      ? `${agentLabelFor(meta)}: ${invoker} — ${statusLabel}`
+      : `Session: ${invoker} — ${statusLabel}`;
+    viewerBanner.textContent = `Viewing ${shortSessionId(sessionId)} (${statusLabel}) — read-only`;
+    viewerBanner.classList.add('show');
+    const seller = meta && meta.seller_agent_id ? ` · seller ${sellerNameForId(meta.seller_agent_id)}` : '';
+    // Which agent ran it, not just who asked — with several agents recording
+    // into one store, that's the first thing you need to know.
+    const ranBy = meta ? agentLabelFor(meta) : 'unknown agent';
+    viewerBarText.innerHTML =
+      `Read-only replay of a conversation on <strong>${escapeHtml(ranBy)}</strong>, ` +
+      `started by <strong>${escapeHtml(invoker)}</strong> ` +
+      `(${escapeHtml(statusLabel)})${escapeHtml(seller)}. ` +
+      `<span class="vb-id">${escapeHtml(shortSessionId(sessionId))}</span>`;
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = String(s);
+    return div.innerHTML;
+  }
+
+  async function pollViewedSession(sessionId) {
+    // **This is why messages appeared twice.** The poll is a 2s interval around a request to
+    // the runtime that regularly takes longer than 2s. With no guard, the next tick fired
+    // while the first was still outstanding, read the same `viewerLastStepIndex`, asked for
+    // the same range, and rendered it again, so every step in the transcript appeared exactly
+    // twice with identical text and timestamp.
+    //
+    // Skipping a tick loses nothing: the very next one asks from the same index.
+    if (viewerPollInFlight) return;
+    viewerPollInFlight = true;
+    const generation = viewerGeneration;
+    try {
+      const events = await postInvoke({ action: 'get_session_steps', session_id: sessionId, since_index: viewerLastStepIndex });
+      // A selection change mid-request must not paint into the new view.
+      if (viewedSessionId !== sessionId) return;
+      const stepsEvent = events.find(e => e.type === 'session_steps');
+      if (!stepsEvent) return;
+      const meta = stepsEvent.meta;
+      updateViewerChrome(sessionId, meta);
+      // Say what's actually true instead of spinning on "Loading…": a
+      // session with no META record at all has expired or never existed,
+      // which is different from one whose first step hasn't landed yet.
+      const loading = chatBody.querySelector('.viewer-loading');
+      if (loading) {
+        if (stepsEvent.steps.length) {
+          loading.remove();
+        } else if (!meta) {
+          loading.textContent =
+            'No record found for this session. Session records are removed 24 hours after they start.';
+        } else {
+          loading.textContent = 'No steps recorded yet for this session.';
+        }
+      }
+      for (const step of stepsEvent.steps) {
+        // Checked per step against the counter as it advances, so a step already on screen is
+        // never drawn again. The in-flight guard above removes the known cause of a repeat;
+        // this makes one impossible regardless of cause, including a response carrying an
+        // overlapping range. Safe because this loop is synchronous: whichever response lands
+        // first advances the counter past its steps, and a second one then skips them.
+        if (Number.isFinite(step.step_index) && step.step_index <= viewerLastStepIndex) continue;
+        renderViewerStep(step, meta);
+        if (Number.isFinite(step.step_index)) {
+          viewerLastStepIndex = Math.max(viewerLastStepIndex, step.step_index);
+        }
+      }
+      // A failed turn's error message lives on the session's meta record,
+      // not in the steps, so surface it in the transcript once rather than
+      // letting the conversation just stop with no explanation.
+      if (meta && meta.status === 'error' && meta.error_message && !viewerErrorShown) {
+        viewerErrorShown = true;
+        addMessage('sysnote', meta.error_message, 'Turn failed');
+      }
+      viewerPollFailures = 0;
+      if (viewerStaleNote) { viewerStaleNote.remove(); viewerStaleNote = null; }
+    } catch (err) {
+      // One missed poll is genuinely fine, the next catches up. A run of them is not: the
+      // transcript then sits there looking like the whole conversation while it is actually
+      // frozen, which is the same class of problem as showing a stale status as current.
+      // Say so instead of failing silently.
+      if (viewedSessionId !== sessionId) return;
+      viewerPollFailures += 1;
+      if (viewerPollFailures >= 3 && !viewerStaleNote) {
+        viewerStaleNote = document.createElement('div');
+        viewerStaleNote.className = 'log-empty';
+        viewerStaleNote.textContent =
+          'This transcript has stopped updating: the last ' + viewerPollFailures +
+          ' refreshes failed (' + (err && err.message ? err.message : 'reason not reported') +
+          '). What is shown may be incomplete.';
+        chatBody.appendChild(viewerStaleNote);
+        scrollToBottom(chatBody);
+      }
+    } finally {
+      // `finally`, not the end of the try: there are early `return`s above (a selection change
+      // mid-request, a response with no steps event) and a catch. Leaving the flag set on any
+      // one of those paths would stop every later poll and freeze the transcript for good,
+      // which is worse than the duplication the flag exists to prevent.
+      //
+      // Only the current view's poll clears it. A poll left over from a session the user has
+      // since navigated away from must not, or it would release the guard while this view's
+      // own poll is still running.
+      if (generation === viewerGeneration) viewerPollInFlight = false;
+    }
+  }
+
+  function startViewingSession(sessionId) {
+    if (!isViewingSession()) detachLiveTranscript();
+    if (viewerPollTimer) { clearInterval(viewerPollTimer); viewerPollTimer = null; }
+    viewedSessionId = sessionId;
+    viewerLastStepIndex = -1;
+    viewerToolCardsByCallId = {};
+    viewerErrorShown = false;
+    // The note belongs to the session that went stale, not to this one; the innerHTML reset
+    // below detaches it, so the handle has to be dropped or it can never be re-added.
+    viewerPollFailures = 0;
+    viewerStaleNote = null;
+    // A poll for the previous session may still be outstanding. It will discard its own result
+    // (it checks `viewedSessionId` before painting), but the guard has to be released here or
+    // this session's first poll would be skipped. Bumping the generation is what stops that
+    // stale poll from later releasing the guard out from under this view.
+    viewerGeneration += 1;
+    viewerPollInFlight = false;
+    chatBody.innerHTML = '<div class="viewer-loading">Loading conversation…</div>';
+    logBody.innerHTML = '';
+    logHead.textContent = 'Loading session…';
+    updateViewerChrome(sessionId, null);
+    applyInputVisibility();
+    // Picked from the panel this may be a session with no option in the
+    // dropdown yet; rendering here gives it one and selects it, so the header
+    // always names what the chat column is showing.
+    renderSessionsDropdown();
+    pollViewedSession(sessionId);
+    // Sub-100ms delivery isn't possible over polling; 2s keeps this
+    // responsive without hammering DynamoDB/the runtime for a view
+    // nobody may be actively watching.
+    viewerPollTimer = setInterval(() => pollViewedSession(sessionId), 2000);
+  }
+
+  sessionSelect.addEventListener('change', () => {
+    const value = sessionSelect.value;
+    if (value === VIEW_ALL_VALUE) {
+      // Not a session: put the control back on whatever is actually on screen
+      // and open the full list instead.
+      sessionSelect.value = viewedSessionId || '';
+      openSessionsPanel();
+      return;
+    }
+    if (!value) {
+      stopViewingSession();
+    } else {
+      startViewingSession(value);
+    }
+  });
+
+  viewerExitBtn.addEventListener('click', () => {
+    sessionSelect.value = '';
+    stopViewingSession();
+  });
+
+  // ============================================================
+  // All-sessions panel: the full recent list, opened from the dropdown's
+  // "View all sessions…" entry. Same list_sessions data the dropdown is
+  // built from and the same read-only viewer — this only widens the choice
+  // of which session to replay.
+  // ============================================================
+  const sessionsBackdrop = document.getElementById('sessionsBackdrop');
+  const sessionsCloseBtn = document.getElementById('sessionsCloseBtn');
+  const sessionsList = document.getElementById('sessionsList');
+  const sessionsShowToolCalls = document.getElementById('sessionsShowToolCalls');
+  const sessionsError = document.getElementById('sessionsError');
+  const sessionsSubLabel = document.getElementById('sessionsSubLabel');
+
+  function isSessionsPanelOpen() { return sessionsBackdrop.classList.contains('show'); }
+
+  function sessionStatusPill(status) {
+    // The recorded status, as recorded (session_records writes active /
+    // completed / error). Anything else says "unknown" rather than being
+    // defaulted to something reassuring.
+    if (status === 'active') return '<span class="pill live">live</span>';
+    if (status === 'completed') return '<span class="pill confirmed">completed</span>';
+    if (status === 'error') return '<span class="pill failed">error</span>';
+    return `<span class="pill unknown">${escapeHtml(status || 'unknown')}</span>`;
+  }
+
+  // Attribute context: escapeHtml covers a text node, not a quoted attribute
+  // value, so quotes have to go too.
+  function escapeAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+
+  function sessionStartedLabel(session) {
+    if (!session.started_at) return '—';
+    const d = new Date(session.started_at);
+    if (isNaN(d.getTime())) return '—';
+    return d.toDateString() === new Date().toDateString()
+      ? d.toLocaleTimeString()
+      : d.toLocaleString();
+  }
+
+  // What the panel is currently painted from, so a poll that changed nothing does not
+  // rebuild the table.
+  //
+  // **This is why rows were unclickable.** `refreshSessionsList` runs every 5s and used
+  // to re-assign `sessionsList.innerHTML` unconditionally. A rebuild landing between
+  // mousedown and mouseup destroys the button being pressed, and the browser then fires
+  // no click event at all — so pressing "View" did nothing, at random, roughly whenever
+  // the poll happened to tick. With ~95 near-identical rows it looked like the panel was
+  // simply dead.
+  let sessionsPanelSignature = null;
+
+  // Deferred only while a press is actually in progress.
+  //
+  // This used to defer on `pointerenter`/`pointerleave` — while the pointer was anywhere
+  // over the list — which fixed the dropped-click bug by freezing the panel instead. The
+  // pointer resting over the list is the normal state while you read it, so an ongoing
+  // conversation never appeared: the repaint waited for a `pointerleave` that only came
+  // when the mouse left the table entirely.
+  //
+  // A press lasts a couple of hundred milliseconds, so deferring for its duration cannot
+  // be perceived as staleness, and the reconciliation below means most refreshes no longer
+  // touch the pressed button at all.
+  let pressInSessionsList = false;
+  let sessionsPanelRepaintPending = false;
+
+  sessionsList.addEventListener('pointerdown', () => { pressInSessionsList = true; });
+  // `pointerup` fires before `click`, so releasing has to leave the repaint until after the
+  // click handler has run — otherwise the deferred repaint lands between the two and
+  // reintroduces exactly the bug this guards against.
+  const endSessionsPress = () => {
+    if (!pressInSessionsList) return;
+    pressInSessionsList = false;
+    if (sessionsPanelRepaintPending) setTimeout(renderSessionsPanel, 0);
+  };
+  sessionsList.addEventListener('pointerup', endSessionsPress);
+  // A press released outside the list, or cancelled by a scroll/gesture, still has to clear
+  // the flag or the panel stays frozen for the rest of the session.
+  sessionsList.addEventListener('pointercancel', endSessionsPress);
+  window.addEventListener('pointerup', endSessionsPress);
+
+  // The reconciled table body and its rows, keyed by session_id. Both are dropped when the
+  // panel falls back to an empty/error message, so the table is rebuilt on the way back.
+  let sessionsTableBody = null;
+  const sessionRowsById = new Map();
+
+  function sessionsSignature() {
+    // Everything the table renders, and nothing it doesn't: a poll that only moved
+    // `updated_at` should not cost a rebuild, but a status flip or a new session should.
+    return JSON.stringify([
+      showToolCallSessions,
+      sessionsListError,
+      viewedSessionId,
+      recentSessions.map(s => [s.session_id, s.status, s.request_preview, s.agent_id, s.invoker]),
+    ]);
+  }
+
+  function renderSessionsPanel() {
+    const signature = sessionsSignature();
+    if (signature === sessionsPanelSignature) return;
+    if (pressInSessionsList) {
+      // Repaint as soon as the press completes. Deferring for the length of a click is far
+      // smaller a cost than dropping the click the user is in the middle of making.
+      sessionsPanelRepaintPending = true;
+      return;
+    }
+    sessionsPanelSignature = signature;
+    sessionsPanelRepaintPending = false;
+
+    // The fetch is a page, so a full page means "the newest N", not a total.
+    sessionsSubLabel.textContent = recentSessions.length >= SESSION_LIST_LIMIT
+      ? `newest ${SESSION_LIST_LIMIT}`
+      : `${recentSessions.length} session${recentSessions.length === 1 ? '' : 's'}`;
+
+    if (sessionsListError) {
+      sessionsError.textContent = 'Could not refresh the session list: ' + sessionsListError;
+      sessionsError.classList.add('show');
+    } else {
+      sessionsError.classList.remove('show');
+      sessionsError.textContent = '';
+    }
+
+    if (!recentSessions.length) {
+      // An empty list and an unavailable list are different answers.
+      sessionsTableBody = null;
+      sessionRowsById.clear();
+      sessionsList.innerHTML = sessionsListError
+        ? '<div class="log-empty">Session list unavailable.</div>'
+        : '<div class="log-empty">No sessions recorded.</div>';
+      return;
+    }
+
+    // Rows are reconciled by session_id rather than rebuilt.
+    //
+    // The previous version reassigned `sessionsList.innerHTML` on every changed poll, which
+    // is what made "View" unreliable: a rebuild landing between mousedown and mouseup
+    // destroys the button being pressed, and the browser then fires no click at all. The
+    // first fix deferred the rebuild while the pointer was over the list, which stopped the
+    // dropped clicks and froze the panel instead.
+    //
+    // Reconciling removes the cause rather than scheduling around it. A row whose data has
+    // not changed is not touched, so its button keeps its element identity across refreshes
+    // and there is nothing to destroy mid-press. Only genuinely new, changed, removed, or
+    // reordered rows touch the DOM.
+    if (!sessionsTableBody || !sessionsTableBody.isConnected) {
+      sessionsList.innerHTML =
+        '<table class="sess-table"><thead><tr>' +
+        '<th>Agent</th><th>Invoker</th><th>Request</th><th>Status</th><th>Started</th><th></th>' +
+        '</tr></thead><tbody></tbody></table>';
+      sessionsTableBody = sessionsList.querySelector('tbody');
+      sessionRowsById.clear();
+    }
+
+    const seen = new Set();
+    recentSessions.forEach((session, index) => {
+      const id = session.session_id;
+      seen.add(id);
+      const viewing = id === viewedSessionId;
+      const preview = session.request_preview || '';
+      const truncated = preview.slice(0, 70) + (preview.length > 70 ? '…' : '');
+
+      let row = sessionRowsById.get(id);
+      if (!row) {
+        row = document.createElement('tr');
+        // Cells are created once; only their contents are updated afterwards.
+        row.innerHTML =
+          '<td class="s-agent"></td><td class="s-invoker"></td><td class="s-preview"></td>' +
+          '<td class="s-status"></td><td class="s-when"></td>' +
+          '<td class="s-act"><button type="button" class="sess-view-btn"></button></td>';
+        row.querySelector('.sess-view-btn').dataset.sessionId = id;
+        sessionRowsById.set(id, row);
+      }
+
+      setTextIfChanged(row.querySelector('.s-agent'), agentLabelFor(session));
+      setTextIfChanged(row.querySelector('.s-invoker'), session.invoker || 'Unknown invoker');
+      setTextIfChanged(row.querySelector('.s-preview'), truncated || '—');
+      setTextIfChanged(row.querySelector('.s-when'), sessionStartedLabel(session));
+      // Status is the one cell built from markup (a pill), so it is compared as markup.
+      const pill = sessionStatusPill(session.status);
+      const statusCell = row.querySelector('.s-status');
+      if (statusCell.innerHTML !== pill) statusCell.innerHTML = pill;
+
+      row.classList.toggle('viewing', viewing);
+      const btn = row.querySelector('.sess-view-btn');
+      const label = viewing ? 'Viewing' : 'View';
+      if (btn.textContent !== label) btn.textContent = label;
+      if (btn.disabled !== viewing) btn.disabled = viewing;
+
+      // Move into position only when the position is actually wrong, so a stable list
+      // performs no DOM mutation at all.
+      if (sessionsTableBody.children[index] !== row) {
+        sessionsTableBody.insertBefore(row, sessionsTableBody.children[index] || null);
+      }
+    });
+
+    for (const [id, row] of Array.from(sessionRowsById)) {
+      if (!seen.has(id)) {
+        row.remove();
+        sessionRowsById.delete(id);
+      }
+    }
+  }
+
+  // Avoids touching the DOM when the text is already correct, so an unchanged row is left
+  // entirely alone (see the reconciliation note above).
+  function setTextIfChanged(el, text) {
+    const next = String(text);
+    if (el.textContent !== next) el.textContent = next;
+  }
+
+  // Turning tool-call records back on. Not a filter that hides things quietly: the
+  // checkbox states what it excludes, and its label says how many kinds of record exist.
+  sessionsShowToolCalls.addEventListener('change', () => {
+    showToolCallSessions = sessionsShowToolCalls.checked;
+    // Force a repaint: this is a direct response to a user action, so deferring it would
+    // look broken. The checkbox sits outside the list, so no press is in progress there.
+    sessionsPanelSignature = null;
+    pressInSessionsList = false;
+    refreshSessionsList();
+  });
+
+  function openSessionsPanel() {
+    sessionsBackdrop.classList.add('show');
+    // Paint what the poll already fetched, then let the refresh already on
+    // its way update it — no empty panel while a request is in flight.
+    sessionsShowToolCalls.checked = showToolCallSessions;
+    sessionsPanelSignature = null;
+    renderSessionsPanel();
+    refreshSessionsList();
+    sessionsCloseBtn.focus();
+  }
+
+  function closeSessionsPanel() {
+    sessionsBackdrop.classList.remove('show');
+  }
+
+  sessionsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sess-view-btn');
+    if (!btn || !btn.dataset.sessionId) return;
+    closeSessionsPanel();
+    startViewingSession(btn.dataset.sessionId);
+  });
+
+  sessionsCloseBtn.addEventListener('click', closeSessionsPanel);
+  sessionsBackdrop.addEventListener('click', (e) => {
+    if (e.target === sessionsBackdrop) closeSessionsPanel();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isSessionsPanelOpen()) closeSessionsPanel();
+  });
+
+  // Loads the same config shape from either app.py's local /config route
+  // (running `python3 app.py`) or a static config.json sitting next to
+  // this file (the deploy_ui.py S3+CloudFront deployment, which has no
+  // backend to serve a live /config route). Tries /config first since
+  // that's the richer local-dev path; on 404 falls back to ./config.json,
+  // which deploy_ui.py generates from the same .env values on every
+  // publish. Either way this is real config for a real deployed runtime,
+  // not a placeholder.
+  async function fetchConfig() {
+    let res = await fetch('/config');
+    if (!res.ok) {
+      res = await fetch('./config.json');
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  async function fetchCognitoConfig() {
+    const data = await fetchConfig();
+    cognitoConfig = { region: data.cognito_region, clientId: data.cognito_client_id };
+    runtimeConfig = { arn: data.agent_runtime_arn, region: data.aws_region };
+    cognitoPoolLabel.textContent = cognitoConfig.region
+      ? `client ${cognitoConfig.clientId.slice(0, 8)}…`
+      : 'not configured';
+    setSellerAgents(data.seller_agents);
+    populateAgentSelect(data.agents, data.default_agent_id, data.agents_error);
+    showBuildStamp(data.ui_published_at);
+    return data;
+  }
+
+  // Reports which build the browser is running, from the publish time the deploy wrote into
+  // config.json. An older field-less config says so plainly rather than showing nothing, since
+  // "no stamp" and "an old build" are different answers and only one of them is actionable.
+  function showBuildStamp(publishedAt) {
+    const el = document.getElementById('logBuild');
+    if (!el) return;
+    if (publishedAt) {
+      const when = new Date(publishedAt);
+      el.textContent = isNaN(when.getTime())
+        ? `build ${publishedAt}`
+        : `build ${when.toLocaleString()}`;
+    } else if (publishedAt === '') {
+      // app.py serves index.html straight off disk, so there is no publish time.
+      el.textContent = 'served locally';
+    } else {
+      el.textContent = 'build unknown (config predates the build stamp)';
+    }
+  }
+
+  // Builds the invoke URL for the deployed AgentCore Runtime. The browser
+  // calls this directly (bedrock-agentcore.{region}.amazonaws.com), NOT
+  // this local server's own /invocations - see app.py's module docstring.
+  // AWS's invoke endpoint sends Access-Control-Allow-Origin: * (verified
+  // live), so no proxy is needed.
+  function getInvokeUrl() {
+    if (!runtimeConfig || !runtimeConfig.arn) {
+      throw new Error('No AGENT_RUNTIME_ARN configured on the server (.env).');
+    }
+    const escapedArn = encodeURIComponent(runtimeConfig.arn);
+    return `https://bedrock-agentcore.${runtimeConfig.region}.amazonaws.com/runtimes/${escapedArn}/invocations?qualifier=DEFAULT`;
+  }
+
+  // Real calls to Cognito's own APIs — no server proxy. Cognito returns
+  // CORS headers allowing these directly from the browser.
+  async function cognitoCall(target, body) {
+    const url = `https://cognito-idp.${cognitoConfig.region}.amazonaws.com/`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': `AWSCognitoIdentityProviderService.${target}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const err = new Error(data.message || data.__type || `HTTP ${res.status}`);
+      // Cognito's error type (e.g. InvalidPasswordException,
+      // NotAuthorizedException) drives which recovery path the UI takes,
+      // so keep it rather than flattening everything to a message string.
+      err.cognitoType = (data.__type || '').split('#').pop();
+      throw err;
+    }
+    return data;
+  }
+
+  // Returns either {authResult} on a completed sign-in, or {challenge}
+  // when Cognito needs something else before it will issue tokens.
+  async function cognitoSignIn(username, password) {
+    const data = await cognitoCall('InitiateAuth', {
+      AuthFlow: 'USER_PASSWORD_AUTH',
+      ClientId: cognitoConfig.clientId,
+      AuthParameters: { USERNAME: username, PASSWORD: password },
+    });
+
+    if (data.AuthenticationResult) {
+      return { authResult: data.AuthenticationResult }; // { AccessToken, IdToken, RefreshToken, ExpiresIn }
+    }
+
+    if (data.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+      // Admin-created users start in FORCE_CHANGE_PASSWORD status: Cognito
+      // hands back a session instead of tokens, and only issues tokens once
+      // RespondToAuthChallenge supplies a new permanent password.
+      // ChallengeParameters.USER_ID_FOR_SRP is the canonical username to
+      // echo back (it can differ from what was typed, e.g. an alias).
+      let requiredAttributes = [];
+      try {
+        requiredAttributes = JSON.parse(data.ChallengeParameters?.requiredAttributes || '[]');
+      } catch { requiredAttributes = []; }
+      return {
+        challenge: {
+          name: 'NEW_PASSWORD_REQUIRED',
+          session: data.Session,
+          username: data.ChallengeParameters?.USER_ID_FOR_SRP || username,
+          requiredAttributes,
+        },
+      };
+    }
+
+    // Any other challenge (MFA, SRP, device confirmation) genuinely isn't
+    // implemented here — say which one rather than failing vaguely.
+    throw new Error(
+      data.ChallengeName
+        ? `Unsupported challenge: ${data.ChallengeName}`
+        : 'Sign-in did not return tokens.'
+    );
+  }
+
+  // Answers the NEW_PASSWORD_REQUIRED challenge. On success Cognito makes
+  // the new password permanent (the user moves out of
+  // FORCE_CHANGE_PASSWORD) and returns the same token set a normal
+  // sign-in would.
+  async function cognitoSetNewPassword(challenge, newPassword) {
+    const data = await cognitoCall('RespondToAuthChallenge', {
+      ChallengeName: 'NEW_PASSWORD_REQUIRED',
+      ClientId: cognitoConfig.clientId,
+      Session: challenge.session,
+      ChallengeResponses: {
+        USERNAME: challenge.username,
+        NEW_PASSWORD: newPassword,
+      },
+    });
+    if (!data.AuthenticationResult) {
+      throw new Error(
+        data.ChallengeName
+          ? `Password set, but another challenge followed: ${data.ChallengeName}`
+          : 'Password change did not return tokens.'
+      );
+    }
+    return data.AuthenticationResult;
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.classList.remove('show');
+    loginSubmit.disabled = true;
+    const originalLabel = loginSubmit.textContent;
+    loginSubmit.innerHTML = '<span class="login-spinner"></span> Signing in…';
+
+    try {
+      if (!cognitoConfig) await fetchCognitoConfig();
+      const username = loginUsername.value.trim();
+      const password = loginPassword.value;
+      const outcome = await cognitoSignIn(username, password);
+
+      if (outcome.challenge) {
+        loginPassword.value = '';
+        showNewPasswordStep(outcome.challenge);
+        return;
+      }
+
+      completeSignIn(username, outcome.authResult);
+      loginPassword.value = '';
+    } catch (err) {
+      loginError.textContent = 'Sign-in failed: ' + err.message;
+      loginError.classList.add('show');
+    } finally {
+      loginSubmit.disabled = false;
+      loginSubmit.textContent = originalLabel;
+    }
+  });
+
+  function completeSignIn(username, authResult) {
+    saveSession({
+      username,
+      accessToken: authResult.AccessToken,
+      expiresAt: Date.now() + (authResult.ExpiresIn || 3600) * 1000,
+    });
+    showApp(username);
+  }
+
+  // ============================================================
+  // First-login password change (Cognito NEW_PASSWORD_REQUIRED)
+  //
+  // An admin creates a user with a temporary password
+  // (create_cognito_user.py -> AdminCreateUser, no permanent password), so
+  // Cognito puts them in FORCE_CHANGE_PASSWORD status. InitiateAuth then
+  // returns a challenge and a Session instead of tokens, and the only way
+  // to get tokens is to answer it with a new password. This step does that
+  // against the real API — the user is not signed in until Cognito itself
+  // accepts the new password and issues the token set.
+  // ============================================================
+  const newPasswordForm = document.getElementById('newPasswordForm');
+  const newPasswordIntro = document.getElementById('newPasswordIntro');
+  const newPassword = document.getElementById('newPassword');
+  const newPasswordConfirm = document.getElementById('newPasswordConfirm');
+  const newPasswordSubmit = document.getElementById('newPasswordSubmit');
+  const newPasswordCancel = document.getElementById('newPasswordCancel');
+  const pwRules = document.getElementById('pwRules');
+
+  let pendingChallenge = null;
+
+  // Mirrors the pool's actual PasswordPolicy (deploy_cognito_setup.py:
+  // MinimumLength 8, RequireUppercase/Lowercase/Numbers, symbols not
+  // required). Cognito re-validates server-side regardless; this only
+  // spares the user a round-trip to discover the rules.
+  function evaluatePasswordRules() {
+    const pw = newPassword.value;
+    const results = {
+      length: pw.length >= 8,
+      upper: /[A-Z]/.test(pw),
+      lower: /[a-z]/.test(pw),
+      digit: /[0-9]/.test(pw),
+      match: pw.length > 0 && pw === newPasswordConfirm.value,
+    };
+    for (const el of pwRules.querySelectorAll('.pw-rule')) {
+      el.classList.toggle('met', Boolean(results[el.dataset.rule]));
+    }
+    const allMet = Object.values(results).every(Boolean);
+    newPasswordSubmit.disabled = !allMet;
+    return allMet;
+  }
+  newPassword.addEventListener('input', evaluatePasswordRules);
+  newPasswordConfirm.addEventListener('input', evaluatePasswordRules);
+
+  function showNewPasswordStep(challenge) {
+    pendingChallenge = challenge;
+    loginError.classList.remove('show');
+    loginForm.style.display = 'none';
+    newPasswordForm.style.display = 'block';
+    newPassword.value = '';
+    newPasswordConfirm.value = '';
+    evaluatePasswordRules();
+    newPasswordIntro.textContent =
+      `This account (${challenge.username}) was created with a temporary password. ` +
+      'Choose a new one to finish signing in.';
+    if (challenge.requiredAttributes && challenge.requiredAttributes.length) {
+      // Answering the challenge would also have to supply these, which this
+      // screen has no fields for. Say so plainly instead of sending an
+      // incomplete request and reporting a confusing Cognito error.
+      loginError.textContent =
+        'This user pool also requires these attributes at first sign-in, which this ' +
+        'screen cannot collect: ' + challenge.requiredAttributes.join(', ') +
+        '. Set them with admin_update_user_attributes first.';
+      loginError.classList.add('show');
+      newPasswordSubmit.disabled = true;
+    }
+    newPassword.focus();
+  }
+
+  function showSignInStep() {
+    pendingChallenge = null;
+    newPasswordForm.style.display = 'none';
+    loginForm.style.display = 'block';
+    newPassword.value = '';
+    newPasswordConfirm.value = '';
+    loginPassword.value = '';
+  }
+
+  newPasswordCancel.addEventListener('click', () => {
+    loginError.classList.remove('show');
+    showSignInStep();
+    loginUsername.focus();
+  });
+
+  newPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!pendingChallenge) { showSignInStep(); return; }
+    if (!evaluatePasswordRules()) return;
+
+    loginError.classList.remove('show');
+    newPasswordSubmit.disabled = true;
+    const originalLabel = newPasswordSubmit.textContent;
+    newPasswordSubmit.innerHTML = '<span class="login-spinner"></span> Setting password…';
+
+    try {
+      const authResult = await cognitoSetNewPassword(pendingChallenge, newPassword.value);
+      const username = pendingChallenge.username;
+      pendingChallenge = null;
+      newPassword.value = '';
+      newPasswordConfirm.value = '';
+      showSignInStep();
+      completeSignIn(username, authResult);
+    } catch (err) {
+      loginError.textContent = 'Could not set the new password: ' + err.message;
+      loginError.classList.add('show');
+      if (err.cognitoType === 'NotAuthorizedException' || err.cognitoType === 'ExpiredCodeException') {
+        // The challenge Session is short-lived. Once it's gone the only
+        // recovery is a fresh InitiateAuth with the temporary password.
+        loginError.textContent +=
+          ' The first-login session has expired — sign in again with your temporary password.';
+        showSignInStep();
+        loginUsername.focus();
+      }
+    } finally {
+      newPasswordSubmit.textContent = originalLabel;
+      evaluatePasswordRules();
+    }
+  });
+
+  signoutBtn.addEventListener('click', () => {
+    clearSession();
+    sessionStorage.removeItem(RUNTIME_SESSION_KEY);
+    closeAdminPanel();
+    showLogin();
+  });
+
+  // ============================================================
+  // Admin panel: Cognito user management for members of the 'admin' group.
+  //
+  // The browser holds no AWS credentials. Both actions below go through the
+  // same authenticated /invocations entrypoint every other call uses
+  // (postInvoke), and app.py performs the Cognito admin API call with the
+  // runtime's execution role after re-checking the caller's group
+  // membership on the verified token. Nothing displayed here is
+  // client-generated: the user list, statuses and temporary password all
+  // come from Cognito's own responses.
+  // ============================================================
+  const adminBtn = document.getElementById('adminBtn');
+  const adminBackdrop = document.getElementById('adminBackdrop');
+  const adminCloseBtn = document.getElementById('adminCloseBtn');
+  const adminError = document.getElementById('adminError');
+  const adminCreds = document.getElementById('adminCreds');
+  const adminCreateForm = document.getElementById('adminCreateForm');
+  const adminCreateBtn = document.getElementById('adminCreateBtn');
+  const adminNewUsername = document.getElementById('adminNewUsername');
+  const adminNewEmail = document.getElementById('adminNewEmail');
+  const adminUsers = document.getElementById('adminUsers');
+  const adminPoolLabel = document.getElementById('adminPoolLabel');
+
+  function applyAdminVisibility() {
+    adminBtn.classList.toggle('show', isAdminUser());
+  }
+
+  function showAdminError(message) {
+    adminError.textContent = message;
+    adminError.classList.add('show');
+  }
+  function clearAdminError() {
+    adminError.classList.remove('show');
+    adminError.textContent = '';
+  }
+
+  function openAdminPanel() {
+    clearAdminError();
+    adminCreds.style.display = 'none';
+    adminCreds.innerHTML = '';
+    adminPoolLabel.textContent = cognitoConfig && cognitoConfig.clientId
+      ? `client ${cognitoConfig.clientId.slice(0, 8)}…`
+      : '';
+    adminBackdrop.classList.add('show');
+    adminUsers.innerHTML = '<div class="log-empty">Loading users…</div>';
+    refreshUserList();
+    adminNewUsername.focus();
+  }
+
+  function closeAdminPanel() {
+    adminBackdrop.classList.remove('show');
+  }
+
+  adminBtn.addEventListener('click', openAdminPanel);
+  adminCloseBtn.addEventListener('click', closeAdminPanel);
+  adminBackdrop.addEventListener('click', (e) => {
+    if (e.target === adminBackdrop) closeAdminPanel();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && adminBackdrop.classList.contains('show')) closeAdminPanel();
+  });
+
+  function statusPill(status) {
+    // Cognito's own UserStatus, shown as-is. An unrecognized or absent
+    // status renders as "unknown" rather than being defaulted to something
+    // reassuring.
+    if (status === 'CONFIRMED') return '<span class="pill confirmed">confirmed</span>';
+    if (status === 'FORCE_CHANGE_PASSWORD') return '<span class="pill pending">must change password</span>';
+    return `<span class="pill unknown">${escapeHtml(status || 'unknown')}</span>`;
+  }
+
+  function renderUserList(users, adminGroup) {
+    if (!users.length) {
+      adminUsers.innerHTML = '<div class="log-empty">No users returned for this pool.</div>';
+      return;
+    }
+    const rows = users.map(u => {
+      // is_admin is null when group membership could not be read (missing
+      // group or missing permission) — say "unknown", don't imply "no".
+      const adminCell = u.is_admin === true
+        ? `<span class="pill admin">${escapeHtml(adminGroup || 'admin')}</span>`
+        : u.is_admin === null
+          ? '<span class="pill unknown">unknown</span>'
+          : '';
+      return (
+        '<tr>' +
+        `<td class="u-name">${escapeHtml(u.username || '')}</td>` +
+        `<td>${escapeHtml(u.email || '')}</td>` +
+        `<td>${statusPill(u.status)}</td>` +
+        `<td>${adminCell}</td>` +
+        '</tr>'
+      );
+    }).join('');
+    adminUsers.innerHTML =
+      '<table class="user-table"><thead><tr>' +
+      '<th>Username</th><th>Email</th><th>Status</th><th>Group</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  async function refreshUserList() {
+    try {
+      const events = await postInvoke({ action: 'list_users' });
+      const usersEvent = events.find(e => e.type === 'users');
+      if (!usersEvent) {
+        const errorEvent = events.find(e => e.type === 'error');
+        adminUsers.innerHTML = '<div class="log-empty">Could not load users.</div>';
+        showAdminError(errorEvent ? errorEvent.message : 'The runtime returned no user list.');
+        return;
+      }
+      renderUserList(usersEvent.users, usersEvent.admin_group);
+    } catch (err) {
+      adminUsers.innerHTML = '<div class="log-empty">Could not load users.</div>';
+      showAdminError('Could not load users: ' + err.message);
+    }
+  }
+
+  function renderCreatedUser(event) {
+    // Shown once, because Cognito emailed nothing (the pool has no email
+    // configuration) and the value is not recoverable afterwards.
+    const warn = event.must_change_password
+      ? 'They must set their own password at first sign-in; this temporary one stops working then.'
+      : `Cognito reports status "${event.status || 'unknown'}", not FORCE_CHANGE_PASSWORD — ` +
+        'this user may NOT be prompted to change their password.';
+    adminCreds.innerHTML =
+      '<div><strong>User created.</strong> Hand these over now — the temporary password is not shown again.</div>' +
+      `<div class="cred-line"><span class="cred-key">Username</span><span class="cred-val">${escapeHtml(event.username)}</span></div>` +
+      `<div class="cred-line"><span class="cred-key">Temp password</span><span class="cred-val">${escapeHtml(event.temporary_password)}</span></div>` +
+      `<div class="cred-warn">${escapeHtml(warn)}</div>`;
+    adminCreds.style.display = 'block';
+  }
+
+  adminCreateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAdminError();
+    adminCreds.style.display = 'none';
+    const username = adminNewUsername.value.trim();
+    const email = adminNewEmail.value.trim();
+    if (!username || !email) return;
+
+    adminCreateBtn.disabled = true;
+    const originalLabel = adminCreateBtn.textContent;
+    adminCreateBtn.textContent = 'Creating…';
+    try {
+      const events = await postInvoke({ action: 'create_user', username, email });
+      const created = events.find(e => e.type === 'user_created');
+      if (!created) {
+        const errorEvent = events.find(e => e.type === 'error');
+        showAdminError(errorEvent ? errorEvent.message : 'The runtime returned no result for this request.');
+        return;
+      }
+      renderCreatedUser(created);
+      adminNewUsername.value = '';
+      adminNewEmail.value = '';
+      refreshUserList();
+    } catch (err) {
+      showAdminError('Could not create the user: ' + err.message);
+    } finally {
+      adminCreateBtn.disabled = false;
+      adminCreateBtn.textContent = originalLabel;
+    }
+  });
+
+  function getAuthHeader() {
+    const session = loadSession();
+    if (!session || !session.accessToken || Date.now() >= session.expiresAt) {
+      clearSession();
+      showLogin();
+      return null;
+    }
+    return 'Bearer ' + session.accessToken;
+  }
+
+  (async function initAuth() {
+    await fetchCognitoConfig();
+    const session = loadSession();
+    if (session && session.accessToken && Date.now() < session.expiresAt) {
+      showApp(session.username);
+    } else {
+      clearSession();
+      showLogin();
+    }
+  })();
+
+  const chatBody = document.getElementById('chatBody');
+  const emptyState = document.getElementById('emptyState');
+  const logBody = document.getElementById('logBody');
+  const logEmpty = document.getElementById('logEmpty');
+  const composerForm = document.getElementById('composerForm');
+  const promptInput = document.getElementById('promptInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const connBadge = document.getElementById('connBadge');
+  const connLabel = document.getElementById('connLabel');
+  const endpointLabel = document.getElementById('endpointLabel');
+
+  // ---------- Real connectivity check against /config or config.json ----------
+  // This confirms two independent things, both real: (1) this static file
+  // server is up (the fetch itself succeeding), and (2) an AGENT_RUNTIME_ARN
+  // is actually configured for the browser to call. It does NOT confirm the
+  // deployed runtime itself is reachable or healthy - that's only proven by
+  // an actual /invocations call succeeding. If AGENT_RUNTIME_ARN is unset,
+  // this surfaces that honestly rather than showing a false "ok".
+  async function checkConnection() {
+    try {
+      const data = await fetchConfig();
+      if (!data.agent_runtime_arn) {
+        connBadge.className = 'conn-badge error';
+        connLabel.textContent = 'No AGENT_RUNTIME_ARN configured';
+        endpointLabel.textContent = data.model_id || 'unknown model';
+        return;
+      }
+      if (!data.seller_agents || data.seller_agents.length === 0) {
+        connBadge.className = 'conn-badge error';
+        connLabel.textContent = 'No seller agents configured';
+        endpointLabel.textContent = `runtime ${data.agent_runtime_arn.split('/').pop()}  ·  ${data.model_id}`;
+        return;
+      }
+      endpointLabel.textContent = `runtime ${data.agent_runtime_arn.split('/').pop()}  ·  ${data.model_id}`;
+      connBadge.className = 'conn-badge ok';
+      connLabel.textContent = 'Runtime configured';
+    } catch (err) {
+      connBadge.className = 'conn-badge error';
+      connLabel.textContent = 'Config unreachable';
+      endpointLabel.textContent = 'unknown';
+    }
+  }
+  checkConnection();
+
+  function scrollToBottom(el) { el.scrollTop = el.scrollHeight; }
+
+  // Keeps a scrolling column pinned to its newest content.
+  //
+  // Scrolling at insert time alone isn't enough: a tool card's body is filled
+  // after the card lands, per-seller cards are appended after their summary,
+  // and streamed markdown re-renders in place. Each of those grows the column
+  // *below* wherever the last scroll left it, so the newest content ends up
+  // off-screen — which is what made a fanned-out turn look frozen at the top of
+  // the panel. Watching the subtree pins the column whenever its content
+  // actually changes, whatever caused the change.
+  //
+  // Pinning is dropped the moment the reader scrolls away from the bottom, so
+  // reading an earlier card isn't interrupted, and it resumes when they scroll
+  // back down.
+  function followNewContent(el) {
+    let pinned = true;
+    el.addEventListener('scroll', () => {
+      pinned = el.scrollHeight - el.scrollTop - el.clientHeight <= 32;
+    });
+    new MutationObserver(() => {
+      if (pinned) el.scrollTop = el.scrollHeight;
+    }).observe(el, { childList: true, subtree: true, characterData: true });
+  }
+  followNewContent(logBody);
+  followNewContent(chatBody);
+
+  // Renders agent text as sanitized markdown. The model streams real
+  // markdown syntax (headings, bullets, bold, code) in its replies; this
+  // parses it with marked and strips anything unsafe with DOMPurify before
+  // inserting it, since this is untrusted model output being turned into
+  // HTML. User-typed messages are never passed through here — they stay
+  // plain text (see addMessage).
+  function renderMarkdown(bubble, markdownText) {
+    bubble.classList.add('markdown');
+    const rawHtml = marked.parse(markdownText, { breaks: true });
+    bubble.innerHTML = DOMPurify.sanitize(rawHtml);
+  }
+
+  // Builds a message element (role/label/bubble) without inserting it,
+  // so callers can either append it (addMessage) or insert it at a
+  // specific position in the conversation (buildSellerMessageEl).
+  function buildMessageEl(role, text, labelOverride) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + role;
+    const label = document.createElement('div');
+    label.className = 'role-label';
+    label.textContent = labelOverride || (role === 'user' ? 'You' : 'Agent');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (text) bubble.textContent = text;
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    wrap.bubbleEl = bubble;
+    return wrap;
+  }
+
+  // Removes the scenario empty state only if it's actually in the chat
+  // column right now. While a remote session is being replayed, the live
+  // transcript (empty state included) is detached and held aside, so
+  // rendering replayed messages must not reach into it and destroy the
+  // empty state the user gets back when they return to their own chat.
+  function removeEmptyState() {
+    if (emptyState && emptyState.parentNode === chatBody) emptyState.remove();
+  }
+
+  function addMessage(role, text, labelOverride) {
+    removeEmptyState();
+    const wrap = buildMessageEl(role, text, labelOverride);
+    chatBody.appendChild(wrap);
+    scrollToBottom(chatBody);
+    return wrap.bubbleEl;
+  }
+
+  // Builds a seller agent's tool response as its own message element in
+  // the main conversation, distinct from the buyer agent's own reply, so
+  // the seller's actual response is visible inline rather than only in
+  // the side "Live tool activity" panel. Callers insert the returned element
+  // wherever it belongs chronologically (see sendPrompt).
+  //
+  // sellerName is passed in, never assumed from the header: a turn fans out to
+  // every sales agent, so the name has to come from the entry that actually
+  // produced this payload (see buildFanOutSellerMessages). An empty name
+  // leaves the bubble labelled with the tool alone rather than mislabelled.
+  function buildSellerMessageEl(toolName, result, sellerName) {
+    removeEmptyState();
+    const name = sellerName || '';
+    // Either part can be unknown (an older record without the tool name, a
+    // response that names no seller). Whatever is known is shown; nothing is
+    // filled in with a placeholder.
+    const label = [name, toolName].filter(Boolean).join(' — ') || 'Response';
+
+    // A product list becomes the card stack, here in the chat column rather than in the
+    // tool log. This is the seller's answer to the buyer, so it belongs in the conversation
+    // alongside the agent's reply; the log on the right is for the mechanics of the call.
+    // Every other payload shape keeps the monospace JSON bubble it always had.
+    const stack = typeof result !== 'string' ? renderProductStack(result) : null;
+    if (stack) {
+      const wrap = buildMessageEl('seller', '', label);
+      const bubble = wrap.bubbleEl;
+      // The bubble's monospace/pre-wrap/max-height treatment exists for raw payloads and
+      // fights laid-out content, so the stack opts out of it.
+      bubble.classList.add('stack-bubble');
+      bubble.appendChild(stack);
+      return wrap;
+    }
+
+    const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    return buildMessageEl('seller', text, label);
+  }
+
+  function addToolCard(name) {
+    // Container-aware for the same reason as removeEmptyState(): while a
+    // remote session is being replayed, the live panel's contents (this
+    // placeholder included) are detached and must not be mutated.
+    if (logEmpty && logEmpty.parentNode === logBody) logEmpty.remove();
+    const card = document.createElement('div');
+    card.className = 'tool-card';
+    card.innerHTML =
+      '<div class="tc-head">' +
+        '<div class="spinner"></div>' +
+        '<span>' + name + '</span>' +
+        '<span class="tc-status pending">Calling</span>' +
+      '</div>' +
+      '<div class="tc-body"></div>';
+    // Kept on the element so the matching tool_result can reuse the real tool
+    // name. Older records don't carry toolName on the result step, and a
+    // literal "tool" heading tells the reader nothing.
+    card.toolLabel = name;
+    logBody.appendChild(card);
+    requestAnimationFrame(() => card.classList.add('in'));
+    scrollToBottom(logBody);
+    return card;
+  }
+
+  // A tool call now fans out to every sales agent, so one tool_result holds a
+  // per-seller entry. Rendering it as a single card was unreadable: you got one
+  // blob containing every seller's catalogue with nothing saying which was
+  // which. Instead the original card becomes a short summary, and each seller
+  // gets its own card headed with its name and its own status.
+  //
+  // `ok` is the tool call's own recorded status and is used for the non-fan-out
+  // fallback only: when the result does have per-seller entries, each entry's
+  // own outcome is authoritative and a blanket status would overstate or
+  // understate what actually happened.
+  // `trimNote` is supplied by the caller because the flag describing what the
+  // recorder trimmed sits on the step, not inside the seller payload — see
+  // recordingTrimNote().
+  function finishToolCardPerSeller(card, toolName, output, durationMs, ok, trimNote) {
+    let parsed = output;
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed); } catch { /* leave as text */ }
+    }
+    const entries = parsed && Array.isArray(parsed.results) ? parsed.results : null;
+    const suffix = durationMs != null ? `\n\n(${durationMs}ms)` : '';
+    trimNote = trimNote || '';
+
+    if (!entries) {
+      // Not a fan-out shape (a single-seller API call, plain text, or a tool
+      // that failed before reaching any seller) — render as it is rather than
+      // pretending it has per-seller structure.
+      //
+      const pretty = typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2);
+      finishToolCard(card, ok !== false, pretty + trimNote + suffix);
+      return;
+    }
+
+    const rows = entries.map(entry => {
+      const name = entry.seller_name || entry.seller_id || 'unknown seller';
+      const failed = sellerEntryFailed(entry);
+      const detail = sellerEntrySummary(entry);
+      return `${failed ? '✗' : '✓'} ${name}${detail ? ' — ' + detail : ''}`;
+    });
+    const anyFailed = entries.some(sellerEntryFailed);
+    finishToolCard(
+      card,
+      !anyFailed,
+      `${entries.length} sales agent${entries.length === 1 ? '' : 's'} queried:\n` +
+      rows.join('\n') + trimNote + suffix
+    );
+
+    // The tool's real name, taken from the result step or else from the card
+    // this result belongs to (which was headed from the tool_call step). If
+    // neither has it, the seller name stands alone — a placeholder like "tool"
+    // reads as information while carrying none.
+    const label = toolName || card.toolLabel || '';
+    for (const entry of entries) {
+      const name = entry.seller_name || entry.seller_id || 'unknown seller';
+      const sellerCard = addToolCard(label ? `${label} · ${name}` : name);
+      const payload = 'error' in entry ? { error: entry.error } : entry.response;
+      // Raw JSON, deliberately. The card stack for a product list is rendered in the chat
+      // column instead (buildSellerMessageEl): that is the seller's answer, and it was
+      // unreadable here, where the panel is narrow and every call is stacked vertically.
+      // This log stays the mechanical record of the call, which is what JSON is good for.
+      finishToolCard(sellerCard, !sellerEntryFailed(entry), JSON.stringify(payload, null, 2));
+    }
+  }
+
+  // Reports what the recorder trimmed, if anything, straight from the flag it
+  // wrote on the step (session_records._fit_content). Says nothing when nothing
+  // was trimmed. Without this a shorter product list would read as "that's all
+  // the seller returned", which is a different claim from "that's all we
+  // stored".
+  function recordingTrimNote(content) {
+    const info = content && typeof content === 'object' ? content._recording : null;
+    if (!info || !info.truncated) return '';
+    const bytes = Number(info.original_bytes);
+    const size = Number.isFinite(bytes) ? `${bytes.toLocaleString()} bytes` : 'oversized';
+    return (
+      `\n\nOnly part of this result was recorded: the full payload was ${size}, ` +
+      `over the per-record limit. Each trimmed list below carries its own ` +
+      `"_recording_truncated" count of what was kept versus what the seller sent.`
+    );
+  }
+
+  // A step the recorder could not store at all leaves a marker in its place
+  // (session_records.record_step) rather than a hole, so the card can be closed
+  // with the real reason instead of spinning for ever.
+  function notRecordedNote(content) {
+    const info = content && content._not_recorded;
+    if (!info) return '';
+    const bytes = Number(info.original_bytes);
+    const size = Number.isFinite(bytes) ? ` (${bytes.toLocaleString()} bytes)` : '';
+    return `This result was not recorded${size}: ${info.reason || 'reason not given'}`;
+  }
+
+  // A seller entry failed if the call itself threw, or if the seller's own
+  // response is an AdCP/transport error envelope. Both are real failures and
+  // neither should read as success.
+  function sellerEntryFailed(entry) {
+    if ('error' in entry) return true;
+    const response = entry.response;
+    return Boolean(
+      response && typeof response === 'object' &&
+      ('mcp_error' in response || 'a2a_error' in response || 'adcp_error' in response)
+    );
+  }
+
+  // A one-line, factual precis of what a seller returned. Nothing inferred:
+  // counts come from the response's own arrays, and an unrecognised shape gets
+  // no summary rather than a guessed one.
+  function sellerEntrySummary(entry) {
+    if ('error' in entry) return String(entry.error).slice(0, 80);
+    const response = entry.response;
+    if (!response || typeof response !== 'object') return '';
+    for (const key of ('mcp_error' in response ? ['mcp_error'] : 'a2a_error' in response ? ['a2a_error'] : 'adcp_error' in response ? ['adcp_error'] : [])) {
+      return String(JSON.stringify(response[key])).slice(0, 80);
+    }
+    if (Array.isArray(response.products)) {
+      const shown = response.products.length;
+      // The recorder states what it trimmed per list; carry that into the
+      // summary line so "31 products" can't be mistaken for all the seller
+      // sent when it actually sent 50.
+      const trimmed = response.products_recording_truncated;
+      if (trimmed && Number(trimmed.total) > shown) {
+        return `${shown} of ${trimmed.total} products recorded`;
+      }
+      return `${shown} product${shown === 1 ? '' : 's'}`;
+    }
+    if (Array.isArray(response.formats)) return `${response.formats.length} formats`;
+    if (response.adcp) return 'capabilities returned';
+    return '';
+  }
+
+  // ---------- Product stack ----------
+  //
+  // A seller's get_products payload, rendered as cards. Replaces JSON.stringify for this
+  // one shape only; anything else still renders as raw JSON, and the JSON for this shape
+  // stays one click away.
+  //
+  // Nothing here is inferred or defaulted. Each element is emitted only when the field
+  // behind it is present, so a product the seller priced shows a price and one it didn't
+  // shows no chip rather than $0. The same rule the sellers follow when building these
+  // payloads (see gotham_product_search.to_adcp_product) applies to displaying them.
+
+  // Stroke-only SVG, sized by its wrapper, tinted per format. `null` for a format this
+  // does not recognise, which then renders the generic mark rather than guessing a medium.
+  const PRODUCT_FORMAT_ICONS = {
+    display: { color: 'var(--blue)', path: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-4 4 3 3-2 6 4"/>' },
+    video: { color: 'var(--purple)', path: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5l5 2.5-5 2.5z"/>' },
+    newsletter: { color: 'var(--orange)', path: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>' },
+    podcast: { color: 'var(--pink)', path: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>' },
+    audio: { color: 'var(--pink)', path: '<path d="M4 12v-2M8 16V8M12 19V5M16 16V8M20 12v-2"/>' },
+    native: { color: 'var(--green)', path: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h10"/>' },
+  };
+  const PRODUCT_ICON_GENERIC = { color: 'var(--muted)', path: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h10"/>' };
+
+  // The format's own id, as returned. The medium is read from the id's suffix, so
+  // `gotham_video` and a future `nyt_video` both draw the video mark without a per-seller
+  // table; an unrecognised suffix draws the generic mark rather than being forced into one
+  // of the known media.
+  function productFormatInfo(product) {
+    const refs = Array.isArray(product.format_ids) ? product.format_ids : [];
+    const first = refs[0];
+    const id = typeof first === 'string' ? first : (first && first.id) || null;
+    if (!id) return { id: null, icon: PRODUCT_ICON_GENERIC };
+    const lower = String(id).toLowerCase();
+    for (const key of Object.keys(PRODUCT_FORMAT_ICONS)) {
+      if (lower.endsWith(key) || lower.includes('_' + key)) {
+        return { id, icon: PRODUCT_FORMAT_ICONS[key] };
+      }
+    }
+    return { id, icon: PRODUCT_ICON_GENERIC };
+  }
+
+  function productIconSvg(icon) {
+    return (
+      `<span class="ps-ico" style="font-size:15px;color:${icon.color}" aria-hidden="true">` +
+      '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + icon.path + '</svg>' +
+      '</span>'
+    );
+  }
+
+  // The seller's own rate, formatted for display. Returns null when the product carries no
+  // pricing_options, so no chip is drawn at all.
+  function productPriceLabel(product) {
+    const options = Array.isArray(product.pricing_options) ? product.pricing_options : [];
+    const option = options[0];
+    if (!option) return null;
+    const price = Number(option.fixed_price);
+    if (!Number.isFinite(price)) return null;
+    const currency = option.currency || '';
+    const model = option.pricing_model ? String(option.pricing_model).toUpperCase() : '';
+    const amount = price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${currency ? currency + ' ' : ''}${amount}${model ? ' ' + model : ''}`;
+  }
+
+  // The dual-vector scores, when the seller returned them. A score of exactly 0 is a real
+  // measurement and is rendered; a missing score is omitted. The two are never merged into
+  // one number, since which of the two is strong is the interesting part.
+  function productSimilarityBars(product) {
+    const m = (product.ext && product.ext.gotham_measurement) || null;
+    if (!m) return '';
+    const rows = [
+      { cls: 'content', label: 'content', value: m.content_similarity },
+      { cls: 'audience', label: 'audience', value: m.audience_similarity },
+    ].filter(r => Number.isFinite(Number(r.value)));
+    if (!rows.length) return '';
+    return (
+      '<div class="ps-bars">' +
+      rows.map(r => {
+        const value = Number(r.value);
+        // Scores are 0..1; clamped only for the bar's width, while the printed number is
+        // the value as returned so an out-of-range score stays visible rather than hidden.
+        const pct = Math.max(0, Math.min(1, value)) * 100;
+        return (
+          `<div class="ps-bar ${r.cls}">` +
+          `<span class="ps-bar-label">${r.label}</span>` +
+          `<span class="ps-bar-track"><span class="ps-bar-fill" data-pct="${pct.toFixed(2)}"></span></span>` +
+          `<span class="ps-bar-val">${value.toFixed(3)}</span>` +
+          '</div>'
+        );
+      }).join('') +
+      '</div>'
+    );
+  }
+
+  // Reach, only when the seller supplied it. `reachable_audience` of 0 is a real figure and
+  // is shown; absent means absent. The seller's own label travels with it, which is how the
+  // figure stays identifiable as coming from a fictional publisher's mock reach service.
+  function productReachChip(product) {
+    const m = (product.ext && product.ext.gotham_measurement) || null;
+    if (!m) return '';
+    const reach = Number(m.reachable_audience);
+    if (!Number.isFinite(reach)) return '';
+    const label = m.reach_label ? ` ${m.reach_label}` : '';
+    return `<span class="ps-chip">reach ${reach.toLocaleString()}${escapeHtml(label)}</span>`;
+  }
+
+  const PRODUCT_PILE_SIZE = 3;
+
+  // Builds the stack for one seller's products and returns the element, or null when the
+  // payload is not a product list (the caller then falls back to raw JSON).
+  function renderProductStack(response) {
+    const products = response && Array.isArray(response.products) ? response.products : null;
+    if (!products) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ps';
+
+    // What the recorder kept versus what the seller sent. Without this a trimmed list reads
+    // as the seller's complete answer.
+    const trimmed = response.products_recording_truncated;
+    const total = trimmed && Number(trimmed.total);
+    const note = Number.isFinite(total) && total > products.length
+      ? `<span class="ps-note">${products.length} of ${total} recorded</span>`
+      : '';
+
+    const expandable = products.length > PRODUCT_PILE_SIZE;
+    wrap.innerHTML =
+      '<div class="ps-head">' +
+      `<span class="ps-count">${products.length} product${products.length === 1 ? '' : 's'}</span>` +
+      note +
+      '<span class="ps-actions">' +
+      (expandable ? '<button type="button" class="ps-btn ps-toggle"></button>' : '') +
+      '<button type="button" class="ps-btn ps-json-toggle">Show JSON</button>' +
+      '</span>' +
+      '</div>' +
+      '<ul class="ps-list"></ul>' +
+      '<pre class="ps-json" hidden></pre>';
+
+    const list = wrap.querySelector('.ps-list');
+    products.forEach((product, index) => {
+      const format = productFormatInfo(product);
+      const price = productPriceLabel(product);
+      const item = document.createElement('li');
+      item.className = 'ps-item';
+      item.innerHTML =
+        productIconSvg(format.icon) +
+        '<div class="ps-main">' +
+        `<span class="ps-title">${escapeHtml(product.name || product.product_id || 'Unnamed product')}</span>` +
+        (product.description ? `<span class="ps-desc">${escapeHtml(product.description)}</span>` : '') +
+        '<span class="ps-meta">' +
+        (price ? `<span class="ps-chip price">${escapeHtml(price)}</span>` : '') +
+        (format.id ? `<span class="ps-chip fmt">${escapeHtml(format.id)}</span>` : '') +
+        (product.delivery_type ? `<span class="ps-chip">${escapeHtml(product.delivery_type)}</span>` : '') +
+        productReachChip(product) +
+        '</span>' +
+        productSimilarityBars(product) +
+        '</div>';
+      list.appendChild(item);
+      // Position within the collapsed pile. Only the first few are drawn then; the rest are
+      // taken out of the flow so a long list costs nothing until it is opened.
+      if (index === 1) item.classList.add('pile-1');
+      else if (index === 2) item.classList.add('pile-2');
+      else if (index > 2) item.classList.add('pile-hidden');
+    });
+
+    const json = wrap.querySelector('.ps-json');
+    json.textContent = JSON.stringify(response, null, 2);
+    const jsonToggle = wrap.querySelector('.ps-json-toggle');
+    jsonToggle.addEventListener('click', () => {
+      const showing = !json.hidden;
+      json.hidden = showing;
+      jsonToggle.textContent = showing ? 'Show JSON' : 'Hide JSON';
+    });
+
+    let collapsed = expandable;
+    if (collapsed) list.classList.add('collapsed');
+    const toggle = wrap.querySelector('.ps-toggle');
+    if (toggle) {
+      const syncToggle = () => {
+        toggle.textContent = collapsed ? `Show all ${products.length}` : 'Collapse';
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+      };
+      syncToggle();
+      toggle.addEventListener('click', () => {
+        collapsed = !collapsed;
+        list.classList.toggle('collapsed', collapsed);
+        syncToggle();
+        if (!collapsed) animateProductItems(Array.from(list.children).slice(PRODUCT_PILE_SIZE));
+      });
+    }
+
+    // Entrance animation, applied after the element is in the document so measurement and
+    // Motion's own scheduling behave. Guarded: with no Motion and with reduced motion the
+    // cards are already in their final state, so this only ever adds movement.
+    requestAnimationFrame(() => {
+      animateProductItems(Array.from(list.children).slice(0, collapsed ? PRODUCT_PILE_SIZE : undefined));
+      animateProductBars(wrap);
+    });
+
+    return wrap;
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Staggered entrance. `window.Motion` is the vendored UMD build (static/vendor/motion.js);
+  // if it failed to load, or the reader asked for reduced motion, this returns without
+  // touching anything and the cards stay as rendered.
+  function animateProductItems(items) {
+    if (!items || !items.length) return;
+    const M = window.Motion;
+    if (!M || typeof M.animate !== 'function' || prefersReducedMotion()) return;
+    try {
+      M.animate(
+        items,
+        { opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0px)'] },
+        { duration: 0.34, delay: M.stagger ? M.stagger(0.035) : 0, easing: 'ease-out' }
+      );
+    } catch {
+      // An animation that cannot run is not worth failing a render over: the cards are
+      // already in their final state.
+    }
+  }
+
+  // Similarity bars grow to the width their score implies. The width comes from data-pct,
+  // written from the seller's own score, so a bar can only ever show what was returned.
+  function animateProductBars(root) {
+    const fills = Array.from(root.querySelectorAll('.ps-bar-fill'));
+    if (!fills.length) return;
+    const M = window.Motion;
+    const reduced = prefersReducedMotion();
+    for (const fill of fills) {
+      const pct = Number(fill.dataset.pct);
+      const width = (Number.isFinite(pct) ? pct : 0) + '%';
+      if (!M || typeof M.animate !== 'function' || reduced) {
+        fill.style.width = width;
+        continue;
+      }
+      try {
+        M.animate(fill, { width: ['0%', width] }, { duration: 0.5, easing: 'ease-out' });
+        fill.style.width = width;
+      } catch {
+        fill.style.width = width;
+      }
+    }
+  }
+
+  function finishToolCard(card, ok, resultText) {
+    const status = card.querySelector('.tc-status');
+    const spinner = card.querySelector('.spinner');
+    const body = card.querySelector('.tc-body');
+    spinner.remove();
+    status.textContent = ok ? 'Success' : 'Error';
+    status.className = 'tc-status ' + (ok ? 'success' : 'error');
+    body.textContent = resultText;
+    scrollToBottom(logBody);
+  }
+
+  // ---------- Chat transport: A2A ----------
+  //
+  // Every chat target speaks A2A. Two ways to reach one:
+  //
+  //   direct  - the browser POSTs message/stream to the agent's own endpoint
+  //             with the signed-in user's Cognito token. AWS's invoke
+  //             endpoint sends permissive CORS headers, which is how this UI
+  //             already talks to the runtime.
+  //   proxied - the agent's credential is a secret that must not reach a
+  //             browser, so the turn goes to our own runtime's a2a_chat
+  //             action, which relays it (app.py::_handle_a2a_chat).
+  //
+  // Both paths are normalised to the same {text|error|done} events the
+  // renderer already consumes.
+  async function streamAgentTurn(agent, prompt, sessionId, onEvent) {
+    const authHeader = getAuthHeader();
+    if (!authHeader) throw new Error('Not signed in.');
+
+    const proxied = agent.requires_proxy;
+    const url = proxied ? getInvokeUrl() : agent.url;
+    if (!url) {
+      throw new Error(
+        `Agent "${agent.name}" has no reachable endpoint configured. ` +
+        'It may be registered but not deployed yet.'
+      );
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader,
+      'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId,
+    };
+    let body;
+    if (proxied) {
+      body = { action: 'a2a_chat', agent_id: agent.id, prompt, invoker: 'Chat UI' };
+    } else {
+      headers['Accept'] = 'text/event-stream';
+      body = {
+        jsonrpc: '2.0',
+        id: crypto.randomUUID(),
+        method: 'message/stream',
+        params: {
+          message: {
+            role: 'user',
+            parts: [{ kind: 'text', text: prompt }],
+            messageId: crypto.randomUUID(),
+            kind: 'message',
+            // A2A's conversation id. Stable across turns so the agent keeps
+            // one conversation — the same id its runtime session uses.
+            contextId: sessionId,
+          },
+          // No sellerAgentId: a buyer agent queries every sales agent it's
+          // configured with and decides which inventory fits (agent.py), which
+          // is what AdCP's own multi-agent client does. Pinning one seller
+          // from the UI would be this client overriding the agent's job.
+          metadata: { invokerAgent: 'Chat UI' },
+        },
+      };
+    }
+
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok || !res.body) {
+      const detail = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + (detail ? ': ' + detail.slice(0, 300) : ''));
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // Our own runtime frames SSE with a blank-line separator; A2A's stream
+      // is line-oriented. Splitting on newlines handles both, since each
+      // payload sits on its own `data:` line.
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr) continue;
+        let parsed;
+        try { parsed = JSON.parse(jsonStr); } catch { continue; }
+        for (const event of normalizeTurnEvents(parsed, proxied)) onEvent(event);
+      }
+    }
+  }
+
+  // Translates one stream payload into this UI's event vocabulary. Proxied
+  // responses already arrive in it; a direct A2A response is a JSONRPC chunk
+  // whose text lives in artifact-update parts (verified against the deployed
+  // A2A runtime — the stream carries text only, never tool detail, which is
+  // why tool activity comes from recorded steps instead).
+  function normalizeTurnEvents(parsed, proxied) {
+    if (proxied) return [parsed];
+    if (parsed && parsed.error) {
+      const message = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
+      return [{ type: 'error', message }];
+    }
+    const result = (parsed && parsed.result) || parsed;
+    if (!result || typeof result !== 'object') return [];
+    const events = [];
+    const artifact = result.artifact;
+    if (artifact && Array.isArray(artifact.parts)) {
+      for (const part of artifact.parts) {
+        if (part && typeof part.text === 'string' && part.text) {
+          events.push({ type: 'text', data: part.text });
+        }
+      }
+    }
+    return events;
+  }
+
+  // ---------- Live tool activity, from recorded reasoning steps ----------
+  //
+  // The A2A stream carries text only — no tool-call or tool-result detail
+  // (verified live). But an agent we deploy records every tool call as a
+  // reasoning step keyed on this same session id, so the side panel is driven
+  // from those steps while the turn is in flight, rendered through the exact
+  // same tool-card and seller-bubble path the HTTP mode used. Steps are
+  // de-duplicated by step_index, so nothing is drawn twice.
+  //
+  // For an agent we don't deploy there are no steps to read, and that is said
+  // plainly rather than leaving a panel that implies no tools were used.
+  async function startLiveToolActivity(agent, sessionId, pendingWrap) {
+    if (!agent || !agent.records_sessions) {
+      if (logEmpty && logEmpty.parentNode === logBody) logEmpty.remove();
+      if (agent) {
+        const note = document.createElement('div');
+        note.className = 'log-empty';
+        note.textContent =
+          `${agent.name} runs outside this project, so its tool calls aren't ` +
+          `visible here — only its replies are.`;
+        logBody.appendChild(note);
+      }
+      return { stop: async () => {} };
+    }
+
+    let lastIndex = -1;
+    const seen = new Set();
+    const cardsByCallId = {};
+    let stopped = false;
+
+    // Steps accumulate for the life of the session, not per turn. Polling from
+    // -1 therefore replays every earlier turn's tool calls into this turn's
+    // panel — that is what produced several identical cards showing the same
+    // duration. Take the current high-water mark before the turn is sent and
+    // render only steps recorded after it.
+    try {
+      const baseline = await postInvoke({
+        action: 'get_session_steps',
+        session_id: sessionId,
+        since_index: -1,
+      });
+      const baselineSteps = baseline.find(e => e.type === 'session_steps');
+      if (baselineSteps) {
+        for (const step of baselineSteps.steps) {
+          lastIndex = Math.max(lastIndex, step.step_index);
+        }
+      }
+    } catch {
+      // Baseline unreadable: fall through with lastIndex at -1. Earlier turns
+      // may then re-render, which is visible and self-explanatory, whereas
+      // suppressing this turn's steps would hide real tool activity.
+    }
+
+    async function poll() {
+      try {
+        const events = await postInvoke({
+          action: 'get_session_steps',
+          session_id: sessionId,
+          since_index: lastIndex,
+        });
+        const stepsEvent = events.find(e => e.type === 'session_steps');
+        if (!stepsEvent) return;
+        for (const step of stepsEvent.steps) {
+          if (seen.has(step.step_index)) continue;
+          seen.add(step.step_index);
+          lastIndex = Math.max(lastIndex, step.step_index);
+          renderLiveStep(step, cardsByCallId, pendingWrap);
+        }
+      } catch {
+        // A missed poll self-corrects on the next one; the final reconcile in
+        // stop() catches anything the last poll didn't see.
+      }
+    }
+
+    const timer = setInterval(poll, 1000);
+    poll();
+
+    return {
+      async stop() {
+        if (stopped) return;
+        stopped = true;
+        clearInterval(timer);
+        await poll();
+        // The turn is over, so no further result can arrive for a card still
+        // showing "Calling". Leaving the spinner running would imply work is
+        // still in flight; this states what is actually known instead.
+        for (const callId of Object.keys(cardsByCallId)) {
+          finishToolCard(
+            cardsByCallId[callId],
+            false,
+            'The turn ended with no result recorded for this call. The call itself ' +
+            'may still have succeeded — only its recorded result is missing.'
+          );
+          delete cardsByCallId[callId];
+        }
+      },
+    };
+  }
+
+  // Only the tool-side steps are rendered here: the agent's own text is
+  // already streaming into its bubble, and rendering the recorded `response`
+  // step as well would duplicate it.
+  function renderLiveStep(step, cardsByCallId, pendingWrap) {
+    const c = step.content || {};
+    if (step.step_type === 'tool_call') {
+      const card = addToolCard(c.toolName || 'tool');
+      card.querySelector('.tc-body').textContent = c.input ? JSON.stringify(c.input, null, 2) : '';
+      if (c.callId) cardsByCallId[c.callId] = card;
+    } else if (step.step_type === 'tool_result') {
+      const card = (c.callId && cardsByCallId[c.callId]) || addToolCard(c.toolName || '');
+      // The tool name comes from the result step when it's there, otherwise
+      // from the card raised by the matching tool_call step.
+      const toolLabel = c.toolName || card.toolLabel || '';
+      if (c.callId) delete cardsByCallId[c.callId];
+      const unrecorded = notRecordedNote(c);
+      if (unrecorded) {
+        // The tool did run; what's missing is the record of its result. Saying
+        // "Error" would blame the tool, so this is marked as not recorded.
+        finishToolCard(card, false, unrecorded);
+        return;
+      }
+      // One card per sales agent that answered, plus a summary on the original
+      // card — a single blob of every seller's catalogue was unreadable.
+      finishToolCardPerSeller(
+        card, toolLabel, c.output, c.durationMs, c.status === 'success', recordingTrimNote(c)
+      );
+      // One tool call now fans out to every sales agent, so the result holds a
+      // per-seller entry. Render one bubble per seller that answered, named
+      // from the response itself — there's no "selected seller" to assume, and
+      // guessing would misattribute the data.
+      for (const el of buildFanOutSellerMessages(toolLabel, c.output)) {
+        if (pendingWrap && pendingWrap.parentNode) {
+          chatBody.insertBefore(el, pendingWrap);
+        } else {
+          chatBody.appendChild(el);
+        }
+      }
+      scrollToBottom(chatBody);
+    }
+  }
+
+  // A fan-out result looks like {task, sellers_queried, results:[{seller_id,
+  // seller_name, response|error}, ...]} (adcp_tools._call_all_sellers). Each
+  // seller gets its own bubble, labelled with the seller that actually
+  // answered, and a seller that failed shows its real error rather than being
+  // dropped — a missing seller would read as "it had nothing", which is a
+  // different claim.
+  function buildFanOutSellerMessages(toolName, output) {
+    // Recorded tool output arrives as a JSON *string* on the buyer side
+    // (reasoning_hooks reads the tool result's text content block), while the
+    // seller-side recorder stores it as an object. Parse the string form or the
+    // per-seller bubbles silently collapse into one unlabelled blob.
+    let parsed = output;
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed); } catch { /* leave as text */ }
+    }
+    const entries = parsed && Array.isArray(parsed.results) ? parsed.results : null;
+    if (!entries) {
+      // Not a fan-out shape (e.g. a single-seller API call) — render as-is,
+      // unlabelled rather than mislabelled.
+      return [buildSellerMessageEl(toolName, parsed, '')];
+    }
+    return entries.map(entry => {
+      const name = entry.seller_name || entry.seller_id || '';
+      const payload = 'error' in entry ? { error: entry.error } : entry.response;
+      return buildSellerMessageEl(toolName, payload, name);
+    });
+  }
+
+  async function sendPrompt(prompt) {
+    addMessage('user', prompt);
+    sendBtn.disabled = true;
+    promptInput.disabled = true;
+
+    // The agent's own reply bubble is created lazily, the first time text
+    // actually streams in. This keeps DOM order matching real chronological
+    // order: seller-agent tool results (added inline as they arrive, see
+    // buildFanOutSellerMessages) show up before the buyer agent's final summary
+    // when the agent calls tools first and reports on them after, instead
+    // of an empty bubble reserving a spot above them.
+    let agentBubble = null;
+    const pendingWrap = document.createElement('div');
+    pendingWrap.className = 'msg agent';
+    const pendingBubble = document.createElement('div');
+    pendingBubble.className = 'bubble';
+    const dots = document.createElement('span');
+    dots.className = 'typing-dots';
+    dots.innerHTML = '<span></span><span></span><span></span>';
+    pendingBubble.appendChild(dots);
+    pendingWrap.appendChild(pendingBubble);
+    removeEmptyState();
+    chatBody.appendChild(pendingWrap);
+    scrollToBottom(chatBody);
+
+    function removePendingIndicator() {
+      if (pendingWrap.parentNode) pendingWrap.remove();
+    }
+
+    let agentText = '';
+    let currentToolCard = null;
+    let currentToolName = null;
+
+    const agent = selectedAgent();
+    const sessionId = getRuntimeSessionId();
+    // Tool activity comes from the agent's recorded reasoning steps, not from
+    // the chat stream — see startLiveToolActivity(). Awaited before the turn is
+    // sent: it first reads how many steps this session already has, and a step
+    // recorded before that baseline is established would be attributed to this
+    // turn even though it belongs to an earlier one.
+    const liveTools = await startLiveToolActivity(agent, sessionId, pendingWrap);
+
+    try {
+      if (!agent) throw new Error('No agent selected (AGENTS_JSON may be unset).');
+
+      await streamAgentTurn(agent, prompt, sessionId, (event) => {
+        if (event.type === 'text') {
+          if (!agentBubble) {
+            removePendingIndicator();
+            agentBubble = addMessage('agent', '');
+          }
+          agentText += event.data;
+          renderMarkdown(agentBubble, agentText);
+          scrollToBottom(chatBody);
+        } else if (event.type === 'error') {
+          removePendingIndicator();
+          if (!agentBubble) agentBubble = addMessage('agent', '');
+          agentBubble.classList.remove('markdown');
+          agentBubble.textContent = (agentText ? agentText + '\n\n' : '') + 'Error: ' + event.message;
+          agentBubble.style.color = 'var(--red)';
+          if (typeof event.message === 'string' && event.message.startsWith('401 Unauthorized')) {
+            // The server independently rejected our token (expired, revoked,
+            // or otherwise invalid) - force a real re-login rather than
+            // letting the UI sit in a broken state.
+            clearSession();
+            setTimeout(showLogin, 1200);
+          }
+        }
+      });
+    } catch (err) {
+      removePendingIndicator();
+      if (!agentBubble) agentBubble = addMessage('agent', '');
+      agentBubble.classList.remove('markdown');
+      agentBubble.textContent = 'Request failed: ' + err.message;
+      agentBubble.style.color = 'var(--red)';
+    } finally {
+      removePendingIndicator();
+      // One final reconcile after the stream closes: a step written just as
+      // the turn ended would otherwise be missed by the last poll.
+      await liveTools.stop();
+      sendBtn.disabled = false;
+      promptInput.disabled = false;
+      promptInput.focus();
+    }
+  }
+
+  composerForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
+    promptInput.value = '';
+    promptInput.style.height = 'auto';
+    // Sending your own message always means watching your own turn live -
+    // if the side panel was showing someone else's session, switch back
+    // so the live tool cards don't land mixed in with that session's.
+    if (sessionSelect.value) { sessionSelect.value = ''; stopViewingSession(); }
+    sendPrompt(prompt);
+  });
+
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      composerForm.requestSubmit();
+    }
+  });
+
+  promptInput.addEventListener('input', () => {
+    promptInput.style.height = 'auto';
+    promptInput.style.height = Math.min(promptInput.scrollHeight, 120) + 'px';
+  });
+
+  // Direct-client mode was removed from the UI (one control now chooses what
+  // you're talking to, and every chat target is an A2A agent). app.py still
+  // accepts `mode: "direct"` on /invocations for a raw single tool call, so the
+  // capability is intact for scripts — it just isn't a UI surface any more.
+</script>
+</body>
+</html>
