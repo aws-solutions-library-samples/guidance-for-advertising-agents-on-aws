@@ -2,57 +2,44 @@
 
 This project was created with the [AgentCore CLI](https://github.com/aws/agentcore-cli).
 
-It hosts `adcpRefSeller`, the **reference AdCP seller agent** — the minimal conformant
-implementation the other sellers in `agents/seller/` were built against. Its AdCP
-conformance notes live in `SELLER-AGENT-ADCP-COMPLIANCE.md`.
+It hosts `adcpRefSeller`, the **reference AdCP seller agent** — a minimal conformant
+implementation, meant as the thing a richer seller is built against rather than as a
+production seller itself. It is the only seller in this repository. Its AdCP conformance
+notes live in `SELLER-AGENT-ADCP-COMPLIANCE.md`.
 
 Everything below this section is the AgentCore CLI's own scaffold documentation.
 
 ## No corpus, no cache, no ranking — deliberately
 
-`poseidon-seller` and `gotham-seller` both answer `get_products` by querying a
-pre-built **context cache**: an embedding index plus a SQLite sidecar, downloaded from
-an S3 bucket at runtime and scored offline against a benchmark corpus of briefs. This
-seller has **neither**, and its absence is a decision rather than an omission.
+A richer AdCP seller typically answers `get_products` from a pre-built **context cache**:
+an embedding index plus a SQLite sidecar, fetched from S3 at runtime and scored offline
+against a benchmark corpus of briefs. This seller has none of that, and its absence is a
+decision rather than an omission.
 
-`cache_buckets.py` at the repository root is where that decision is recorded. It maps
-each seller to its cache bucket, and this seller is not in the map:
-
-```python
-SELLER_BUCKET_SUFFIXES = {
-    "poseidon": "-poseidon-seller-slm",
-    "gotham":   "-gotham-seller-cache",
-}
-```
-
-Asking it for this seller's bucket raises with the reason: the reference seller has no
-cache path, and adding an entry would provision a bucket nothing reads.
-
-The reason is that ranking has nothing to do here. The catalogue is **four hand-authored
-products** in `app/adcpRefSeller/fixtures.py` — one CTV, one rewarded mobile, one display,
-one audio — chosen to exercise the protocol rather than to be searched: every AdCP tool,
-every required field, every error shape. `get_products` matches them by deterministic
-keyword overlap, and an absent brief returns all four, which is what the AdCP spec's
-wholesale semantics call for.
+Ranking has nothing to do here. The catalogue is **four hand-authored products** in
+`app/adcpRefSeller/fixtures.py` — one CTV, one rewarded mobile, one display, one audio —
+chosen to exercise the protocol rather than to be searched: every AdCP tool, every
+required field, every error shape. `get_products` matches them by deterministic keyword
+overlap, and an absent brief returns all four, which is what the AdCP spec's wholesale
+semantics call for.
 
 There is no ordering problem among four products. So there is nothing for a semantic
 index to contribute and nothing for a benchmark corpus to measure. Adding either would
 mean maintaining an artifact pipeline, a bucket, an IAM grant and a multi-thousand-brief
 answer key in order to rank a catalogue that fits on one screen.
 
-Consequences worth knowing before comparing this seller to the others:
+Consequences worth knowing:
 
-- `get_products` here does **not** emit `ext.search_metadata` or any `search_method`.
-  There are no two paths to disclose between.
+- `get_products` does **not** emit `ext.search_metadata` or any `search_method`. There
+  are no two retrieval paths to disclose between.
 - There is no `CACHE_BUCKET` environment variable, no `context-cache/` S3 prefix, and
-  no cache-read IAM policy in `agentcore/agentcore.json`.
-- `deploy_all.py`'s cache steps — 3.7 `cache-buckets`, 4.6 `vendor-cache-modules`,
-  4.62 `corpus`, 4.65 `publish-cache` — all skip this seller. Nothing is missing from
-  its deploy.
-
-If you want to see how the cache is built, scored and served, read
-`agents/seller/poseidon-seller/README.md` (single vector, with a keyword fallback) and
-`agents/seller/gotham-seller/README.md` (two vectors fused per query, no fallback).
+  no cache-read IAM policy in its `agentcore.json`.
+- `cache_buckets.py` at the subtree root has no entry for this seller, so asking it for
+  a bucket raises rather than returning a name nothing would read.
+- `deploy_all.py`'s cache and corpus steps (3.7 `cache-buckets`, 4.6
+  `vendor-cache-modules`, 4.62 `corpus`, 4.65 `publish-cache`) are **inactive in this
+  repository** — they served sellers that are not part of it. Nothing is missing from
+  this seller's deploy.
 
 ## Project Structure
 
