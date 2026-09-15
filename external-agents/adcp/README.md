@@ -58,9 +58,7 @@ flowchart TD
 
     subgraph SELLERS["AdCP sellers -- config-only to add"]
         S1["reference-seller"]
-        S2["poseidon-seller"]
-        S3["gotham-seller"]
-        S4["..."]
+        S4["... any AdCP seller"]
     end
 
     GOV["reference-governance<br/><i>sync_governance / sync_plans / check_governance</i>"]
@@ -98,13 +96,19 @@ real backend integration later is a drop-in swap at one factory call site, not a
 seller: a small, fixed, hand-authored product catalog (no generated dataset, no mock backend
 layer). Exists so the buyer agent always has something to talk to with zero setup.
 
-**AdCP tasks**: `get_adcp_capabilities`, `get_products`, `list_creative_formats`,
+**AdCP tasks**: 11 advertised — `get_adcp_capabilities`, `get_products`, `list_creative_formats`,
 `create_media_buy`, `update_media_buy`, `get_media_buys`, `get_media_buy_delivery`,
-`provide_performance_feedback`, `sync_accounts`, `list_accounts` — all 7 required Media Buy
-Protocol tasks plus the Accounts Protocol, verified live (19/19 checks). `sync_creatives` is
-correctly N/A (no creative library declared). Also implements the seller side of Campaign
-Governance (`check_governance` execution checks) against `reference-governance`. Registered in
-AWS's AgentCore Registry as an AAO-registry substitute.
+`provide_performance_feedback`, `sync_accounts`, `list_accounts`, `sync_governance`. That is all 7
+required Media Buy Protocol tasks plus the Accounts Protocol. `sync_creatives` is correctly N/A (no
+creative library declared).
+
+It also enforces the seller side of Campaign Governance against `reference-governance`: it verifies
+the buyer's intent-phase `governance_context` JWS — signature via the buyer's `brand.json` → the
+governance agent's published JWKS, plus `aud`/`sub`/`phase`/`exp`, revocation and `jti` replay — and
+then runs its own outbound `check_governance` execution check, failing closed on denial or
+unreachability. Details and the current open items are in
+[`SELLER-AGENT-ADCP-COMPLIANCE.md`](agents/seller/reference-seller/SELLER-AGENT-ADCP-COMPLIANCE.md).
+Registered in AWS's AgentCore Registry as an AAO-registry substitute.
 
 ### Reference architecture — a seller agent (shared shape)
 
@@ -133,33 +137,6 @@ flowchart TD
 
 A future real backend integration — a client for an actual ad platform's API — implements the same
 Protocol and is swapped in at one factory call site, with no AdCP tool handler changes.
-
-### Reference architecture — dual-vector + live-data seller (`gotham-seller`)
-
-```mermaid
-flowchart TD
-    BUYER(["AdCP buyer agent"])
-
-    subgraph GS["gotham-seller -- AgentCore Runtime, MCP"]
-        FILTER["<b>1. Filter</b><br/>strict AND over the sidecar<br/><i>this step alone decides what qualifies</i>"]
-        FUSE["<b>2. Fuse and rank</b><br/>content embedding + audience embedding<br/>deterministic weight, disclosed in the response"]
-    end
-
-    REACH["<b>gotham-reach-service</b><br/>separate AgentCore Runtime, plain HTTP<br/><i>advertiser-scoped, synthetic, labelled</i>"]
-
-    BUYER --> FILTER
-    FILTER --> FUSE
-    FUSE -->|"real network hop, at query time"| REACH
-    REACH -->|"reach figures, or a stated reason -- never a zero"| FUSE
-
-    style BUYER fill:#CE93D8,stroke:#6A1B9A,color:#000
-    style FILTER fill:#4CAF50,stroke:#1B5E20,color:#fff
-    style FUSE fill:#4CAF50,stroke:#1B5E20,color:#fff
-    style REACH fill:#FFA726,stroke:#E65100,color:#000
-    style GS fill:#C8E6C9,stroke:#2E7D32,color:#000
-```
-
-The clean-room lifecycle inside that hop is `start` &rarr; `poll` &rarr; `result`.
 
 ## The campaign governance agent
 
@@ -262,13 +239,18 @@ seller/governance runtimes (`<prefix>RefSeller`, `<prefix>RefGovernance`, …). 
 resolved names without writing anything or touching the manifest.
 
 `--only` runs a single step against the resolved prefix the same way; for a specific instance,
-combine them, e.g. `python3 deploy_all.py --prefix acme2 --only deploy-gotham-seller`.
+combine them, e.g. `python3 deploy_all.py --prefix acme2 --only deploy-ref-seller`.
 
 ### The full step list
 
 Step numbers are fractional and have gaps. They are never renumbered, because they appear in
 `--only N` invocations in shell history: reusing a number would silently deploy a different agent.
-7 and 8 are absent because they belonged to a seller that has since been retired.
+7 and 8 are absent because they belonged to a seller that has since been retired, and 8.1–8.8
+because they deployed ranking sellers (`poseidon-seller`, `gotham-seller`, `gotham-reach-service`)
+that are **not part of this repository**. Four steps are struck through below for the same reason:
+their code is still in `deploy_all.py`, commented out of `STEPS`, with the reasoning preserved in
+place. Do not re-enable one without its seller — 3.7 ran with a `cwd` that does not exist here, and
+`--dry-run` did not catch it because it prints the command without checking the directory.
 
 | # | Step name | What it does |
 |---|---|---|
@@ -282,17 +264,17 @@ Step numbers are fractional and have gaps. They are never renumbered, because th
 | 2.5 | `governance-origin` | The governance CloudFront origin — its token `iss`, and where its `.well-known` docs live |
 | 2.6 | `buyer-ui-origin` | Buyer UI bucket + OAC + distribution, without publishing to it yet |
 | 2.7 | `governance-signing-key` | KMS signing key. The governance runtime refuses to start without one |
-| 3 | `tables` | Four DynamoDB state tables: one per seller, plus the buyer's sessions table |
+| 3 | `tables` | Three DynamoDB state tables: the reference seller's, the governance agent's, and the buyer's sessions table |
 | 3.5 | `buyer-prerequisites` | Buyer session bucket, then the execution role scoped to it |
 | 3.6 | `vendor-region-module` | Copy `aws_region.py` into every package that resolves a region |
-| 3.7 | `cache-buckets` | Semantic-cache S3 buckets, named from the instance prefix (`<prefix>-poseidon-seller-slm`, …) |
+| ~~3.7~~ | ~~`cache-buckets`~~ | **Inactive.** Served ranking sellers that are not part of this repository |
 | 4 | `vendor-session-module` | Refresh the vendored session-recording modules |
 | 4.5 | `render-agentcore` | Sync the Cognito auth block into every `agentcore.json` |
 | 4.55 | `render-aws-config` | Render `aws-targets.json` and the IAM policy documents |
 | 4.56 | `seller-trust-anchor` | Give each seller the buyer's `brand.json` URL |
-| 4.6 | `vendor-cache-modules` | Copy the context-cache packages into the Gotham seller package |
-| 4.62 | `corpus` | Build or verify each seller's benchmark corpus |
-| 4.65 | `publish-cache` | Build and publish a semantic-cache artifact per ranking seller. The heaviest step |
+| ~~4.6~~ | ~~`vendor-cache-modules`~~ | **Inactive.** Same reason as 3.7 |
+| ~~4.62~~ | ~~`corpus`~~ | **Inactive.** Same reason as 3.7 — see `agents/seller/shared/corpus_kit/README.md` |
+| ~~4.65~~ | ~~`publish-cache`~~ | **Inactive.** Same reason as 3.7 |
 | 4.7 | `governance-state-table` | The governance agent's DynamoDB table |
 | 4.8 | `governance-jwks` | Publish its public JWKS, so sellers can verify its tokens |
 | 4.85 | `governance-revocations` | Publish its revocation list |
@@ -300,9 +282,6 @@ Step numbers are fractional and have gaps. They are never renumbered, because th
 | 4.95 | `capture-governance` | Write its ARN into `GOVERNANCE_AGENTS_JSON` |
 | 4.96 | `brand-json` | Publish the buyer's `brand.json` (the sellers' trust anchor) |
 | 5 / 6 | `deploy-ref-seller` / `capture-ref-seller` | `reference-seller`, then its runtime ARN |
-| 8.1 / 8.2 | `deploy-poseidon-seller` / `capture-poseidon-seller` | `poseidon-seller`, then its runtime ARN |
-| 8.5 / 8.6 | `deploy-gotham-seller` / `capture-gotham-seller` | `gotham-seller`, then its runtime ARN |
-| 8.7 / 8.8 | `deploy-gotham-reach` / `capture-gotham-reach` | `gotham-reach-service`. The capture step is what turns reach "on" for the seller |
 | 9 | `update-seller-json` | Point each `SELLER_AGENTS_JSON` entry at the real runtime URL |
 | 10 | `deploy-buyer-http` | The buyer's HTTP runtime |
 | 11 | `deploy-buyer-a2a` | The buyer's A2A runtime |
@@ -312,24 +291,20 @@ Step numbers are fractional and have gaps. They are never renumbered, because th
 | 13.5 | `creative-fixtures` | Publish the creative fixture images to the UI origin |
 | 14 | `verify-journey` | Invoke the deployed buyer for real and assert against recorded steps |
 
-Two things are not in that list and have to be run by hand. Both are idempotent.
+One thing is not in that list and has to be run by hand. It is idempotent.
 
 ```bash
-# The reach service's own state table -- its own, not the seller's, because the reach role's IAM
-# policy names that one ARN. No deploy_all.py step creates it, so a fresh account needs this once
-# or gotham-reach-service fails on its first clean-room query.
-cd agents/seller/gotham-reach-service/app/adcpGothamReach && uv run python deploy_state_table.py
-
 # Registering reference-seller in the AWS Agent Registry (an AAO-registry substitute). Deliberately
 # excluded from the default flow -- run it when you want registry discovery, not on every deploy.
+# Also the way to refresh the record's tool listing after the advertised-tool set changes.
 cd agents/seller/reference-seller/app/adcpRefSeller && .venv/bin/python deploy_registry_registration.py
 ```
 
-Only the second of those is a deliberate exclusion; the missing reach table is a gap, and it's the
-same shape as one that has already cost real debugging time — `adcp-gotham-seller-state` was absent
-from every automated path for a while, so a fully-deployed Gotham seller answered `get_products`
-correctly from its cache and then failed every state-backed tool with `ResourceNotFoundException`.
-Retrieval looked healthy, so nothing about the symptom pointed at a missing table.
+That is a deliberate exclusion rather than a gap. Worth knowing why the distinction matters: a
+DynamoDB state table missing from every automated path has already cost real debugging time on this
+project. The seller came up, answered `get_products` correctly, and then failed every state-backed
+tool with `ResourceNotFoundException`. Retrieval looked healthy, so nothing about the symptom pointed
+at a missing table. Step 3 covers every table the agents in this repository need.
 
 Step 14 is the only step that asserts the deployed system does what the UI claims — it invokes the
 real buyer runtime with a real Cognito token, then reads back what the recorder wrote to DynamoDB.
@@ -344,7 +319,7 @@ runtime ARNs the run just deployed.
 ### Deploying just one piece
 
 Everything below assumes the per-instance shared infrastructure already exists — the Cognito
-pool/client, the DynamoDB tables, and the semantic-cache S3 buckets for this instance. If it
+pool/client and the DynamoDB tables for this instance. If it
 doesn't yet (a genuinely fresh account, or a brand-new instance), run these once first. All of
 these `--only` calls resolve the instance prefix the same way a full run does; to target a
 specific instance rather than the default, add `--prefix <id>` (or `--new`) to every call so they
@@ -356,7 +331,6 @@ python3 deploy_all.py --only cognito                # 1    shared Cognito user p
 python3 deploy_all.py --only propagate-cognito       # 2    copy COGNITO_* into root .env
 python3 deploy_all.py --only tables                  # 3    the three DynamoDB state tables
 python3 deploy_all.py --only vendor-region-module    # 3.6  copy aws_region.py into every package
-python3 deploy_all.py --only cache-buckets           # 3.7  semantic-cache S3 buckets
 ```
 
 Every `--only` step below is one call into `deploy_all.py`; nothing here needs `--dry-run` removed
@@ -373,45 +347,26 @@ python3 deploy_all.py --only render-aws-config        # 4.55  render aws-targets
 python3 deploy_all.py --only vendor-session-module    # 4     refresh the vendored session-recording modules
 ```
 
-Then deploy and capture the one seller you want, using its own pair of steps:
+Then deploy and capture the seller, using its own pair of steps:
 
 | Seller | Deploy | Capture |
 |---|---|---|
 | `reference-seller` | `--only deploy-ref-seller` (5) | `--only capture-ref-seller` (6) |
-| `poseidon-seller` | `--only deploy-poseidon-seller` (8.1) | `--only capture-poseidon-seller` (8.2) |
-| `gotham-seller` | `--only deploy-gotham-seller` (8.5) | `--only capture-gotham-seller` (8.6) |
-
-For example, just `poseidon-seller`:
 
 ```bash
-python3 deploy_all.py --only deploy-poseidon-seller   # 8.1 `agentcore deploy -y`
-python3 deploy_all.py --only capture-poseidon-seller  # 8.2 read its runtime ARN, write to .env files
+python3 deploy_all.py --only deploy-ref-seller        # 5   `agentcore deploy -y`
+python3 deploy_all.py --only capture-ref-seller       # 6   read its runtime ARN, write to .env files
 python3 deploy_all.py --only update-seller-json       # 9   point SELLER_AGENTS_JSON's entry at the real URL
 ```
 
-`poseidon-seller` and `gotham-seller` both rank via a published semantic cache,
-but none of them require it to deploy successfully — a runtime that comes up before its cache is
-published just serves keyword-only matching and discloses `artifact_unavailable` until the next
-refresh, rather than failing to start. Publish one with:
+`reference-seller` is the only seller in this repository. `SELLER_AGENTS_JSON` takes any AdCP seller
+as a config entry, so adding one is configuration rather than a code change — see the buyer's
+[README](agents/buyer/reference-buyer/README.md) for the registry format.
 
-```bash
-python3 deploy_all.py --only publish-cache            # 4.65 (heaviest step: local embed + ~30 MB upload per seller)
-```
-
-`gotham-seller` is the one seller that also needs a second, separately deployed component —
-[`gotham-reach-service`](agents/seller/gotham-reach-service/) — for live reach and clean-room
-figures. Deploy and wire both, seller before the reach service's capture step, since that step
-writes into the seller's own `.env`/`agentcore.json`:
-
-```bash
-python3 deploy_all.py --only deploy-gotham-seller      # 8.5
-python3 deploy_all.py --only capture-gotham-seller     # 8.6
-python3 deploy_all.py --only deploy-gotham-reach        # 8.7
-python3 deploy_all.py --only capture-gotham-reach       # 8.8   turns reach "on" for the seller
-```
-
-Without that last step, `gotham-seller`'s reach port resolves to `NoReachConfigured` and every
-product honestly reports reach as unconfigured rather than fabricating a figure.
+A seller that ranks inventory from a published semantic cache needs the cache steps (3.7, 4.6, 4.62,
+4.65), which are inactive here because they served sellers that are not part of this repository.
+`agents/seller/shared/corpus_kit/` is the retained tooling for building and scoring such a corpus, and
+its README is the reference for anyone implementing one.
 
 #### Just the governance agent
 
@@ -496,15 +451,18 @@ at the end of this section. Verify them before relying on them; they change.
 
 | Resource | Count | Rate | Idle monthly |
 |---|---|---|---|
-| AgentCore Runtime (microVM) | 7 runtimes | $0.0895/vCPU-hr + $0.00945/GB-hr, per second | **$0** — billed per session, not per deployed runtime |
-| DynamoDB (on-demand) | 5 tables, +1 if you create the reach table | per request; storage per GB | **~$0** — no idle throughput charge, tables hold a few MB |
+| AgentCore Runtime (microVM) | 4 runtimes | $0.0895/vCPU-hr + $0.00945/GB-hr, per second | **$0** — billed per session, not per deployed runtime |
+| DynamoDB (on-demand) | 3 tables | per request; storage per GB | **~$0** — no idle throughput charge, tables hold a few MB |
 | CloudFront | 2 distributions | no per-distribution fee | **$0** — inside the always-free 1 TB / 10M requests tier |
-| S3 Standard | 5 buckets | $0.023/GB-mo | **<$0.05** — cache artifacts are ~30 MB per ranking seller, the rest is KB |
+| S3 Standard | 3 buckets | $0.023/GB-mo | **<$0.05** — buyer sessions, buyer UI, governance origin; all KB-scale |
 | Cognito (Essentials) | 1 user pool | $0.015/MAU above 10,000 free | **$0** at demo user counts |
+| Secrets Manager | 1 secret (the M2M client secret) | $0.40/mo per secret | **$0.40** |
 | KMS | 1 asymmetric signing key | $1.00/mo per key | **$1.00** |
-| ECR (private) | 7 repos | $0.10/GB-mo | **≤$1.40** — AgentCore caps an image at 2 GB, so 7 repos is at most ~14 GB |
+| ECR (private) | 5 repos — 4 runtimes + the revocations Lambda | $0.10/GB-mo | **≤$1.00** — AgentCore caps an image at 2 GB, so 5 repos is at most ~10 GB |
+| Lambda | `RevocationsRepublisher`, 12-hour schedule | per request + GB-s | **$0** — ~60 invocations/month, inside the free tier |
 
-**Floor: roughly $1–3/month**, essentially the KMS key plus stored container images.
+**Floor: roughly $1.50–2.50/month**, essentially the KMS key, the Secrets Manager secret and stored
+container images.
 
 ECR is the only line that creeps: every redeploy pushes a new image and the old ones stay unless a
 lifecycle policy prunes them. Measure the real number rather than trusting the bound above:
@@ -531,11 +489,11 @@ bill), six short seller/governance MCP sessions, and six model turns averaging 1
 | Bedrock input (Claude Sonnet 5) | 90,000 tokens × $2.00/1M | $0.180 |
 | Bedrock output | 4,200 tokens × $10.00/1M | $0.042 |
 | AgentCore — buyer runtime | 27 CPU-s × $0.0895/3600 + 90 GB-s × $0.00945/3600 | $0.0009 |
-| AgentCore — sellers + governance | 12 CPU-s + 15 GB-s, same rates | $0.0003 |
+| AgentCore — seller + governance | 12 CPU-s + 15 GB-s, same rates | $0.0003 |
 | DynamoDB, CloudFront, Cognito | a handful of requests | rounds to $0 |
 | **Total** | | **~$0.22** |
 
-So Bedrock is about 99% of the marginal cost, and the AgentCore compute all seven runtimes actually
+So Bedrock is about 99% of the marginal cost, and the AgentCore compute all four runtimes actually
 execute on comes to roughly an eighth of a cent. At 100 conversations/month that's about
 **$22 + the standing floor**.
 
@@ -547,16 +505,15 @@ turn, so the seller-side result size drives buyer-side spend.
 
 ### One-time cost per deploy
 
-`agentcore deploy` builds each container image in CodeBuild, billed per build-minute — seven
-builds for a full run, fewer when you `--only` a single agent. The `publish-cache` step (4.65) does
-its embedding locally at no AWS charge and uploads ~30 MB per ranking seller. Step 14
-(`verify-journey`) costs one real model invocation per run.
+`agentcore deploy` builds each container image in CodeBuild, billed per build-minute — five builds
+for a full run (4 runtimes plus the revocations Lambda image), fewer when you `--only` a single
+agent. Step 14 (`verify-journey`) costs one real model invocation per run.
 
 ### If you walk away
 
 Deleting the AgentCore runtimes and DynamoDB tables stops nothing that was already free. What keeps
-billing is the KMS key, the ECR images, and S3 storage — so a teardown that skips those still costs
-$1–3/month. Scheduling a KMS key for deletion is irreversible after the waiting period, and the
+billing is the KMS key, the Secrets Manager secret, the ECR images and S3 storage — so a teardown
+that skips those still costs $1.50–2.50/month. Scheduling a KMS key for deletion is irreversible after the waiting period, and the
 governance runtime will not start without a resolvable key, so treat that one as a deliberate
 decision rather than cleanup.
 

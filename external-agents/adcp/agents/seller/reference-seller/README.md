@@ -16,14 +16,14 @@ an embedding index plus a SQLite sidecar, fetched from S3 at runtime and scored 
 against a benchmark corpus of briefs. This seller has none of that, and its absence is a
 decision rather than an omission.
 
-Ranking has nothing to do here. The catalogue is **four hand-authored products** in
-`app/adcpRefSeller/fixtures.py` — one CTV, one rewarded mobile, one display, one audio —
-chosen to exercise the protocol rather than to be searched: every AdCP tool, every
-required field, every error shape. `get_products` matches them by deterministic keyword
-overlap, and an absent brief returns all four, which is what the AdCP spec's wholesale
-semantics call for.
+Ranking has nothing to do here. The catalogue is **five hand-authored products** in
+`app/adcpRefSeller/fixtures.py` — CTV, rewarded mobile, two display sizes (300x250 and
+the 728x90 leaderboard) and podcast audio — chosen to exercise the protocol rather than
+to be searched: every AdCP tool, every required field, every error shape. `get_products`
+matches them by deterministic keyword overlap, and an absent brief returns all five,
+which is what the AdCP spec's wholesale semantics call for.
 
-There is no ordering problem among four products. So there is nothing for a semantic
+There is no ordering problem among five products. So there is nothing for a semantic
 index to contribute and nothing for a benchmark corpus to measure. Adding either would
 mean maintaining an artifact pipeline, a bucket, an IAM grant and a multi-thousand-brief
 answer key in order to rank a catalogue that fits on one screen.

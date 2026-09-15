@@ -1,7 +1,25 @@
-# corpus_kit
+# corpus_kit — offline tooling for sellers outside this repository
 
-Benchmark corpus construction and retrieval scoring for inventory sellers. Single source, read by every
-seller's corpus tooling.
+> ## ⚠️ Nothing in this repository uses this package
+>
+> `corpus_kit` scores the retrieval quality of a seller that answers `get_products` from an embedding
+> index. The only seller here — `agents/seller/reference-seller` — deliberately has no index: it matches
+> five hand-authored fixtures by keyword overlap, so there is no ranking to measure. See that seller's
+> README, "No corpus, no cache, no ranking — deliberately".
+>
+> Concretely, as of this repository's contents:
+>
+> - No module here imports `corpus_kit`. Its consumers are the `poseidon-seller` and `gotham-seller`
+>   trees, which are **not part of this repository**.
+> - `deploy_all.py`'s `CORPUS_SELLER_DIRS` names only `gotham-seller/app/gotham_corpus/`, and the step
+>   that drives it — **4.62 `corpus`** — is commented out of `STEPS`, along with 3.7 `cache-buckets`,
+>   4.6 `vendor-cache-modules` and 4.65 `publish-cache`.
+> - Every path, seller name and file reference below therefore describes a tree you do not have. The
+>   Gotham and Poseidon examples are retained because they are the only worked examples of this
+>   tooling in use, not because you can run them here.
+>
+> It is kept as the reference implementation for anyone building a ranking seller against the AdCP
+> reference seller. Read it as design documentation. Do not expect the commands to run.
 
 A benchmark corpus is a set of buyer briefs paired with the exact set of products that satisfies each one.
 It exists to measure a seller's retrieval quality. This package generates the briefs, computes their
