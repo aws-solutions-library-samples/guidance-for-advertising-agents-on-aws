@@ -903,7 +903,7 @@
       "title": "AdCP Media Buy",
       "description": "AdCP 3.0 governed buy lifecycle",
       "icon": "shopping_cart",
-      "defaultAgent": "AdCPBuyerAgent",
+      "defaultAgent": "AdCPBuyer",
       "availableAgents": [
         "AdCPBuyer",
         "AgencyAgent"
@@ -915,7 +915,7 @@
           "description": "Ask the buyer which AdCP sales agents it is configured for, and what each one supports (get_adcp_capabilities).",
           "query": "Which AdCP sales agents are you configured to talk to? For each one, report what it supports via get_adcp_capabilities: the AdCP version it declares, which Media Buy tasks it implements, and whether it also supports the Signals or Accounts protocols. Name each seller explicitly so I know who answered, and if any seller failed to respond say which one rather than leaving it out.",
           "category": "AdCP Discovery",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 1
         },
         {
@@ -924,7 +924,7 @@
           "description": "Run get_products from a natural-language brief with the advertiser's brand, and get product_ids and pricing_option_ids back.",
           "query": "Discover inventory for a Q4 2026 campaign. Brand domain: acmeenergy.example. Brief: premium CTV and online video reaching environmentally conscious homeowners aged 35-55 in California and Texas, plus sustainability and climate-solutions content. Budget guidance is $750,000 USD, flight 2026-10-01 to 2026-12-31. Use buying_mode 'brief'. For every product you return, tell me which seller it came from, the product_id, the pricing_option_id, the pricing model and rate, and the supported formats. Do not blend figures from different sellers into one number.",
           "category": "AdCP Discovery",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 2
         },
         {
@@ -933,7 +933,7 @@
           "description": "List the creative formats each seller supports (list_creative_formats) and identify the format_ids a package will need.",
           "query": "For the products you just recommended, list the creative formats each seller supports for video. I need the format_ids I would pass on a package, with their specs. Flag any product whose required formats we could not fill with a standard 15-second and 30-second video asset, and say which seller each format list came from.",
           "category": "AdCP Discovery",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 3
         },
         {
@@ -942,7 +942,7 @@
           "description": "sync_accounts at each seller. The brand domain plus operator pair is the account key every later task is scoped to.",
           "query": "Declare our advertiser account at every seller you work with. Brand domain: acmeenergy.example. Operator: Omnicom Media Group. These two are the account key, so use them verbatim in every later call. Confirm per seller whether the account was created or updated, and report any seller that rejected it.",
           "category": "AdCP Accounts & Governance",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 4
         },
         {
@@ -951,7 +951,7 @@
           "description": "sync_governance \u2014 the seller-side bind step that tells each seller which governance agent owns this buyer's plans.",
           "query": "Register your governance agent with every seller, for brand domain acmeenergy.example and operator Omnicom Media Group. This is the seller-side bind step: it tells each seller which governance agent owns our plans so it can consult that agent before executing a spend commit. Confirm per seller. If any seller returns ACCOUNT_NOT_FOUND, name it so we can re-run the account sync for that seller before retrying.",
           "category": "AdCP Accounts & Governance",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 5
         },
         {
@@ -960,7 +960,7 @@
           "description": "sync_plans registers budget, flight, authorised channels and markets with the governance agent, so later checks have something to judge against.",
           "query": "Register the campaign plan with the governance agent. plan_id: plan-acme-q4-2026. Brand domain: acmeenergy.example. Objectives: brand awareness and consideration for residential solar. Total budget: $750,000 USD. Flight: 2026-10-01 to 2026-12-31. Authorised channels: ctv, olv, streaming_audio. Authorised markets: country US, regions US-CA and US-TX. Reallocation threshold: 15%. No human-review requirement and no custom policies on this plan. Report exactly what the sync returned, and be clear that registering a plan is not approval of anything.",
           "category": "AdCP Accounts & Governance",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 6
         },
         {
@@ -969,7 +969,7 @@
           "description": "check_governance before any spend commit. The payload mirrors the full create_media_buy body so every governed dimension is actually checked.",
           "query": "Before we spend anything, run the intent-phase governance check for the buy we are about to place on plan plan-acme-q4-2026. Scope it to the seller that owns the first product you recommended, with tool_name create_media_buy, and a payload that mirrors the FULL create_media_buy body \u2014 not just a budget: the package with its product_id, budget and pricing_option_id, the flight window as start_time 2026-10-01 and end_time 2026-12-31, and a targeting_overlay with geo_countries ['US'] and geo_regions ['US-CA','US-TX']. Report the verdict, the check_id, and whether a governance_context token was issued. If the verdict is 'conditions', list the conditions and treat it as NOT approved.",
           "category": "AdCP Media Buy",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 7
         },
         {
@@ -978,7 +978,7 @@
           "description": "create_media_buy against the approved seller and product, carrying the governance_context from the authorising check.",
           "query": "Book it. Create the media buy against the seller and product from the approved check, presenting that check's governance_context. Commit $250,000 USD of the plan's budget, use the pricing_option_id from the product, brand domain acmeenergy.example, operator Omnicom Media Group, flight 2026-10-01 to 2026-12-31, and idempotency key acme-q4-2026-ctv-pkg-001. Report the media_buy_id, the seller's confirmed budget, the creative deadline, and the package status. If the seller returns 'submitted' rather than a confirmation, say so and give me the task handle instead of implying the buy is live. These are sandbox sellers, so state that no real money moved.",
           "category": "AdCP Media Buy",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 8
         },
         {
@@ -987,7 +987,7 @@
           "description": "report_plan_outcome with the seller's actual confirmed budget, so the plan's tracked spend matches reality.",
           "query": "Close the governance loop for plan plan-acme-q4-2026. Report the outcome of that booking with outcome 'completed', the check_id that authorised it, the governance_context, the seller reference, and the seller's ACTUAL confirmed budget from its response \u2014 never the amount we originally requested, since a seller may confirm a different figure. Confirm the plan's tracked budget now reflects the commitment.",
           "category": "AdCP Media Buy",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 9
         },
         {
@@ -996,7 +996,7 @@
           "description": "Re-send the same create_media_buy with the same idempotency_key and confirm the seller returns the existing buy instead of double-booking.",
           "query": "Re-send the exact same create_media_buy for idempotency key acme-q4-2026-ctv-pkg-001 \u2014 same seller, product, pricing option, budget and flight. AdCP specifies that a repeated idempotency key for the same account returns the EXISTING media buy rather than creating a second one. Tell me whether you got the same media_buy_id back, and confirm no duplicate buy and no duplicate commitment were created. If the seller instead created a second buy, report that as a conformance problem on the seller's side.",
           "category": "AdCP Media Buy",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 10
         },
         {
@@ -1005,7 +1005,7 @@
           "description": "get_media_buy_delivery for billing-grade figures, get_media_buys for operational status and creative-approval state.",
           "query": "Report on the media buy we booked. Give me the billing-grade delivery figures, and separately the operational status and creative-approval state. Say which task produced which figure, and treat the billing-grade delivery numbers as the authoritative ones. These sellers are sandbox accounts, so if little or no delivery has been recorded yet, say that plainly rather than implying delivery that has not happened.",
           "category": "AdCP Delivery & Audit",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 11
         },
         {
@@ -1014,7 +1014,7 @@
           "description": "get_plan_audit_logs reads back the governance agent's own record of every check and outcome on the plan.",
           "query": "Show me the audit trail the governance agent recorded for plan plan-acme-q4-2026, including entries. I want the intent check and its verdict, the booking outcome, and the plan's current tracked budget and lifecycle status. Read this back from the governance agent rather than re-deriving it from our conversation.",
           "category": "AdCP Delivery & Audit",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 12
         },
         {
@@ -1023,7 +1023,7 @@
           "description": "Attempt a buy targeting a market the plan never authorised, and show the governance agent refusing it.",
           "query": "We have a request to extend the campaign into Canada. Run the governance check for an additional $100,000 USD buy on plan plan-acme-q4-2026 against the same seller and product, tool_name create_media_buy, flight 2026-10-01 to 2026-12-31, with targeting_overlay geo_countries ['CA']. The plan authorises only US, US-CA and US-TX, so I expect this to be denied. Report the verdict and the governance agent's stated reason. Do NOT send anything to the seller, and do not resize or retarget the buy to get it through \u2014 the boundary is the plan's, not yours to move.",
           "category": "AdCP Governance Enforcement",
-          "agentType": "AdCPBuyerAgent",
+          "agentType": "AdCPBuyer",
           "stepOrder": 13
         }
       ],
