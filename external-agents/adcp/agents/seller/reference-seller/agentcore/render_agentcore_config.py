@@ -1,12 +1,12 @@
 """Superseded by the repo-root `render_agentcore_auth.py`.
 
-This file used to render this seller's Cognito auth block on its own, and `triton-seller` carried a
-near-identical copy. Two consequences made that worth collapsing into one script:
+This file used to render this seller's Cognito auth block on its own, and other sellers carried
+near-identical copies. Two consequences made that worth collapsing into one script:
 
-* Both pinned `allowedClients` to a single app client, so a second client added by hand was reverted on
-  the next render.
-* `gotham-seller`, `gotham-reach-service` and `reference-governance` had no renderer at all, so their
-  auth blocks were hand-maintained and drifted silently.
+* Each copy pinned `allowedClients` to a single app client, so a second client added by hand was
+  reverted on the next render.
+* Agents without a copy — `reference-governance` among them — had no renderer at all, so their auth
+  blocks were hand-maintained and drifted silently.
 
 Kept as a delegating shim rather than deleted, because `deploy_all.py` invocations and shell history
 reference this path. It now forwards to the single implementation so there is no second source of truth.

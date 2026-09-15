@@ -169,5 +169,9 @@ Stated rather than assumed, because an unverified claim about conformance is wor
 | Suite | Count |
 |---|---|
 | `reference-governance` | 248 |
-| `poseidon-seller` (governance gate added here) | 494 |
+| `reference-seller` (its governance gate lives in `governance_verification.py`) | 132 |
 | buyer UI | 995 |
+
+The seller figure counts the six suites in `agents/seller/reference-seller/app/adcpRefSeller/`; 20 of
+those cover intent-token verification specifically. A previous revision of this table counted a
+`poseidon-seller` suite instead — that seller is not part of this repository.

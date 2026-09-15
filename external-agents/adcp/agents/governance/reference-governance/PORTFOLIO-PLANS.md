@@ -149,11 +149,8 @@ Current state, checked live:
 | `adcp-buyer-agent-sessions` | pk / sk | `gsi1` |
 | `adcp-reference-governance-state` | PK / SK | none |
 | `adcp-reference-seller-state` | pk / sk | none |
-| `adcp-poseidon-seller-state` | pk / sk | none |
-| `adcp-gotham-seller-state` | pk / sk | none |
-| `adcp-triton-seller-state` | pk / sk | none |
 
-So five of the six agent tables have no secondary index. Whether that's a problem depends on whether
+So two of the three agent tables have no secondary index. Whether that's a problem depends on whether
 anything needs to query by something other than the primary key, and today almost nothing does:
 
 - The **governance agent** performs no table scan on any request path. Its one scan lives in a deployment
