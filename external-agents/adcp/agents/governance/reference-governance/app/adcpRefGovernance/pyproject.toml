@@ -64,7 +64,7 @@ dependencies = [
     # U4/Part 1: real, computed creative evaluation (dimension conformance, WCAG contrast) needs real
     # pixel access -- Pillow reads the fetched image bytes without a system-level dependency beyond
     # what the Dockerfile already installs for it (libjpeg/libpng ship in the slim base's wheel).
-    "pillow==11.1.0",
+    "pillow==12.3.0",
     # Real OCR for the urgency-claim/text-extraction feature (R22.1) -- a Python binding over the
     # `tesseract-ocr` system binary the Dockerfile installs. Without a real OCR pass, "does this image
     # contain an urgency claim" would have to be answered by something other than reading the image,
