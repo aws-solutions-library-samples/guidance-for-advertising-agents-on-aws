@@ -12,7 +12,7 @@ dependencies = [
     "adcp==6.6.0",
     "boto3==1.43.56",
     "pyjwt==2.13.0",
-    "python-dotenv==1.1.1",
+    "python-dotenv==1.2.2",
     # NFR-U3-6/U3 code generation: this seller becomes an MCP *client* for the first time (calling
     # the governance agent's check_governance), so httpx/mcp move from adcp's transitive pins to
     # explicit direct dependencies, per SECURITY-10's exact-pin convention. Versions pinned to what
