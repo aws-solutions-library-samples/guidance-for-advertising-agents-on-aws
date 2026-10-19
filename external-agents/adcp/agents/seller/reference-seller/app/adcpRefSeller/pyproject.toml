@@ -18,7 +18,7 @@ dependencies = [
     # explicit direct dependencies, per SECURITY-10's exact-pin convention. Versions pinned to what
     # adcp==6.6.0 already resolves transitively (checked against the installed venv, not guessed).
     "httpx==0.28.1",
-    "mcp==1.28.1",
+    "mcp==1.30.0",
 ]
 
 [dependency-groups]
