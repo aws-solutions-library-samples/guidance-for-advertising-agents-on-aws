@@ -19,7 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1126.0",
     "@aws-sdk/credential-provider-cognito-identity": "^3.972.69",
-    "dompurify": "3.4.13",
+    "dompurify": "3.4.16",
     "marked": "18.0.9",
     "motion": "13.0.0",
     "react": "19.2.8",
