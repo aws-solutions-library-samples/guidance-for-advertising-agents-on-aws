@@ -24,7 +24,7 @@ dependencies = [
     # `enable_dns_rebinding_protection=False` in `main.py`'s `serve()` call -- FastMCP's host-header
     # check. The pin is kept because version parity across the three agents is worth having on its own,
     # not because it fixed anything.
-    "mcp==1.28.1",
+    "mcp==1.30.0",
     "boto3==1.43.56",
     # Imported DIRECTLY by runtime modules, so declared rather than relied on transitively -- the same
     # reasoning already applied to `httpx` below. All three do arrive via `boto3` / `adcp` today, and that
