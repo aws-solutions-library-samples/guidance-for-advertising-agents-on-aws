@@ -185,16 +185,17 @@ The integration tests cover:
 
 ## Workshop Demo Data
 
-The `data/csv/samples/aws_workshop/` directory contains synthetic inventory for Meridian Media Group — a fictional publisher with four properties:
+The `data/csv/samples/aws_workshop/` directory contains synthetic inventory for Meridian Media Group, a fictional publisher with five properties:
 
 | Property | Channels | Products |
 |----------|----------|----------|
-| Apex Sports | CTV, Linear | NBA, NHL, Premium Series |
-| GNN (Global News Network) | Digital Video, Linear | Pre-roll, Outstream, Primetime |
-| SportsPulse | Digital Video, Linear, Audio | Mid-roll, Live Broadcasts, Podcasts |
-| Crestline Entertainment | CTV | Reality TV |
+| Apex Streaming / Apex Sports | CTV, Digital Video, Display, Audio | Premium series, originals, movies, kids, live basketball, hockey, football, soccer, golf, tennis and motorsport |
+| GNN (Global News Network) | CTV, Linear, Digital Video, Display, Audio | Live news, dayparts, local news, business, elections, podcasts, newsletters |
+| SportsPulse | Linear, Digital Video, Display, Audio | Live broadcasts, studio shows, highlights, fantasy, live scores, radio, podcasts |
+| Crestline Entertainment | CTV, Linear, Digital Video, Display, Audio | Reality, comedy, food and travel, home, awards specials, primetime drama, podcasts |
+| Horizon Discovery | CTV, Digital Video, Display, Audio | Nature and science FAST channels, homepage takeovers, native, science podcast |
 
-15 products across 5 channels (CTV, Linear TV, Digital Video, Audio, Display) with tiered pricing, audience data, and deal type support.
+87 products across 5 channels (CTV, Linear TV, Digital Video, Audio, Display) with tiered pricing, audience data, and deal type support. See `data/csv/samples/aws_workshop/README.md` for the per-channel breakdown.
 
 ---
 

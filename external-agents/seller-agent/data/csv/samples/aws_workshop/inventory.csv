@@ -14,3 +14,75 @@ inv-dsp-gnn-richmedia,GNN Rich Media Units,,ACTIVE,300x250|728x90|970x250,banner
 inv-dsp-sportspulse-display,SportsPulse Standard Display,,ACTIVE,300x250|728x90|160x600,banner,1|2,display,IAB17,10.00,USD,US,Standard and rich media display on SportsPulse digital
 inv-aud-gnn-podcast,GNN Podcast Sponsorship,,ACTIVE,,audio,,audio,IAB12,10.00,USD,US,Host-read sponsorships on GNN podcast network
 inv-aud-apex-programmatic,Apex Companion Podcast Audio,,ACTIVE,,audio,,audio,IAB1,8.00,USD,US,Programmatic audio on Apex Streaming companion podcasts
+inv-ctv-apex-sports-football,Apex Live Sports - Pro Football,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-12,58.00,USD,US,Live pro football Sunday and primetime games on Apex Sports
+inv-ctv-apex-sports-college-fb,Apex Live Sports - College Football,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-12,46.00,USD,US,Saturday college football doubleheaders on Apex Sports
+inv-ctv-apex-sports-soccer,Apex Live Sports - World Soccer,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-44,40.00,USD,US,Live international club soccer matches on Apex Sports
+inv-ctv-apex-sports-motorsport,Apex Live Sports - Motorsport,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-1,38.00,USD,US,Live open-wheel and endurance racing on Apex Sports
+inv-ctv-apex-sports-golf,Apex Live Sports - Pro Golf Weekends,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-15,44.00,USD,US,Weekend pro golf tournament coverage on Apex Sports
+inv-ctv-apex-sports-tennis,Apex Live Sports - Tennis Majors,,ACTIVE,1920x1080,video,3|7,ctv,IAB17|IAB17-40,36.00,USD,US,Live coverage of the four tennis majors on Apex Sports
+inv-ctv-apex-movies,Apex Movies On Demand,,ACTIVE,1920x1080,video,3|7,ctv,IAB1|IAB1-5,42.00,USD,US,Ad-supported on-demand feature film library on Apex Streaming
+inv-ctv-apex-originals-premiere,Apex Originals Premiere Weeks,,ACTIVE,1920x1080,video,3|7,ctv,IAB1|IAB1-7,60.00,USD,US,First-week premiere windows for Apex original series with a limited ad load
+inv-ctv-apex-kids,Apex Kids & Family,,ACTIVE,1920x1080,video,3|7,ctv,IAB6|IAB1-7,26.00,USD,US,Animated and family series on the Apex Kids profile (contextual targeting only)
+inv-ctv-apex-pause,Apex Pause Ad,,ACTIVE,1920x1080,banner,3|7,ctv,IAB1,34.00,USD,US,Static or animated pause-screen unit across Apex Streaming
+inv-ctv-apex-binge,Apex Binge Ad Breaks,,ACTIVE,1920x1080,video,3|7,ctv,IAB1|IAB1-7,40.00,USD,US,Single reduced-load break served to viewers on their third consecutive episode
+inv-ctv-crestline-comedy,Crestline Comedy Classics,,ACTIVE,1920x1080,video,3|7,ctv,IAB1|IAB1-4,28.00,USD,US,Ad-supported library of classic sitcoms on Crestline Entertainment
+inv-ctv-crestline-food-travel,Crestline Food & Travel,,ACTIVE,1920x1080,video,3|7,ctv,IAB8|IAB20,32.00,USD,US,Cooking competitions and travel series on Crestline Entertainment
+inv-ctv-crestline-home,Crestline Home & Garden,,ACTIVE,1920x1080,video,3|7,ctv,IAB10,30.00,USD,US,Renovation and home design series on Crestline Entertainment
+inv-ctv-crestline-awards,Crestline Live Awards Specials,,ACTIVE,1920x1080,video,3|7,ctv,IAB1|IAB1-2,55.00,USD,US,Live red-carpet and awards-show tentpoles on Crestline Entertainment
+inv-ctv-gnn-live,GNN Live Streaming News,,ACTIVE,1920x1080,video,3|7,ctv,IAB12|IAB12-2,30.00,USD,US,Around-the-clock live news stream on the GNN CTV app
+inv-ctv-gnn-elections,GNN Election Night Coverage,,ACTIVE,1920x1080,video,3|7,ctv,IAB12|IAB11,48.00,USD,US,Election night and debate specials on the GNN CTV app (political ads subject to review)
+inv-ctv-horizon-nature,Horizon Discovery Nature Documentaries,,ACTIVE,1920x1080,video,3|7,ctv,IAB15|IAB15-2,34.00,USD,US,Nature and wildlife documentaries on the Horizon Discovery FAST channel
+inv-ctv-horizon-space,Horizon Discovery Space & Science,,ACTIVE,1920x1080,video,3|7,ctv,IAB15|IAB15-7,32.00,USD,US,Space exploration and science series on the Horizon Discovery FAST channel
+inv-lin-gnn-morning,GNN Morning Show,,ACTIVE,1920x1080,video,3|7,linear,IAB12,20.00,USD,US,GNN morning news and lifestyle programming 6-10am ET
+inv-lin-gnn-daytime,GNN Daytime News,,ACTIVE,1920x1080,video,3|7,linear,IAB12,16.00,USD,US,GNN daytime news coverage 10am-4pm ET
+inv-lin-gnn-weekend,GNN Weekend Programming,,ACTIVE,1920x1080,video,3|7,linear,IAB12|IAB3,18.00,USD,US,Weekend news magazines and business shows on GNN
+inv-lin-gnn-business,GNN Business Hour,,ACTIVE,1920x1080,video,3|7,linear,IAB3|IAB13,26.00,USD,US,Markets and personal finance programming weekday evenings on GNN
+inv-lin-gnn-local-ny,GNN Local News - New York,,ACTIVE,1920x1080,video,3|7,linear,IAB12|IAB12-3,24.00,USD,US-NY,Local evening newscast for the New York market
+inv-lin-gnn-local-ca,GNN Local News - Los Angeles,,ACTIVE,1920x1080,video,3|7,linear,IAB12|IAB12-3,22.00,USD,US-CA,Local evening newscast for the Los Angeles market
+inv-lin-gnn-local-tx,GNN Local News - Dallas,,ACTIVE,1920x1080,video,3|7,linear,IAB12|IAB12-3,18.00,USD,US-TX,Local evening newscast for the Dallas market
+inv-lin-sportspulse-studio,SportsPulse Studio Shows,,ACTIVE,1920x1080,video,3|7,linear,IAB17,20.00,USD,US,Daily sports talk and highlight shows on SportsPulse
+inv-lin-sportspulse-football,SportsPulse Pro Football Live,,ACTIVE,1920x1080,video,3|7,linear,IAB17|IAB17-12,45.00,USD,US,Live pro football broadcasts on SportsPulse
+inv-lin-sportspulse-latenight,SportsPulse Late Night Highlights,,ACTIVE,1920x1080,video,3|7,linear,IAB17,14.00,USD,US,Overnight highlight and replay blocks on SportsPulse
+inv-lin-crestline-primetime,Crestline Primetime Dramas,,ACTIVE,1920x1080,video,3|7,linear,IAB1|IAB1-7,30.00,USD,US,Scripted primetime drama block 8-11pm ET on Crestline linear
+inv-lin-crestline-latenight,Crestline Late Night Comedy,,ACTIVE,1920x1080,video,3|7,linear,IAB1|IAB1-4,24.00,USD,US,Late night talk and sketch comedy on Crestline linear
+inv-lin-crestline-daytime,Crestline Daytime Talk,,ACTIVE,1920x1080,video,3|7,linear,IAB1|IAB18,15.00,USD,US,Daytime talk and lifestyle programming on Crestline linear
+inv-dig-gnn-midroll,GNN.com Mid-Roll Video,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB12,22.00,USD,US,Mid-roll in long-form GNN.com video segments
+inv-dig-gnn-live-stream,GNN.com Live Stream Pre-Roll,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB12,24.00,USD,US,Pre-roll on the GNN.com live news stream
+inv-dig-gnn-business-video,GNN Business Video,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB3|IAB13,24.00,USD,US,Pre-roll on GNN markets and personal finance clips
+inv-dig-gnn-mobile-vertical,GNN Mobile Vertical Video,,ACTIVE,1080x1920,video,1,digital_video,IAB12,16.00,USD,US,Full-screen vertical video between stories in the GNN mobile app
+inv-dig-gnn-weather,GNN Weather Video,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB15|IAB15-10,18.00,USD,US,Pre-roll on local and national forecast videos on GNN.com
+inv-dig-sportspulse-preroll,SportsPulse Highlights Pre-Roll,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB17,20.00,USD,US,Pre-roll on SportsPulse game highlight clips
+inv-dig-sportspulse-fantasy,SportsPulse Fantasy Sports Video,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB17|IAB9,19.00,USD,US,Pre-roll on fantasy sports analysis videos
+inv-dig-sportspulse-live,SportsPulse Live Stream Mid-Roll,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB17,26.00,USD,US,Mid-roll in SportsPulse authenticated live game streams
+inv-dig-sportspulse-social,SportsPulse Social Clips,,ACTIVE,1080x1920|1080x1080,video,1,digital_video,IAB17,12.00,USD,US,Short-form vertical and square sports clips in the SportsPulse app
+inv-dig-apex-trailers,Apex Trailers & Clips,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB1|IAB1-5,17.00,USD,US,Pre-roll on trailers and behind-the-scenes clips on the Apex Streaming website
+inv-dig-crestline-recaps,Crestline Episode Recaps,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB1|IAB1-7,14.00,USD,US,Pre-roll on episode recap videos on the Crestline website
+inv-dig-crestline-recipes,Crestline Recipe Video,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB8,16.00,USD,US,Pre-roll on short recipe and cooking-tip videos from Crestline
+inv-dig-horizon-outstream,Horizon Discovery Outstream,,ACTIVE,640x360,video,1|2,digital_video,IAB15,12.00,USD,US,Outstream units in Horizon Discovery science articles
+inv-dig-horizon-explainers,Horizon Discovery Science Explainers,,ACTIVE,640x360|1280x720,video,1|2,digital_video,IAB15|IAB5,15.00,USD,US,Pre-roll on animated science explainer videos from Horizon Discovery
+inv-dsp-gnn-homepage-lb,GNN.com Homepage Leaderboard,,ACTIVE,728x90|970x250,banner,1|2,display,IAB12,12.00,USD,US,Top-of-page leaderboard on the GNN.com homepage
+inv-dsp-gnn-article-mpu,GNN.com Article MPU,,ACTIVE,300x250|336x280,banner,1|2,display,IAB12,8.00,USD,US,In-article medium rectangle across GNN.com
+inv-dsp-gnn-native,GNN.com Native Recommendations,,ACTIVE,,native,1|2,display,IAB12,9.00,USD,US,Sponsored story units in GNN.com content recommendation modules
+inv-dsp-gnn-newsletter,GNN Morning Briefing Newsletter,,ACTIVE,600x200,banner,1|2,display,IAB12,22.00,USD,US,Sponsorship of the daily GNN Morning Briefing email
+inv-dsp-gnn-elections-hub,GNN Elections Hub Sponsorship,,ACTIVE,970x250|300x600,banner|rich_media,1|2,display,IAB12|IAB11,20.00,USD,US,Roadblock sponsorship of the GNN elections results hub
+inv-dsp-sportspulse-scores,SportsPulse Live Scores Sponsorship,,ACTIVE,320x50|300x250,banner,1,display,IAB17,11.00,USD,US,Sponsored placements in the SportsPulse live scores app
+inv-dsp-sportspulse-gameday,SportsPulse Gameday Takeover,,ACTIVE,1920x1080|970x250|300x600,banner|rich_media,1|2,display,IAB17,19.00,USD,US,Full-site takeover during major gameday traffic peaks on SportsPulse
+inv-dsp-sportspulse-interstitial,SportsPulse Mobile Interstitial,,ACTIVE,320x480|1080x1920,banner|rich_media,1,display,IAB17,13.00,USD,US,Full-screen interstitial between screens in the SportsPulse app
+inv-dsp-horizon-native,Horizon Discovery Native Content,,ACTIVE,,native,1|2,display,IAB15,10.00,USD,US,Branded content cards in Horizon Discovery article feeds
+inv-dsp-horizon-skin,Horizon Discovery Site Skin,,ACTIVE,1920x1080,banner,2,display,IAB15,16.00,USD,US,Desktop wallpaper skin around Horizon Discovery article pages
+inv-dsp-horizon-mpu,Horizon Discovery Article MPU,,ACTIVE,300x250|300x600,banner,1|2,display,IAB15,7.00,USD,US,Standard display in Horizon Discovery science articles
+inv-dsp-crestline-fansite,Crestline Fan Site Display,,ACTIVE,300x250|728x90|320x50,banner,1|2,display,IAB1|IAB1-2,6.00,USD,US,Run-of-site display across Crestline show fan pages
+inv-dsp-crestline-recipes,Crestline Recipe Pages,,ACTIVE,300x250|300x600|728x90,banner,1|2,display,IAB8,9.00,USD,US,Display on Crestline recipe and meal planning pages
+inv-dsp-apex-companion,Apex Second-Screen Companion Banner,,ACTIVE,300x250|320x50,banner,1,display,IAB1,9.00,USD,US,Companion banners in the Apex mobile app synced to CTV ad breaks
+inv-aud-gnn-daily-briefing,GNN Daily Briefing Podcast,,ACTIVE,,audio,1|2|6,audio,IAB12,14.00,USD,US,Pre-roll and mid-roll in the GNN daily news briefing podcast
+inv-aud-gnn-markets-podcast,GNN Markets Podcast,,ACTIVE,,audio,1|2|6,audio,IAB3|IAB13,16.00,USD,US,Host-read sponsorships on the GNN markets and investing podcast
+inv-aud-gnn-investigates,GNN Investigates Podcast,,ACTIVE,,audio,1|2|6,audio,IAB12|IAB14,12.00,USD,US,Long-form investigative journalism podcast from GNN
+inv-aud-gnn-radio-simulcast,GNN Live Radio Simulcast,,ACTIVE,,audio,1|2|6,audio,IAB12,9.00,USD,US,Streaming simulcast of GNN radio news
+inv-aud-gnn-smart-speaker,GNN Smart Speaker Flash Briefing,,ACTIVE,,audio,6,audio,IAB12,12.00,USD,US,Audio spots in the GNN flash briefing on smart speakers
+inv-aud-sportspulse-radio,SportsPulse Live Radio Stream,,ACTIVE,,audio,1|2|6,audio,IAB17,10.00,USD,US,Streaming sports talk radio on SportsPulse audio
+inv-aud-sportspulse-podcasts,SportsPulse Podcast Network,,ACTIVE,,audio,1|2|6,audio,IAB17,11.00,USD,US,Dynamic ad insertion across the SportsPulse podcast network
+inv-aud-sportspulse-playbyplay,SportsPulse Play-by-Play Audio,,ACTIVE,,audio,1|2|6,audio,IAB17,13.00,USD,US,Live game audio with in-break spots on SportsPulse
+inv-aud-apex-soundtracks,Apex Soundtracks Streaming,,ACTIVE,,audio,1|2|6,audio,IAB1|IAB1-6,7.00,USD,US,Ad-supported streaming of Apex original series soundtracks
+inv-aud-crestline-comedy,Crestline Comedy Podcasts,,ACTIVE,,audio,1|2|6,audio,IAB1|IAB1-4,9.00,USD,US,Comedy and pop-culture podcasts from Crestline talent
+inv-aud-crestline-aftershow,Crestline After-Show Podcasts,,ACTIVE,,audio,1|2|6,audio,IAB1|IAB1-2,10.00,USD,US,Official reality series after-show podcasts from Crestline
+inv-aud-horizon-science,Horizon Discovery Science Podcast,,ACTIVE,,audio,1|2|6,audio,IAB15|IAB5,8.00,USD,US,Science and curiosity podcast from Horizon Discovery
