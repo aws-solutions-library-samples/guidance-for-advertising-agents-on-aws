@@ -186,9 +186,13 @@ Three details worth recording, because each is a place a looser implementation w
   no randomness, same brief always returns the same products. This isn't
   an AdCP requirement, but it's what makes this agent usable as a stable
   test fixture rather than a source of flaky non-conformance findings for
-  whoever builds against it. The catalogue is five products:
-  `ref-ctv-sports-01`, `ref-mobile-rewarded-01`, `ref-display-news-01`,
-  `ref-display-leaderboard-01`, `ref-audio-podcast-01`.
+  whoever builds against it. The catalogue is 46 products across the
+  `ctv`, `olv`, `gaming`, `display`, `podcast` and `streaming_audio`
+  channels, each a non-guaranteed, fixed-price USD CPM product on one of
+  the five declared formats. The original five
+  (`ref-ctv-sports-01`, `ref-mobile-rewarded-01`, `ref-display-news-01`,
+  `ref-display-leaderboard-01`, `ref-audio-podcast-01`) are unchanged.
+  `get_adcp_capabilities` derives its `channels` from the catalogue.
 - **Creative formats backed by fetchable assets** — new since the previous
   revision. `list_creative_formats` declares five formats, and two of them
   (`display_300x250` and the `display_728x90` leaderboard) are *evaluable*:

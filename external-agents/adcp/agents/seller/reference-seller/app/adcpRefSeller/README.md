@@ -11,9 +11,9 @@ development.
 
 This is explicitly a **sandbox/reference seller, not a production one**:
 
-- Its inventory (`fixtures.py`) is a small, fixed, hand-authored catalog of
-  4 products (CTV, mobile rewarded video, display, podcast audio) — not
-  live market data.
+- Its inventory (`fixtures.py`) is a fixed, hand-authored catalog of
+  46 products across CTV, online video, mobile rewarded video, display,
+  podcast and streaming audio — not live market data.
 - Every response is built with `adcp.server.responses` builders, which set
   `sandbox: true` by default, so callers can see on the wire that this
   isn't a production seller.

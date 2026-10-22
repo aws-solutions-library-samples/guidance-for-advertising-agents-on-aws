@@ -72,7 +72,11 @@ from adcp.server.responses import (
 )
 
 from delivery import derive_delivery_figures
-from fixtures import CREATIVE_FORMATS, find_product, match_products
+from fixtures import CREATIVE_FORMATS, PRODUCTS, find_product, match_products
+
+# Every channel the catalog actually sells, in first-seen order. Derived so get_adcp_capabilities
+# cannot advertise a channel with no product behind it, or omit one that has products.
+CATALOG_CHANNELS: list[str] = list(dict.fromkeys(c for p in PRODUCTS for c in p.get("channels") or []))
 import governance_verification
 from state import (
     AccountStore,
@@ -573,7 +577,7 @@ class ReferenceSellerAgent(ADCPHandler):
             major_versions=[3],
             features={
                 "pricing_models": ["cpm"],
-                "channels": ["ctv", "gaming", "display", "podcast"],
+                "channels": CATALOG_CHANNELS,
             },
             # Required by the get_adcp_capabilities response schema whenever
             # media_buy is declared. Task 9: idempotency is now real (every

@@ -16,17 +16,20 @@ an embedding index plus a SQLite sidecar, fetched from S3 at runtime and scored 
 against a benchmark corpus of briefs. This seller has none of that, and its absence is a
 decision rather than an omission.
 
-Ranking has nothing to do here. The catalogue is **five hand-authored products** in
-`app/adcpRefSeller/fixtures.py` — CTV, rewarded mobile, two display sizes (300x250 and
-the 728x90 leaderboard) and podcast audio — chosen to exercise the protocol rather than
-to be searched: every AdCP tool, every required field, every error shape. `get_products`
-matches them by deterministic keyword overlap, and an absent brief returns all five,
-which is what the AdCP spec's wholesale semantics call for.
+Ranking has nothing to do here. The catalogue is **46 hand-authored products** in
+`app/adcpRefSeller/fixtures.py` across six AdCP channels (`ctv`, `olv`, `gaming`,
+`display`, `podcast`, `streaming_audio`), all built on the same five creative formats
+(16:9 30s video, 15s rewarded video, 300x250 and 728x90 display, 30s audio). They are
+chosen to exercise the protocol rather than to be searched: every AdCP tool, every
+required field, every error shape. `get_products` matches them by deterministic keyword
+overlap, and an absent brief returns all of them, which is what the AdCP spec's wholesale
+semantics call for.
 
-There is no ordering problem among five products. So there is nothing for a semantic
-index to contribute and nothing for a benchmark corpus to measure. Adding either would
-mean maintaining an artifact pipeline, a bucket, an IAM grant and a multi-thousand-brief
-answer key in order to rank a catalogue that fits on one screen.
+Matches come back in catalogue order, not by relevance. That is acceptable for a
+catalogue this size, so there is nothing for a semantic index to contribute and nothing
+for a benchmark corpus to measure. Adding either would mean maintaining an artifact
+pipeline, a bucket, an IAM grant and a multi-thousand-brief answer key in order to rank
+a fixed sandbox catalogue.
 
 Consequences worth knowing:
 
