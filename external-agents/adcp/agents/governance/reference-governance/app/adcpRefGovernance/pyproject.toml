@@ -24,7 +24,7 @@ dependencies = [
     # `enable_dns_rebinding_protection=False` in `main.py`'s `serve()` call -- FastMCP's host-header
     # check. The pin is kept because version parity across the three agents is worth having on its own,
     # not because it fixed anything.
-    "mcp==1.28.1",
+    "mcp==1.30.0",
     "boto3==1.43.56",
     # Imported DIRECTLY by runtime modules, so declared rather than relied on transitively -- the same
     # reasoning already applied to `httpx` below. All three do arrive via `boto3` / `adcp` today, and that
@@ -55,8 +55,8 @@ dependencies = [
     #
     # An earlier version of this comment said "no separate JWT library", which stopped being true when the
     # inbound identity was wired up.
-    "pyjwt==2.13.0",
-    "python-dotenv==1.1.1",
+    "pyjwt==2.15.1",
+    "python-dotenv==1.2.2",
     # Imported directly by `httpx` -- already resolved transitively via `adcp`/`mcp`, but declared
     # here because `handle_get_creative_features` (U4/Part 1) calls it itself to fetch a submitted
     # creative's image bytes over HTTPS.
@@ -64,7 +64,7 @@ dependencies = [
     # U4/Part 1: real, computed creative evaluation (dimension conformance, WCAG contrast) needs real
     # pixel access -- Pillow reads the fetched image bytes without a system-level dependency beyond
     # what the Dockerfile already installs for it (libjpeg/libpng ship in the slim base's wheel).
-    "pillow==11.1.0",
+    "pillow==13.0.0",
     # Real OCR for the urgency-claim/text-extraction feature (R22.1) -- a Python binding over the
     # `tesseract-ocr` system binary the Dockerfile installs. Without a real OCR pass, "does this image
     # contain an urgency claim" would have to be answered by something other than reading the image,

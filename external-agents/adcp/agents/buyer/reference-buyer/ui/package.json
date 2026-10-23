@@ -19,7 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1126.0",
     "@aws-sdk/credential-provider-cognito-identity": "^3.972.69",
-    "dompurify": "3.4.13",
+    "dompurify": "3.4.17",
     "marked": "18.0.9",
     "motion": "13.0.0",
     "react": "19.2.8",
@@ -37,7 +37,7 @@
     "jsdom": "29.0.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
-    "vite": "8.2.1",
-    "vitest": "4.1.10"
+    "vite": "8.2.4",
+    "vitest": "4.1.12"
   }
 }
