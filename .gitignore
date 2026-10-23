@@ -104,7 +104,7 @@ aws-exports.js
 cdk.out/
 
 # Test Files
-test_*
+
 test-*
 
 # Security and Scanning
