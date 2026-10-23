@@ -498,7 +498,7 @@ execute on comes to roughly an eighth of a cent. At 100 conversations/month that
 **$22 + the standing floor**.
 
 The single biggest lever is the model: `BEDROCK_MODEL_ID` is an environment variable
-([`agent.py`](agents/buyer/reference-buyer/agent.py) defaults to `us.anthropic.claude-sonnet-5`),
+([`agent.py`](agents/buyer/reference-buyer/agent.py) defaults to `global.anthropic.claude-sonnet-5`),
 so moving to a cheaper model is a config change, not a code change. Note also that input tokens
 dominate — a `get_products` response carrying hundreds of products is resent on every subsequent
 turn, so the seller-side result size drives buyer-side spend.

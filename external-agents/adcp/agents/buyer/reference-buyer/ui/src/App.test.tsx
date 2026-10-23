@@ -31,7 +31,7 @@ function renderApp(path = '/chat') {
  */
 
 const config: AppConfig = {
-  model_id: 'us.anthropic.claude-sonnet-5',
+  model_id: 'global.anthropic.claude-sonnet-5',
   cognito_region: 'us-east-1',
   cognito_client_id: '4ja9m026rj02qhk92knbq68ij6',
   agent_runtime_arn:

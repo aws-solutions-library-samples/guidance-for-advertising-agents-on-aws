@@ -1,0 +1,27 @@
+[
+  {
+    "step_index": 0,
+    "step_type": "incoming_request",
+    "content": {
+      "text": "Request audio inventory availability from Triton Seller for advertiser nike.com. Campaign details: Flight dates December 5-10, 2025. Budget: $100,000 USD. Channel: Audio. Please return available audio products/inventory with pricing, targeting options, and delivery estimates from Triton."
+    }
+  },
+  {
+    "step_index": 1,
+    "step_type": "tool_call",
+    "content": {
+      "toolName": "adcp_get_products",
+      "callId": "tooluse_DNT9Q99S1bvk5EwXi7AD8E"
+    }
+  },
+  {
+    "step_index": 2,
+    "step_type": "tool_result",
+    "content": {
+      "toolName": "adcp_get_products",
+      "callId": "tooluse_DNT9Q99S1bvk5EwXi7AD8E",
+      "status": "success",
+      "output": "{\"task\": \"get_products\", \"sellers_queried\": 1, \"results\": [{\"seller_id\": \"triton\", \"seller_name\": \"Triton Inventory Seller (sandbox, MCP)\", \"transport\": \"mcp\", \"response\": {\"status\": \"completed\", \"sandbox\": true, \"products\": [{\"product_id\": \"802578\", \"name\": \"Inside Broadcast\", \"description\": \"Triton-shaped sandbox podcast inventory: Inside Broadcast (Personal Finance, Boston, MA).\", \"channels\": [\"podcast\"], \"delivery_type\": \"non_guaranteed\", \"publisher_properties\": [{\"publisher_domain\": \"triton-seller.example\", \"selection_type\": \"all\"}], \"reporting_capabilities\": {\"available_reporting_frequencies\": [\"daily\"], \"expected_delay_minutes\": 0, \"timezone\": \"UTC\", \"supports_webhooks\": false, \"available_metrics\": [\"impressions\", \"spend\"], \"date_range_support\": \"lifetime_only\"}, \"format_ids\": [{\"id\": \"audio_30s\", \"agent_url\": \"https://triton-seller.example/adcp/mcp\"}], \"pricing_options\": [{\"pricing_option_id\": \"cpm-802578\", \"pricing_model\": \"cpm\", \"currency\": \"USD\", \"fixed_price\": 18.0}], \"market\": \"Boston, MA\", \"group\": \"Granite Peak Audio\", \"genre\": \"Personal Finance\", \"language\": \"English\", \"content_types\": [\"podcast\"], \"positions\": [\"preroll\", \"midroll\", \"postroll\"], \"relevance_score\": 1.0, \"forecast\": {\"forecast_range_unit\": \"availability\", \"method\": \"modeled\", \"currency\": \"USD\", \"generated_at\": \"2026-08-08T02:08:59.181255+00:00\", \"points\": [{\"metrics\": {\"impressions\": {\"mid\": 28647.0}}}]}}, {\"product_id\": \"800416\", \"name\": \"WTAM Business News\", \"description\": \"Triton-shaped sandbox broadcast_radio inventory: WTAM Business News (Business News, Charlotte, NC).\", \"channels\": [\"radio\"], \"delivery_type\": \"non_guaranteed\", \"publisher_properties\": [{\"publisher_domain\": \"triton-seller.example\", \"selection_type\": \"all\"}], \"reporting_capabilities\": {\"available_reporting_frequencies\": [\"daily\"], \"expected_delay_minutes\": 0, \"timezone\": \"UTC\", \"supports_webhooks\": false, \"available_metrics\": [\"impressions\", \"spend\"], \"date_range_support\": \"lifetime_only\"}, \"format_ids\": [{\"id\": \"audio_30s\", \"agent_url\": \"https://triton-seller.example/adcp/mcp\"}], \"pricing_options\": [{\"pricing_option_id\": \"cpm-800416\", \"pricing_model\": \"cpm\", \"currency\": \"USD\", \"fixed_price\": 12.0}], \"market\": \"Charlotte, NC\", \"group\": \"Meridian Broadcasting Group\", \"genre\": \"Business News\", \"language\": \"Spanish\", \"content_types\": [\"live\"], \"positions\": [\"midroll\"], \"relevance_score\": 1.0, \"forecast\": {\"forecast_range_unit\": \"availability\", \"method\": \"modeled\", \"currency\": \"USD\", \"generated_at\": \"2026-08-08T02:08:59.181277+00:00\", \"points\": [{\"metrics\": {\"impressions\": {\"mid\": 3301.0}}}]}}], \"item_count\": 10, \"cache_scope\": \"public\", \"ext\": {\"search_metadata\": {\"search_method\": \"context_cache\", \"cache_version\": \"20260730-193000\", \"products_matching_brief\": 2640, \"products_in_catalog\": 2640, \"search_latency_ms\": 1252.78}}}}]}"
+    }
+  }
+]

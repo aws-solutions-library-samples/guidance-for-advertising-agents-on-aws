@@ -811,6 +811,62 @@ aws cognito-idp admin-create-user \
   `invoke_specialist(agent_name="AdCPBuyerAgent")` → the buyer's A2A runtime → the seller and
   governance agents over MCP.
 
+  <a id="mcp-tool-server-connectivity"></a>
+  **MCP tool servers, and the connectivity gap:**
+
+  An agent reaches an external tool server through the `mcp_servers` array on its config entry,
+  which `agentcore/deployment/agent/shared/mcp_tools.py` turns into Strands `MCPClient` objects.
+  This is **not** the same mechanism as the external-agent settings: `agent_hosting` /
+  `agent_protocol` / `agent_endpoint` address a remote **agent** over A2A JSON-RPC and are read by
+  the UI, while `mcp_servers` addresses a remote **tool server** over MCP. An agent holding an MCP
+  connection stays a local config-based collaborator inside `AdFabricAgent`, so setting
+  `agent_hosting: "external"` on one would send the UI looking for an A2A runtime that does not
+  exist.
+
+  > **No MCP server entry ships with working credentials, and no deployment phase provisions one.**
+  > All three committed `mcp_servers` entries have an empty `url` — and two of them
+  > (`WeatherAgent`, `PublisherMediaPlanningAgent`) are `enabled: true` in that state. An empty
+  > `url` makes `mcp_tools.py` log an error and return no client, and a credential exchange that
+  > fails does the same, because it **fails closed** rather than connect unauthorized. Either way
+  > the agent is built with no tools and nothing is raised, so a misconfigured server presents as
+  > an agent that simply never uses one. Check the runtime logs for `MCP_TOOLS` before concluding
+  > a tool server is reachable.
+
+  **`CampaignActivationAgent`** is the one agent that ships expecting an external MCP tool server —
+  the campaign control plane of the **Guidance for Embedding a Direct Deals Manager in Prebid on
+  AWS**, which turns a media plan into live, biddable direct-sold demand in the publisher's campaign
+  catalog. The `artfhouse` bid adapter offers that demand into the Prebid auction as the seat
+  `artfhouse`, backed by the `artfhouse-demand` service.
+
+  | | Status in this repository |
+  |---|---|
+  | Prompt | Complete, at `agentcore/deployment/agent/agent-instructions-library/CampaignActivationAgent.txt` |
+  | Config entry | Ships in `global_configuration.template.json`, with its `mcp_servers` entry `enabled: false` and an empty `url` and `ssmPath` |
+  | Deploy automation | **None.** No phase of `deploy-ecosystem.sh` provisions or discovers the control plane |
+  | Caller wiring | **None.** No agent lists `CampaignActivationAgent` in its `tool_agent_names` |
+
+  To connect it: write the OAuth `client_credentials` document to SSM as a `SecureString`, set
+  `url` (the AgentCore invocation URL with the runtime ARN percent-encoded into the path),
+  `oauthClientCredentials.ssmPath` and `enabled: true`, then add the agent to a planner's
+  `tool_agent_names` and to a UI tab.
+
+  Two settings in the committed stub are already correct and should not be changed: `transport`
+  must be `http`, because the `sse` transport does not carry auth headers and fails closed with
+  OAuth M2M; and `prefix` must stay empty, because a prefix renames every tool while the prompt
+  names them as the server publishes them.
+
+  One dependency detail is load-bearing: `requirements.txt` pins `mcp==1.29.0` and
+  `fastmcp==3.4.7`. The `mcp` package ships two streamable-HTTP factories that are not aliases —
+  `streamablehttp_client(url, headers=...)`, which `mcp_tools.py` uses to attach the bearer, and
+  `streamable_http_client(url, *, http_client=...)`, which takes no `headers`. mcp 2.x keeps only
+  the latter, and `fastmcp` 4.0.0 requires mcp 2.x, so letting either float resolves to a
+  combination where the import fails and every MCP server is silently dropped. `bedrock-agentcore`
+  independently caps mcp at `<2.0.0` and `mcp-proxy-for-aws` caps fastmcp at `<3.5`.
+
+  Full procedure, including the credential document, the authorization properties that produce
+  misleading refusals, and the verification command:
+  **[`composability-documentation/integrations.md`](composability-documentation/integrations.md)**
+
   **WeatherImpactAnalysis Agent API Key:**
   The WeatherImpactAnalysis agent integrates with Visual Crossing Weather API to provide weather-based campaign insights. By default, the agent works with US locations, but for international locations, you'll need to configure a valid API key.
 
@@ -1165,6 +1221,14 @@ aws cognito-idp admin-create-user \
   auth/protocol and re-enabling direct seller calls, are in
   [`docs/aamp-deployment-modes.md`](docs/aamp-deployment-modes.md).
 
+  For the sell-side architecture as a whole — this marketplace alongside the
+  AdCP buyer/seller/governance agents, their components and interfaces,
+  transaction flows, the governance trust model, and the AgentCore runtime and
+  deployment architecture — see
+  [`docs/agentic-seller-workflow.md`](docs/agentic-seller-workflow.md), with
+  operational notes in
+  [`docs/agentic-seller-operations.md`](docs/agentic-seller-operations.md).
+
   **Live progress milestones (the `AgentProgress` table):**
   A campaign plan takes one to two minutes, and A2A gives the caller no way to
   see inside it: a Strands `A2AServer` streams the agent's own answer text as
@@ -1461,6 +1525,11 @@ aws cognito-idp admin-create-user \
 
 ### 4. Integration with Existing Systems
 
+**The other AWS advertising guidances:**
+- **[Embedding a Direct Deals Manager in Prebid on AWS](#mcp-tool-server-connectivity)** — its MCP control plane turns an agent's media plan into live, biddable direct-sold demand, which the `artfhouse` bid adapter offers into the publisher's Prebid auction. `CampaignActivationAgent` ships for it; the endpoint and credentials are yours to supply
+- **[Accelerator-Optimized Agentic Bidding on AWS](https://github.com/aws-solutions-library-samples/guidance-for-accelerator-optimized-agentic-bidding-on-aws)** (ARTF) — no direct relationship. Its Prebid variant (`--with-prebid`) hosts the auction and runs the `artfhouse` bid adapter and `artfhouse-demand` service that bid those campaigns
+- What each one requires, what it exposes, and what has to happen on which side: [`composability-documentation/integrations.md`](composability-documentation/integrations.md)
+
 **CRM Integration:**
 - Connect agents to Salesforce, HubSpot, or other CRM systems via MCP, A2A, or API
 - Implement customer data synchronization
@@ -1746,6 +1815,7 @@ aws ssm delete-parameter \
 - **Container Concurrency**: Default limit of 10 concurrent AgentCore containers per region
 - **Session Memory**: Shared memory is session-based and doesn't persist across different sessions
 - **External API Dependencies**: Weather and social media integrations depend on external service availability
+- **MCP Tool Server Connectivity**: The MCP client is wired and supports OAuth 2.0 `client_credentials`, but no `mcp_servers` entry ships with a populated endpoint or credential, and no deployment phase provisions one. `CampaignActivationAgent` ships with its tool server disabled for this reason. Connecting one — endpoint, SSM credential document, caller wiring, UI tab — is a manual step: see [MCP tool servers](#mcp-tool-server-connectivity) and [`composability-documentation/integrations.md`](composability-documentation/integrations.md)
 - **File Upload Limits**: Knowledge base file uploads limited by S3 and OpenSearch constraints
 
 **Functional Limitations:**

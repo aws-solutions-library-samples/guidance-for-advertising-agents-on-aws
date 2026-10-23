@@ -67,7 +67,7 @@ def build_env_vars(extra: dict[str, str] | None = None) -> dict[str, str]:
         # `report()` prints it as EMPTY meanwhile, so a runtime left in that state is visible.
         "AGENTS_JSON": os.environ.get("AGENTS_JSON", ""),
         "DEFAULT_AGENT_ID": os.environ.get("DEFAULT_AGENT_ID", ""),
-        "BEDROCK_MODEL_ID": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-5"),
+        "BEDROCK_MODEL_ID": os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-5"),
         "AWS_REGION": region(),
         "SESSION_STORAGE_BUCKET": os.environ["SESSION_STORAGE_BUCKET"],
         "SESSION_STORAGE_PREFIX": os.environ.get("SESSION_STORAGE_PREFIX", "adcp-buyer-agent"),

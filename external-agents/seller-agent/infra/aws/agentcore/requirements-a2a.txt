@@ -1,10 +1,22 @@
 # Requirements for the Strands + A2A AgentCore runtime (a2a_main.py).
-# Adaptation for Strands + A2A — see ADAPTATION.md. Deliberately EXCLUDES
-# crewai/crewai-tools: the A2A runtime path does not import them (AC-5).
-# The legacy CrewAI path keeps using requirements.txt.
+# Adaptation for Strands + A2A — see ADAPTATION.md.
+#
+# AC-5 originally excluded crewai here, but the internal FastAPI server this
+# runtime starts in-process serves /discovery, /pricing, /proposals, /deals,
+# /packages/sync and two /api/v1 routes, and each of those does
+# `from ...flows import ...`. flows/__init__.py imports all six flows, every one
+# of which does `from crewai.flow.flow import Flow, listen, start`. Without
+# crewai installed those endpoints raise ModuleNotFoundError and return 500.
+#
+# The flows use crewai only as sequencing decorators — no Agent/Crew/Task/LLM is
+# constructed on the discovery or pricing path. crewai-tools is NOT needed (no
+# module under src/ imports it). ad_seller/__init__.py imports _telemetry_shim as
+# its first statement, so the telemetry opt-out env vars are set before crewai
+# loads. Adds ~71 transitive packages (chromadb, onnxruntime, tokenizers, numpy).
 bedrock-agentcore
 strands-agents[a2a]
 strands-agents-tools
+crewai>=1.14.0,<2.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 httpx>=0.27.0

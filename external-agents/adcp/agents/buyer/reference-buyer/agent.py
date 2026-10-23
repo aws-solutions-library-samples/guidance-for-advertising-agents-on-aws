@@ -29,7 +29,7 @@ from seller_agents import list_seller_agents_public, resolve_seller_agent
 
 load_dotenv()
 
-DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-5"
+DEFAULT_MODEL_ID = "global.anthropic.claude-sonnet-5"
 
 #: Output-token ceiling for one model turn. Set explicitly because Strands only sends `maxTokens` when
 #: configured, and Bedrock's own default is low enough to truncate a turn that emits several tool calls at
@@ -37,7 +37,7 @@ DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-5"
 #: through the tool-use blocks, so none of the five ran, and the agent reported "hit a token limit" and
 #: retried them one at a time. This bounds the output, not the conversation — see the conversation manager
 #: below for that.
-DEFAULT_MAX_TOKENS = 8192
+DEFAULT_MAX_TOKENS = 120000
 
 # Minimum length AgentCore Runtime enforces on runtimeSessionId (InvokeAgentRuntime
 # API: min 33, max 256 chars). We reuse the same session_id as the Strands

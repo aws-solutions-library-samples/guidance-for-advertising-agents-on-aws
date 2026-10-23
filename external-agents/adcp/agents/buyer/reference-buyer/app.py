@@ -1112,7 +1112,7 @@ async def healthcheck_info(request):
     return JSONResponse(
         {
             "seller_priority": seller_priority(),
-            "model_id": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-5"),
+            "model_id": os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-5"),
             "cognito_region": os.environ.get("COGNITO_REGION", ""),
             "cognito_client_id": os.environ.get("COGNITO_CLIENT_ID", ""),
             "agent_runtime_arn": os.environ.get("AGENT_RUNTIME_ARN", ""),

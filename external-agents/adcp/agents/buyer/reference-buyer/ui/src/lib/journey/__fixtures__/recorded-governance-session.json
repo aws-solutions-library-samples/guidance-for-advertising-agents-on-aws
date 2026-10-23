@@ -1,0 +1,126 @@
+{
+  "session_id": "adcp-buyer-agent-a3b53ac1-33e5-4408-bfd2-e22c36b9eb22",
+  "meta": {
+    "session_id": "adcp-buyer-agent-a3b53ac1-33e5-4408-bfd2-e22c36b9eb22",
+    "status": "completed",
+    "invoker": "Chat UI",
+    "mode": "agent",
+    "agent_id": "buyer-http",
+    "agent_name": "AdCP Buyer Agent (HTTP)",
+    "seller_agent_id": "",
+    "request_preview": "Set up governance for a new campaign. The advertiser's brand domain is verify-jo",
+    "started_at": "2026-08-09T01:07:39.228362+00:00",
+    "updated_at": "2026-08-09T01:08:09.655588+00:00",
+    "completed_at": "2026-08-09T01:08:09.655588+00:00",
+    "error_message": null
+  },
+  "steps": [
+    {
+      "step_index": 0,
+      "step_type": "incoming_request",
+      "timestamp": 1786237659365,
+      "content": {
+        "from": "Chat UI",
+        "text": "Set up governance for a new campaign. The advertiser's brand domain is verify-journey-d068a099.example and the operator declaring the account is verify-journey-operator-d068a099. Declare that account at the reference sales agent, register our governance agent against it there, then register the campaign plan with the governance agent using plan id verify-journey-plan-d068a099: objectives \"reach commuters on streaming audio\", total budget 50000 USD, flight 2026-09-01 to 2026-09-30, authorised channel streaming_audio. Use only the reference sales agent. Report exactly what each call returned."
+      }
+    },
+    {
+      "step_index": 1,
+      "step_type": "tool_call",
+      "timestamp": 1786237666001,
+      "content": {
+        "toolName": "adcp_sync_accounts",
+        "callId": "tooluse_4CANBXe1XNfIu9EP5QCtTq",
+        "input": {
+          "operator": "verify-journey-operator-d068a099",
+          "seller_ids": [
+            "reference"
+          ],
+          "brand_domain": "verify-journey-d068a099.example"
+        }
+      }
+    },
+    {
+      "step_index": 2,
+      "step_type": "tool_result",
+      "timestamp": 1786237670526,
+      "content": {
+        "status": "success",
+        "output": "{\"task\": \"sync_accounts\", \"sellers_queried\": 1, \"results\": [{\"seller_id\": \"reference\", \"seller_name\": \"AdCP Reference Test Seller (sandbox, MCP)\", \"transport\": \"mcp\", \"response\": {\"accounts\": [{\"account_id\": \"acc_verify_journey_d068a099_example_verify_journey_operator_d068a099\", \"brand\": {\"domain\": \"verify-journey-d068a099.example\"}, \"operator\": \"verify-journey-operator-d068a099\", \"action\": \"created\", \"status\": \"active\"}], \"sandbox\": true, \"status\": \"completed\"}}]}",
+        "callId": "tooluse_4CANBXe1XNfIu9EP5QCtTq",
+        "durationMs": 4469,
+        "toolName": "adcp_sync_accounts"
+      }
+    },
+    {
+      "step_index": 3,
+      "step_type": "tool_call",
+      "timestamp": 1786237672813,
+      "content": {
+        "toolName": "adcp_sync_governance",
+        "input": {
+          "brand_domain": "verify-journey-d068a099.example",
+          "seller_ids": [
+            "reference"
+          ],
+          "operator": "verify-journey-operator-d068a099"
+        },
+        "callId": "tooluse_aTCYkCiOiFRoN3yKk4XBXm"
+      }
+    },
+    {
+      "step_index": 4,
+      "step_type": "tool_result",
+      "timestamp": 1786237676823,
+      "content": {
+        "output": "{\"task\": \"sync_governance\", \"sellers_queried\": 1, \"results\": [{\"seller_id\": \"reference\", \"seller_name\": \"AdCP Reference Test Seller (sandbox, MCP)\", \"transport\": \"mcp\", \"response\": {\"accounts\": [{\"account\": {\"brand\": {\"domain\": \"verify-journey-d068a099.example\"}, \"operator\": \"verify-journey-operator-d068a099\"}, \"status\": \"synced\", \"governance_agents\": [{\"url\": \"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A123456789012%3Aruntime%2FRefGovernance_adcpRefGovernance-EXAMPLE123/invocations?qualifier=DEFAULT\"}]}], \"sandbox\": true, \"status\": \"completed\"}}]}",
+        "durationMs": 4080,
+        "toolName": "adcp_sync_governance",
+        "callId": "tooluse_aTCYkCiOiFRoN3yKk4XBXm",
+        "status": "success"
+      }
+    },
+    {
+      "step_index": 5,
+      "step_type": "tool_call",
+      "timestamp": 1786237680041,
+      "content": {
+        "toolName": "adcp_sync_plans",
+        "input": {
+          "flight_end": "2026-09-30",
+          "brand_domain": "verify-journey-d068a099.example",
+          "objectives": "reach commuters on streaming audio",
+          "budget_total": 50000,
+          "currency": "USD",
+          "flight_start": "2026-09-01",
+          "channels": [
+            "streaming_audio"
+          ],
+          "plan_id": "verify-journey-plan-d068a099"
+        },
+        "callId": "tooluse_SJohBGqjtSISLoTh7nZtIC"
+      }
+    },
+    {
+      "step_index": 6,
+      "step_type": "tool_result",
+      "timestamp": 1786237682778,
+      "content": {
+        "output": "{\"status\": \"completed\", \"replayed\": false, \"plans\": [{\"plan_id\": \"verify-journey-plan-d068a099\", \"status\": \"active\", \"version\": 1, \"categories\": [{\"category_id\": \"budget_authority\", \"status\": \"active\"}, {\"category_id\": \"flight_window\", \"status\": \"active\"}, {\"category_id\": \"geo_compliance\", \"status\": \"active\"}, {\"category_id\": \"channel_compliance\", \"status\": \"active\"}], \"resolved_policies\": []}]}",
+        "status": "success",
+        "durationMs": 2728,
+        "callId": "tooluse_SJohBGqjtSISLoTh7nZtIC",
+        "toolName": "adcp_sync_plans"
+      }
+    },
+    {
+      "step_index": 7,
+      "step_type": "response",
+      "timestamp": 1786237689640,
+      "content": {
+        "text": "Here's exactly what each call returned, in order:\n\n**1. `adcp_sync_accounts`** (seller: reference)\n- Action: `created`\n- Account: `acc_verify_journey_d068a099_example_verify_journey_operator_d068a099`\n- Brand domain: `verify-journey-d068a099.example`\n- Operator: `verify-journey-operator-d068a099`\n- Status: `active` (sandbox: true)\n\n**2. `adcp_sync_governance`** (seller: reference)\n- Status: `synced`\n- Account matched: brand `verify-journey-d068a099.example` / operator `verify-journey-operator-d068a099`\n- Governance agent registered: `governance_agents: [{\"url\": \"https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/RefGovernance_adcpRefGovernance-EXAMPLE123/invocations?qualifier=DEFAULT\"}]`\n- (sandbox: true)\n\n**3. `adcp_sync_plans`** (governance agent, not the sales agent)\n- Status: `completed`, `replayed: false`\n- Plan `verify-journey-plan-d068a099`: `status: active`, `version: 1`\n- Categories the governance agent will evaluate: `budget_authority` (active), `flight_window` (active), `geo_compliance` (active), `channel_compliance` (active)\n- `resolved_policies`: empty (none returned)\n\nNote on what this means: this registered the plan and the categories the governance agent says it will check \u2014 it is **not** an approval or compliance verdict. No spend has been authorized and nothing has been booked.",
+        "to": "Chat UI"
+      }
+    }
+  ]
+}

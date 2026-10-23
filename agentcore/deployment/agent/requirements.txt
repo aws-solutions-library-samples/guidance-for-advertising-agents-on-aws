@@ -30,8 +30,11 @@ IPython
 uv
 
 # Knowledge MCP Server Dependencies
-fastmcp
-mcp
+# Pinned together: fastmcp 4.0.0 moved to mcp>=2.0.0, and mcp 2.x dropped the
+# streamablehttp_client alias, which silently disabled every MCP server.
+# bedrock-agentcore also caps mcp at <2.0.0, and mcp-proxy-for-aws at fastmcp<3.5.
+fastmcp==3.4.7
+mcp==1.29.0
 mcp-proxy-for-aws>=0.1.0
 starlette
 uvicorn

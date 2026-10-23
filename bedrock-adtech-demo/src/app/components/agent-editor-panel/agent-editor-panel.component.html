@@ -502,7 +502,7 @@
         <label for="model_id">Model ID</label>
         <input type="text" id="model_id" class="form-control" [ngModel]="getDefaultModelInputs()?.model_id"
           (ngModelChange)="updateModelInput('model_id', $event)" [class.error]="hasError('model_id')"
-          [disabled]="isLoading" placeholder="e.g., global.anthropic.claude-sonnet-4-5-20250929-v1:0">
+          [disabled]="isLoading" placeholder="e.g., global.anthropic.claude-sonnet-5">
       </div>
       <div class="form-row">
         <div class="form-group half">

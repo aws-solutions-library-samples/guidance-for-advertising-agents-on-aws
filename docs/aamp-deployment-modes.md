@@ -4,6 +4,15 @@ This document describes how the IAB Tech Lab AAMP buyer and seller agents are
 integrated into the Agents for Advertising guidance solution on Amazon Bedrock
 AgentCore.
 
+> **Wider context:**
+> [`docs/agentic-seller-workflow.md`](agentic-seller-workflow.md) is the sell-side
+> architecture document — both marketplace stacks, their components and
+> interfaces, transaction flows, the trust model, and the AgentCore runtime and
+> deployment architecture. The authoritative deployment phase table lives there;
+> the "Relevant phases" numbering in this document predates a phase reordering
+> and is corrected in
+> [`docs/agentic-seller-operations.md`](agentic-seller-operations.md).
+
 > **What changed:** The AAMP buyer and seller now run as **Strands A2A** agents
 > (not CrewAI/HTTP), are protected by **OAuth (custom JWT)**, and the
 > orchestrator (AgencyAgent) calls **only the buyer**. The buyer reaches the

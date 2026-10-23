@@ -349,7 +349,7 @@ def build_config_json() -> dict:
         )
 
     return {
-        "model_id": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-5"),
+        "model_id": os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-5"),
         "cognito_region": os.environ["COGNITO_REGION"],
         "cognito_client_id": os.environ["COGNITO_CLIENT_ID"],
         "agent_runtime_arn": os.environ["AGENT_RUNTIME_ARN"],

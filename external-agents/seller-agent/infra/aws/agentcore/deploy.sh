@@ -645,12 +645,19 @@ deploy_a2a_runtime() {
     --env "AWS_REGION=${REGION}"
     --env "AWS_DEFAULT_REGION=${REGION}"
   )
+  # Every sqlite branch must set DATABASE_URL explicitly. settings.database_url
+  # defaults to sqlite:///./ad_seller.db — a relative path under /app, which is
+  # read-only in an AgentCore microVM, so every storage-backed endpoint
+  # (/discovery, /pricing, /auth/api-keys) 500s with "unable to open database
+  # file". The internal FastAPI runs in a daemon thread of this process, so a
+  # single in-memory DB serves it. Matches the mcp/http branches and the buyer.
   if [[ "${INVENTORY_TYPE}" == "s3" ]]; then
     env_args+=(
       --env "AD_SERVER_TYPE=s3"
       --env "S3_DATA_BUCKET=${S3_DATA_BUCKET:-${STACK_PREFIX}-seller-data-${REGION}}"
       --env "S3_DATA_PREFIX=${S3_DATA_PREFIX:-seller-data/}"
       --env "STORAGE_TYPE=sqlite"
+      --env "DATABASE_URL=sqlite:///:memory:"
     )
   elif [[ "${STORAGE_TYPE}" == "postgres" ]]; then
     env_args+=(
@@ -665,6 +672,7 @@ deploy_a2a_runtime() {
       --env "AD_SERVER_TYPE=${INVENTORY_TYPE}"
       --env "CSV_DATA_DIR=./data/csv/samples/aws_workshop"
       --env "STORAGE_TYPE=sqlite"
+      --env "DATABASE_URL=sqlite:///:memory:"
     )
   fi
 

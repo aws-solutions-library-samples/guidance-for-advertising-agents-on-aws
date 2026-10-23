@@ -13,8 +13,12 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root. These name Python distutils build dirs, but an unanchored `lib/`
+# matches any directory called lib at any depth -- which silently excluded four directories of
+# hand-written source: the buyer UIs' src/lib (the journey engine, config loader and types) and
+# the seller and governance CDK lib/cdk-stack.ts. A fresh clone could not build those.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -216,3 +220,8 @@ agentcore/deployment/agent/global_configuration.json
 .aamp-temperature-patched
 .aamp-patched-files
 external-agents/adcp/agents/governance/reference-governance/agentcore/.cli
+composability-documentation
+external-agents/adcp/agents/governance/reference-governance/xGOVERNANCE-AGENT-ADCP-COMPLIANCE.md
+external-agents/adcp/agents/governance/reference-governance/x_GOVERNANCE-AGENT-ADCP-COMPLIANCE.md
+external-agents/ui
+external-agents/adcp/agents/seller/reference-seller/agentcore/agentcore.json

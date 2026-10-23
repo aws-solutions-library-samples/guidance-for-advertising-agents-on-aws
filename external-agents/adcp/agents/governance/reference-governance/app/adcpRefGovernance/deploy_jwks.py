@@ -55,7 +55,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
 import sys
+import time
+import urllib.error
 import urllib.request
 
 import boto3
@@ -116,11 +119,49 @@ def build_jwks() -> dict:
     return {"keys": [jwk]}
 
 
+#: How long to wait for a just-created distribution's hostname to resolve. On a fresh deploy
+#: deploy_governance_origin.py creates the distribution moments before this runs, and its
+#: dXXXX.cloudfront.net name can return NXDOMAIN for a few minutes; macOS then caches that negative
+#: answer, so a single immediate fetch fails with "nodename nor servname provided".
+DNS_WAIT_SECONDS = 600
+DNS_RETRY_INTERVAL_SECONDS = 15
+
+
+def _fetch_published() -> tuple[bytes, str]:
+    """GET the published URL, retrying only while the hostname does not resolve or connect yet.
+
+    HTTP-level responses (including a wrong-content 200) are returned or raised immediately: those
+    mean the origin is reachable and the check below must judge them.
+    """
+    url = published_url()
+    deadline = time.monotonic() + DNS_WAIT_SECONDS
+    while True:
+        try:
+            with urllib.request.urlopen(url, timeout=15) as response:
+                return response.read(), response.headers.get("Content-Type", "")
+        except urllib.error.HTTPError:
+            raise
+        except urllib.error.URLError as exc:
+            if not isinstance(exc.reason, (socket.gaierror, ConnectionError, TimeoutError)):
+                raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise SystemExit(
+                    f"{url} still unreachable after {DNS_WAIT_SECONDS}s ({exc.reason}). The upload "
+                    "itself succeeded; re-run `uv run python deploy_jwks.py --apply` once the "
+                    "distribution's hostname resolves."
+                ) from exc
+            print(
+                f"  {url} not reachable yet ({exc.reason}); new CloudFront hostnames can take a few "
+                f"minutes to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s "
+                f"({int(remaining)}s left)."
+            )
+            time.sleep(DNS_RETRY_INTERVAL_SECONDS)
+
+
 def verify_published(expected_kid: str) -> None:
     """Fetch what was actually published and check it is a JWKS, not the SPA's HTML."""
-    with urllib.request.urlopen(published_url(), timeout=15) as response:
-        body = response.read()
-        content_type = response.headers.get("Content-Type", "")
+    body, content_type = _fetch_published()
     try:
         document = json.loads(body)
     except json.JSONDecodeError:

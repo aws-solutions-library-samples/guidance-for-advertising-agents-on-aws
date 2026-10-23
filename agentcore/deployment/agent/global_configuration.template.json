@@ -55,7 +55,8 @@
         "AAMPBuyerAgent": "#0F7B6CFF",
         "AAMPSellerAgent": "#B25E00FF",
         "AAMPBuyer": "#0F7B6CFF",
-        "AAMPSeller": "#B25E00FF"
+        "AAMPSeller": "#B25E00FF",
+        "CampaignActivationAgent": "#2E7D32FF"
     },
     "agent_configs": {
         "AdFabricAgent": {
@@ -1067,7 +1068,7 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "model_id": "global.anthropic.claude-sonnet-5",
                     "max_tokens": 8000
                 }
             },
@@ -1115,7 +1116,7 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "model_id": "global.anthropic.claude-sonnet-5",
                     "max_tokens": 8000
                 }
             },
@@ -1156,7 +1157,7 @@
                     "max_tokens": 64000
                 },
                 "PublisherMediaPlanningAgent": {
-                    "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "model_id": "global.anthropic.claude-sonnet-5",
                     "max_tokens": 12000
                 }
             },
@@ -1189,6 +1190,58 @@
             "runtime_arn": "",
             "knowledge_base": "Advertising",
             "author": "yield_optimization@streamtothemax.com",
+            "is_a2a": false,
+            "a2a_auth_type": "none"
+        },
+        "CampaignActivationAgent": {
+            "agent_id": "CampaignActivationAgent",
+            "agent_name": "CampaignActivationAgent",
+            "agent_display_name": "Campaign Activation",
+            "team_name": "Publisher Revenue Operations",
+            "agent_description": "Turns approved media intent into live, biddable direct-sold demand in the publisher's campaign catalog, bid into Prebid by the artfhouse bid adapter, and reports delivery against goal. Requires an external MCP control plane -- see the README section on MCP tool server connectivity.",
+            "tool_agent_names": [],
+            "external_agents": [],
+            "model_inputs": {
+                "default": {
+                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "max_tokens": 8000
+                },
+                "CampaignActivationAgent": {
+                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "max_tokens": 8000
+                }
+            },
+            "agent_tools": [
+                "lookup_events"
+            ],
+            "color": "#2E7D32FF",
+            "instructions": "",
+            "injectable_values": {},
+            "mcp_servers": [
+                {
+                    "id": "mcp_campaigndsp_control",
+                    "name": "artfhouse campaign control plane",
+                    "description": "Campaign control plane for the artfhouse bid adapter's direct-deals catalog -- 10 campaign lifecycle tools. Set url, and write the credential document to the ssmPath below, before enabling. See README: MCP tool server connectivity.",
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": "",
+                    "env": {},
+                    "prefix": "",
+                    "allowedTools": [],
+                    "rejectedTools": [],
+                    "authType": "oauth_m2m",
+                    "oauthClientCredentials": {
+                        "hasCredentials": false,
+                        "ssmPath": ""
+                    },
+                    "enabled": false
+                }
+            ],
+            "external_agent_configs": [],
+            "runtime_arn": "",
+            "knowledge_base": "",
+            "author": "demo@example.com",
             "is_a2a": false,
             "a2a_auth_type": "none"
         }

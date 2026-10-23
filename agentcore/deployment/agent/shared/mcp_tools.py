@@ -260,19 +260,39 @@ def _create_http(server_config: dict, prefix: str, tool_filters: dict) -> Option
             return None
     else:
         try:
-            from mcp.client.streamable_http import streamablehttp_client
+            # mcp ships two different streamable-HTTP factories, and they are NOT
+            # aliases. `streamablehttp_client(url, headers=...)` accepts headers
+            # directly; `streamable_http_client(url, *, http_client=...)` does not,
+            # and requires the bearer to ride on a pre-built httpx client. mcp 1.x
+            # exports both; mcp 2.x keeps only the latter. Prefer the headers-capable
+            # one so the common path stays on the signature this code was written for.
+            legacy_client = None
+            modern_client = None
+            try:
+                from mcp.client.streamable_http import streamablehttp_client as legacy_client
+            except ImportError:
+                from mcp.client.streamable_http import streamable_http_client as modern_client
 
-            logger.info(f"✅ MCP_TOOLS: Successfully imported streamablehttp_client, creating MCPClient for '{server_name}'")
+            logger.info(f"✅ MCP_TOOLS: Successfully imported streamable HTTP client, creating MCPClient for '{server_name}'")
 
             if headers:
                 logger.info("🔑 MCP_TOOLS: Using custom headers for authentication")
-                mcp_client = MCPClient(
-                    lambda u=url, h=headers: streamablehttp_client(url=u, headers=h),
-                    **mcp_client_kwargs,
-                )
+                if legacy_client is not None:
+                    mcp_client = MCPClient(
+                        lambda u=url, h=headers: legacy_client(url=u, headers=h),
+                        **mcp_client_kwargs,
+                    )
+                else:
+                    import httpx
+
+                    mcp_client = MCPClient(
+                        lambda u=url, h=headers: modern_client(u, http_client=httpx.AsyncClient(headers=h)),
+                        **mcp_client_kwargs,
+                    )
             else:
+                client_factory = legacy_client if legacy_client is not None else modern_client
                 mcp_client = MCPClient(
-                    lambda u=url: streamablehttp_client(u),
+                    lambda u=url, f=client_factory: f(u),
                     **mcp_client_kwargs,
                 )
             logger.info(f"✅ MCP_TOOLS: MCPClient created successfully for '{server_name}'")

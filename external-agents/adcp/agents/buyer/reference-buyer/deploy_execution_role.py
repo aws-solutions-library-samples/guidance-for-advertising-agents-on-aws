@@ -193,7 +193,7 @@ def permissions_policy() -> dict:
                 "Effect": "Allow",
                 "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
                 # The account-scoped entry covers inference profiles, which is what
-                # BEDROCK_MODEL_ID names (`us.anthropic.claude-sonnet-5`); a cross-region profile
+                # BEDROCK_MODEL_ID names (`global.anthropic.claude-sonnet-5`); a cross-region profile
                 # also routes to foundation models in other regions, hence the wildcard region on
                 # the first entry.
                 "Resource": [

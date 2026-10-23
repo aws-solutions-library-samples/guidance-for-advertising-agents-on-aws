@@ -714,14 +714,16 @@ async def get_pricing(
 ):
     """Get pricing for a product based on buyer context."""
     from ...engines.pricing_rules_engine import PricingRulesEngine
-    from ...flows import ProductSetupFlow
     from ...models.pricing_tiers import TieredPricingConfig
 
-    # Get products
-    flow = ProductSetupFlow()
-    await flow.kickoff_async()
+    # Resolve against the cached static catalog, not ProductSetupFlow. The flow
+    # mints fresh product_ids on every instantiation, while /products and
+    # /products/{id} serve ids from the static catalog — so a product_id any
+    # client can actually obtain was never present in flow.state.products and
+    # this endpoint returned 404 unconditionally.
+    catalog = _get_static_product_catalog()
 
-    product = flow.state.products.get(request.product_id)
+    product = catalog["products"].get(request.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -882,11 +884,12 @@ async def discovery_query(
     api_key_record=Depends(_get_optional_api_key_record),
 ):
     """Process a discovery query about inventory."""
-    from ...flows import DiscoveryInquiryFlow, ProductSetupFlow
+    from ...flows import DiscoveryInquiryFlow
 
-    # Get products
-    setup_flow = ProductSetupFlow()
-    await setup_flow.kickoff_async()
+    # Source products from the cached static catalog so discovery reports the
+    # same product_ids /products serves, and a buyer can price or deal on what
+    # it finds. ProductSetupFlow mints a fresh id set per instantiation.
+    catalog = _get_static_product_catalog()
 
     # Enforce agent registry
     _, max_tier = await _resolve_and_enforce_agent(request.agent_url)
@@ -905,7 +908,7 @@ async def discovery_query(
     response = flow.query(
         query=request.query,
         buyer_context=context,
-        products=setup_flow.state.products,
+        products=catalog["products"],
     )
 
     return response

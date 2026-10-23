@@ -1153,6 +1153,11 @@ initialize_unique_id() {
                     print_status "Generated new unique ID: $UNIQUE_ID"
                 fi
             else
+                if [ "$RESUME_AT_STEP" != "1" ]; then
+                    print_error "Resuming at step $RESUME_AT_STEP but $id_file does not exist."
+                    print_error "Pass the ID of the deployment you are resuming: --unique-id <id>"
+                    exit 1
+                fi
                 print_warning "No existing unique ID found, generating new one"
                 setup_python_environment
                 UNIQUE_ID=$($PYTHON_CMD -c "import random, string; print(''.join(random.choices(string.ascii_lowercase + string.digits, k=6)))")
@@ -4866,6 +4871,14 @@ show_usage() {
 
 # Function to prompt for deployment type
 prompt_deployment_type() {
+    # A resume continues an existing deployment by definition. Treating it as clean generated a new
+    # unique ID and overwrote .unique-id-<prefix>-<region>, so later phases looked for resources
+    # (e.g. <prefix>-a4a-mcp-handler-<id>) that Phase 2 had created under the previous ID.
+    if [ "$RESUME_AT_STEP" != "1" ]; then
+        CLEAN_DEPLOYMENT=false
+        print_status "Resuming at step $RESUME_AT_STEP: reusing the existing unique ID"
+        return 0
+    fi
     if [ "$INTERACTIVE_MODE" = true ]; then
         echo ""
         print_status "=== DEPLOYMENT TYPE ==="
@@ -5988,7 +6001,7 @@ main() {
         echo ""
         
         print_status "Configuration:"
-        print_status "  Unique id: $$UNIQUE_ID"
+        print_status "  Unique id: $UNIQUE_ID"
         print_status "  Stack Prefix: $STACK_PREFIX"
         print_status "  AWS Region: $AWS_REGION"
         print_status "  AWS Profile: ${AWS_PROFILE:-default}"

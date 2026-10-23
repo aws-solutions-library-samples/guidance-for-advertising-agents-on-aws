@@ -73,6 +73,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 
 import httpx
 
@@ -130,7 +131,41 @@ def build_revocation_list(*, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECO
     return jws.issue_revocation_list(issuer=issuer(), next_update_seconds=next_update_seconds)
 
 
-def verify_published() -> dict:
+#: How long the CLI waits for a just-created distribution's hostname to resolve. On a fresh deploy the
+#: distribution is created minutes before this runs, and its dXXXX.cloudfront.net name can fail DNS
+#: lookup for a while (macOS also caches the negative answer). The scheduled Lambda passes 0: its
+#: distribution is long established, and a connect failure there is a real fault, not propagation.
+CLI_DNS_WAIT_SECONDS = 600
+DNS_RETRY_INTERVAL_SECONDS = 15
+
+
+def _get(url: str, *, dns_wait_seconds: int) -> httpx.Response:
+    """GET `url`, retrying only connect-level failures (DNS, refused, connect timeout).
+
+    Any HTTP response is returned as-is so the caller judges it, including a wrong-content 200.
+    """
+    deadline = time.monotonic() + dns_wait_seconds
+    while True:
+        try:
+            return httpx.get(url, timeout=15)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                if dns_wait_seconds:
+                    raise SystemExit(
+                        f"{url} still unreachable after {dns_wait_seconds}s ({exc}). The upload "
+                        "itself succeeded; re-run `uv run python deploy_revocations.py --apply` once "
+                        "the distribution's hostname resolves."
+                    ) from exc
+                raise
+            print(
+                f"  {url} not reachable yet ({exc}); new CloudFront hostnames can take a few minutes "
+                f"to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s ({int(remaining)}s left)."
+            )
+            time.sleep(DNS_RETRY_INTERVAL_SECONDS)
+
+
+def verify_published(*, dns_wait_seconds: int = 0) -> dict:
     """Fetch what was actually published and check it verifies against this agent's own live JWKS.
 
     Returns the verified payload so a caller (main() or the Lambda handler) can log/report on it
@@ -140,7 +175,7 @@ def verify_published() -> dict:
     from adcp.signing.jwks import StaticJwksResolver
     from adcp.signing.revocation_fetcher import REVOCATION_LIST_TYP
 
-    response = httpx.get(published_url(), timeout=15)
+    response = _get(published_url(), dns_wait_seconds=dns_wait_seconds)
     body = response.text.strip()
     content_type = response.headers.get("content-type", "")
     if body.startswith("<"):
@@ -150,7 +185,7 @@ def verify_published() -> dict:
             "the object is not at the expected key."
         )
 
-    jwks_response = httpx.get(jwks_url(), timeout=15)
+    jwks_response = _get(jwks_url(), dns_wait_seconds=dns_wait_seconds)
     jwks = jwks_response.json()
     resolver = StaticJwksResolver(jwks)
     payload = verify_jws_document(body, jwks_resolver=resolver, expected_typ=REVOCATION_LIST_TYP)
@@ -163,7 +198,9 @@ def verify_published() -> dict:
     return payload
 
 
-def publish(*, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECONDS) -> dict:
+def publish(
+    *, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECONDS, dns_wait_seconds: int = 0
+) -> dict:
     """Build, upload, invalidate and verify -- the one publish path both the CLI (`--apply`) and the
     scheduled Lambda call, so there is exactly one implementation of "how this document gets
     republished" rather than a CLI copy and a Lambda copy that could drift apart.
@@ -196,7 +233,7 @@ def publish(*, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECONDS) -> dict:
     print(f"Invalidated /{S3_KEY} on distribution {dist}")
 
     print("\n=== Verifying what is actually served ===")
-    return verify_published()
+    return verify_published(dns_wait_seconds=dns_wait_seconds)
 
 
 def main() -> int:
@@ -225,7 +262,7 @@ def main() -> int:
         print("\nDry run. Nothing uploaded.")
         return 0
 
-    publish(next_update_seconds=args.next_update_seconds)
+    publish(next_update_seconds=args.next_update_seconds, dns_wait_seconds=CLI_DNS_WAIT_SECONDS)
     print(f"\nSellers poll this at: {published_url()}")
     return 0
 

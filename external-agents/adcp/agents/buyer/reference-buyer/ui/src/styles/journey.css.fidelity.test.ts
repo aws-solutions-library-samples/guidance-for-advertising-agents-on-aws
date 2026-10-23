@@ -19,7 +19,7 @@
  * jsdom would mean changing shared setup for one test's benefit.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +28,10 @@ import { describe, expect, it } from 'vitest';
 const here = dirname(fileURLToPath(import.meta.url));
 const PROTOTYPE = resolve(here, '../../../../../../.kiro/specs/journey.html');
 const PORTED = resolve(here, 'journey.css');
+
+// The prototype lives under the gitignored `.kiro/` directory, so a fresh clone does not have it.
+// Without it there is nothing to compare against, and the suite skips rather than failing on ENOENT.
+const HAS_PROTOTYPE = existsSync(PROTOTYPE);
 
 /** The four selectors that cannot be mechanically prefixed, and what they become. */
 const ADAPTED: Record<string, string> = {
@@ -134,8 +138,9 @@ function renameAnimations(body: string, keyframeNames: readonly string[]): strin
   );
 }
 
-describe('journey.css is the prototype stylesheet', () => {
-  const source = parseRules(prototypeCss());
+describe.skipIf(!HAS_PROTOTYPE)('journey.css is the prototype stylesheet', () => {
+  // Vitest still runs a skipped suite's body to collect its tests, so the read is guarded here too.
+  const source = HAS_PROTOTYPE ? parseRules(prototypeCss()) : [];
   const ported = parseRules(readFileSync(PORTED, 'utf8'));
   const keyframeNames = source
     .filter((rule) => rule.selector.startsWith('@keyframes'))

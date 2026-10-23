@@ -14,7 +14,7 @@ import { App } from './App';
 import type { AppConfig } from './lib/types';
 
 const config: AppConfig = {
-  model_id: 'us.anthropic.claude-sonnet-5',
+  model_id: 'global.anthropic.claude-sonnet-5',
   cognito_region: 'us-east-1',
   cognito_client_id: 'client-id',
   agent_runtime_arn: 'arn:aws:bedrock-agentcore:us-east-1:1:runtime/adcp_buyer_agent-X',
