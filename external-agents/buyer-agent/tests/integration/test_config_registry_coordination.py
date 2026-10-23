@@ -55,9 +55,7 @@ class TestSettingsToClientConfiguration:
         )
 
         endpoints = settings.get_seller_endpoints()
-        assert len(endpoints) == 3
-        assert "http://seller1.test" in endpoints
-        assert "http://seller3.test" in endpoints
+        assert endpoints == ["http://seller1.test", "http://seller2.test", "http://seller3.test"]
 
     def test_settings_empty_endpoints(self):
         """Empty seller_endpoints should return empty list."""

@@ -8,6 +8,8 @@ and InspectDealTool -- the CrewAI tools DealLibrary uses to view,
 filter, search, and aggregate portfolio views.
 """
 
+import re
+
 import pytest
 
 from ad_buyer.storage.deal_store import DealStore
@@ -610,7 +612,7 @@ class TestPortfolioSummaryTool:
         result = tool._run(options_json="{}")
 
         # Should mention some sellers
-        assert "ESPN" in result or "espn.com" in result.lower()
+        assert "ESPN" in result or re.search(r"\bespn\.com\b", result, re.IGNORECASE)
 
     def test_summary_portfolio_value(self, populated_store):
         """Summary should calculate total portfolio value."""

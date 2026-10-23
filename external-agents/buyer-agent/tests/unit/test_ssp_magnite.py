@@ -20,6 +20,7 @@ import json
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
 
@@ -169,11 +170,11 @@ class TestMagniteConnectorIdentity:
 
     def test_streaming_api_url(self, streaming_connector):
         """Streaming connector uses api.tremorhub.com base URL."""
-        assert "tremorhub.com" in streaming_connector.api_base_url
+        assert urlparse(streaming_connector.api_base_url).hostname == "api.tremorhub.com"
 
     def test_dvplus_api_url(self, dvplus_connector):
         """DV+ connector uses api.rubiconproject.com base URL."""
-        assert "rubiconproject.com" in dvplus_connector.api_base_url
+        assert urlparse(dvplus_connector.api_base_url).hostname == "api.rubiconproject.com"
 
     def test_invalid_platform_raises(self, monkeypatch):
         """Invalid platform raises ValueError on construction."""
@@ -272,12 +273,12 @@ class TestMagniteNormalizeDeal:
     def test_normalize_sets_seller_url_streaming(self, streaming_connector, raw_ctv_deal):
         """_normalize_deal sets seller_url to Magnite Streaming API URL."""
         result = streaming_connector._normalize_deal(raw_ctv_deal)
-        assert "tremorhub.com" in result["seller_url"]
+        assert urlparse(result["seller_url"]).hostname == "api.tremorhub.com"
 
     def test_normalize_sets_seller_url_dvplus(self, dvplus_connector, raw_ctv_deal):
         """_normalize_deal sets seller_url to Magnite DV+ API URL."""
         result = dvplus_connector._normalize_deal(raw_ctv_deal)
-        assert "rubiconproject.com" in result["seller_url"]
+        assert urlparse(result["seller_url"]).hostname == "api.rubiconproject.com"
 
     def test_normalize_sets_product_id(self, streaming_connector, raw_ctv_deal):
         """_normalize_deal sets product_id to the Magnite deal ID."""

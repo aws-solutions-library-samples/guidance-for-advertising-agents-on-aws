@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,6 +14,11 @@ from ad_buyer.clients.sgp_client import SGPClientError
 from ad_buyer.models.buyer_identity import BuyerContext, BuyerIdentity
 from ad_buyer.models.sgp import ApprovalRecord
 from ad_buyer.tools.buyer_deals import RequestDealTool
+
+
+def _domains(result: str) -> set[str]:
+    """Publisher domains named in a tool's text output."""
+    return set(re.findall(r"\b[a-z0-9-]+\.example\.com\b", result))
 
 
 @pytest.fixture
@@ -364,9 +370,7 @@ async def test_discovery_enforce_filters_not_approved(discovery_client, agency_c
         sgp_unknown_policy="block",
     )
     result = await tool._arun(query="ctv inventory")
-    assert "approved.example.com" in result
-    assert "denied.example.com" not in result
-    assert "unknown.example.com" not in result
+    assert _domains(result) == {"approved.example.com"}
     assert "filtered" in result.lower()
 
 
@@ -384,9 +388,7 @@ async def test_discovery_enforce_warn_keeps_unknowns(discovery_client, agency_co
         sgp_unknown_policy="warn",
     )
     result = await tool._arun(query="ctv inventory")
-    assert "approved.example.com" in result
-    assert "denied.example.com" not in result
-    assert "unknown.example.com" in result
+    assert _domains(result) == {"approved.example.com", "unknown.example.com"}
     assert "SGP WARNING" in result
 
 
@@ -424,9 +426,12 @@ async def test_discovery_no_enforce_annotates_only(discovery_client, agency_cont
         sgp_enforce=False,
     )
     result = await tool._arun(query="ctv inventory")
-    assert "approved.example.com" in result
-    assert "denied.example.com" in result  # not filtered
-    assert "unknown.example.com" in result
+    # Not filtered: every product's domain is still listed.
+    assert _domains(result) == {
+        "approved.example.com",
+        "denied.example.com",
+        "unknown.example.com",
+    }
     assert "NOT APPROVED" in result
     assert "filtered" not in result.lower()
 
