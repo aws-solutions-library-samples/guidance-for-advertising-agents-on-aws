@@ -593,7 +593,7 @@ Cognito returns an access token (or rejects with NotAuthorizedException
 for a wrong password)
   │
   ▼
-Browser stores the token in sessionStorage, sends it as
+Browser keeps the token in memory (not Web Storage), sends it as
 "Authorization: Bearer <token>" on every /invocations call
   │
   ▼

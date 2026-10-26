@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
-import { runtimeSessionId } from './lib/session';
+import { clearSession, runtimeSessionId, saveSession } from './lib/session';
 import { allTestBriefs } from './lib/testBriefs';
 import type { AppConfig } from './lib/types';
 
@@ -66,6 +66,7 @@ function stubConfig(body: unknown, ok = true, status = 200, contentType = 'appli
 
 beforeEach(() => {
   sessionStorage.clear();
+  clearSession();
 });
 
 afterEach(() => {
@@ -127,10 +128,7 @@ describe('App gate', () => {
 
   it('goes straight to the app when the tab already holds a session', async () => {
     // Restoring rather than flashing the login screen is the point.
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig(config);
     renderApp();
     await waitFor(() => {
@@ -140,10 +138,7 @@ describe('App gate', () => {
   });
 
   it('shows the build stamp the config reported', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig(config);
     renderApp();
     await waitFor(() => {
@@ -152,10 +147,7 @@ describe('App gate', () => {
   });
 
   it('says "served locally" when there is no publish time', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig({ ...config, ui_published_at: '' });
     renderApp();
     await waitFor(() => {
@@ -164,10 +156,7 @@ describe('App gate', () => {
   });
 
   it('names the runtime it will send turns to', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig(config);
     renderApp();
     await waitFor(() => {
@@ -176,10 +165,7 @@ describe('App gate', () => {
   });
 
   it('says so when no runtime is configured, rather than showing a bare region', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig({ ...config, agent_runtime_arn: '' });
     renderApp();
     await waitFor(() => {
@@ -188,10 +174,7 @@ describe('App gate', () => {
   });
 
   it('renders the chat column with a composer once signed in', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig({
       ...config,
       agents: [{ id: 'buyer-a2a', name: 'AdCP Buyer Agent (A2A)' }],
@@ -209,10 +192,7 @@ describe('App gate', () => {
   });
 
   it('says there is nothing to send to when no agent is configured', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig({ ...config, agents: [], default_agent_id: '' });
     renderApp();
     await waitFor(() => {
@@ -223,10 +203,7 @@ describe('App gate', () => {
   });
 
   it('surfaces a registry error instead of an unexplained empty selector', async () => {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
     stubConfig({ ...config, agents: [], default_agent_id: '', agents_error: 'table not found' });
     renderApp();
     await waitFor(() => {
@@ -236,20 +213,14 @@ describe('App gate', () => {
 
   it('offers the Users button only to an admin', async () => {
     // Non-admin token first.
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: jwtWith({ 'cognito:groups': ['ops'] }) }),
-    );
+    saveSession({ username: 'sam', accessToken: jwtWith({ 'cognito:groups': ['ops'] }) });
     stubConfig(config);
     const plain = renderApp();
     await waitFor(() => screen.getByText('sam'));
     expect(screen.queryByRole('button', { name: /Users/i })).toBeNull();
     plain.unmount();
 
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'root', accessToken: jwtWith({ 'cognito:groups': ['admin'] }) }),
-    );
+    saveSession({ username: 'root', accessToken: jwtWith({ 'cognito:groups': ['admin'] }) });
     renderApp();
     await waitFor(() => screen.getByText('root'));
     expect(screen.getByRole('button', { name: /Users/i })).toBeTruthy();
@@ -278,10 +249,7 @@ describe('chat empty state: example briefs and New session', () => {
   };
 
   function signIn() {
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-    );
+    saveSession({ username: 'sam', accessToken: 'tok' });
   }
 
   it('offers both brief categories while the transcript is empty', async () => {

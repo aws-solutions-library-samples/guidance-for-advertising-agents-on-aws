@@ -16,7 +16,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { loadSession, saveSession, type StoredSession } from '../lib/session';
+import { clearSession, loadSession, saveSession, type StoredSession } from '../lib/session';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -44,8 +44,8 @@ function gate(): StoredSession | null {
 
 describe('the mount-time session gate', () => {
   beforeEach(() => {
-    // sessionStorage, not localStorage: tokens live for the tab (see lib/session.ts).
-    window.sessionStorage.clear();
+    // Tokens are held in memory, not Web Storage (see lib/session.ts).
+    clearSession();
   });
 
   it('accepts a session that has not expired', () => {

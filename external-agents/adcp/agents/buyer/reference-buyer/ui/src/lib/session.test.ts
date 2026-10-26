@@ -15,6 +15,8 @@ import {
 
 beforeEach(() => {
   sessionStorage.clear();
+  localStorage.clear();
+  clearSession();
 });
 
 describe('saveSession / loadSession', () => {
@@ -27,20 +29,26 @@ describe('saveSession / loadSession', () => {
     expect(loadSession()).toBeNull();
   });
 
-  it('returns null for corrupted storage rather than throwing', () => {
-    sessionStorage.setItem('adcp_buyer_agent_session', '{not json');
+  it('treats a session with no token as absent', () => {
+    // Handing back a session that cannot authenticate anything is worse than reporting none.
+    saveSession({ username: 'sam', accessToken: '' });
     expect(loadSession()).toBeNull();
   });
 
-  it('treats a stored value with no token as absent', () => {
-    // Handing back a session that cannot authenticate anything is worse than reporting none.
-    sessionStorage.setItem('adcp_buyer_agent_session', JSON.stringify({ username: 'sam' }));
-    expect(loadSession()).toBeNull();
-    sessionStorage.setItem(
-      'adcp_buyer_agent_session',
-      JSON.stringify({ username: 'sam', accessToken: '' }),
-    );
-    expect(loadSession()).toBeNull();
+  it('never writes the tokens to Web Storage', () => {
+    saveSession({ username: 'sam', accessToken: 'access-tok', idToken: 'id-tok', expiresAt: 1 });
+    const everything = [sessionStorage, localStorage]
+      .flatMap((store) => Object.keys(store).map((key) => store.getItem(key) ?? ''))
+      .join('\n');
+    expect(everything).not.toContain('access-tok');
+    expect(everything).not.toContain('id-tok');
+  });
+
+  it('hands out a copy, so callers cannot alter the held session', () => {
+    saveSession({ username: 'sam', accessToken: 'tok' });
+    const first = loadSession();
+    if (first) first.accessToken = 'changed';
+    expect(loadSession()?.accessToken).toBe('tok');
   });
 
   it('omits optional fields rather than storing undefined', () => {
@@ -61,13 +69,18 @@ describe('clearSession', () => {
 });
 
 describe('sessionFromAuthResult', () => {
-  it('carries the tokens across', () => {
+  it('carries the access and ID tokens across', () => {
     const stored = sessionFromAuthResult('sam', {
       AccessToken: 'a',
       IdToken: 'i',
       RefreshToken: 'r',
     });
-    expect(stored).toMatchObject({ username: 'sam', accessToken: 'a', idToken: 'i', refreshToken: 'r' });
+    expect(stored).toMatchObject({ username: 'sam', accessToken: 'a', idToken: 'i' });
+  });
+
+  it('drops the refresh token', () => {
+    const stored = sessionFromAuthResult('sam', { AccessToken: 'a', RefreshToken: 'r' });
+    expect(JSON.stringify(stored)).not.toContain('"r"');
   });
 
   it('converts ExpiresIn into an absolute expiry', () => {

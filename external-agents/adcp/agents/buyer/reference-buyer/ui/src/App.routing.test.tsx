@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
+import { clearSession, saveSession } from './lib/session';
 import type { AppConfig } from './lib/types';
 
 const config: AppConfig = {
@@ -37,10 +38,8 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   sessionStorage.clear();
-  sessionStorage.setItem(
-    'adcp_buyer_agent_session',
-    JSON.stringify({ username: 'sam', accessToken: 'tok' }),
-  );
+  clearSession();
+  saveSession({ username: 'sam', accessToken: 'tok' });
   // `/config` answers; anything else (the runtime's own action calls) is refused, so the journey
   // view exercises its failure path.
   vi.stubGlobal(
@@ -108,6 +107,7 @@ describe('routing', () => {
 
   it('shows the sign-in screen on any route when signed out', async () => {
     sessionStorage.clear();
+    clearSession();
     renderAt('/');
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /^Sign in$/ })).toBeTruthy();

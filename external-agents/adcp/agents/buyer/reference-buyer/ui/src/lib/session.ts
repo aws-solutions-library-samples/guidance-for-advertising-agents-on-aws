@@ -1,13 +1,22 @@
 /**
- * Browser-side session storage.
+ * Browser-side session state.
  *
- * `sessionStorage`, not `localStorage`, deliberately: tokens live for the tab and are gone when it
- * closes, rather than persisting on a shared machine.
+ * Cognito tokens are held in module memory only, never in Web Storage, so script running on the page
+ * cannot read them back out of `sessionStorage` or `localStorage`. A page reload therefore signs the
+ * user out.
+ *
+ * The runtime session id is dropped on load as well. Otherwise whoever signs in next in the same tab
+ * would continue the previous user's conversation. An earlier conversation can still be resumed
+ * explicitly from the session list (`adoptRuntimeSessionId`).
+ *
+ * Cognito's refresh token is not kept: nothing refreshes the session, and it outlives the access
+ * token by days.
  */
 
 import type { AuthResult } from './types';
 
-const SESSION_KEY = 'adcp_buyer_agent_session';
+/** Where earlier builds stored the tokens. Removed on load so an upgraded tab does not keep them. */
+const LEGACY_SESSION_KEY = 'adcp_buyer_agent_session';
 const RUNTIME_SESSION_KEY = 'adcp_buyer_agent_runtime_session_id';
 
 /** AgentCore's minimum length for a runtime session id. Shorter values are rejected outright. */
@@ -17,50 +26,50 @@ export interface StoredSession {
   username: string;
   accessToken: string;
   idToken?: string;
-  refreshToken?: string;
   expiresAt?: number;
 }
 
+let current: StoredSession | null = null;
+
+try {
+  sessionStorage.removeItem(LEGACY_SESSION_KEY);
+  sessionStorage.removeItem(RUNTIME_SESSION_KEY);
+} catch {
+  // No Web Storage (private mode with storage disabled, or a non-browser host): nothing to purge.
+}
+
 export function saveSession(session: StoredSession): void {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  // A session without a token is unusable; treating it as absent is more useful than handing
+  // callers a session they cannot authenticate with.
+  if (typeof session.accessToken !== 'string' || session.accessToken === '') {
+    current = null;
+    return;
+  }
+  current = {
+    username: session.username,
+    accessToken: session.accessToken,
+    ...(session.idToken !== undefined ? { idToken: session.idToken } : {}),
+    ...(session.expiresAt !== undefined ? { expiresAt: session.expiresAt } : {}),
+  };
 }
 
 export function loadSession(): StoredSession | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    // A stored value without a token is unusable; treating it as absent is more useful than
-    // handing callers a session they cannot authenticate with.
-    if (!parsed || typeof parsed !== 'object') return null;
-    const candidate = parsed as Partial<StoredSession>;
-    if (typeof candidate.accessToken !== 'string' || candidate.accessToken === '') return null;
-    return {
-      username: typeof candidate.username === 'string' ? candidate.username : '',
-      accessToken: candidate.accessToken,
-      ...(candidate.idToken !== undefined ? { idToken: candidate.idToken } : {}),
-      ...(candidate.refreshToken !== undefined ? { refreshToken: candidate.refreshToken } : {}),
-      ...(candidate.expiresAt !== undefined ? { expiresAt: candidate.expiresAt } : {}),
-    };
-  } catch {
-    return null;
-  }
+  return current === null ? null : { ...current };
 }
 
 export function clearSession(): void {
-  sessionStorage.removeItem(SESSION_KEY);
+  current = null;
   // Cleared together with the tokens so a new sign-in starts a new conversation rather than
   // inheriting the previous user's history from the agent's session memory.
   sessionStorage.removeItem(RUNTIME_SESSION_KEY);
 }
 
-/** Turns Cognito's token set into what gets stored. */
+/** Turns Cognito's token set into the session kept in memory. */
 export function sessionFromAuthResult(username: string, auth: AuthResult): StoredSession {
   return {
     username,
     accessToken: auth.AccessToken,
     ...(auth.IdToken !== undefined ? { idToken: auth.IdToken } : {}),
-    ...(auth.RefreshToken !== undefined ? { refreshToken: auth.RefreshToken } : {}),
     ...(auth.ExpiresIn !== undefined
       ? { expiresAt: Date.now() + auth.ExpiresIn * 1000 }
       : {}),

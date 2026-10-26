@@ -34,8 +34,8 @@ export interface AuthState {
 }
 
 export function useAuth(config: CognitoConfig | null): AuthState {
-  // Read once on mount: a session already in storage means this tab is signed in, so the login
-  // screen is skipped rather than flashed.
+  // Read once on mount: a session already held in memory (a remount without a page reload) means
+  // this tab is signed in, so the login screen is skipped rather than flashed.
   //
   // An EXPIRED stored session counts as not signed in. Without this check the app stayed on the
   // journey view holding a dead token, and the failure surfaced in the worst possible place: every
@@ -44,7 +44,7 @@ export function useAuth(config: CognitoConfig | null): AuthState {
   // read "No sessions recorded yet." indefinitely and ignored new sessions, which looks like a broken
   // backend rather than an hour-old login. Access tokens last one hour, so this was reached routinely.
   //
-  // Storage is cleared too, so a reload cannot resurrect the same dead token.
+  // Clearing also drops the runtime session id, so the next sign-in starts a new conversation.
   const [session, setSession] = useState<StoredSession | null>(() => {
     const stored = loadSession();
     if (stored && isSessionExpired(stored)) {
