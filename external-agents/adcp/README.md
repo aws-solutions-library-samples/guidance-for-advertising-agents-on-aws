@@ -517,6 +517,16 @@ that skips those still costs $1.50–2.50/month. Scheduling a KMS key for deleti
 governance runtime will not start without a resolvable key, so treat that one as a deliberate
 decision rather than cleanup.
 
+This subtree has no teardown of its own. The parent repo's `scripts/cleanup_adcp_agents.py` removes
+every resource one instance prefix created (stacks, runtimes, buckets, tables, Cognito, CloudFront,
+secret, SSM parameters, log groups) and leaves the KMS key unless passed `--delete-kms-key`:
+
+```bash
+python scripts/cleanup_adcp_agents.py --prefix <instance-prefix> --region us-east-1 --dry-run
+python scripts/cleanup_adcp_agents.py --prefix <instance-prefix> --region us-east-1 \
+  --manifest external-agents/adcp/deployments.local.json
+```
+
 Sources: [AgentCore](https://aws.amazon.com/bedrock/agentcore/pricing/),
 [Bedrock](https://aws.amazon.com/bedrock/pricing/), [KMS](https://aws.amazon.com/kms/pricing/),
 [ECR](https://aws.amazon.com/ecr/pricing/), [S3](https://aws.amazon.com/s3/pricing/),

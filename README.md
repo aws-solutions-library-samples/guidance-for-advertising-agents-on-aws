@@ -109,8 +109,8 @@ The AgentCore deployment model provides cost advantages through:
   the machine-to-machine client ($0.40/month), and the **ECR** images for its runtimes (up to
   ~$1.00/month, and this is the line that creeps: every redeploy pushes a new image and old ones
   persist without a lifecycle policy). Usage adds roughly **$0.22 per buyer conversation**, ~99% of
-  which is Bedrock tokens. ⚠️ **`--cleanup` does not remove these resources** — see
-  [Cleanup](#cleanup).
+  which is Bedrock tokens. `--cleanup` removes all of it except the KMS key, which it asks about
+  separately because scheduling a key for deletion is irreversible; see [Cleanup](#cleanup).
 - **Quick MCP Gateway (Phase 13)** adds a gateway priced per API call — `InvokeTool` at $5 per
   million and gateway operations such as `ListTools` and health checks — plus one Lambda. With
   four tools, no semantic-search indexing, and demo-scale usage, this is cents per month.
@@ -131,7 +131,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | ----------- | ------------ | ------------ |
 | Amazon Bedrock Foundation Models | Claude Sonnet 5 (orchestrators) + Haiku 4.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
 | Amazon Bedrock AgentCore | AgentCore Runtime (container invocations) and AgentCore Memory (short-term + summary/semantic); average session duration of 45 minutes | $24.00 |
-| AdCP reference agents (KMS + Secrets Manager + ECR + S3) | **Optional (Phase 9)** — the standing cost of the AdCP ecosystem in `external-agents/adcp/`. One KMS asymmetric signing key for governance intent tokens ($1.00), one Secrets Manager secret for the M2M client ($0.40), ECR images for its 4 runtimes and the revocations Lambda (≤$1.00), S3 (<$0.05). The 4 AgentCore runtimes, 3 DynamoDB tables and 2 CloudFront distributions are $0 idle. Usage adds ~$0.22 per buyer conversation on top, almost entirely Bedrock tokens. **$0.00 if the phase is skipped** — but note `--cleanup` does not remove these | $2.45 |
+| AdCP reference agents (KMS + Secrets Manager + ECR + S3) | **Optional (Phase 9)** — the standing cost of the AdCP ecosystem in `external-agents/adcp/`. One KMS asymmetric signing key for governance intent tokens ($1.00), one Secrets Manager secret for the M2M client ($0.40), ECR images for its 4 runtimes and the revocations Lambda (≤$1.00), S3 (<$0.05). The 4 AgentCore runtimes, 3 DynamoDB tables and 2 CloudFront distributions are $0 idle. Usage adds ~$0.22 per buyer conversation on top, almost entirely Bedrock tokens. **$0.00 if the phase is skipped**; `--cleanup` removes everything but the KMS key, which it asks about separately | $2.45 |
 | Amazon Bedrock AgentCore Gateway | **Optional (Phase 13)** — Quick MCP Gateway. Priced per API call: `InvokeTool` at $5 per million, plus gateway operations (`ListTools`, health checks). 4 tools registered from a static schema, so no semantic-search indexing charge. Demo-scale Quick Suite, Kiro and Claude Desktop use. **$0.00 if the phase is skipped** | $0.10 |
 | Amazon Bedrock — Nova Sonic (voice) | Bidirectional speech-to-speech streaming for the voice interface, priced per minute of audio in/out; occasional demo use | $6.00 |
 | Amazon Bedrock — Image models (Nova Canvas / SD 3.5) | Creative generation via the asynchronous image pipeline | $3.00 |
@@ -1398,10 +1398,10 @@ aws cognito-idp admin-create-user \
 
   **⚠️ Cost and cleanup.** This provisions four AgentCore runtimes, three DynamoDB tables, three S3
   buckets, two CloudFront distributions, a KMS asymmetric signing key, a Secrets Manager secret and a
-  separate Cognito user pool. Standing cost is roughly **$2.45/month** (see [Cost](#cost)), and
-  **`./scripts/deploy-ecosystem.sh --cleanup` does not remove any of it** — its teardown matches
-  `<STACK_PREFIX>-*` resources, while these are named from the AdCP instance prefix. See
-  [Cleanup](#cleanup) for what to remove by hand.
+  separate Cognito user pool. Standing cost is roughly **$2.45/month** (see [Cost](#cost)).
+  `./scripts/deploy-ecosystem.sh --cleanup` removes it as its first step, and
+  `./scripts/deploy-ecosystem.sh --cleanup-adcp` removes just these agents while leaving the rest of
+  the stack running. See [Cleanup](#cleanup).
 
 ### 11. Quick MCP Gateway (Optional)
 
@@ -1604,6 +1604,7 @@ The deployment script includes comprehensive cleanup functionality:
 ```
 
 The automated cleanup removes:
+- **AdCP reference agents (Phase 9)**, if deployed — see the note below
 - **AgentCore containers and runtimes**
 - **Legacy AdCP MCP Gateway resources** — the gateway was [removed](#adcp-migration-status) and is no longer
   created, so these exist only on stacks deployed before the removal. Cleanup still deletes them so they stop
@@ -1621,32 +1622,49 @@ The automated cleanup removes:
 
 **Note:** The cleanup script queries AWS directly to find resources matching your stack prefix, so it works even if local tracking files are missing.
 
-> ### ⚠️ Cleanup does NOT remove the AdCP agents (Phase 9)
+> ### Cleaning up the AdCP agents (Phase 9)
 >
-> If you deployed [Phase 9](#10-adcp-reference-agents-optional), `--cleanup` leaves all of it behind.
-> The teardown matches `<STACK_PREFIX>-*`, but the AdCP subtree names everything from its own instance
-> prefix — `<STACK_PREFIX><UNIQUE_ID>`, lowercased and stripped to `[a-z0-9]` (so `a4a` + `abc123`
-> becomes `a4aabc123`). Nothing matches, so nothing is deleted, and the KMS key and ECR images keep
-> billing.
+> The AdCP subtree names everything from its own instance prefix, `<STACK_PREFIX><UNIQUE_ID>`
+> lowercased and stripped to `[a-z0-9]` (so `a4a` + `abc123` becomes `a4aabc123`), not from
+> `<STACK_PREFIX>-*`. `--cleanup` derives that prefix the same way Phase 9 did and runs
+> `scripts/cleanup_adcp_agents.py` against it as its first step, before the AgentCore cleanup. It
+> prints an inventory, asks once to confirm, and then asks separately about the KMS signing key.
 >
-> With `ADCP=<that prefix>`, the resources to remove are:
+> To remove only the AdCP agents and keep the rest of the stack running:
+>
+> ```bash
+> ./scripts/deploy-ecosystem.sh --cleanup-adcp --stack-prefix a4a --unique-id 12sek1 --region us-east-1
+> ```
+>
+> For an instance orphaned by an older `--cleanup` (or one whose `.unique-id` file is gone), run the
+> script directly with the prefix from `external-agents/adcp/deployments.local.json`:
+>
+> ```bash
+> .venv-deployment/bin/python scripts/cleanup_adcp_agents.py --prefix a4aabc123 --region us-east-1 --dry-run
+> .venv-deployment/bin/python scripts/cleanup_adcp_agents.py --prefix a4aabc123 --region us-east-1 \
+>   --stack-prefix a4a --unique-id abc123 --manifest external-agents/adcp/deployments.local.json
+> ```
+>
+> With `ADCP=<that prefix>`, it removes:
 >
 > | Resource | Name |
 > |---|---|
-> | CloudFormation stacks | `AgentCore-${ADCP}RefSeller-default`, `AgentCore-${ADCP}RefGovernance-default` |
-> | AgentCore runtimes | `${ADCP}_buyer_agent`, `${ADCP}_buyer_agent_a2a` (the two above are removed with their stacks) |
+> | CloudFormation stacks | `AgentCore-${ADCP}RefSeller-default`, `AgentCore-${ADCP}RefGovernance-default` (these own the seller and governance runtimes, their ECR repos, CodeBuild projects, Lambdas and roles) |
+> | AgentCore | runtimes `${ADCP}_buyer_agent`, `${ADCP}_buyer_agent_a2a`; OAuth2 credential provider `${ADCP}-agents-m2m` |
+> | ECR / CodeBuild | the buyer runtimes' repositories and build projects |
 > | DynamoDB tables | `${ADCP}-reference-seller-state`, `${ADCP}-reference-governance-state`, `${ADCP}-buyer-agent-sessions` |
-> | S3 buckets | `${ADCP}-buyer-agent-sessions`, `${ADCP}-buyer-agent-ui`, plus the governance origin bucket |
-> | CloudFront | the buyer UI and governance origin distributions |
-> | Cognito | the AdCP user pool, its hosted domain, app clients and identity pool |
-> | Secrets Manager | the M2M client secret |
-> | KMS | `alias/${ADCP}-governance-signing` — **$1.00/month until scheduled for deletion** |
-> | ECR | one repository per runtime, plus one for the revocations Lambda |
-> | SSM | `/<STACK_PREFIX>/a2a-inbound-tokens/<UNIQUE_ID>/AdCPBuyerAgent` and `.../AdCPBuyer` (these *do* follow the main stack prefix) |
+> | S3 buckets | `${ADCP}-buyer-agent-sessions`, `${ADCP}-buyer-agent-ui`, `${ADCP}-reference-governance` |
+> | CloudFront | the buyer UI and governance origin distributions and their origin access controls |
+> | Cognito | user pool `${ADCP}-buyer-agent-users` with its hosted domain and clients; identity pool `${ADCP}_buyer_agent_ui` |
+> | IAM | `${ADCP}-buyer-agent-agentcore-execution`, `${ADCP}-buyer-agent-ui-reader` |
+> | Secrets Manager | `adcp/cognito/${ADCP}-agents-m2m` |
+> | SSM | `/<STACK_PREFIX>/a2a-inbound-tokens/<UNIQUE_ID>/AdCPBuyerAgent` and `.../AdCPBuyer` (these follow the main stack prefix) |
+> | CloudWatch Logs | the runtime, CodeBuild and Lambda log groups |
+> | Local | the instance entry in `deployments.local.json`; the `AdCPBuyer` and `AdCPBuyerAgent` entries in `global_configuration.json` and the live `AgentConfig` table, when they point at this instance |
+> | KMS | `alias/${ADCP}-governance-signing`, **only when you answer yes to the separate prompt** (or pass `--delete-kms-key` to the script). It costs $1.00/month while retained |
 >
-> Scheduling the KMS key for deletion is irreversible after the waiting period, and the governance
-> runtime will not start without a resolvable key — treat that one as a deliberate decision rather
-> than routine cleanup.
+> Scheduling the KMS key for deletion is irreversible after its 7-day window, and the governance
+> runtime will not start without a resolvable key, which is why it gets its own decision.
 
 ### 2. Verify Cleanup
 

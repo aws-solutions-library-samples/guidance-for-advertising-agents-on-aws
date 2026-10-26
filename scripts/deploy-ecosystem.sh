@@ -77,6 +77,9 @@ DEPLOY_QUICK_GATEWAY="${DEPLOY_QUICK_GATEWAY:-}"
 SSO_PROVIDER="${SSO_PROVIDER:-}"
 SSO_LABEL="${SSO_LABEL:-Sign in with SSO}"
 CLEANUP_MODE=false
+# --cleanup-adcp: remove only the optional AdCP reference agents (Phase 9), leaving the rest of the
+# stack in place.
+CLEANUP_ADCP_MODE=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -3599,12 +3602,34 @@ generate_ui_config() {
     return 0
 }
 
+# Settle UNIQUE_ID for a cleanup run: --unique-id wins, then the .unique-id file from the deploy.
+# Exits if neither is available, since every cleanup filter keys off it.
+resolve_unique_id_for_cleanup() {
+    if [ -n "$UNIQUE_ID" ]; then
+        print_status "Using user-provided unique ID: $UNIQUE_ID"
+        return 0
+    fi
+    local id_file="${PROJECT_ROOT}/.unique-id-${STACK_PREFIX}-${AWS_REGION}"
+    if [ -f "$id_file" ]; then
+        UNIQUE_ID=$(cat "$id_file" 2>/dev/null)
+        print_status "Using unique ID from file: $UNIQUE_ID"
+        return 0
+    fi
+    print_error "Unique ID not provided and file not found."
+    print_error "Please either:"
+    print_error "  1. Provide --unique-id parameter"
+    print_error "  2. Run cleanup from the same directory where deployment was run"
+    print_error "Expected file: $id_file"
+    exit 1
+}
+
 # Function to cleanup the entire ecosystem
 cleanup_ecosystem() {
     print_step "🧹 ECOSYSTEM CLEANUP"
     print_warning "This will delete ALL resources created by this deployment script."
     print_warning "This action is IRREVERSIBLE and will permanently delete:"
     print_warning "  - All AgentCore agents, runtimes, ECR repositories, and IAM roles"
+    print_warning "  - AdCP reference agents (Phase 9): their stacks, runtimes, Cognito pool, UI, buckets and tables"
     print_warning "  - AdCP MCP Gateway Lambda functions and resources"
     print_warning "  - All knowledge bases and data sources"
     print_warning "  - All S3 bucket contents"
@@ -3613,23 +3638,7 @@ cleanup_ecosystem() {
     print_warning "  - All Docker images (local)"
     echo ""
     
-    # Load unique ID - prioritize user-provided ID, then fall back to file
-    if [ -n "$UNIQUE_ID" ]; then
-        print_status "Using user-provided unique ID: $UNIQUE_ID"
-    else
-        local id_file="${PROJECT_ROOT}/.unique-id-${STACK_PREFIX}-${AWS_REGION}"
-        if [ -f "$id_file" ]; then
-            UNIQUE_ID=$(cat "$id_file" 2>/dev/null)
-            print_status "Using unique ID from file: $UNIQUE_ID"
-        else
-            print_error "Unique ID not provided and file not found."
-            print_error "Please either:"
-            print_error "  1. Provide --unique-id parameter"
-            print_error "  2. Run cleanup from the same directory where deployment was run"
-            print_error "Expected file: $id_file"
-            exit 1
-        fi
-    fi
+    resolve_unique_id_for_cleanup
     
     # Final confirmation
     echo ""
@@ -3645,36 +3654,42 @@ cleanup_ecosystem() {
     print_status "Starting ecosystem cleanup..."
     echo ""
     
-    # Step 1: Clean up AgentCore agents and resources
+    # Step 1: Remove the optional AdCP reference agents (Phase 9). Must precede the AgentCore
+    # cleanup, whose name filters would otherwise tear resources out from under the AdCP stacks.
+    if ! cleanup_adcp_agents; then
+        print_warning "⚠️  AdCP cleanup had some issues, but continuing with deployment cleanup..."
+    fi
+
+    # Step 2: Clean up AgentCore agents and resources
     if ! cleanup_agentcore_agents; then
         print_warning "⚠️  AgentCore cleanup had some issues, but continuing with deployment cleanup..."
     fi
     
-    # Step 2: Remove any AdCP MCP Gateway left over from a pre-removal deployment
+    # Step 3: Remove any AdCP MCP Gateway left over from a pre-removal deployment
     cleanup_adcp_gateway
 
-    # Step 2b: Remove the optional Quick MCP Gateway (Phase 13) if it was deployed
+    # Step 3b: Remove the optional Quick MCP Gateway (Phase 13) if it was deployed
     cleanup_quick_gateway
     
-    # Step 3: Delete data sources
+    # Step 4: Delete data sources
     cleanup_data_sources
     
-    # Step 4: Delete knowledge bases
+    # Step 5: Delete knowledge bases
     cleanup_knowledge_bases
     
-    # Step 5: Delete vector indices
+    # Step 6: Delete vector indices
     cleanup_vector_indices
     
-    # Step 6: Empty synthetic data bucket
+    # Step 7: Empty synthetic data bucket
     cleanup_synthetic_data_bucket
     
-    # Step 7: Empty UI bucket
+    # Step 8: Empty UI bucket
     cleanup_ui_bucket
     
-    # Step 8: Empty generated content bucket
+    # Step 9: Empty generated content bucket
     cleanup_generated_content_bucket
     
-    # Step 9: Delete infrastructure stack
+    # Step 10: Delete infrastructure stack
     cleanup_infrastructure_stack
     
     # Final cleanup
@@ -3694,7 +3709,7 @@ cleanup_ecosystem() {
 # The a4a-mcp-handler Lambda and its role are CloudFormation-managed (Phase 2), so
 # they are removed by the infrastructure stack deletion, not here.
 cleanup_quick_gateway() {
-    print_step "2b. Cleaning up Quick MCP Gateway..."
+    print_step "3b. Cleaning up Quick MCP Gateway..."
 
     local gw_state_file="${PROJECT_ROOT}/.oauth-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     local gateway_name="${STACK_PREFIX}-oauth-gw-${UNIQUE_ID}"
@@ -3833,7 +3848,7 @@ except Exception:
 # more. This runs on cleanup regardless, because a stack deployed before the
 # removal still has them and they would otherwise be left billing.
 cleanup_adcp_gateway() {
-    print_step "2. Cleaning up AdCP MCP Gateway..."
+    print_step "3. Cleaning up AdCP MCP Gateway (legacy, pre-removal deployments only)..."
     
     local gateway_info_file="${PROJECT_ROOT}/.ads-gw-${STACK_PREFIX}-${UNIQUE_ID}.json"
     local gateway_name="${STACK_PREFIX}-ads-gw-${UNIQUE_ID}"
@@ -3990,9 +4005,96 @@ except:
     return 0
 }
 
+# Tear down the optional AdCP reference agents (Phase 9) for this stack.
+#
+# Phase 9 hands off to external-agents/adcp/deploy_all.py, which provisions its own fleet under the
+# instance prefix from derive_adcp_prefix(): two CloudFormation stacks (seller + governance
+# runtimes), two toolkit-launched buyer runtimes, a Cognito pool, CloudFront + S3 for the buyer UI,
+# DynamoDB tables, an execution role, a Secrets Manager secret, a KMS signing key, and the SSM
+# credential parameters wire_adcp_agents.py writes. None of that is CloudFormation-managed by this
+# repo and none of it matches cleanup_agentcore_agents' name filters, so without this step a
+# `--cleanup` left every one of them billing. The actual deletion lives in
+# scripts/cleanup_adcp_agents.py so it can also be run standalone against an orphaned prefix.
+#
+# Runs BEFORE cleanup_agentcore_agents on purpose: that function's substring filters also match the
+# AdCP stacks' runtimes and IAM roles (both contain the stack prefix and unique id), and deleting
+# those out from under CloudFormation leaves the stacks in DELETE_FAILED.
+cleanup_adcp_agents() {
+    print_step "1. Cleaning up AdCP reference agents (Phase 9)..."
+
+    local adcp_prefix
+    adcp_prefix=$(derive_adcp_prefix)
+    if [ -z "$adcp_prefix" ]; then
+        print_warning "⚠️  Could not derive an AdCP instance prefix from ${STACK_PREFIX}/${UNIQUE_ID}; skipping AdCP cleanup."
+        return 0
+    fi
+
+    setup_python_environment
+
+    local cleanup_script="${SCRIPT_DIR}/cleanup_adcp_agents.py"
+    if [ ! -f "$cleanup_script" ]; then
+        print_error "❌ ${cleanup_script} not found; cannot clean up the AdCP agents."
+        return 1
+    fi
+
+    local common_args=(
+        --prefix "$adcp_prefix"
+        --region "$AWS_REGION"
+        --stack-prefix "$STACK_PREFIX"
+        --unique-id "$UNIQUE_ID"
+        --config "${PROJECT_ROOT}/agentcore/deployment/agent/global_configuration.json"
+        --manifest "$ADCP_MANIFEST"
+    )
+    if [ -n "$AWS_PROFILE" ]; then
+        common_args+=(--profile "$AWS_PROFILE")
+    fi
+
+    # The running UI reads GLOBAL_CONFIG from DynamoDB, so unwire it there too when the table still
+    # exists (it does in --cleanup-adcp; in a full --cleanup the stack deletion removes it anyway).
+    local config_table
+    config_table=$(get_stack_output "${STACK_PREFIX}-infrastructure-services" "AgentConfigTableName" 2>/dev/null)
+    if [ -n "$config_table" ] && [ "$config_table" != "None" ]; then
+        common_args+=(--dynamodb-table "$config_table")
+    fi
+
+    # Show the inventory first so the operator confirms against what is actually there.
+    print_status "AdCP instance prefix: ${adcp_prefix} (derived from ${STACK_PREFIX}/${UNIQUE_ID})"
+    if ! "$PYTHON_CMD" "$cleanup_script" "${common_args[@]}" --dry-run; then
+        print_warning "⚠️  Could not inventory the AdCP resources; see output above."
+    fi
+    echo ""
+
+    printf "Delete the AdCP reference agents and their resources for instance ${adcp_prefix}? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        print_status "Skipping AdCP cleanup"
+        return 0
+    fi
+
+    # The signing key is the one thing here that cannot be undone once its waiting period passes,
+    # and the governance runtime will not start without it, so it gets its own decision.
+    local kms_args=()
+    printf "Also schedule the governance KMS signing key (alias/${adcp_prefix}-governance-signing) for deletion? It is unrecoverable after a 7-day window. (y/N): "
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        kms_args+=(--delete-kms-key)
+    else
+        print_status "Keeping the KMS key. Delete it later with:"
+        print_status "  $PYTHON_CMD scripts/cleanup_adcp_agents.py --prefix $adcp_prefix --region $AWS_REGION --delete-kms-key"
+    fi
+
+    if "$PYTHON_CMD" "$cleanup_script" "${common_args[@]}" "${kms_args[@]}" --yes; then
+        print_success "✅ AdCP cleanup completed"
+        return 0
+    fi
+    print_warning "⚠️  AdCP cleanup finished with failures; see the list above. Re-run with:"
+    print_warning "  $PYTHON_CMD scripts/cleanup_adcp_agents.py --prefix $adcp_prefix --region $AWS_REGION --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID"
+    return 1
+}
+
 # Function to cleanup AgentCore agents and resources
 cleanup_agentcore_agents() {
-    print_step "1. Cleaning up AgentCore agents and resources..."
+    print_step "2. Cleaning up AgentCore agents and resources..."
     
     printf "Delete AgentCore agents and resources for stack ${STACK_PREFIX}-${UNIQUE_ID}? (y/N): "
     read -r response
@@ -4331,7 +4433,7 @@ EOF
 
 # Function to cleanup data sources
 cleanup_data_sources() {
-    print_step "2. Cleaning up knowledge base data sources..."
+    print_step "4. Cleaning up knowledge base data sources..."
     
     printf "Delete all knowledge base data sources? (y/N): "
     read -r response
@@ -4396,7 +4498,7 @@ cleanup_data_sources() {
 
 # Function to cleanup knowledge bases
 cleanup_knowledge_bases() {
-    print_step "3. Cleaning up knowledge bases..."
+    print_step "5. Cleaning up knowledge bases..."
     
     printf "Delete all knowledge bases? (y/N): "
     read -r response
@@ -4460,7 +4562,7 @@ cleanup_knowledge_bases() {
 
 # Function to cleanup vector indices
 cleanup_vector_indices() {
-    print_step "4. Cleaning up OpenSearch vector indices..."
+    print_step "6. Cleaning up OpenSearch vector indices..."
     
     local kb_config_file="${PROJECT_ROOT}/cloudformation/generic-configs/knowledgebases/knowledgebases-with-datasources.json"
     
@@ -4519,7 +4621,7 @@ print(' '.join(index_names))
 
 # Function to cleanup synthetic data bucket
 cleanup_synthetic_data_bucket() {
-    print_step "5. Cleaning up synthetic data bucket..."
+    print_step "7. Cleaning up synthetic data bucket..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local data_bucket=$(get_stack_output "$infrastructure_core_stack" "SyntheticDataBucketName")
@@ -4556,7 +4658,7 @@ cleanup_synthetic_data_bucket() {
 
 # Function to cleanup UI bucket
 cleanup_ui_bucket() {
-    print_step "6. Cleaning up UI bucket..."
+    print_step "8. Cleaning up UI bucket..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local ui_bucket=$(get_stack_output "$infrastructure_core_stack" "UIBucketName")
@@ -4596,7 +4698,7 @@ cleanup_ui_bucket() {
 
 # Function to cleanup generated content bucket
 cleanup_generated_content_bucket() {
-    print_step "7. Cleaning up generated content bucket..."
+    print_step "9. Cleaning up generated content bucket..."
     
     local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
     local content_bucket=$(get_stack_output "$infrastructure_services_stack" "GeneratedContentBucketName")
@@ -4623,7 +4725,7 @@ cleanup_generated_content_bucket() {
 
 # Function to cleanup infrastructure stack
 cleanup_infrastructure_stack() {
-    print_step "8. Cleaning up infrastructure stacks..."
+    print_step "10. Cleaning up infrastructure stacks..."
     
     local infrastructure_core_stack="${STACK_PREFIX}-infrastructure-core"
     local infrastructure_services_stack="${STACK_PREFIX}-infrastructure-services"
@@ -4674,7 +4776,7 @@ cleanup_infrastructure_stack() {
 
 # Function to cleanup temporary files
 cleanup_temp_files() {
-    print_step "9. Cleaning up temporary files..."
+    print_step "11. Cleaning up temporary files..."
     
     printf "Delete temporary deployment files? (y/N): "
     read -r response
@@ -4806,6 +4908,10 @@ parse_args() {
                 CLEANUP_MODE=true
                 shift
                 ;;
+            --cleanup-adcp)
+                CLEANUP_ADCP_MODE=true
+                shift
+                ;;
             -h|--help)
                 show_usage
                 exit 0
@@ -4845,6 +4951,7 @@ show_usage() {
     echo "  --non-interactive        Disable interactive prompts"
     echo "  --skip-confirmations     Skip all update confirmations (implies --non-interactive)"
     echo "  --cleanup                Run cleanup mode to delete all resources"
+    echo "  --cleanup-adcp           Delete only the optional AdCP agents (Phase 9) and leave the stack running"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "EXAMPLES:"
@@ -4860,6 +4967,7 @@ show_usage() {
     echo "  $0 --resume-at 13 --deploy-quick-gateway # Deploy just the optional Quick MCP Gateway"
     echo "  $0 --cleanup                         # Delete all resources"
     echo "  $0 --cleanup --unique-id abc123      # Delete resources with specific unique ID"
+    echo "  $0 --cleanup-adcp --stack-prefix a4a --unique-id vn39cj  # Remove just the AdCP agents of that stack"
     echo ""
     echo "NOTES:"
     echo "  - This script automatically creates a Python virtual environment (.venv-deployment)"
@@ -5444,6 +5552,34 @@ prompt_and_deploy_aamp_agents() {
 # ---------------------------------------------------------------------------
 ADCP_DIR="${PROJECT_ROOT}/external-agents/adcp"
 ADCP_BUYER_ENV="${ADCP_DIR}/agents/buyer/reference-buyer/.env"
+ADCP_MANIFEST="${ADCP_DIR}/deployments.local.json"
+
+# The AdCP instance prefix for this stack, echoed to stdout (empty if it cannot be derived).
+#
+# The AdCP subtree names EVERY resource from its own "instance prefix", so that prefix has to be
+# derived from this stack rather than left to the subtree's default. Passing it explicitly is also
+# what stops `resolve_prefix` falling back to whatever `deployments.local.json` happens to hold —
+# a manifest copied from another checkout was silently adopted that way once, and the deploy then
+# updated another project's runtimes because every name matched theirs.
+#
+# Derived as <STACK_PREFIX><UNIQUE_ID>, sanitised to the subtree's rule: lowercase letters and
+# digits, starting with a letter, 20 characters or fewer. Including the unique id keeps two stacks
+# in one account apart — dm1 and dm2 would otherwise collide on a bare stack prefix.
+#
+# Used by both the deploy (Phase 9) and the cleanup, which must agree or the cleanup looks for
+# resources under a name that was never created.
+derive_adcp_prefix() {
+    local adcp_prefix
+    adcp_prefix=$(printf '%s%s' "$STACK_PREFIX" "$UNIQUE_ID" \
+        | tr '[:upper:]' '[:lower:]' \
+        | tr -cd 'a-z0-9' \
+        | cut -c1-20)
+    # A leading digit is invalid there; prefix a letter rather than dropping information.
+    case "$adcp_prefix" in
+        [0-9]*) adcp_prefix="a${adcp_prefix}"; adcp_prefix=$(printf '%s' "$adcp_prefix" | cut -c1-20) ;;
+    esac
+    printf '%s' "$adcp_prefix"
+}
 
 deploy_adcp_agents() {
     print_step "Step 9: Deploying AdCP reference agents (buyer + UI, seller, governance)..."
@@ -5454,24 +5590,8 @@ deploy_adcp_agents() {
         return 1
     fi
 
-    # The AdCP subtree names EVERY resource from its own "instance prefix", so that prefix has to be
-    # derived from this stack rather than left to the subtree's default. Passing it explicitly is also
-    # what stops `resolve_prefix` falling back to whatever `deployments.local.json` happens to hold —
-    # a manifest copied from another checkout was silently adopted that way once, and the deploy then
-    # updated another project's runtimes because every name matched theirs.
-    #
-    # Derived as <STACK_PREFIX><UNIQUE_ID>, sanitised to the subtree's rule: lowercase letters and
-    # digits, starting with a letter, 20 characters or fewer. Including the unique id keeps two stacks
-    # in one account apart — dm1 and dm2 would otherwise collide on a bare stack prefix.
     local adcp_prefix
-    adcp_prefix=$(printf '%s%s' "$STACK_PREFIX" "$UNIQUE_ID" \
-        | tr '[:upper:]' '[:lower:]' \
-        | tr -cd 'a-z0-9' \
-        | cut -c1-20)
-    # A leading digit is invalid there; prefix a letter rather than dropping information.
-    case "$adcp_prefix" in
-        [0-9]*) adcp_prefix="a${adcp_prefix}"; adcp_prefix=$(printf '%s' "$adcp_prefix" | cut -c1-20) ;;
-    esac
+    adcp_prefix=$(derive_adcp_prefix)
     if [ -z "$adcp_prefix" ]; then
         print_error "❌ Could not derive an AdCP instance prefix from STACK_PREFIX='$STACK_PREFIX' and UNIQUE_ID='$UNIQUE_ID'."
         return 1
@@ -6009,6 +6129,25 @@ main() {
         
         cleanup_ecosystem
         return 0
+    fi
+
+    # AdCP-only cleanup: the rest of the stack stays up. Useful after `--resume-at 9 --deploy-adcp`
+    # to back the agents out again, and for instances orphaned by a --cleanup that predates the
+    # AdCP step (pass the old --stack-prefix/--unique-id).
+    if [ "$CLEANUP_ADCP_MODE" = true ]; then
+        print_status "=========================================="
+        print_status "🧹 ADCP REFERENCE AGENTS CLEANUP"
+        print_status "=========================================="
+        echo ""
+        resolve_unique_id_for_cleanup
+        print_status "Configuration:"
+        print_status "  Unique id: $UNIQUE_ID"
+        print_status "  Stack Prefix: $STACK_PREFIX"
+        print_status "  AWS Region: $AWS_REGION"
+        print_status "  AWS Profile: ${AWS_PROFILE:-default}"
+        echo ""
+        cleanup_adcp_agents
+        return $?
     fi
     
     print_status "=========================================="
