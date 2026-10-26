@@ -61,10 +61,12 @@
   }
 
   // Timeline Container
+  // Sized to the host (chat bubble, side panel, popover), not the viewport. A `vw` width made the
+  // right-hand cards overflow any host narrower than the window.
   .timeline-container {
     position: relative;
-    width: 75vw;
-    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0 15px;
   }
 
@@ -86,46 +88,48 @@
   }
 
   // Timeline Items Container
+  //
+  // Two card columns either side of a gutter that holds the spine. Each item spans two rows and
+  // starts one row after the previous item (grid-row is set in the template), so a card on one side
+  // begins partway down the card before it whatever their heights.
+  $spine-gutter: 60px;
+  $node-size: 30px;
+
   .timeline-items {
     position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) $spine-gutter minmax(0, 1fr);
+    grid-auto-rows: auto;
+    align-items: start;
   }
 
   // Timeline Item
   .timeline-item {
     position: relative;
-    margin-bottom: -10%;
+    grid-row-end: span 2;
     display: flex;
-    align-items: flex-start;
+    min-width: 0;
+    margin-bottom: 24px;
 
+    // The last card has no successor to overlap, so it spans one row and leaves no gap below it.
     &:last-child {
+      grid-row-end: span 1;
       margin-bottom: 0;
     }
 
-    // Left Side Items
     &.left {
-      justify-content: flex-start;
-      padding-right: calc(50% + 30px);
-
-      .timeline-card {
-        margin-right: 10px;
-      }
+      grid-column: 1;
 
       .timeline-node {
-        right: calc(50% - 15px);
+        right: calc(-1 * (#{$spine-gutter} + #{$node-size}) / 2);
       }
     }
 
-    // Right Side Items
     &.right {
-      justify-content: flex-end;
-      padding-left: calc(50% + 30px);
-
-      .timeline-card {
-        margin-left: 10px;
-      }
+      grid-column: 3;
 
       .timeline-node {
-        left: calc(50% - 15px);
+        left: calc(-1 * (#{$spine-gutter} + #{$node-size}) / 2);
       }
     }
   }
@@ -408,6 +412,7 @@
   // Timeline Node
   .timeline-node {
     position: absolute;
+    box-sizing: border-box;
     width: 30px;
     height: 30px;
     border-radius: 50%;
@@ -653,27 +658,27 @@
       padding: 0 16px;
     }
 
+    // One column beside a narrow gutter. The inline grid-row from the template is overridden so
+    // cards stack in order instead of overlapping.
+    .timeline-items {
+      grid-template-columns: 40px minmax(0, 1fr);
+    }
+
     .timeline-item {
       &.left,
       &.right {
-        padding-left: 50px;
-        padding-right: 16px;
-        justify-content: flex-start;
-
-        .timeline-card {
-          margin-left: 16px;
-          margin-right: 0;
-        }
+        grid-column: 2;
+        grid-row: auto !important;
 
         .timeline-node {
-          left: 0;
+          left: -32px;
           right: auto;
         }
       }
     }
 
     .timeline-spine {
-      left: 15px;
+      left: 16px + 20px;
     }
 
     .timeline-header {

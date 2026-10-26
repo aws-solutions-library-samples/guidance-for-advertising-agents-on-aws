@@ -25,6 +25,7 @@
         *ngFor="let phase of timelineData.phases; let i = index; trackBy: trackByPhaseLabel"
         [class.left]="i % 2 === 0"
         [class.right]="i % 2 === 1"
+        [style.grid-row-start]="i + 1"
         [attr.data-phase-index]="i">
         
         <!-- Content Card -->
