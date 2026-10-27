@@ -134,8 +134,9 @@ export class AwsConfigService implements OnInit {
         // Re-emit config after SSM data is loaded
         this.configSubject.next(config);
       }
-      // Check if user is already authenticated
-      this.userSubject.next(this.checkAuthState());
+      // Re-emit the resolved user. Passing checkAuthState() here emitted a Promise,
+      // which is truthy, so user$ briefly read as signed in for signed-out visitors.
+      this.userSubject.next(user);
       return;
     } catch (error) {
       console.error('Error loading AWS config:', error);
@@ -1398,6 +1399,9 @@ export class AwsConfigService implements OnInit {
         return { challengeName: 'NEW_PASSWORD_REQUIRED', session: result };
       }
 
+      // A session fetched before sign-in has no credentials; drop it.
+      this.invalidateAuthSessionCache();
+
       // Get the user after successful sign in
       const user = await getCurrentUser();
       this.userSubject.next(user);
@@ -1454,6 +1458,9 @@ export class AwsConfigService implements OnInit {
   async completeNewPassword(session: any, newPassword: string): Promise<any> {
     try {
       const result = await confirmSignIn({ challengeResponse: newPassword });
+
+      // A session fetched before sign-in has no credentials; drop it.
+      this.invalidateAuthSessionCache();
 
       // Get the user after successful password change
       const user = await getCurrentUser();

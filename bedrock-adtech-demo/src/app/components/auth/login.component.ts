@@ -191,7 +191,7 @@ export class LoginComponent implements OnInit {
       } else {
         // Successfully signed in - wait for credentials to be available
         await this.waitForCredentials();
-        this.router.navigate(['/']);
+        this.enterAppWithReload();
       }
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -224,13 +224,25 @@ export class LoginComponent implements OnInit {
       await this.awsConfig.completeNewPassword(this.newPasswordSession, this.newPassword);
       // Wait for credentials to be available after password change
       await this.waitForCredentials();
-      this.router.navigate(['/']);
+      this.enterAppWithReload();
     } catch (error: any) {
       console.error('New password error:', error);
       this.error = this.getErrorMessage(error);
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Full page load into the app after a password sign-in, matching the SSO path.
+   * Services that initialized before sign-in hold config, clients and agent data
+   * built without credentials; an in-app route change keeps them, and the first
+   * call then fails. A fresh load rebuilds them from the persisted Amplify session.
+   */
+  private enterAppWithReload(): void {
+    // Root renders the login page, which forwards to the app once user$ emits;
+    // loading a guarded route directly would bounce off the guard first.
+    window.location.assign('/');
   }
 
   // Wait for AWS credentials to be properly established
