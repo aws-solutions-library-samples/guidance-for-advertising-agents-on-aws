@@ -127,6 +127,29 @@ request that names no `seller_agent_id` fans out to **every** entry in the
 registry (`agent.py::build_agent`), so a seller listed twice answers the same
 brief twice.
 
+`a2a_version` picks the A2A protocol version an `"a2a"` entry is spoken to
+with. `"0.3"` is the default if the field is omitted, so existing entries are
+unchanged; it is also the version this buyer's own A2A runtime speaks
+(a2a-sdk 0.3, through `strands-agents[a2a]`). Set
+`"1.0"` for a seller whose agent card advertises only
+`supportedInterfaces[].protocolVersion: "1.0"`: such a seller answers 0.3's
+`message/send` with JSON-RPC `-32601 Method not found`. A `"1.0"` entry sends
+`SendMessage` with the `A2A-Version: 1.0` header, role `ROLE_USER` and a
+`{"data":{"skill":...,"input":...}}` part with no `kind` fields, per AdCP's
+A2A guide. For example:
+
+```json
+{
+  "id": "external-seller-a2a",
+  "name": "Third-party seller agent (A2A 1.0)",
+  "url": "https://seller.example/a2a",
+  "transport": "a2a",
+  "a2a_version": "1.0",
+  "auth_type": "static_bearer",
+  "auth_token_env": "EXTERNAL_SELLER_AUTH_TOKEN"
+}
+```
+
 A seller reachable over both bindings is one such case: some expose a separate
 A2A endpoint alongside their MCP one, with its own bespoke skill names, that
 also handles a structured `{skill, parameters}` call using AdCP tool names. See
@@ -778,7 +801,9 @@ since this agent only calls the three core, read-only AdCP tasks
 - **A2A `DataPart` uses `input`** (`adcp_tools.py::_call_seller_tool_a2a`),
   the current field name for explicit skill invocation, sending the
   legacy `parameters` key alongside it for sellers that still only read
-  that name during AdCP's compatibility period.
+  that name during AdCP's compatibility period. A seller entry with
+  `a2a_version: "1.0"` gets the A2A 1.0 wire form instead, with `input`
+  only (see "Seller agent registry").
 - **`billing` on every `sync_accounts` entry** (`adcp_sync_accounts`,
   `BUYER_ACCOUNT_BILLING`), which AdCP 3.1 requires in provisioning mode.
 
