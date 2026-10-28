@@ -77,6 +77,7 @@ def _pool_id_from_discovery_url(url: str) -> str:
 def _run(cmd: list, **kwargs) -> subprocess.CompletedProcess:
     """Run a subprocess with a hardcoded/validated argv (never shell=True)."""
     logger.info("$ %s", " ".join(cmd))
+    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
     return subprocess.run(cmd, check=True, **kwargs)  # noqa: S603
 
 
@@ -322,6 +323,7 @@ class ExternalAgentDeployer:
                 status = ddb.describe_table(TableName=name)["Table"]["TableStatus"]
                 if status == "ACTIVE":
                     break
+                # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
                 _time.sleep(1)
         return arns
 
@@ -640,6 +642,7 @@ class ExternalAgentDeployer:
                 reason = resp.get("failureReason", "(no reason provided)")
                 raise RuntimeError(f"Runtime {status}: {reason}")
             logger.info("Runtime status %s — waiting...", status)
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(10)
         raise TimeoutError("Timed out waiting for runtime to become READY")
 

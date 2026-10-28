@@ -132,6 +132,7 @@ def get_or_create_registry(apply: bool) -> str | None:
             break
         if status != "CREATING":
             raise RuntimeError(f"Registry entered unexpected status: {status}")
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(3)
     else:
         raise RuntimeError("Timed out waiting for registry to become READY.")

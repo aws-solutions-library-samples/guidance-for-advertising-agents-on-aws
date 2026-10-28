@@ -582,6 +582,7 @@ def wait_for_deployed(distribution_id: str, timeout_seconds: int = 600) -> None:
         if status == "Deployed":
             print("Distribution is Deployed.")
             return
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(15)
     print(
         f"Timed out after {timeout_seconds}s waiting for Deployed status. "

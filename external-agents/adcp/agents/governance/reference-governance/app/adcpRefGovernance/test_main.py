@@ -462,6 +462,7 @@ def _bearer(claims: dict) -> object:
 
     # The signature is never checked -- the platform authorizer is the verification boundary and this
     # code only decodes claims. A 32-byte secret keeps PyJWT's key-length warning out of the output.
+    # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
     token = _jwt.encode(claims, "x" * 32, algorithm="HS256")
 
     class _Req:

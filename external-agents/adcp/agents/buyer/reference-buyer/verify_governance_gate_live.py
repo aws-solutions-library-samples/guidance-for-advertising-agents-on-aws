@@ -119,6 +119,7 @@ print(
     + ("code gate returned no_prior_check." if refused_by_code_gate else "model declined the bypass.")
 )
 
+# nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
 time.sleep(2)
 
 # Step 2: do the check/book sequence correctly (still against the sandbox reference

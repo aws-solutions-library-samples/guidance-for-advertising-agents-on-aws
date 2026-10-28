@@ -76,6 +76,7 @@ logger = logging.getLogger(__name__)
 # MCP Server Instance
 # ---------------------------------------------------------------------------
 
+# nosemgrep: overly-permissive-listener-bind - Mounted into FastAPI behind the platform authorizer; host is set to disable the 421 DNS-rebinding check behind Cloud Run
 mcp = FastMCP(
     name="ad-buyer-agent",
     instructions=(

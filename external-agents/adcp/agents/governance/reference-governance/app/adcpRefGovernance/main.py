@@ -616,6 +616,7 @@ def _credential_from_authorization_header(request: Any) -> tuple[str | None, str
         claims = jwt.decode(
             token,
             options={
+                # nosemgrep: unverified-jwt-decode - Claims decode only; the AgentCore authorizer in front of this container has already verified the token
                 "verify_signature": False,
                 "verify_aud": False,
                 "verify_exp": False,

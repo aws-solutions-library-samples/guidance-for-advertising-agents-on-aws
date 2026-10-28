@@ -50,6 +50,7 @@ def _run(args: list[str]) -> str:
             "The `aws` CLI is not on PATH. It is how this repo determines which account a deploy "
             "is targeting. Install it, or set AWS_ACCOUNT_ID and AWS_REGION explicitly."
         )
+    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode != 0:
         raise IdentityError(

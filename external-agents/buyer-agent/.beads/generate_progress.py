@@ -75,6 +75,7 @@ def load_issues():
                 continue
             # Only include beads belonging to this repo (buyer- prefix).
             # Parent-repo (ar-) or other-repo beads should not appear.
+            # nosemgrep: no-strings-as-booleans - BEAD_PREFIX is an optional string; empty means no prefix filtering
             if BEAD_PREFIX and not issue.get("id", "").startswith(BEAD_PREFIX):
                 continue
             issues.append(issue)

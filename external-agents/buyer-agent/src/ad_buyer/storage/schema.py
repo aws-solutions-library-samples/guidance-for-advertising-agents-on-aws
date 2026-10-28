@@ -653,6 +653,7 @@ def migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
 
     for col_name, col_def in v2_columns:
         if col_name not in existing_cols:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor.execute(f"ALTER TABLE deals ADD COLUMN {col_name} {col_def}")
 
     # -- v2 indexes on deals table -----------------------------------------

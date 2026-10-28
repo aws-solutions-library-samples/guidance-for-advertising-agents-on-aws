@@ -164,6 +164,7 @@ for attempt in range(10):
     steps = session_store.get_session_steps(SESSION_ID)
     if any(s.get("step_type") == "tool_result" for s in steps):
         break
+    # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
     time.sleep(2)
 
 print(f"  {len(steps)} steps recorded under this session")

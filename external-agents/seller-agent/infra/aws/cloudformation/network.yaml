@@ -242,10 +242,20 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: "0.0.0.0/0"
+          Description: HTTPS from the internet
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: "0.0.0.0/0"
+          Description: HTTP from the internet (redirected to HTTPS by the listener)
+      # Scoped to the VPC CIDR rather than AppSecurityGroup: AppSecurityGroup already
+      # references this group for ingress, so a group reference here would be circular.
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: !Ref VpcCidr
+          Description: ALB to ECS tasks on the app port
       Tags:
         - Key: Name
           Value: !Sub "ad-seller-${Environment}-alb-sg"
@@ -264,6 +274,25 @@ Resources:
           FromPort: 8000
           ToPort: 8000
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: App port from the ALB
+      # DB and Redis rules use the VPC CIDR to avoid circular references with their
+      # security groups, which already reference this group for ingress.
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "0.0.0.0/0"
+          Description: HTTPS to AWS APIs, ECR and external ad-tech endpoints
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref VpcCidr
+          Description: PostgreSQL to Aurora
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: !Ref VpcCidr
+          Description: Redis to ElastiCache
       Tags:
         - Key: Name
           Value: !Sub "ad-seller-${Environment}-app-sg"
@@ -282,6 +311,14 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: PostgreSQL from app tasks
+      # Loopback-only egress: the database initiates no outbound connections.
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: "127.0.0.1/32"
+          Description: No outbound traffic (loopback placeholder)
       Tags:
         - Key: Name
           Value: !Sub "ad-seller-${Environment}-db-sg"
@@ -300,6 +337,14 @@ Resources:
           FromPort: 6379
           ToPort: 6379
           SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: Redis from app tasks
+      # Loopback-only egress: the cache initiates no outbound connections.
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: "127.0.0.1/32"
+          Description: No outbound traffic (loopback placeholder)
       Tags:
         - Key: Name
           Value: !Sub "ad-seller-${Environment}-redis-sg"

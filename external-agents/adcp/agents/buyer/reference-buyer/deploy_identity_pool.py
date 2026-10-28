@@ -217,6 +217,7 @@ def get_or_create_role(iam, identity_pool_id: str, table_arn: str, apply: bool) 
         # A role is not usable the instant it exists; IAM is eventually consistent and
         # SetIdentityPoolRoles can fail with a trust-relationship error on a role created moments
         # earlier.
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(10)
 
     if apply:

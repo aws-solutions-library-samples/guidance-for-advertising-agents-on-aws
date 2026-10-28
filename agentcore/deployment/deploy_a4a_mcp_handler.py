@@ -210,6 +210,7 @@ class A4AMCPHandlerDeployer:
             if self.profile:
                 env["AWS_PROFILE"] = self.profile
             cmd = ["aws", "bedrock-agentcore-control", "list-gateways", "--region", self.region]
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -445,6 +446,7 @@ class A4AMCPHandlerDeployer:
         for path in ["/opt/homebrew/bin/aws", "/usr/local/bin/aws"]:
             if os.path.exists(path):
                 try:
+                    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
                     result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
                     if result.returncode == 0 and "aws-cli/2" in result.stdout:
                         return path
@@ -484,6 +486,7 @@ class A4AMCPHandlerDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
 
             if result.returncode != 0:
@@ -538,6 +541,7 @@ class A4AMCPHandlerDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             if result.returncode != 0:
                 logger.error(f"Target update failed: {result.stderr}")
@@ -558,6 +562,7 @@ class A4AMCPHandlerDeployer:
             "--region", self.region,
         ]
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -1004,6 +1009,7 @@ class OAuthGatewayDeployer:
             # Wait for IAM propagation only on new role creation
             import time
             logger.info("Waiting 10s for IAM propagation...")
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(10)
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             response = self.iam_client.get_role(RoleName=self.role_name)
@@ -1038,6 +1044,7 @@ class OAuthGatewayDeployer:
         # List gateways to check for existing
         try:
             cmd = [aws_cli, "bedrock-agentcore-control", "list-gateways", "--region", self.region]
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -1075,6 +1082,7 @@ class OAuthGatewayDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
             if result.returncode != 0:
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
@@ -1090,6 +1098,7 @@ class OAuthGatewayDeployer:
             # Wait for new gateway to become ready
             import time
             logger.info("Waiting 15s for gateway to become ready...")
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(15)
             return {
                 "gateway_id": gateway_id,
@@ -1133,6 +1142,7 @@ class OAuthGatewayDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             if result.returncode != 0:
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
@@ -1152,6 +1162,7 @@ class OAuthGatewayDeployer:
         for path in ["/opt/homebrew/bin/aws", "/usr/local/bin/aws"]:
             if os.path.exists(path):
                 try:
+                    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
                     result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
                     if result.returncode == 0 and "aws-cli/2" in result.stdout:
                         return path
@@ -1356,6 +1367,7 @@ class ExternalOAuthGatewayDeployer:
         for path in ["/opt/homebrew/bin/aws", "/usr/local/bin/aws"]:
             if os.path.exists(path):
                 try:
+                    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
                     result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
                     if result.returncode == 0 and "aws-cli/2" in result.stdout:
                         return path
@@ -1396,6 +1408,7 @@ class ExternalOAuthGatewayDeployer:
             role_arn = response["Role"]["Arn"]
             logger.info(f"Created gateway role: {role_arn}")
             import time
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(10)
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             response = self.iam_client.get_role(RoleName=self.role_name)
@@ -1429,6 +1442,7 @@ class ExternalOAuthGatewayDeployer:
         # Check if gateway already exists
         try:
             cmd = [aws_cli, "bedrock-agentcore-control", "list-gateways", "--region", self.region]
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -1463,6 +1477,7 @@ class ExternalOAuthGatewayDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
             if result.returncode != 0:
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
@@ -1476,6 +1491,7 @@ class ExternalOAuthGatewayDeployer:
             gateway_url = response_data.get("gatewayUrl", f"https://{gateway_id}.gateway.bedrock-agentcore.{self.region}.amazonaws.com/mcp")
             logger.info(f"Created external OAuth gateway: {gateway_id}")
             import time
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(15)
             return {"gateway_id": gateway_id, "gateway_url": gateway_url}
         except subprocess.TimeoutExpired:
@@ -1513,6 +1529,7 @@ class ExternalOAuthGatewayDeployer:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             if result.returncode != 0:
                 if "ConflictException" in result.stderr or "already exists" in result.stderr.lower():
@@ -1644,6 +1661,7 @@ class TargetSchemaUpdater:
         for path in ["/opt/homebrew/bin/aws", "/usr/local/bin/aws"]:
             if os.path.exists(path):
                 try:
+                    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
                     result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
                     if result.returncode == 0 and "aws-cli/2" in result.stdout:
                         return path
@@ -1716,6 +1734,7 @@ class TargetSchemaUpdater:
         cmd = [aws_cli, "bedrock-agentcore-control", "list-gateways", "--region", self.region]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -1748,6 +1767,7 @@ class TargetSchemaUpdater:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -1801,6 +1821,7 @@ class TargetSchemaUpdater:
         ]
 
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
             if result.returncode != 0:
                 logger.error(f"Target schema update failed for {target_name}: {result.stderr}")

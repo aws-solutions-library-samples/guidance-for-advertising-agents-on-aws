@@ -426,6 +426,7 @@ class Cleanup:
                             desc = cup.describe_user_pool_domain(Domain=domain).get("DomainDescription", {})
                             if not desc.get("UserPoolId"):
                                 break
+                            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
                             time.sleep(5)
                 if pool.get("DeletionProtection") == "ACTIVE":
                     cup.update_user_pool(UserPoolId=uid, DeletionProtection="INACTIVE")

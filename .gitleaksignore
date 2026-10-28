@@ -1,0 +1,53 @@
+# Gitleaks findings reviewed and accepted as non-secrets.
+# Format: <commit>:<file>:<rule>:<line>
+#
+# Categories:
+#   cognitoClientId  Cognito app client IDs are public identifiers (they ship in browser
+#                    bundles and in the OAuth authorize URL). No client secret is involved.
+#   test fixtures    Dummy keys, key IDs and idempotency keys in unit and integration tests.
+#   doc examples     Placeholder values (sk-..., key-...) in API and guide documentation.
+
+# --- cognitoClientId in historical global_configuration.json / BACKED_OUT_CONFIG.md ---
+e892e46c3edc99516fc06be79611cc643d919612:external-agents/BACKED_OUT_CONFIG.md:generic-api-key:96
+e892e46c3edc99516fc06be79611cc643d919612:external-agents/BACKED_OUT_CONFIG.md:generic-api-key:121
+17b7097e66902f447f11e0a8f2fb6bbd940ec500:agentcore/deployment/agent/global_configuration.json:generic-api-key:804
+17b7097e66902f447f11e0a8f2fb6bbd940ec500:agentcore/deployment/agent/global_configuration.json:generic-api-key:822
+655c66a3e1f32aa56f6f69a4ec5a0a27b1ce5eda:agentcore/deployment/agent/global_configuration.json:generic-api-key:800
+655c66a3e1f32aa56f6f69a4ec5a0a27b1ce5eda:agentcore/deployment/agent/global_configuration.json:generic-api-key:818
+f17335920715405efcdef9306bed2c7dd9eee221:agentcore/deployment/agent/global_configuration.json:generic-api-key:905
+f17335920715405efcdef9306bed2c7dd9eee221:agentcore/deployment/agent/global_configuration.json:generic-api-key:1301
+f17335920715405efcdef9306bed2c7dd9eee221:agentcore/deployment/agent/global_configuration.json:generic-api-key:1350
+
+# --- test fixtures: cognitoClientId in reference-buyer UI tests ---
+fcccd13109b0508f95e080c3cf1c083c5f266f15:external-agents/adcp/agents/buyer/reference-buyer/ui/src/App.test.tsx:generic-api-key:36
+fcccd13109b0508f95e080c3cf1c083c5f266f15:external-agents/adcp/agents/buyer/reference-buyer/ui/src/components/AdminPanel.test.tsx:generic-api-key:167
+
+# --- test fixtures: dummy keys / idempotency keys ---
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:64
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:119
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:212
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:404
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:407
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/seller-agent/tests/unit/test_api_key_auth.py:generic-api-key:408
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/buyer-agent/tests/integration/test_auth_session_negotiation.py:generic-api-key:410
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/buyer-agent/tests/smoke/test_mcp_e2e.py:generic-api-key:455
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_idempotency_backend.py:generic-api-key:23
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:576
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:699
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:700
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:721
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:722
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:754
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:776
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:777
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:919
+527386de34364e6f22690f02c884a9540bf1370b:external-agents/adcp/agents/governance/reference-governance/app/adcpRefGovernance/test_main.py:generic-api-key:1328
+
+# --- example script and doc placeholders ---
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/buyer-agent/examples/phase1_uat.py:generic-api-key:203
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/buyer-agent/docs/api/authentication.md:generic-api-key:233
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/buyer-agent/docs/api/authentication.md:generic-api-key:396
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/buyer-agent/docs/api/authentication.md:generic-api-key:402
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/seller-agent/docs/guides/agent-management.md:generic-api-key:37
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/seller-agent/docs/guides/agent-management.md:generic-api-key:86
+e9ab65d44b546e520aba8f351a16cec73afe6f9d:external-agents/seller-agent/docs/guides/agent-management.md:generic-api-key:116

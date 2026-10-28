@@ -329,6 +329,7 @@ class AdServerStore:
         params.append(record_id)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE ad_server_campaigns SET {', '.join(updates)} WHERE id = ?",
                 params,

@@ -182,6 +182,7 @@ class OrderStore:
         query = f"SELECT data FROM orders {where} ORDER BY created_at DESC"
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(query, params)
             rows = cursor.fetchall()
 

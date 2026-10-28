@@ -162,6 +162,7 @@ def _get(url: str, *, dns_wait_seconds: int) -> httpx.Response:
                 f"  {url} not reachable yet ({exc}); new CloudFront hostnames can take a few minutes "
                 f"to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s ({int(remaining)}s left)."
             )
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(DNS_RETRY_INTERVAL_SECONDS)
 
 

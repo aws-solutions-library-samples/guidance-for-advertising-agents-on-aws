@@ -156,6 +156,7 @@ def _fetch_published() -> tuple[bytes, str]:
                 f"minutes to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s "
                 f"({int(remaining)}s left)."
             )
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(DNS_RETRY_INTERVAL_SECONDS)
 
 

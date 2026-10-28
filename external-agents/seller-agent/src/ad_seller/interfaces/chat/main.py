@@ -446,6 +446,7 @@ class ChatInterface:
                 pass
 
         # Start a new negotiation if none active
+        # nosemgrep: identical-is-comparison - history stays None until negotiation resume is implemented
         if history is None:
             # Use the first discussed product, or default to first CTV product
             product_ids = (

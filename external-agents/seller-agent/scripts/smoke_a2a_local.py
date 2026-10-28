@@ -41,6 +41,7 @@ def main() -> int:
                 card = r.json()
                 break
         except Exception:
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(1)
     if not card:
         print("FAIL: agent card not served")

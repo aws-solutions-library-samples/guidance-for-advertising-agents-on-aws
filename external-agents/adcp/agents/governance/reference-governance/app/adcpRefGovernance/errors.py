@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
+# nosemgrep: python37-compatibility-importlib2 - Project requires Python 3.12 or newer
 from importlib.resources import files
 from typing import Any
 

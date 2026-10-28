@@ -97,7 +97,10 @@ def check_aamp_agents(config, source_name):
 
 def content_hash(config):
     """Get a hash of the config for comparison."""
-    return hashlib.md5(json.dumps(config, sort_keys=True).encode()).hexdigest()[:12]
+    # Change-detection fingerprint only, not a security control.
+    return hashlib.md5(
+        json.dumps(config, sort_keys=True).encode(), usedforsecurity=False
+    ).hexdigest()[:12]
 
 
 def main():

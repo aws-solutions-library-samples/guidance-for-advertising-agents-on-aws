@@ -258,7 +258,7 @@ Resources:
             - Name: DATABASE_URL
               Value: "sqlite:///./data/ad_buyer.db"
             - Name: REDIS_URL
-              Value: !Sub "redis://${RedisEndpoint}:${RedisPort}/0"
+              Value: !Sub "rediss://${RedisEndpoint}:${RedisPort}/0"
             - Name: ENVIRONMENT
               Value: !Ref Environment
           Secrets:

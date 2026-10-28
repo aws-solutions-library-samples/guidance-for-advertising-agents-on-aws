@@ -282,6 +282,7 @@ def get_or_create_registry() -> str:
             break
         if status not in ("CREATING",):
             raise RuntimeError(f"Registry entered unexpected status: {status}")
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(3)
     else:
         raise RuntimeError("Timed out waiting for registry to become READY.")
@@ -436,6 +437,7 @@ def get_or_create_record(registry_arn: str) -> str:
         status = control.get_registry_record(registryId=registry_arn, recordId=record_arn)["status"]
         if status not in ("CREATING", "UPDATING"):
             break
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(2)
     else:
         raise RuntimeError("Timed out waiting for record to finish (un)creating.")

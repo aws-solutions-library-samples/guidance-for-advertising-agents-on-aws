@@ -30,8 +30,12 @@ Parameters:
     Type: String
     Default: seller
     Description: Master username for Aurora
+  # Holds the parameter NAME, not the password. The SecureString value is resolved at
+  # deploy time through a dynamic reference on MasterUserPassword, so it never appears
+  # as a stack parameter value. (AWS::SSM::Parameter::Value<String> cannot read a
+  # SecureString.)
   DBMasterPasswordSSMParam:
-    Type: AWS::SSM::Parameter::Value<String>
+    Type: String
     Description: SSM SecureString parameter name holding the DB password
     Default: /ad-seller/db-password
   MinACU:
@@ -74,7 +78,7 @@ Resources:
       EngineVersion: "16.4"
       DatabaseName: ad_seller
       MasterUsername: !Ref DBMasterUsername
-      MasterUserPassword: !Ref DBMasterPasswordSSMParam
+      MasterUserPassword: !Sub "{{resolve:ssm-secure:${DBMasterPasswordSSMParam}}}"
       DBSubnetGroupName: !Ref DBSubnetGroup
       VpcSecurityGroupIds:
         - !Ref DatabaseSecurityGroupId
@@ -132,7 +136,7 @@ Resources:
       SecurityGroupIds:
         - !Ref RedisSecurityGroupId
       AtRestEncryptionEnabled: true
-      TransitEncryptionEnabled: false
+      TransitEncryptionEnabled: true
       Tags:
         - Key: Name
           Value: !Sub "ad-seller-${Environment}-redis"

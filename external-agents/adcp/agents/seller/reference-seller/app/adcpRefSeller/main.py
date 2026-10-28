@@ -235,6 +235,7 @@ def _caller_identity_from_authorization_header(request: Any) -> str | None:
         claims = jwt.decode(
             token,
             options={
+                # nosemgrep: unverified-jwt-decode - Claims decode only; the AgentCore authorizer in front of this container has already verified the token
                 "verify_signature": False,
                 "verify_aud": False,
                 "verify_exp": False,

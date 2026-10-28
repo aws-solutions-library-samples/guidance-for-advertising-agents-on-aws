@@ -33,6 +33,7 @@ def create_order_router(order_store: OrderStore) -> APIRouter:
     """
     router = APIRouter(prefix="/api/v1/buyer", tags=["Buyer Orders"])
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @router.get("/orders")
     async def list_buyer_orders(status: str | None = None):
         """List buyer's orders from local DB with optional status filter.
@@ -50,6 +51,7 @@ def create_order_router(order_store: OrderStore) -> APIRouter:
         orders = order_store.list_orders(filters=filters if filters else None)
         return {"orders": orders, "count": len(orders)}
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @router.get("/orders/{order_id}/audit")
     async def get_order_audit(order_id: str):
         """Get the local audit trail for an order.

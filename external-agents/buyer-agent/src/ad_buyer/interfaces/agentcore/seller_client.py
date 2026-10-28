@@ -208,6 +208,7 @@ def search_seller_inventory(
                 f"{_COLDSTART_BACKOFF_SECONDS}s "
                 f"(attempt {attempt + 1} of {_COLDSTART_MAX_ATTEMPTS - 1})"
             )
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(_COLDSTART_BACKOFF_SECONDS)
             continue
         break

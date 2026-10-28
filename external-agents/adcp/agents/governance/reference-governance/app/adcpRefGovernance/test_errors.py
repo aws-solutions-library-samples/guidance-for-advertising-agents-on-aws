@@ -24,6 +24,7 @@ import errors
 def _manifest_recovery(code: str) -> str:
     """Read the expected value from the SDK, so the test cannot encode its own copy."""
     from adcp.types.generated_poc.manifest_schema import AdcpManifest  # noqa: PLC0415
+    # nosemgrep: python37-compatibility-importlib2 - Project requires Python 3.12 or newer
     from importlib.resources import files  # noqa: PLC0415
 
     from adcp import get_adcp_spec_version  # noqa: PLC0415

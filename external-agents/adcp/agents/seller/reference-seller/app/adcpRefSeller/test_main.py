@@ -975,6 +975,7 @@ class TestBuildToolContextCallerIdentity:
     def test_derives_caller_identity_from_sub_claim(self):
         import jwt as _jwt
 
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token = _jwt.encode({"sub": "cognito-user-abc123", "client_id": "app-client-1"}, "test-secret", algorithm="HS256")
         request = self._FakeRequest({"authorization": f"Bearer {token}"})
 
@@ -985,6 +986,7 @@ class TestBuildToolContextCallerIdentity:
     def test_falls_back_to_client_id_when_sub_absent(self):
         import jwt as _jwt
 
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token = _jwt.encode({"client_id": "app-client-1"}, "test-secret", algorithm="HS256")
         request = self._FakeRequest({"authorization": f"Bearer {token}"})
 
@@ -998,7 +1000,9 @@ class TestBuildToolContextCallerIdentity:
         different caller_identity values, never a shared/static one."""
         import jwt as _jwt
 
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token_a = _jwt.encode({"sub": "buyer-a"}, "s", algorithm="HS256")
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token_b = _jwt.encode({"sub": "buyer-b"}, "s", algorithm="HS256")
 
         identity_a = main._caller_identity_from_authorization_header(
@@ -1030,6 +1034,7 @@ class TestBuildToolContextCallerIdentity:
 
         from adcp.server import RequestMetadata
 
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token = _jwt.encode({"sub": "cognito-user-xyz"}, "s", algorithm="HS256")
         request = self._FakeRequest({"authorization": f"Bearer {token}"})
         meta = RequestMetadata(tool_name="create_media_buy", transport="mcp", request_context=request)
@@ -1049,6 +1054,7 @@ class TestBuildToolContextCallerIdentity:
 
         from adcp.server import RequestMetadata
 
+        # nosemgrep: jwt-python-hardcoded-secret - Test fixture secret, not a credential
         token = _jwt.encode({"sub": "cognito-user-dedup-test"}, "s", algorithm="HS256")
         request = self._FakeRequest({"authorization": f"Bearer {token}"})
         meta = RequestMetadata(tool_name="create_media_buy", transport="mcp", request_context=request)

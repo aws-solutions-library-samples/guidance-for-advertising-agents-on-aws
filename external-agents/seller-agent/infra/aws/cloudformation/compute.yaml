@@ -201,7 +201,7 @@ Resources:
             - Name: DATABASE_URL
               Value: !Sub "postgresql+asyncpg://${DBUsername}@${AuroraEndpoint}:${AuroraPort}/ad_seller"
             - Name: REDIS_URL
-              Value: !Sub "redis://${RedisEndpoint}:${RedisPort}/0"
+              Value: !Sub "rediss://${RedisEndpoint}:${RedisPort}/0"
             - Name: ENVIRONMENT
               Value: !Ref Environment
           Secrets:

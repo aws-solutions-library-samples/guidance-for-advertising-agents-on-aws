@@ -1181,6 +1181,7 @@ class ManualAgentCoreDeployer:
 
                 try:
                     result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit, dangerous-subprocess-use-tainted-env-args
+                        # nosemgrep: dangerous-subprocess-use-tainted-env-args - argv list without a shell; arguments come from operator-supplied config and CLI flags
                         cli_command, capture_output=True, text=True, timeout=700
                     )
 
@@ -1441,6 +1442,7 @@ class ManualAgentCoreDeployer:
                 logger.debug(f"Environment vars: {json.dumps(env_vars, indent=2)}")
 
                 result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit, dangerous-subprocess-use-tainted-env-args
+                    # nosemgrep: dangerous-subprocess-use-tainted-env-args - argv list without a shell; arguments come from operator-supplied config and CLI flags
                     cli_command,
                     capture_output=True,
                     text=True,

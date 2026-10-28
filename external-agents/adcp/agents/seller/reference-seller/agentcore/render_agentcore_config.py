@@ -21,4 +21,5 @@ TARGET = REPO_ROOT / "render_agentcore_auth.py"
 
 if __name__ == "__main__":
     print(f"[shim] delegating to {TARGET}")
+    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
     sys.exit(subprocess.call([sys.executable, str(TARGET), *sys.argv[1:]]))

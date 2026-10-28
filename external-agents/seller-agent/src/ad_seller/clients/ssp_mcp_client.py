@@ -112,6 +112,7 @@ class MCPSSPClient(SSPClient):
         deal_type_str = _DEAL_TYPE_TO_SSP.get(request.deal_type, "PMP")
 
         # Build a structured query for the deal management tool
+        # nosemgrep: tainted-sql-string - Natural-language query for an MCP tool, not SQL
         parts = [f"Create a new {deal_type_str} deal"]
         if request.advertiser:
             parts.append(f"for advertiser {request.advertiser}")

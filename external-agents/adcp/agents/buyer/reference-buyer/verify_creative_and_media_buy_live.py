@@ -180,6 +180,7 @@ media_buy_match = re.search(r'"media_buy_id":\s*"([^"]+)"', reply_1)
 media_buy_id = media_buy_match.group(1) if media_buy_match else None
 check("a media_buy_id was returned by create_media_buy", bool(media_buy_id), reply_1[:800])
 
+# nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
 time.sleep(2)
 
 # --- Turn 2: Creative evaluation, Report(delivery), audit read-back -------------------------
@@ -230,6 +231,7 @@ for attempt in range(10):
     }
     if "adcp_get_plan_audit_logs" in tool_names_seen:
         break
+    # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
     time.sleep(2)
 
 print(f"  {len(steps)} steps recorded under this session")

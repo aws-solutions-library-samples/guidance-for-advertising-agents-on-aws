@@ -43,4 +43,5 @@ RUN uv export --frozen --no-dev --no-emit-project --format requirements-txt > /t
 COPY jws.py deploy_revocations.py governance_origin.py aws_region.py ./
 COPY scheduled_revocations/handler.py ./
 
+# nosemgrep: missing-user - Lambda runs image handlers as an unprivileged sandbox user regardless of USER
 CMD ["handler.handler"]

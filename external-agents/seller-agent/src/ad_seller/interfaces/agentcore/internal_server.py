@@ -66,6 +66,7 @@ def start_internal_server() -> None:
                 _create_internal_api_key()
                 return
         except Exception:  # noqa: BLE001 - server still starting
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(0.5)
 
     logger.error("Internal FastAPI+MCP failed to start on port %d within 15s", _INTERNAL_PORT)

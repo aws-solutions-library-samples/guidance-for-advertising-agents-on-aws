@@ -225,13 +225,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:*
+                  # async_image_processor.py calls table.update_item only.
+                  - dynamodb:GetItem
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
-                  - dynamodb:DeleteItem
-                  - dynamodb:Query
-                  - dynamodb:Scan
-                Resource: "*"
+                Resource: !GetAtt GeneratedContentTable.Arn
 
   # Async Image Processor Lambda Function
   AsyncImageProcessorFunction:
@@ -371,13 +369,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:*
+                  # creative_image_generator.py calls table.put_item only.
                   - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:DeleteItem
-                  - dynamodb:Query
-                  - dynamodb:Scan
-                Resource: "*"
+                Resource: !GetAtt GeneratedContentTable.Arn
   # Creative Image Generator Lambda Function
   CreativeImageGeneratorLambda:
     Type: AWS::Lambda::Function

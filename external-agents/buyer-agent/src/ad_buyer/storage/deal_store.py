@@ -347,6 +347,7 @@ class DealStore:
         col_names = ", ".join(columns)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             self._conn.execute(
                 f"INSERT INTO deals ({col_names}) VALUES ({placeholders})",
                 values,
@@ -914,6 +915,7 @@ class DealStore:
         params.append(limit)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(query, params)
             rows = cursor.fetchall()
         return [dict(r) for r in rows]
@@ -1058,6 +1060,7 @@ class DealStore:
         values.append(deal_id)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE portfolio_metadata SET {set_clause} WHERE deal_id = ?",
                 values,
@@ -1158,6 +1161,7 @@ class DealStore:
         values.append(activation_id)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE deal_activations SET {set_clause} WHERE id = ?",
                 values,
@@ -1293,6 +1297,7 @@ class DealStore:
 
         with self._lock:
             # Update the most recent cache entry for this deal
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"""UPDATE performance_cache SET {set_clause}
                     WHERE id = (
@@ -1457,6 +1462,7 @@ class DealStore:
         params.append(limit)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(query, params)
             rows = cursor.fetchall()
 
@@ -1517,6 +1523,7 @@ class DealStore:
         values.append(asset_id)
 
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE creative_assets SET {set_clause} WHERE asset_id = ?",
                 values,
@@ -1627,6 +1634,7 @@ class DealStore:
         query = f"SELECT * FROM deal_templates {where} ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(query, params)
             rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -1657,6 +1665,7 @@ class DealStore:
         set_clause = ", ".join(f"{col} = ?" for col in updates)
         values = list(updates.values()) + [template_id]
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE deal_templates SET {set_clause} WHERE id = ?", values
             )  # noqa: E501
@@ -1755,6 +1764,7 @@ class DealStore:
         set_clause = ", ".join(f"{col} = ?" for col in updates)
         values = list(updates.values()) + [template_id]
         with self._lock:
+            # nosemgrep: sqlalchemy-execute-raw-query - Values are bound with ?; interpolated identifiers and clauses come from static strings or an allowlist
             cursor = self._conn.execute(
                 f"UPDATE supply_path_templates SET {set_clause} WHERE id = ?", values
             )  # noqa: E501

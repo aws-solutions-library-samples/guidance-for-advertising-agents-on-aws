@@ -628,6 +628,7 @@ def _post_with_coldstart_retry(endpoint: str, payload: bytes, headers: dict, str
                 _COLDSTART_MAX_ATTEMPTS - 1,
                 _COLDSTART_BACKOFF_SECONDS,
             )
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             _time.sleep(_COLDSTART_BACKOFF_SECONDS)
             continue
         return resp, None

@@ -59,6 +59,7 @@ class TestDerToJose:
     def test_converted_signature_actually_verifies(self, p256_key):
         # The end-to-end property: a DER signature, once converted, is accepted by the SDK's own
         # verifier. This is what proves the conversion, not the length alone.
+        # nosemgrep: detected-jwt-token - Test fixture token, not a credential
         base = b"eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJwbGFuLTEifQ"
         der = p256_key.sign(base, ec.ECDSA(hashes.SHA256()))
         assert verify_signature(

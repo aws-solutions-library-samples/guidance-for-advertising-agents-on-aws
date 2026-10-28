@@ -201,6 +201,7 @@ async def positive_buyer_mediated_check(token: str) -> None:
     )
 
     # Give DynamoDB a moment (eventually-consistent scan) before reading back.
+    # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
     time.sleep(2)
     after_keys = _existing_govjti_keys()
     new_keys = after_keys - before_keys
@@ -318,6 +319,7 @@ async def negative_direct_seller_call(token: str) -> None:
                 f"got: {create_resp}",
             )
 
+    # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
     time.sleep(2)
     after_keys = _existing_govjti_keys()
     check(

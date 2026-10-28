@@ -31,6 +31,7 @@ from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
+# nosemgrep: overly-permissive-listener-bind - Mounted into FastAPI behind the platform authorizer; host is set to disable the 421 DNS-rebinding check behind Cloud Run
 mcp = FastMCP(
     "IAB Tech Lab Seller Agent",
     instructions=(

@@ -840,12 +840,14 @@ def _register_routes(
 
     # -- Page ---------------------------------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/")
     def index():
         return render_template("campaign_demo.html")
 
     # -- API: Sample briefs ------------------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/sample-briefs")
     def api_sample_briefs():
         """Return pre-built sample briefs for the dropdown."""
@@ -859,6 +861,7 @@ def _register_routes(
 
     # -- API: Submit brief (Stage 1) ---------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/submit-brief", methods=["POST"])
     def api_submit_brief():
         """Parse brief and create campaign in DRAFT status."""
@@ -884,6 +887,7 @@ def _register_routes(
 
     # -- API: Get campaign state -------------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/campaign/<campaign_id>")
     def api_campaign_state(campaign_id: str):
         """Return current campaign state."""
@@ -912,6 +916,7 @@ def _register_routes(
 
     # -- API: Approve plan (Stage 2) --------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/approve-plan", methods=["POST"])
     def api_approve_plan():
         """Generate and approve the campaign plan."""
@@ -938,6 +943,7 @@ def _register_routes(
 
     # -- API: Approve booking (Stage 3) ------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/approve-booking", methods=["POST"])
     def api_approve_booking():
         """Execute booking and return deals per channel."""
@@ -964,6 +970,7 @@ def _register_routes(
 
     # -- API: Approve creative (Stage 4) -----------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/approve-creative", methods=["POST"])
     def api_approve_creative():
         """Match creatives and finalize campaign to READY."""
@@ -992,6 +999,7 @@ def _register_routes(
 
     # -- API: Activate campaign (Stage 6) ----------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/activate-campaign", methods=["POST"])
     def api_activate_campaign():
         """Activate campaign (READY -> ACTIVE), generate simulated pacing."""
@@ -1040,6 +1048,7 @@ def _register_routes(
 
     # -- API: Pause campaign (Stage 6 control) -----------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/pause-campaign", methods=["POST"])
     def api_pause_campaign():
         """Pause an active campaign (ACTIVE -> PAUSED)."""
@@ -1069,6 +1078,7 @@ def _register_routes(
 
     # -- API: Resume campaign (Stage 6 control) ----------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/resume-campaign", methods=["POST"])
     def api_resume_campaign():
         """Resume a paused campaign (PAUSED -> ACTIVE)."""
@@ -1098,6 +1108,7 @@ def _register_routes(
 
     # -- API: Complete campaign (Stage 6 control) --------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/complete-campaign", methods=["POST"])
     def api_complete_campaign():
         """Complete an active campaign (ACTIVE -> COMPLETED)."""
@@ -1127,6 +1138,7 @@ def _register_routes(
 
     # -- API: Campaign report (Stage 5) ------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/campaign/<campaign_id>/report")
     def api_campaign_report(campaign_id: str):
         """Generate full campaign report."""
@@ -1197,6 +1209,7 @@ def _register_routes(
 
     # -- API: Events -------------------------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/events")
     def api_events():
         """Return recent events from the EventBus."""
@@ -1225,6 +1238,7 @@ def _register_routes(
 
     # -- API: List campaigns -----------------------------------------------
 
+    # nosemgrep: useless-inner-function - Registered as a route by the framework decorator inside the app factory
     @app.route("/api/campaigns")
     def api_list_campaigns():
         """List all campaigns."""
@@ -1404,7 +1418,11 @@ def main(argv: list[str] | None = None) -> int:
     print("    5. Campaign Ready    -> View full campaign report")
     print("    6. Active Campaign   -> Pacing dashboard, alerts, controls")
     print()
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Loopback and no debugger by default: the Werkzeug debugger allows arbitrary code
+    # execution, so exposing it beyond localhost is opt-in via environment.
+    host = os.environ.get("CAMPAIGN_DEMO_HOST", "127.0.0.1")
+    debug = os.environ.get("CAMPAIGN_DEMO_DEBUG", "").lower() in ("1", "true", "yes")
+    app.run(host=host, port=port, debug=debug)
     return 0
 
 

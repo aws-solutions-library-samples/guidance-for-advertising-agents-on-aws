@@ -129,6 +129,7 @@ def _start_fastapi_background():
 
                 return
         except Exception:
+            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
             time.sleep(0.5)
 
     logger.error("FastAPI+MCP failed to start on port %d within 15s", _INTERNAL_PORT)

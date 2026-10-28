@@ -321,6 +321,7 @@ def run_subprocess(cmd: list[str], cwd: Path, dry_run: bool, step_name: str) -> 
     # Flushed before the child inherits this fd, so "running: X" precedes X's own output in a
     # redirected log instead of appearing after it. See header() for the full reasoning.
     print(f"    (cwd={cwd})", flush=True)
+    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
     result = subprocess.run(cmd, cwd=str(cwd))
     if result.returncode != 0:
         print(f"\n!!! Step '{step_name}' FAILED (exit code {result.returncode}): {printable}")
@@ -1136,6 +1137,7 @@ def agentcore_cli() -> str:
     rejected: list[str] = []
     for candidate in candidates:
         try:
+            # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
             probe = subprocess.run(
                 [candidate, "deploy", "--help"], capture_output=True, text=True, timeout=60
             )
@@ -1219,6 +1221,7 @@ def step_bootstrap_venvs(dry_run: bool) -> None:
         # dependencies, and the next step then fails with ModuleNotFoundError instead of the missing
         # interpreter this step exists to prevent. Import boto3: every package's deploy scripts use it,
         # so it is the honest smoke test for "this environment is usable".
+        # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
         probe = subprocess.run(
             [str(interpreter), "-c", "import boto3"], capture_output=True, text=True
         )
@@ -2143,6 +2146,7 @@ def step_agent_tests(dry_run: bool) -> None:
             continue
         print(f"  running: {printable}")
         env = {**os.environ, **extra_env} if extra_env else None
+        # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
         result = subprocess.run(command, cwd=str(directory), env=env)
         if result.returncode != 0:
             warn(

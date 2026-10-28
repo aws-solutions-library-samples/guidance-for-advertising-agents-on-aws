@@ -112,6 +112,7 @@ def start_seller_server() -> subprocess.Popen:
     seller_src = str(SELLER_ROOT / "src")
     env["PYTHONPATH"] = seller_src + os.pathsep + env.get("PYTHONPATH", "")
 
+    # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
     proc = subprocess.Popen(
         [
             str(SELLER_VENV_PYTHON),
@@ -153,6 +154,7 @@ def wait_for_server(url: str, timeout: float = 30.0) -> bool:
                 return True
         except (httpx.ConnectError, httpx.TimeoutException, OSError):
             pass
+        # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
         time.sleep(0.5)
     return False
 
@@ -374,6 +376,7 @@ def test_registry() -> bool:
     # Create client with very short TTL
     short_cache_client = RegistryClient(cache_ttl_seconds=0.01, timeout=1.0)
     short_cache_client._cache.put("test-key", test_card)
+    # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
     time.sleep(0.02)  # Wait for TTL to expire
     expired = short_cache_client._cache.get("test-key")
     assert expired is None

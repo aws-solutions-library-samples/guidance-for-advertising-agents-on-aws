@@ -329,7 +329,7 @@ for o in outputs:
   # Build connection URLs with actual password
   DB_PASSWORD=$(aws ssm get-parameter --name "${db_password_param}" --region "${REGION}" --query 'Parameter.Value' --output text)
   DB_URL="postgresql+asyncpg://seller:${DB_PASSWORD}@${AURORA_ENDPOINT}:${AURORA_PORT}/ad_seller"
-  REDIS_URL="redis://${REDIS_ENDPOINT}:${REDIS_PORT}/0"
+  REDIS_URL="rediss://${REDIS_ENDPOINT}:${REDIS_PORT}/0"
 
   echo "✅ Infrastructure deployed"
 }
