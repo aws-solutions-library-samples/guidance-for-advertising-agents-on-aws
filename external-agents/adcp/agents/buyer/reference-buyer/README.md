@@ -187,7 +187,7 @@ seller's vendor-namespaced extension tool, a seller that doesn't implement it
 returns an `"Unknown tool"` MCP error, which the agent reports plainly per its
 system prompt rather than hiding the tool per-seller.
 
-### Accounts and billing
+### Accounts, billing and the governance gate
 
 `adcp_sync_accounts` declares the account in AdCP's provisioning mode, which
 requires `brand`, `operator` and `billing` on every entry
@@ -198,6 +198,17 @@ names a different party, which the model then passes as the tool's `billing`
 argument. A seller that does not support the chosen value rejects the entry,
 so set `BUYER_ACCOUNT_BILLING` to one of the values in the seller's
 `get_adcp_capabilities` `account.supported_billing`.
+
+`adcp_create_media_buy` refuses to call a seller unless an approved
+`adcp_check_governance` for the same plan, product, budget and pricing option
+was recorded earlier in the session. This is enforced in code
+(`adcp_tools.py`, NFR-U2-G3) and applies whether or not a governance agent is
+configured. **Booking therefore requires a governance agent**: deploy the
+reference governance agent (`../../governance/reference-governance`) or
+register another one in `GOVERNANCE_AGENTS_JSON`. Without one, discovery
+(`get_products` and friends) and `sync_accounts` work, and
+`adcp_create_media_buy` returns `no_prior_check` saying that no governance
+agent is configured.
 
 ### AdCP Reference Test Seller
 

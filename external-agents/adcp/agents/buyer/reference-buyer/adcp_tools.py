@@ -1322,16 +1322,25 @@ def build_adcp_tools(
         key = (plan_id, product_id, float(budget), pricing_option_id)
         entry = _approved_checks.get(key)
         if entry is None:
-            return {
-                "error": "no_prior_check",
-                "message": (
-                    f"No approved check_governance result found for plan_id={plan_id!r}, "
-                    f"product_id={product_id!r}, budget={budget!r}, "
-                    f"pricing_option_id={pricing_option_id!r}. Call adcp_check_governance with "
-                    "tool_name=\"create_media_buy\" and this exact payload, get an \"approved\" "
-                    "verdict, then retry.",
-                ),
-            }
+            message = (
+                f"No approved check_governance result found for plan_id={plan_id!r}, "
+                f"product_id={product_id!r}, budget={budget!r}, "
+                f"pricing_option_id={pricing_option_id!r}. Call adcp_check_governance with "
+                "tool_name=\"create_media_buy\" and this exact payload, get an \"approved\" "
+                "verdict, then retry."
+            )
+            if not governance_configured():
+                # The gate applies whether or not a governance agent is configured, so without one no
+                # check can ever be approved. Say that, rather than sending the caller to a tool that
+                # can only fail.
+                message = (
+                    "This buyer books a media buy only after an approved check_governance, and no "
+                    "governance agent is configured (GOVERNANCE_AGENTS_JSON is empty), so no booking "
+                    "can proceed. Deploy the reference governance agent "
+                    "(agents/governance/reference-governance) or register another one, then sync the "
+                    "plan and check this payload before retrying."
+                )
+            return {"error": "no_prior_check", "message": message}
         _check_id, recorded_context = entry
         if _governance_context_expired(recorded_context):
             return {
