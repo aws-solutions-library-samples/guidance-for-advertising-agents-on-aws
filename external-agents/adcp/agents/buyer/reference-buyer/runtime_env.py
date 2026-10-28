@@ -107,6 +107,10 @@ def build_env_vars(extra: dict[str, str] | None = None) -> dict[str, str]:
         # BR-U2-8: the reallocation_threshold sync_plans requires but no brief ever states, expressed
         # as a percentage of budget.total. A POLICY default, not a measurement.
         "BUYER_REALLOCATION_THRESHOLD_PCT": os.environ.get("BUYER_REALLOCATION_THRESHOLD_PCT", "0.1"),
+        # The `billing` party adcp_sync_accounts sends when the user names none (AdCP requires one in
+        # provisioning mode). A POLICY default, like the threshold above; see adcp_tools.py's
+        # DEFAULT_ACCOUNT_BILLING for why "operator".
+        "BUYER_ACCOUNT_BILLING": os.environ.get("BUYER_ACCOUNT_BILLING", "operator"),
     }
 
     if extra:

@@ -67,6 +67,19 @@ from auth import get_test_user_access_token
 BuyingModeLiteral = Literal["brief", "wholesale", "refine"]
 BUYING_MODES: tuple[str, ...] = get_args(BuyingModeLiteral)
 
+#: AdCP's `billing` values (`enums/billing-party.json`): which party the seller invoices for an account.
+#: Restated rather than imported for the same reason as `BuyingModeLiteral` above.
+BillingPartyLiteral = Literal["operator", "agent", "advertiser"]
+BILLING_PARTIES: tuple[str, ...] = get_args(BillingPartyLiteral)
+
+#: The env var naming the `billing` value `adcp_sync_accounts` sends when the caller does not choose one.
+ACCOUNT_BILLING_ENV = "BUYER_ACCOUNT_BILLING"
+#: A POLICY default, like BUYER_REALLOCATION_THRESHOLD_PCT's. "operator" is "seller invoices the operator
+#: -- agency or brand buying direct", which matches how this buyer declares accounts (an operator acting
+#: for a brand) and is in the `supported_billing` this repo's reference seller advertises. A seller that
+#: does not support it rejects the entry rather than remapping it, and says so.
+DEFAULT_ACCOUNT_BILLING = "operator"
+
 logger = logging.getLogger(__name__)
 
 
@@ -782,6 +795,7 @@ def build_adcp_tools(
         brand_domain: str,
         operator: str,
         seller_ids: list[str] | None = None,
+        billing: BillingPartyLiteral | None = None,
     ) -> dict[str, Any]:
         """Declare the advertiser account at sales agents (do this first).
 
@@ -800,11 +814,25 @@ def build_adcp_tools(
                 user; do not invent one.
             seller_ids: Restrict to these sales agent ids. Omit to declare at every configured agent,
                 which is the normal case -- each seller keeps its own account records.
+            billing: Who the seller invoices: "operator" (the agency, or a brand buying direct),
+                "agent" (this buying agent consolidates billing) or "advertiser" (the advertiser
+                directly). Omit unless the user has said who is invoiced; the deployment's configured
+                default is used.
         """
+        # AdCP 3.1 requires `billing` on a provisioning-mode entry (brand + operator + billing,
+        # `account/sync-accounts-request.json`), and a seller that validates against the schema rejects
+        # an entry without it: INVALID_REQUEST, `/accounts/0/.../billing`: "This field is required."
+        party = str(billing or os.environ.get(ACCOUNT_BILLING_ENV, "").strip() or DEFAULT_ACCOUNT_BILLING)
+        if party not in BILLING_PARTIES:
+            source = "billing" if billing else ACCOUNT_BILLING_ENV
+            return {
+                "error": "invalid_billing",
+                "message": f"{source} must be one of {list(BILLING_PARTIES)}, got {party!r}.",
+            }
         args = {
             # >= 16 chars, enforced by the seller and by the SDK model.
             "idempotency_key": f"sync-acct-{uuid.uuid4().hex}",
-            "accounts": [{"brand": {"domain": brand_domain}, "operator": operator}],
+            "accounts": [{"brand": {"domain": brand_domain}, "operator": operator, "billing": party}],
         }
         return await _call_all_sellers(scope(seller_ids), "sync_accounts", args, buyer_session_id)
 

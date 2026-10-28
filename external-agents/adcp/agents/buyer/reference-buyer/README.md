@@ -164,6 +164,18 @@ seller's vendor-namespaced extension tool, a seller that doesn't implement it
 returns an `"Unknown tool"` MCP error, which the agent reports plainly per its
 system prompt rather than hiding the tool per-seller.
 
+### Accounts and billing
+
+`adcp_sync_accounts` declares the account in AdCP's provisioning mode, which
+requires `brand`, `operator` and `billing` on every entry
+(`account/sync-accounts-request.json`). `billing` says which party the seller
+invoices: `operator`, `agent` or `advertiser` (`enums/billing-party.json`).
+The tool sends `BUYER_ACCOUNT_BILLING` (default `operator`) unless the user
+names a different party, which the model then passes as the tool's `billing`
+argument. A seller that does not support the chosen value rejects the entry,
+so set `BUYER_ACCOUNT_BILLING` to one of the values in the seller's
+`get_adcp_capabilities` `account.supported_billing`.
+
 ### AdCP Reference Test Seller
 
 `../../seller/reference-seller` is a separate AgentCore project (built with the
@@ -767,6 +779,8 @@ since this agent only calls the three core, read-only AdCP tasks
   the current field name for explicit skill invocation, sending the
   legacy `parameters` key alongside it for sellers that still only read
   that name during AdCP's compatibility period.
+- **`billing` on every `sync_accounts` entry** (`adcp_sync_accounts`,
+  `BUYER_ACCOUNT_BILLING`), which AdCP 3.1 requires in provisioning mode.
 
 Verified live against the real reference seller (both fixes: `brand` and
 `adcp_major_version` accepted without error, real product data returned;
