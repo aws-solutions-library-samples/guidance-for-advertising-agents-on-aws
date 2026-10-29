@@ -1,5 +1,32 @@
 # Guidance for Advertising Agents
 
+> ## `v4-beta`: security hardening, AdCP cleanup, and demo UI additions
+>
+> This branch builds on v3 (described below). It is a beta, so expect changes before it is promoted to `main`.
+>
+> ### What v4 adds
+>
+> - **AdCP agents can be removed cleanly.** `./scripts/deploy-ecosystem.sh --cleanup` now removes the Phase 9 AdCP reference agents as its first step, and the new `--cleanup-adcp` flag removes only those agents while leaving the rest of the stack running. Both call the new `scripts/cleanup_adcp_agents.py`, which derives the AdCP instance prefix, prints an inventory, asks once to confirm, and asks separately before scheduling the KMS signing key for deletion. In v3, `--cleanup` left the AdCP resources behind and they kept billing. See [Cleanup](#cleanup).
+> - **Chat export as Markdown.** The chat toolbar has new buttons to copy the visible conversation to the clipboard or download it as a `.md` file, alongside the existing PDF export.
+> - **Demo universe glossary.** A slide-over glossary panel in each chat tab explains the fictional Meridian Media Group publisher brands used in the demo data. The content lives in `bedrock-adtech-demo/src/assets/glossary.json`.
+> - **Security scan findings resolved.** CodeQL, bandit, cfn_nag, semgrep, gitleaks, and Dependabot findings were fixed or justified. The changes that affect you are listed under the behavior changes below.
+> - **Patched dependencies.** PyJWT 2.15.1, mcp 1.30.0, pillow 13.0.0, python-dotenv 1.2.2, and refreshed lockfiles across the AdCP agents and the buyer agent. The buyer UI moves to dompurify 3.4.17, vite 8.2.4, and vitest 4.1.12.
+> - **Demo UI fixes.** After an email and password sign-in, the page now reloads so configuration loads with credentials, instead of failing the first call. Signed-out visitors no longer briefly appear signed in. Timeline cards stay inside their container and stack in one column at 768px and below.
+>
+> ### Behavior changes from v3
+>
+> - **Reloading the AdCP buyer UI signs you out.** Cognito tokens are held in memory instead of `sessionStorage`, and the refresh token is no longer kept. The runtime session ID is also cleared on load, so the next user to sign in does not continue the previous user's conversation.
+> - **Redis in-transit encryption is enabled for the buyer and seller CloudFormation stacks.** `REDIS_URL` now uses `rediss://`. Enabling TLS on an existing ElastiCache cluster can replace the cache. The Terraform modules and docker-compose files still use `redis://`.
+> - **The seller database password is resolved through an `ssm-secure` dynamic reference.** The `DBMasterPasswordSSMParam` parameter in the seller storage stack is now a plain string holding the SSM parameter name, so the password value no longer appears as a stack parameter. The seller network stack also declares explicit egress rules on all four security groups.
+> - **The image Lambdas have a narrower DynamoDB policy.** `dynamodb:*` on all resources was replaced with the operations each Lambda calls, scoped to `GeneratedContentTable`.
+> - **The demo Flask servers bind to `127.0.0.1` with debug off.** Set `CAMPAIGN_DEMO_HOST`, `CAMPAIGN_DEMO_DEBUG`, `DASHBOARD_HOST`, or `DASHBOARD_DEBUG` to opt in to the old behavior.
+>
+> ### Known gaps
+>
+> - `chromadb` 1.5.9 (pulled in by `crewai`) has no patched release.
+> - `opentelemetry-api` in the governance agent stays at 1.44.0 because `aws-opentelemetry-distro` 0.21.0 pins it exactly.
+> - The `bedrock-adtech-demo` Angular 17 Dependabot alerts need an upgrade past Angular 19.2.25.
+
 > ## 🎓 `main` has graduated to v3
 >
 > The previous version is preserved on the [**`v2`**](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v2) branch. If you have a working v2 deployment and are not ready to move, stay on `v2` — it is unchanged.
