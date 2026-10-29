@@ -1,8 +1,8 @@
 # Guidance for Advertising Agents
 
-> ## `v4-beta`: security hardening, AdCP cleanup, and demo UI additions
+> ## `main` is now v4: security hardening, AdCP cleanup, and demo UI additions
 >
-> This branch builds on v3 (described below). It is a beta, so expect changes before it is promoted to `main`.
+> v4 builds on v3 (release notes below). The previous version is preserved on the [**`v3`**](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v3) branch. If you have a working v3 deployment and are not ready to move, stay on `v3`. Review [Breaking changes from v3](#breaking-changes-from-v3) before upgrading. The v2 version remains on the [`v2`](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v2) branch.
 >
 > ### What v4 adds
 >
@@ -14,8 +14,12 @@
 > - **Patched dependencies.** PyJWT 2.15.1, mcp 1.30.0, pillow 13.0.0, python-dotenv 1.2.2, and refreshed lockfiles across the AdCP agents and the buyer agent. The buyer UI moves to dompurify 3.4.17, vite 8.2.4, and vitest 4.1.12.
 > - **Demo UI fixes.** After an email and password sign-in, the page now reloads so configuration loads with credentials, instead of failing the first call. Signed-out visitors no longer briefly appear signed in. Timeline cards stay inside their container and stack in one column at 768px and below.
 >
-> ### Behavior changes from v3
+> ### Breaking changes from v3
 >
+> These affect an existing v3 deployment or its tooling. Redeploying v4 over a v3 stack without reading them can fail or replace resources.
+>
+> - **The seller database password parameter must be a `SecureString`.** The seller storage stack now reads it with `{{resolve:ssm-secure:...}}`, which cannot read a plain `String` parameter. v3 created `/ad-seller/db-password` as a `String`, so an existing v3 parameter must be recreated as a `SecureString` with the same value before you redeploy. `external-agents/seller-agent/infra/aws/agentcore/deploy.sh` now creates it as a `SecureString` and reads it with `--with-decryption`.
+> - **`--cleanup` now includes the AdCP agents and asks for confirmation.** It runs the AdCP teardown first and prompts once to confirm and once about the KMS key. A script that ran `--cleanup` unattended in v3 will now stop at those prompts. The step numbers in the cleanup output also shifted by one.
 > - **Reloading the AdCP buyer UI signs you out.** Cognito tokens are held in memory instead of `sessionStorage`, and the refresh token is no longer kept. The runtime session ID is also cleared on load, so the next user to sign in does not continue the previous user's conversation.
 > - **Redis in-transit encryption is enabled for the buyer and seller CloudFormation stacks.** `REDIS_URL` now uses `rediss://`. Enabling TLS on an existing ElastiCache cluster can replace the cache. The Terraform modules and docker-compose files still use `redis://`.
 > - **The seller database password is resolved through an `ssm-secure` dynamic reference.** The `DBMasterPasswordSSMParam` parameter in the seller storage stack is now a plain string holding the SSM parameter name, so the password value no longer appears as a stack parameter. The seller network stack also declares explicit egress rules on all four security groups.
@@ -28,9 +32,9 @@
 > - `opentelemetry-api` in the governance agent stays at 1.44.0 because `aws-opentelemetry-distro` 0.21.0 pins it exactly.
 > - The `bedrock-adtech-demo` Angular 17 Dependabot alerts need an upgrade past Angular 19.2.25.
 
-> ## 🎓 `main` has graduated to v3
+> ## v3 release notes
 >
-> The previous version is preserved on the [**`v2`**](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v2) branch. If you have a working v2 deployment and are not ready to move, stay on `v2` — it is unchanged.
+> These notes describe the v3 release, kept for reference. If you have a working v2 deployment and are not ready to move, stay on the [**`v2`**](https://github.com/aws-solutions-library-samples/guidance-for-advertising-agents-on-aws/tree/v2) branch. It is unchanged.
 >
 > ### What v3 adds
 >

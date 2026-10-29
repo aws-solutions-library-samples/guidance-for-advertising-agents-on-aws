@@ -185,7 +185,7 @@ deploy_infrastructure() {
     echo ">>> Creating SSM parameter: ${db_password_param}"
     aws ssm put-parameter \
       --name "${db_password_param}" \
-      --type String \
+      --type SecureString \
       --value "${generated_password}" \
       --description "Auto-generated Aurora master password for ad-seller" \
       --region "${REGION}"
@@ -327,7 +327,7 @@ for o in outputs:
   echo "  Subnets  : ${VPC_SUBNET_1}, ${VPC_SUBNET_2}"
 
   # Build connection URLs with actual password
-  DB_PASSWORD=$(aws ssm get-parameter --name "${db_password_param}" --region "${REGION}" --query 'Parameter.Value' --output text)
+  DB_PASSWORD=$(aws ssm get-parameter --name "${db_password_param}" --with-decryption --region "${REGION}" --query 'Parameter.Value' --output text)
   DB_URL="postgresql+asyncpg://seller:${DB_PASSWORD}@${AURORA_ENDPOINT}:${AURORA_PORT}/ad_seller"
   REDIS_URL="rediss://${REDIS_ENDPOINT}:${REDIS_PORT}/0"
 
