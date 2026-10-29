@@ -25,8 +25,9 @@ registrations are durable while session records (which set `ttl`) expire. Verifi
 
     pk                     sk            attributes
     --------------------   -----------   ------------------------------------------------
-    AGENTREG#SELLER        <agent_id>    id, name, url, agent_url?, transport, auth_type,
-                                          auth_token?, created_at, updated_at, updated_by
+    AGENTREG#SELLER        <agent_id>    id, name, url, agent_url?, transport, a2a_version?,
+                                          auth_type, auth_token?, created_at, updated_at,
+                                          updated_by
     AGENTREG#GOVERNANCE    <agent_id>    id, name, url, transport, auth_type, auth_token?,
                                           created_at, updated_at, updated_by
 
@@ -74,7 +75,7 @@ _HIDE_PK_BY_KIND = {
 # (static_bearer) and `client_secret` (m2m_oauth) are the secrets and are treated specially everywhere
 # they could escape (see `redact`). client_id/token_url/scope/audience are non-secret and pass through.
 _STORED_FIELDS = (
-    "id", "name", "url", "agent_url", "transport", "auth_type",
+    "id", "name", "url", "agent_url", "transport", "a2a_version", "auth_type",
     "auth_token",
     "client_id", "client_secret", "token_url", "scope", "audience",
 )

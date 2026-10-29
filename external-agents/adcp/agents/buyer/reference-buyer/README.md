@@ -127,6 +127,29 @@ request that names no `seller_agent_id` fans out to **every** entry in the
 registry (`agent.py::build_agent`), so a seller listed twice answers the same
 brief twice.
 
+`a2a_version` picks the A2A protocol version an `"a2a"` entry is spoken to
+with. `"0.3"` is the default if the field is omitted, so existing entries are
+unchanged; it is also the version this buyer's own A2A runtime speaks
+(a2a-sdk 0.3, through `strands-agents[a2a]`). Set
+`"1.0"` for a seller whose agent card advertises only
+`supportedInterfaces[].protocolVersion: "1.0"`: such a seller answers 0.3's
+`message/send` with JSON-RPC `-32601 Method not found`. A `"1.0"` entry sends
+`SendMessage` with the `A2A-Version: 1.0` header, role `ROLE_USER` and a
+`{"data":{"skill":...,"input":...}}` part with no `kind` fields, per AdCP's
+A2A guide. For example:
+
+```json
+{
+  "id": "external-seller-a2a",
+  "name": "Third-party seller agent (A2A 1.0)",
+  "url": "https://seller.example/a2a",
+  "transport": "a2a",
+  "a2a_version": "1.0",
+  "auth_type": "static_bearer",
+  "auth_token_env": "EXTERNAL_SELLER_AUTH_TOKEN"
+}
+```
+
 A seller reachable over both bindings is one such case: some expose a separate
 A2A endpoint alongside their MCP one, with its own bespoke skill names, that
 also handles a structured `{skill, parameters}` call using AdCP tool names. See
@@ -163,6 +186,29 @@ per-seller code branches. Only core AdCP tasks are registered. If you add a
 seller's vendor-namespaced extension tool, a seller that doesn't implement it
 returns an `"Unknown tool"` MCP error, which the agent reports plainly per its
 system prompt rather than hiding the tool per-seller.
+
+### Accounts, billing and the governance gate
+
+`adcp_sync_accounts` declares the account in AdCP's provisioning mode, which
+requires `brand`, `operator` and `billing` on every entry
+(`account/sync-accounts-request.json`). `billing` says which party the seller
+invoices: `operator`, `agent` or `advertiser` (`enums/billing-party.json`).
+The tool sends `BUYER_ACCOUNT_BILLING` (default `operator`) unless the user
+names a different party, which the model then passes as the tool's `billing`
+argument. A seller that does not support the chosen value rejects the entry,
+so set `BUYER_ACCOUNT_BILLING` to one of the values in the seller's
+`get_adcp_capabilities` `account.supported_billing`.
+
+`adcp_create_media_buy` refuses to call a seller unless an approved
+`adcp_check_governance` for the same plan, product, budget and pricing option
+was recorded earlier in the session. This is enforced in code
+(`adcp_tools.py`, NFR-U2-G3) and applies whether or not a governance agent is
+configured. **Booking therefore requires a governance agent**: deploy the
+reference governance agent (`../../governance/reference-governance`) or
+register another one in `GOVERNANCE_AGENTS_JSON`. Without one, discovery
+(`get_products` and friends) and `sync_accounts` work, and
+`adcp_create_media_buy` returns `no_prior_check` saying that no governance
+agent is configured.
 
 ### AdCP Reference Test Seller
 
@@ -766,7 +812,11 @@ since this agent only calls the three core, read-only AdCP tasks
 - **A2A `DataPart` uses `input`** (`adcp_tools.py::_call_seller_tool_a2a`),
   the current field name for explicit skill invocation, sending the
   legacy `parameters` key alongside it for sellers that still only read
-  that name during AdCP's compatibility period.
+  that name during AdCP's compatibility period. A seller entry with
+  `a2a_version: "1.0"` gets the A2A 1.0 wire form instead, with `input`
+  only (see "Seller agent registry").
+- **`billing` on every `sync_accounts` entry** (`adcp_sync_accounts`,
+  `BUYER_ACCOUNT_BILLING`), which AdCP 3.1 requires in provisioning mode.
 
 Verified live against the real reference seller (both fixes: `brand` and
 `adcp_major_version` accepted without error, real product data returned;

@@ -7,7 +7,9 @@ transport that seller's registry entry declares (see seller_agents.py):
     tool by name.
   - "a2a" sends a JSONRPC message/send request with a structured
     {skill, input} DataPart (parameters also sent for legacy sellers), per
-    AdCP's A2A binding. The AdCP tool name doubles as the skill name.
+    AdCP's A2A binding. The AdCP tool name doubles as the skill name. An
+    entry with a2a_version "1.0" sends A2A 1.0's SendMessage instead (see
+    _a2a_request_body()).
 
 Core AdCP task calls (get_products, get_adcp_capabilities,
 list_creative_formats) are stamped with adcp_major_version on every
@@ -66,6 +68,19 @@ from auth import get_test_user_access_token
 #: asserts these are equal, so the restatement cannot drift without a test failing.
 BuyingModeLiteral = Literal["brief", "wholesale", "refine"]
 BUYING_MODES: tuple[str, ...] = get_args(BuyingModeLiteral)
+
+#: AdCP's `billing` values (`enums/billing-party.json`): which party the seller invoices for an account.
+#: Restated rather than imported for the same reason as `BuyingModeLiteral` above.
+BillingPartyLiteral = Literal["operator", "agent", "advertiser"]
+BILLING_PARTIES: tuple[str, ...] = get_args(BillingPartyLiteral)
+
+#: The env var naming the `billing` value `adcp_sync_accounts` sends when the caller does not choose one.
+ACCOUNT_BILLING_ENV = "BUYER_ACCOUNT_BILLING"
+#: A POLICY default, like BUYER_REALLOCATION_THRESHOLD_PCT's. "operator" is "seller invoices the operator
+#: -- agency or brand buying direct", which matches how this buyer declares accounts (an operator acting
+#: for a brand) and is in the `supported_billing` this repo's reference seller advertises. A seller that
+#: does not support it rejects the entry rather than remapping it, and says so.
+DEFAULT_ACCOUNT_BILLING = "operator"
 
 logger = logging.getLogger(__name__)
 
@@ -322,42 +337,37 @@ def _extract_mcp_success_data(
     return None
 
 
-async def _call_seller_tool_a2a(
-    url: str,
-    headers: dict[str, str],
-    tool_name: str,
-    arguments: dict[str, Any],
-    session_id: str | None = None,
-) -> dict[str, Any]:
-    """Send a structured AdCP skill-invocation request over A2A's JSONRPC binding.
+#: The A2A 1.0 version-negotiation header. A 1.0 server treats a request without it as 0.3.
+A2A_VERSION_HEADER = "A2A-Version"
 
-    Per AdCP's A2A guide (Explicit Skill / Deterministic invocation), a
-    buyer invokes a skill deterministically with a DataPart shaped like
-    {"data": {"skill": ..., "input": ...}} - "input" is the current field
-    name for the task's arguments; "parameters" is the legacy name some
-    sellers still only read, so both are sent with the same value. The
-    "kind": "data" key is the v0.3 wire form; A2A 1.0 carries no "kind"
-    discriminator at all (both are sent here so the request round-trips
-    with either a v0.3 or 1.0 server, matching the compatibility-period
-    guidance in the guide). The AdCP tool name (get_products,
-    get_adcp_capabilities, etc.) is the skill name. Sellers that only
-    implement free-text natural-language handling (not the structured
-    contract) will return whatever they return for that shape — including
-    a canned/unhelpful response — and that response is passed through
-    as-is, not corrected or reinterpreted.
 
-    Response parsing follows AdCP's A2A Response Extraction spec exactly
-    (https://docs.adcontextprotocol.org/docs/building/by-layer/L0/a2a-response-extraction):
-    unwrap the A2A 1.0 StreamResponse envelope if present, normalize
-    status.state, then branch on final vs. interim status - final states
-    read the *last* DataPart from artifacts[0] (falling back to
-    status.message.parts if artifacts are empty) and reject the
-    {response: {...}} framework-wrapper shape as a server bug; interim
-    states read the *first* DataPart from status.message.parts. See
-    extract_adcp_response_from_a2a() below for the actual algorithm.
+def _a2a_request_body(tool_name: str, arguments: dict[str, Any], a2a_version: str) -> dict[str, Any]:
+    """The JSONRPC body for one AdCP skill invocation, in the wire form of `a2a_version`.
+
+    "0.3" (the default) is the shape this buyer has always sent: method `message/send`, role "user",
+    and `kind` discriminators on the message and its DataPart.
+
+    "1.0" differs in exactly the places A2A 1.0 changed the wire format (AdCP's A2A guide, "What
+    Changed in 1.0"): the method is `SendMessage`, the role is the ProtoJSON enum "ROLE_USER", and
+    there is no `kind` anywhere -- a Part's type is the field it sets. The two are not interchangeable:
+    a 1.0-only server answers `message/send` with -32601 (method not found), and its ProtoJSON parser
+    rejects the unknown `kind` field. The arguments go under "input" only, the current AdCP name;
+    "parameters" is the 0.3-era alias, which AdCP's A2A 1.0 profile no longer accepts.
     """
-    versioned_arguments = _with_version(tool_name, arguments)
-    body = {
+    if a2a_version == "1.0":
+        return {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "SendMessage",
+            "params": {
+                "message": {
+                    "role": "ROLE_USER",
+                    "parts": [{"data": {"skill": tool_name, "input": arguments}}],
+                    "messageId": f"msg-{uuid.uuid4()}",
+                }
+            },
+        }
+    return {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "message/send",
@@ -375,8 +385,8 @@ async def _call_seller_tool_a2a(
                             # sellers still only read, and AdCP's spec still
                             # documents it as accepted during the
                             # compatibility period.
-                            "input": versioned_arguments,
-                            "parameters": versioned_arguments,
+                            "input": arguments,
+                            "parameters": arguments,
                         },
                     }
                 ],
@@ -386,6 +396,47 @@ async def _call_seller_tool_a2a(
         },
     }
 
+
+async def _call_seller_tool_a2a(
+    url: str,
+    headers: dict[str, str],
+    tool_name: str,
+    arguments: dict[str, Any],
+    session_id: str | None = None,
+    a2a_version: str = "0.3",
+) -> dict[str, Any]:
+    """Send a structured AdCP skill-invocation request over A2A's JSONRPC binding.
+
+    Per AdCP's A2A guide (Explicit Skill / Deterministic invocation), a
+    buyer invokes a skill deterministically with a DataPart shaped like
+    {"data": {"skill": ..., "input": ...}} - "input" is the current field
+    name for the task's arguments; "parameters" is the legacy name some
+    sellers still only read, so both are sent with the same value on 0.3.
+    The "kind": "data" key is the v0.3 wire form; A2A 1.0 carries no "kind"
+    discriminator at all. A 0.3 request does not reach a 1.0-only server
+    (one that has not enabled 0.3 compatibility), so the wire version is
+    chosen per seller: `a2a_version` "1.0" sends the 1.0 form with the
+    `A2A-Version: 1.0` header, and anything else keeps the 0.3 form (see
+    _a2a_request_body()). The AdCP tool name (get_products,
+    get_adcp_capabilities, etc.) is the skill name. Sellers that only
+    implement free-text natural-language handling (not the structured
+    contract) will return whatever they return for that shape — including
+    a canned/unhelpful response — and that response is passed through
+    as-is, not corrected or reinterpreted.
+
+    Response parsing follows AdCP's A2A Response Extraction spec exactly
+    (https://docs.adcontextprotocol.org/docs/building/by-layer/L0/a2a-response-extraction):
+    unwrap the A2A 1.0 StreamResponse envelope if present, normalize
+    status.state, then branch on final vs. interim status - final states
+    read the *last* DataPart from artifacts[0] (falling back to
+    status.message.parts if artifacts are empty) and reject the
+    {response: {...}} framework-wrapper shape as a server bug; interim
+    states read the *first* DataPart from status.message.parts. See
+    extract_adcp_response_from_a2a() below for the actual algorithm.
+    """
+    versioned_arguments = _with_version(tool_name, arguments)
+    body = _a2a_request_body(tool_name, versioned_arguments, a2a_version)
+
     # A2A's own conversation identifier. messageId is per-message and must stay
     # unique; contextId is what ties messages into one conversation, and
     # omitting it (the previous behaviour) makes a spec-compliant seller treat
@@ -393,6 +444,8 @@ async def _call_seller_tool_a2a(
     # A2A server side. Sent only when there's a real buyer session to derive it
     # from, so a session-less call still behaves as before.
     call_headers = {**headers, "Content-Type": "application/json"}
+    if a2a_version == "1.0":
+        call_headers[A2A_VERSION_HEADER] = "1.0"
     if session_id:
         body["params"]["message"]["contextId"] = session_id
         # And the platform-level session, for microVM affinity on A2A runtimes
@@ -457,10 +510,11 @@ def _unwrap_a2a_stream_envelope(value: Any) -> Any:
 
     A StreamResponse is a single-key object with key "task", "message",
     "statusUpdate", or "artifactUpdate" wrapping the real Task /
-    TaskStatusUpdateEvent / Message. Our synchronous message/send calls
-    get the bare object back (this wrapper only applies to SSE/webhook
-    delivery), so this is a no-op for the common case here - kept for
-    correctness if a seller's JSONRPC result ever comes back wrapped.
+    TaskStatusUpdateEvent / Message. Our synchronous 0.3 message/send calls
+    get the bare object back, so this is a no-op for them. A 1.0
+    SendMessage result is a oneof of the same shape ({"task": {...}} or
+    {"message": {...}}), so for a seller with a2a_version "1.0" this is
+    the path every response takes.
     """
     if not isinstance(value, dict):
         return value
@@ -559,7 +613,12 @@ async def _call_seller_tool(
     session_id = derive_seller_session_id(buyer_session_id, seller_agent.get("id", "seller"))
 
     if transport == "a2a":
-        return await _call_seller_tool_a2a(url, headers, tool_name, arguments, session_id)
+        # .get, not [...]: a governance agent entry and any caller-built seller dict predate the
+        # field, and both mean 0.3.
+        a2a_version = seller_agent.get("a2a_version") or "0.3"
+        return await _call_seller_tool_a2a(
+            url, headers, tool_name, arguments, session_id, a2a_version
+        )
     return await _call_seller_tool_mcp(url, headers, tool_name, arguments, session_id)
 
 
@@ -782,6 +841,7 @@ def build_adcp_tools(
         brand_domain: str,
         operator: str,
         seller_ids: list[str] | None = None,
+        billing: BillingPartyLiteral | None = None,
     ) -> dict[str, Any]:
         """Declare the advertiser account at sales agents (do this first).
 
@@ -800,11 +860,25 @@ def build_adcp_tools(
                 user; do not invent one.
             seller_ids: Restrict to these sales agent ids. Omit to declare at every configured agent,
                 which is the normal case -- each seller keeps its own account records.
+            billing: Who the seller invoices: "operator" (the agency, or a brand buying direct),
+                "agent" (this buying agent consolidates billing) or "advertiser" (the advertiser
+                directly). Omit unless the user has said who is invoiced; the deployment's configured
+                default is used.
         """
+        # AdCP 3.1 requires `billing` on a provisioning-mode entry (brand + operator + billing,
+        # `account/sync-accounts-request.json`), and a seller that validates against the schema rejects
+        # an entry without it: INVALID_REQUEST, `/accounts/0/.../billing`: "This field is required."
+        party = str(billing or os.environ.get(ACCOUNT_BILLING_ENV, "").strip() or DEFAULT_ACCOUNT_BILLING)
+        if party not in BILLING_PARTIES:
+            source = "billing" if billing else ACCOUNT_BILLING_ENV
+            return {
+                "error": "invalid_billing",
+                "message": f"{source} must be one of {list(BILLING_PARTIES)}, got {party!r}.",
+            }
         args = {
             # >= 16 chars, enforced by the seller and by the SDK model.
             "idempotency_key": f"sync-acct-{uuid.uuid4().hex}",
-            "accounts": [{"brand": {"domain": brand_domain}, "operator": operator}],
+            "accounts": [{"brand": {"domain": brand_domain}, "operator": operator, "billing": party}],
         }
         return await _call_all_sellers(scope(seller_ids), "sync_accounts", args, buyer_session_id)
 
@@ -1248,16 +1322,25 @@ def build_adcp_tools(
         key = (plan_id, product_id, float(budget), pricing_option_id)
         entry = _approved_checks.get(key)
         if entry is None:
-            return {
-                "error": "no_prior_check",
-                "message": (
-                    f"No approved check_governance result found for plan_id={plan_id!r}, "
-                    f"product_id={product_id!r}, budget={budget!r}, "
-                    f"pricing_option_id={pricing_option_id!r}. Call adcp_check_governance with "
-                    "tool_name=\"create_media_buy\" and this exact payload, get an \"approved\" "
-                    "verdict, then retry.",
-                ),
-            }
+            message = (
+                f"No approved check_governance result found for plan_id={plan_id!r}, "
+                f"product_id={product_id!r}, budget={budget!r}, "
+                f"pricing_option_id={pricing_option_id!r}. Call adcp_check_governance with "
+                "tool_name=\"create_media_buy\" and this exact payload, get an \"approved\" "
+                "verdict, then retry."
+            )
+            if not governance_configured():
+                # The gate applies whether or not a governance agent is configured, so without one no
+                # check can ever be approved. Say that, rather than sending the caller to a tool that
+                # can only fail.
+                message = (
+                    "This buyer books a media buy only after an approved check_governance, and no "
+                    "governance agent is configured (GOVERNANCE_AGENTS_JSON is empty), so no booking "
+                    "can proceed. Deploy the reference governance agent "
+                    "(agents/governance/reference-governance) or register another one, then sync the "
+                    "plan and check this payload before retrying."
+                )
+            return {"error": "no_prior_check", "message": message}
         _check_id, recorded_context = entry
         if _governance_context_expired(recorded_context):
             return {
