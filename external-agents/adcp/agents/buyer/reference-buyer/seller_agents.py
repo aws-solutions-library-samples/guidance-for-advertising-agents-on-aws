@@ -45,6 +45,14 @@ entry must be the seller's direct JSONRPC endpoint, not its agent-card
 location: some sellers serve the agent card from a different path than the
 invoke endpoint, so pointing `url` at the card yields a 404 on message/send.
 
+`a2a_version` picks the A2A protocol version an "a2a" entry is spoken to
+with: "0.3" (default if omitted, so existing entries behave exactly as
+before) or "1.0". Set "1.0" for a seller whose agent card advertises
+`supportedInterfaces[].protocolVersion: "1.0"` without 0.3 compatibility:
+such a seller answers 0.3's `message/send` with JSON-RPC -32601 (method not
+found), because A2A 1.0 renamed the method to `SendMessage`. Ignored for
+"mcp" entries.
+
 Two auth_type values are supported (independent of transport):
   - "static_bearer": a long-lived bearer token read from the env var named
     by auth_token_env (a third-party seller's own token). Never stored inline
@@ -78,6 +86,9 @@ class SellerAgentConfig(TypedDict):
     url: str
     agent_url: str
     transport: Literal["mcp", "a2a"]
+    # The A2A protocol version an "a2a" entry is spoken to with. "0.3" unless the entry opts in to
+    # "1.0" (see the module docstring); carried on "mcp" entries too, where it is never read.
+    a2a_version: Literal["0.3", "1.0"]
     auth_type: Literal["static_bearer", "cognito_bearer", "m2m_oauth"]
     # A static_bearer entry names EITHER the env var holding its token (`auth_token_env`, the
     # environment-configured shape) OR carries the token value inline (`auth_token`, how a
@@ -106,6 +117,9 @@ class SellerAgentError(RuntimeError):
 
 _VALID_TRANSPORTS = ("mcp", "a2a")
 _VALID_AUTH_TYPES = ("static_bearer", "cognito_bearer", "m2m_oauth")
+_VALID_A2A_VERSIONS = ("0.3", "1.0")
+#: Opt-in, not auto-detected: every entry written before `a2a_version` existed keeps the 0.3 wire form.
+DEFAULT_A2A_VERSION = "0.3"
 
 
 def validate_seller_entry(entry: dict[str, Any]) -> SellerAgentConfig:
@@ -147,12 +161,19 @@ def validate_seller_entry(entry: dict[str, Any]) -> SellerAgentConfig:
         raise SellerAgentError(
             f"Seller agent {entry['id']!r} has transport {transport!r}; expected one of {_VALID_TRANSPORTS}."
         )
+    a2a_version = str(entry.get("a2a_version") or DEFAULT_A2A_VERSION)
+    if a2a_version not in _VALID_A2A_VERSIONS:
+        raise SellerAgentError(
+            f"Seller agent {entry['id']!r} has a2a_version {a2a_version!r}; expected one of "
+            f"{_VALID_A2A_VERSIONS}."
+        )
     return SellerAgentConfig(
         id=str(entry["id"]),
         name=str(entry["name"]),
         url=str(entry["url"]),
         agent_url=str(entry.get("agent_url") or entry["url"]),
         transport=transport,
+        a2a_version=a2a_version,
         auth_type=auth_type,
         auth_token_env=entry.get("auth_token_env"),
         auth_token=entry.get("auth_token"),
@@ -313,7 +334,7 @@ def list_seller_agents_public(include_hidden: bool = False) -> list[dict[str, st
 def resolve_seller_agent(seller_agent_id: str | None) -> dict[str, Any]:
     """Resolve a seller agent id into its URL, transport, and ready-to-use auth headers.
 
-    Returns {"id", "name", "url", "transport", "headers"}. Raises
+    Returns {"id", "name", "url", "agent_url", "transport", "a2a_version", "headers"}. Raises
     SellerAgentError if the id doesn't exist in the registry, or if a
     static_bearer entry's token env var is unset, or if a cognito_bearer
     entry can't mint a token.
@@ -330,6 +351,7 @@ def resolve_seller_agent(seller_agent_id: str | None) -> dict[str, Any]:
                 "url": entry["url"],
                 "agent_url": entry["agent_url"],
                 "transport": entry["transport"],
+                "a2a_version": entry["a2a_version"],
                 "headers": headers,
             }
 
