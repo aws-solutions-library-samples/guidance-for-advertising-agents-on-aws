@@ -1,0 +1,155 @@
+{
+  "title": "Meridian Media Group — Demo Universe",
+  "sections": [
+    {
+      "heading": "Publisher Brands",
+      "items": [
+        {
+          "name": "Meridian Media Group",
+          "description": "Fictional multi-platform media conglomerate. Parent company of all publisher brands below. Modeled after major diversified media companies."
+        },
+        {
+          "name": "Apex Streaming / Apex Sports",
+          "description": "Premium CTV/streaming platform with live sports (basketball, hockey) and scripted series. Think premium sports + entertainment streaming."
+        },
+        {
+          "name": "SportsPulse",
+          "description": "Live sports broadcast network covering basketball, hockey, and combat sports across linear TV and digital."
+        },
+        {
+          "name": "GNN (Global News Network)",
+          "description": "24/7 news network with linear TV, digital video, podcasts, and display. Premium news-engaged audience."
+        },
+        {
+          "name": "Crestline Entertainment",
+          "description": "Entertainment and lifestyle programming — reality TV, comedy, drama. Linear + CTV distribution."
+        },
+        {
+          "name": "Horizon Discovery",
+          "description": "Digital-first media brand covering sports, science, and culture. Display and digital video inventory."
+        },
+        {
+          "name": "StreamVault",
+          "description": "Online video platform with sports content, shorts, and gaming/esports programming."
+        },
+        {
+          "name": "PulseFight",
+          "description": "Combat sports and boxing premium CTV content."
+        }
+      ]
+    },
+    {
+      "heading": "Agency Holding Companies",
+      "items": [
+        {
+          "name": "Atlas Media Group",
+          "description": "Global agency holding company. Media buying, planning, and campaign management."
+        },
+        {
+          "name": "Pinnacle Media",
+          "description": "Agency group specializing in data-driven media investment and programmatic."
+        },
+        {
+          "name": "Meridian Agency Partners",
+          "description": "Full-service agency network with creative, media, and performance marketing."
+        },
+        {
+          "name": "Compass Media",
+          "description": "Agency group focused on integrated marketing and cross-channel planning."
+        },
+        {
+          "name": "Horizon Agency Group",
+          "description": "Global agency network with strength in digital and performance media."
+        }
+      ]
+    },
+    {
+      "heading": "Advertisers",
+      "items": [
+        {
+          "name": "Acme Consumer Goods",
+          "description": "CPG company — energy drinks, protein bars, sports nutrition. Targets active lifestyle consumers."
+        },
+        {
+          "name": "Premier Motors",
+          "description": "Luxury automotive brand. High-HHI audience, Pacific Northwest focus."
+        },
+        {
+          "name": "SportCo Retail",
+          "description": "Sporting goods retailer. Seasonal campaigns, performance-focused."
+        },
+        {
+          "name": "SecureBank Financial",
+          "description": "Financial services — premium checking, wealth management. High-income professionals."
+        }
+      ]
+    },
+    {
+      "heading": "Inventory Types",
+      "items": [
+        {
+          "name": "CTV (Connected TV)",
+          "description": "Premium video on streaming devices. Highest CPMs ($35-55). Live sports and scripted series."
+        },
+        {
+          "name": "Linear TV",
+          "description": "Traditional broadcast. News, sports, entertainment. CPMs $22-32."
+        },
+        {
+          "name": "Digital Video (OLV)",
+          "description": "Pre-roll, mid-roll, outstream on web properties. CPMs $15-20."
+        },
+        {
+          "name": "Display",
+          "description": "Banner, rich media, homepage takeovers. CPMs $10-18."
+        },
+        {
+          "name": "Audio",
+          "description": "Podcast sponsorships and programmatic audio. CPMs $8-10."
+        }
+      ]
+    },
+    {
+      "heading": "Media Kit Packages",
+      "items": [
+        {
+          "name": "Apex Premium Sports Bundle",
+          "description": "Basketball + Hockey CTV on Apex Sports. CPM $42-55. Sports enthusiasts 18-54."
+        },
+        {
+          "name": "GNN News Reach Package",
+          "description": "GNN linear + digital + display. CPM $18-28. News-engaged adults 25-64."
+        },
+        {
+          "name": "Entertainment Upfront Package",
+          "description": "Apex series + Crestline entertainment. CPM $35-48. Entertainment seekers 18-49."
+        },
+        {
+          "name": "Cross-Platform Reach",
+          "description": "All channels combined. CPM $15-45. Volume discount at $500K+."
+        }
+      ]
+    },
+    {
+      "heading": "Pricing Tiers",
+      "items": [
+        {
+          "name": "Public (0% discount)",
+          "description": "Unauthenticated — browse catalog and price ranges only. Cannot create deals."
+        },
+        {
+          "name": "Registered Buyer (5%)",
+          "description": "Authenticated DSP seat. Can create deals at 5% discount."
+        },
+        {
+          "name": "Preferred Agency (12%)",
+          "description": "Agency-level identity. 12% discount, negotiation eligible."
+        },
+        {
+          "name": "Strategic Advertiser (15%)",
+          "description": "Advertiser identity revealed. Best rates at 15% discount."
+        }
+      ]
+    }
+  ]
+}

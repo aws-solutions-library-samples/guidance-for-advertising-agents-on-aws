@@ -7738,6 +7738,83 @@ ${formattedJson}
   }
 
   /**
+   * Build a markdown transcript of the messages currently visible in the chat area.
+   */
+  buildChatMarkdown(): string {
+    const sorted = this.sortedMessages;
+    const visible = sorted.filter((m, i) => !this.shouldHideMessage(m, i) && m.text && m.text.trim().length > 0);
+
+    const lines: string[] = [
+      `# ${this.generateExportTitle()}`,
+      '',
+      `Exported: ${new Date().toISOString()}`,
+      ''
+    ];
+
+    for (const message of visible) {
+      const isUser = message.sender === 'user';
+      const speaker = isUser
+        ? 'User'
+        : (message.displayName || message.agentName || message.data?.agentName || 'Agent');
+      const ts = message.timestamp instanceof Date && !isNaN(message.timestamp.getTime())
+        ? message.timestamp.toISOString()
+        : '';
+
+      lines.push('---', '', `## ${speaker}${ts ? ` (${ts})` : ''}`, '', message.text.trim(), '');
+
+      if (message.attachedFiles && message.attachedFiles.length > 0) {
+        lines.push(`Attachments: ${message.attachedFiles.map(f => f.name).join(', ')}`, '');
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Copy the visible chat history to the clipboard as markdown.
+   */
+  async copyChatAsMarkdown(): Promise<void> {
+    if (this.messages.length === 0) {
+      return;
+    }
+    const markdown = this.buildChatMarkdown();
+    try {
+      await navigator.clipboard.writeText(markdown);
+    } catch {
+      // Clipboard API unavailable (e.g. non-secure context): fall back to execCommand
+      const textarea = document.createElement('textarea');
+      textarea.value = markdown;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+  }
+
+  /**
+   * Download the visible chat history as a .md file.
+   */
+  downloadChatAsMarkdown(): void {
+    if (this.messages.length === 0) {
+      return;
+    }
+    const blob = new Blob([this.buildChatMarkdown()], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `chat-${new Date().toISOString().replace(/[:.]/g, '-')}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
    * Generate a descriptive title for the export
    */
   private generateExportTitle(): string {

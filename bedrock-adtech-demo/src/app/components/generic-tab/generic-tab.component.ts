@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, AfterViewInit, ViewChildren, ViewChild, QueryList, ElementRef, Output, EventEmitter } from '@angular/core';
 import { Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { BedrockService } from '../../services/bedrock.service';
 import { AwsConfigService } from '../../services/aws-config.service';
 import { AgentConfigService } from '../../services/agent-config.service';
@@ -61,6 +62,12 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
   // Tab config update subscription
   private tabConfigSub: Subscription | null = null;
 
+  markdownCopied = false;
+
+  // Glossary
+  showGlossary = false;
+  glossaryData: any = null;
+
   // Export state - getter to sync with chat interface
   get isExportingPdf(): boolean {
     return this.chatInterface?.isExportingPdf || false;
@@ -97,7 +104,8 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     private awsConfig: AwsConfigService,
     private agentConfig: AgentConfigService,
     private sessionManager: SessionManagerService,
-    private demoTrackingService: DemoTrackingService
+    private demoTrackingService: DemoTrackingService,
+    private http: HttpClient
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -108,6 +116,7 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     this.showPreferencesPanel = false;
     this.initializeAgentSelection();
     this.loadTabConfig(this.tabConfig);
+    this.loadGlossary();
 
     // Subscribe to tab config updates from DynamoDB saves
     this.tabConfigSub = this.agentConfig.tabConfigUpdated.subscribe(async (updatedConfig) => {
@@ -540,6 +549,28 @@ export class GenericTabComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.chatInterface) {
       this.chatInterface.showPdfExportOptions();
     }
+  }
+
+  copyChatAsMarkdown(): void {
+    this.chatInterface?.copyChatAsMarkdown().then(() => {
+      this.markdownCopied = true;
+      setTimeout(() => (this.markdownCopied = false), 2000);
+    });
+  }
+
+  downloadChatAsMarkdown(): void {
+    this.chatInterface?.downloadChatAsMarkdown();
+  }
+
+  toggleGlossary(): void {
+    this.showGlossary = !this.showGlossary;
+  }
+
+  private loadGlossary(): void {
+    this.http.get<any>('assets/glossary.json').subscribe({
+      next: (data) => this.glossaryData = data,
+      error: () => console.warn('Glossary not found')
+    });
   }
 
   // Panel control methods
