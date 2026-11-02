@@ -99,7 +99,7 @@ def run_campaign_plan(prompt: str, brief: dict[str, Any] | None = None) -> dict[
     # Override buyer settings to use Bedrock instead of Anthropic.
     bedrock_model = os.environ.get(
         "DEFAULT_LLM_MODEL",
-        "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock/global.anthropic.claude-sonnet-5-5",
     )
     from ad_buyer.config.settings import settings as buyer_settings
 

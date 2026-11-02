@@ -41,7 +41,7 @@ from ad_seller.interfaces.agentcore.seller_tools import SELLER_READ_TOOLS  # noq
 
 logger = logging.getLogger(__name__)
 
-_MODEL_ID = os.environ.get("DEFAULT_LLM_MODEL", "global.anthropic.claude-sonnet-5")
+_MODEL_ID = os.environ.get("DEFAULT_LLM_MODEL", "global.anthropic.claude-sonnet-5-5")
 _REGION = os.environ.get("AWS_REGION", "us-east-1")
 _MAX_TOKENS = int(os.environ.get("SELLER_MAX_TOKENS", "8000"))
 # AgentCore A2A serving port. Defaults to 9000 (Strands default + the repo's

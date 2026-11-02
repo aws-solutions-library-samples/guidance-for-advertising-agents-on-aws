@@ -176,7 +176,7 @@ if [[ "${TEST_ONLY}" == "false" ]]; then
     _deploy_env=(
       # src-layout import fix: package `ad_buyer` under /app/src.
       --env "PYTHONPATH=/app/src:/app"
-      --env "DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-global.anthropic.claude-sonnet-5}"
+      --env "DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-global.anthropic.claude-sonnet-5-5}"
       --env "AWS_REGION=${REGION}"
       --env "AWS_DEFAULT_REGION=${REGION}"
       --env "AGENTCORE_A2A_PORT=${AGENTCORE_A2A_PORT:-9000}"

@@ -1771,7 +1771,7 @@ Example format:
 
       // Use the Converse API for direct model interaction
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-sonnet-5',
+        modelId: 'global.anthropic.claude-sonnet-5-5',
         messages: [
           {
             role: 'user',
@@ -1840,7 +1840,7 @@ Example format:
 
       // Use the Converse API for direct model interaction with Claude Haiku
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        modelId: 'global.anthropic.claude-haiku-5-5',
         messages: [
           {
             role: 'user',
@@ -1920,9 +1920,9 @@ Example format:
         throw new Error('Bedrock Runtime client not initialized');
       }
 
-      // Use the Converse API for Claude Opus 5
+      // Use the Converse API for Claude Opus 5.5
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-opus-5',
+        modelId: 'global.anthropic.claude-opus-5-5',
         messages: [
           {
             role: 'user',
@@ -2003,7 +2003,7 @@ Example format:
       contentBlocks.push({ text: prompt });
 
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        modelId: 'global.anthropic.claude-haiku-5-5',
         messages: [
           {
             role: 'user',
@@ -2038,9 +2038,9 @@ Example format:
   }
 
   /**
-   * Invoke Claude Haiku 4.5 for visualization generation and other structured tasks.
+   * Invoke Claude Haiku 5.5 for visualization generation and other structured tasks.
    * Uses the cross-region inference profile for optimal availability.
-   * @param prompt The prompt to send to Claude Haiku 4.5
+   * @param prompt The prompt to send to Claude Haiku 5.5
    * @param maxTokens Maximum tokens for the response (default: 8000)
    * @returns The generated text content
    */
@@ -2055,7 +2055,7 @@ Example format:
       }
 
       const command = new ConverseCommand({
-        modelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        modelId: 'global.anthropic.claude-haiku-5-5',
         messages: [
           {
             role: 'user',
@@ -2070,7 +2070,7 @@ Example format:
       const response = await this.bedrockRuntimeClient.send(command);
 
       if (!response.output?.message?.content) {
-        throw new Error('No content received from Claude Haiku 4.5');
+        throw new Error('No content received from Claude Haiku 5.5');
       }
 
       const textContent = response.output.message.content
@@ -2081,14 +2081,14 @@ Example format:
       return textContent;
 
     } catch (error) {
-      console.error('Error invoking Claude Haiku 4.5:', error);
+      console.error('Error invoking Claude Haiku 5.5:', error);
 
       const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
       const isExpiredToken = errorMessage.includes('ExpiredTokenException') ||
         errorMessage.includes('The security token included in the request is expired');
 
       if (isExpiredToken) {
-        console.error('🔑 Token expired in Claude Haiku 4.5 call, user needs to refresh:', errorMessage);
+        console.error('🔑 Token expired in Claude Haiku 5.5 call, user needs to refresh:', errorMessage);
         const expiredTokenError = new Error('Your session has expired. Please refresh the page to sign in again.');
         (expiredTokenError as any).isExpiredToken = true;
         throw expiredTokenError;

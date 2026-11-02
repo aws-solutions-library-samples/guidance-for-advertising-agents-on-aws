@@ -49,7 +49,7 @@
 >
 > - **Deployment phases were renumbered.** If you script `--resume-at`, the numbers have moved: configs→S3 is 6, DynamoDB 7, **AAMP 8**, **AdCP 9 (new)**, **AgentCore agents 10**, **UI config 11**, **warmup 12**, **Quick Gateway 13**. Both optional external-agent phases now run *before* the AgentCore deploy, because the AgentCore agents read their configuration at deploy time and cannot see an agent wired in after them. See the phase list under [Deployment Steps](#deployment-steps).
 > - **The AdCP MCP Gateway has been removed.** `deploy_adcp_gateway.py`, `adcp_tool_schema.json`, `lambda/adcp_mcp_handler.py`, and the agent-side `adcp_tools.py` / `adcp_mcp_client.py` are deleted, along with the 8 gateway-backed tools and their declarations on `AgencyAgent`, `PublisherAgent`, `SignalAgent`, `VerificationAgent`, `MeasurementAgent`, and `IdentityAgent`. Teardown is retained, so `--cleanup` still removes a gateway left over from a pre-v3 deployment instead of leaving it billing.
-> - **AAMP is now opt-in rather than automatic.** Use `--deploy-aamp` to include it or `--skip-aamp` to exclude it. The interactive prompt defaults to No, and it is skipped entirely in non-interactive runs. Its default model is now `bedrock/global.anthropic.claude-sonnet-5`, and AAMP runtime names are capped at 26 characters to stay within the CloudWatch Logs delivery name limit.
+> - **AAMP is now opt-in rather than automatic.** Use `--deploy-aamp` to include it or `--skip-aamp` to exclude it. The interactive prompt defaults to No, and it is skipped entirely in non-interactive runs. Its default model is now `bedrock/global.anthropic.claude-sonnet-5-5`, and AAMP runtime names are capped at 26 characters to stay within the CloudWatch Logs delivery name limit.
 > - **`AgencyAgent`'s Mode A / Mode B split is gone.** It was built on calling the removed gateway tools directly. `AgencyAgent` now always delegates inventory to `PublisherAgent` and signals to `SignalAgent` over A2A.
 > - **`agentcore/deployment/agent/global_configuration.json` is no longer tracked in the repository.** It is generated from `global_configuration.template.json` when absent and is gitignored. If you previously edited the tracked file, edit the template or the generated file instead — a fresh clone will not contain it.
 >
@@ -128,7 +128,7 @@ _You are responsible for the cost of the AWS services used while running this Gu
 The AgentCore deployment model provides cost advantages through:
 - **Pay-per-use container runtime**: Only pay when agents are actively processing requests
 - **Shared infrastructure**: Multiple agents share the same AgentCore runtime reducing overhead
-- **Optimized model usage**: Intelligent foundation model assignment (Claude Sonnet 5 for orchestrators, with the option to switch specialists to Claude Haiku 4.5 for further cost savings)
+- **Optimized model usage**: Intelligent foundation model assignment (Claude Sonnet 5.5 for orchestrators, with the option to switch specialists to Claude Haiku 5.5 for further cost savings)
 - **Dynamic scaling**: Container-based agents scale automatically based on demand
 
 **Cost of the optional capabilities.** None is deployed unless you opt in:
@@ -161,7 +161,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 | AWS service | Dimensions | Monthly Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock Foundation Models | Claude Sonnet 5 (orchestrators) + Haiku 4.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
+| Amazon Bedrock Foundation Models | Claude Sonnet 5.5 (orchestrators) + Haiku 5.5 (specialists) reasoning across a 31-agent call graph; average 4 conversation turns per session, ~10 LLM prompts per turn (specialist fan-out via `invoke_specialist`), average 1.5 sessions a day | $32.00 |
 | Amazon Bedrock AgentCore | AgentCore Runtime (container invocations) and AgentCore Memory (short-term + summary/semantic); average session duration of 45 minutes | $24.00 |
 | AdCP reference agents (KMS + Secrets Manager + ECR + S3) | **Optional (Phase 9)** — the standing cost of the AdCP ecosystem in `external-agents/adcp/`. One KMS asymmetric signing key for governance intent tokens ($1.00), one Secrets Manager secret for the M2M client ($0.40), ECR images for its 4 runtimes and the revocations Lambda (≤$1.00), S3 (<$0.05). The 4 AgentCore runtimes, 3 DynamoDB tables and 2 CloudFront distributions are $0 idle. Usage adds ~$0.22 per buyer conversation on top, almost entirely Bedrock tokens. **$0.00 if the phase is skipped**; `--cleanup` removes everything but the KMS key, which it asks about separately | $2.45 |
 | Amazon Bedrock AgentCore Gateway | **Optional (Phase 13)** — Quick MCP Gateway. Priced per API call: `InvokeTool` at $5 per million, plus gateway operations (`ListTools`, health checks). 4 tools registered from a static schema, so no semantic-search indexing charge. Demo-scale Quick Suite, Kiro and Claude Desktop use. **$0.00 if the phase is skipped** | $0.10 |
@@ -260,7 +260,7 @@ This deployment requires the following AWS account setup:
 
 **Required AWS Services:**
 - **Amazon Bedrock AgentCore** runtime enabled in your region
-- **Amazon Bedrock Foundation Models** access (Claude Sonnet 5, Claude Haiku 4.5, Nova Canvas)
+- **Amazon Bedrock Foundation Models** access (Claude Sonnet 5.5, Claude Haiku 5.5, Nova Canvas)
 - **Amazon Bedrock Knowledge Bases** for vector search capabilities
 - **Amazon S3** for data storage, static hosting, and generated content
 - **Amazon OpenSearch Serverless** for knowledge base vector search
@@ -315,8 +315,8 @@ The deployment user/role needs comprehensive permissions. Here's the minimum req
 **Critical service limits that may require increases:**
 - **Amazon Bedrock AgentCore**: Default limit of 10 concurrent containers per region (may need increase for large deployments)
 - **Amazon Bedrock Foundation Models**: 
-  - Claude Sonnet 5: 40,000 tokens/minute (recommended for orchestrator and specialist agents)
-  - Claude Haiku 4.5: 40,000 tokens/minute (optional lower-cost alternative for specialist agents)
+  - Claude Sonnet 5.5: 40,000 tokens/minute (recommended for orchestrator and specialist agents)
+  - Claude Haiku 5.5: 40,000 tokens/minute (optional lower-cost alternative for specialist agents)
   - Nova Canvas: 5 images/minute (for creative generation)
 - **Amazon OpenSearch Serverless**: Default limit of 50 collections per account
 - **AWS Lambda**: Concurrent execution limit (default 1,000)
@@ -1066,10 +1066,8 @@ aws cognito-idp admin-create-user \
   {
     "model_inputs": {
       "YourAgentName": {
-        "model_id": "global.anthropic.claude-sonnet-5",
-        "max_tokens": 12000,
-        "temperature": 0.3,
-        "top_p": 0.8
+        "model_id": "global.anthropic.claude-sonnet-5-5",
+        "max_tokens": 12000
       }
     }
   }
@@ -1840,7 +1838,7 @@ aws ssm delete-parameter \
 - **Cold Start**: First agent invocation may take 30-60 seconds for container initialization
 - **Concurrent Requests**: AgentCore containers handle multiple concurrent requests efficiently
 - **Memory Usage**: Shared memory system maintains context across agent interactions within sessions
-- **Model Selection**: Orchestrator and specialist agents use Claude Sonnet 5 by default, with the option to switch specialists to Claude Haiku 4.5 for cost optimization
+- **Model Selection**: Orchestrator and specialist agents use Claude Sonnet 5.5 by default, with the option to switch specialists to Claude Haiku 5.5 for cost optimization
 
 **Security Considerations:**
 - **IAM Roles**: Each agent has specific IAM permissions for required AWS services only

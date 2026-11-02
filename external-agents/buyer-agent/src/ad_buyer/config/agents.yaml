@@ -12,7 +12,7 @@ portfolio_manager:
     mix optimization, and cross-channel attribution.
   allow_delegation: true
   temperature: 0.3
-  model: anthropic/claude-opus-4-20250514
+  model: anthropic/claude-opus-5-5
 
 branding_agent:
   role: "Branding Specialist"
@@ -24,7 +24,7 @@ branding_agent:
     and high-impact creative formats. Focused on viewability and brand safety.
   allow_delegation: true
   temperature: 0.5
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 mobile_app_agent:
   role: "Mobile App Install Specialist"
@@ -36,7 +36,7 @@ mobile_app_agent:
     with deep knowledge of MMP integrations and fraud prevention.
   allow_delegation: true
   temperature: 0.5
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 ctv_agent:
   role: "Connected TV Specialist"
@@ -48,7 +48,7 @@ ctv_agent:
     targeting, and programmatic TV buying.
   allow_delegation: true
   temperature: 0.5
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 performance_agent:
   role: "Performance/Remarketing Specialist"
@@ -60,7 +60,7 @@ performance_agent:
     retargeting audiences, and CPA/ROAS optimization.
   allow_delegation: true
   temperature: 0.5
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 research_agent:
   role: "Inventory Research Analyst"
@@ -72,7 +72,7 @@ research_agent:
     products across publishers with expertise in OpenDirect specifications.
   allow_delegation: false
   temperature: 0.2
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 execution_agent:
   role: "Campaign Execution Specialist"
@@ -84,7 +84,7 @@ execution_agent:
     understanding OpenDirect booking workflows and states.
   allow_delegation: false
   temperature: 0.1
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5
 
 reporting_agent:
   role: "Performance Reporting Analyst"
@@ -96,4 +96,4 @@ reporting_agent:
     expertise in interpreting delivery pacing and identifying anomalies.
   allow_delegation: false
   temperature: 0.2
-  model: anthropic/claude-sonnet-4-5-20250929
+  model: anthropic/claude-sonnet-5-5

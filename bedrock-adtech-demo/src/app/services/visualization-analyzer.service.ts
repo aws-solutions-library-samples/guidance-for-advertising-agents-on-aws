@@ -28,7 +28,7 @@ export class VisualizationAnalyzerService {
 
   /**
    * Main entry point — analyzes agent response text against visualization templates
-   * using a two-phase approach with Claude Haiku 4.5:
+   * using a two-phase approach with Claude Haiku 5.5:
    *
    * Phase 1 (Selection): Send only template IDs + usage descriptions to Haiku,
    *   ask which templates are relevant for the response. This avoids flooding
@@ -351,11 +351,11 @@ Return ONLY a JSON object — absolutely no other text before or after it:
   }
 
   /**
-   * Parse Claude Haiku 4.5 response into a VisualizationAnalysisResult.
+   * Parse Claude Haiku 5.5 response into a VisualizationAnalysisResult.
    * Returns null if the response cannot be parsed into valid JSON.
    */
   /**
-     * Parse Claude Haiku 4.5 response into a VisualizationAnalysisResult.
+     * Parse Claude Haiku 5.5 response into a VisualizationAnalysisResult.
      * Normalizes data types (e.g. string→array) before returning.
      * Returns null if the response cannot be parsed into valid JSON.
      */

@@ -2178,7 +2178,7 @@ def create_agent(agent_name, conversation_context, is_collaborator):
 
     model = BedrockModel(
         model_id=model_inputs.get(
-            "model_id", "global.anthropic.claude-sonnet-5"
+            "model_id", "global.anthropic.claude-sonnet-5-5"
         ),
         max_tokens=model_inputs.get("max_tokens", 8000),
         cache_prompt="default",
@@ -2364,7 +2364,7 @@ class GenericAgent:
                 "external_agents": [],
                 "model_inputs": {
                     f"{agent_name}": {
-                        "model_id": "global.anthropic.claude-sonnet-5",
+                        "model_id": "global.anthropic.claude-sonnet-5-5",
                         "max_tokens": 12000
                     }
                 },
@@ -2375,14 +2375,14 @@ class GenericAgent:
             model_inputs = config.get("model_inputs", {}).get(agent_name, {})
         except Exception as e:
             model_inputs = {
-                "model_id": "global.anthropic.claude-sonnet-5",
+                "model_id": "global.anthropic.claude-sonnet-5-5",
                 "max_tokens": 12000
                 }
 
         try:
             model = BedrockModel(
                 model_id=model_inputs.get(
-                    "model_id", "global.anthropic.claude-sonnet-5"
+                    "model_id", "global.anthropic.claude-sonnet-5-5"
                 ),
                 max_tokens=model_inputs.get("max_tokens", 12000),
                 cache_prompt="default",

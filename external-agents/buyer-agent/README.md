@@ -149,7 +149,7 @@ ANTHROPIC_API_KEY=<your-anthropic-api-key>  # For Anthropic (default)
 # COHERE_API_KEY=xxxxx                      # For Cohere
 
 # LLM model (uses provider/model format — native Anthropic, OpenAI, Gemini, Azure, Bedrock)
-DEFAULT_LLM_MODEL=anthropic/claude-sonnet-4-5-20250929
+DEFAULT_LLM_MODEL=anthropic/claude-sonnet-5-5
 # DEFAULT_LLM_MODEL=openai/gpt-4o          # OpenAI example
 # DEFAULT_LLM_MODEL=ollama/llama3           # Local Ollama example
 
@@ -160,7 +160,7 @@ SELLER_BASE_URL=http://localhost:8001        # Seller agent URL
 DATABASE_URL=sqlite:///./ad_buyer.db
 ```
 
-> **LLM Provider Flexibility:** CrewAI supports native integrations with Anthropic (default), OpenAI, Google Gemini, Azure OpenAI, and AWS Bedrock. Set `DEFAULT_LLM_MODEL` and `MANAGER_LLM_MODEL` using `provider/model-name` format (e.g., `anthropic/claude-sonnet-4-5-20250929`) and provide the matching API key. Install the matching extra: `pip install "crewai[anthropic]"`. See the [Quickstart Guide](https://iabtechlab.github.io/buyer-agent/getting-started/quickstart/) for details.
+> **LLM Provider Flexibility:** CrewAI supports native integrations with Anthropic (default), OpenAI, Google Gemini, Azure OpenAI, and AWS Bedrock. Set `DEFAULT_LLM_MODEL` and `MANAGER_LLM_MODEL` using `provider/model-name` format (e.g., `anthropic/claude-sonnet-5-5`) and provide the matching API key. Install the matching extra: `pip install "crewai[anthropic]"`. See the [Quickstart Guide](https://iabtechlab.github.io/buyer-agent/getting-started/quickstart/) for details.
 
 → [Full Configuration](https://iabtechlab.github.io/buyer-agent/getting-started/quickstart/)
 

@@ -151,7 +151,7 @@ TOP_LEVEL_AGENTS = {
     },
 }
 
-DEFAULT_TOP_LEVEL_MODEL = "global.anthropic.claude-sonnet-5"
+DEFAULT_TOP_LEVEL_MODEL = "global.anthropic.claude-sonnet-5-5"
 
 # Custom, operator-editable property on the AAMP **seller** entry.
 # ---------------------------------------------------------------------------
