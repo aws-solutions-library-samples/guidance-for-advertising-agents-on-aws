@@ -1,0 +1,16 @@
+{
+  "metadataAttributes": {
+    "file_name": "ridesharer-brand-safety-guidelines.md",
+    "description": "Brand safety and suitability guidelines for RideSharer Media managed-service campaigns, on-site in the RideSharer app and off-site through the buying seats",
+    "data_source": "RideSharer Media brand safety policy (synthetic workshop data)",
+    "last_updated": "2026-11-02",
+    "data_type": "brand_safety_guidelines",
+    "category": "brand_safety",
+    "business_domain": "content_safety",
+    "network": "RideSharer Media",
+    "seller": "ridesharer.example",
+    "rule_ids": "RS-BS-01 to RS-BS-12",
+    "brands": "Altimara Travel, Ivory Row Luggage, Veloria Stays, Basil & Brine Kitchen, Maple Corner Noodle House, Northgate Motors",
+    "topics": "brand safety floor, safety surfaces, sensitive locations, minimum audience size, alcohol, gambling, off-site verification, news pauses, travel, restaurants, automotive, suitability tiers"
+  }
+}
