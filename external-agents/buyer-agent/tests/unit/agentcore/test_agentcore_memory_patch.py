@@ -323,7 +323,7 @@ class TestMemoryIntegration:
             role="Test Agent",
             goal="Test",
             backstory="Test",
-            llm="bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            llm="bedrock/global.anthropic.claude-sonnet-5-5",
         )
         task = Task(description="Test task", expected_output="Test", agent=agent)
         crew = Crew(agents=[agent], tasks=[task], memory=True, verbose=False)

@@ -74,7 +74,7 @@
             "external_agents": [],
             "model_inputs": {
                 "AdFabricAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000,
                     "top_p": 0.8
                 }
@@ -104,12 +104,12 @@
             "external_agents": [],
             "model_inputs": {
                 "WeatherImpactAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000,
                     "top_p": 0.8
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000,
                     "top_p": 0.8
                 }
@@ -135,21 +135,21 @@
             "external_agents": [],
             "model_inputs": {
                 "MediaPlanningAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000,
                     "top_p": 0.8
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000,
                     "top_p": 0.8
                 }
@@ -183,21 +183,21 @@
             "external_agents": [],
             "model_inputs": {
                 "YieldOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000
                 },
                 "AudienceIntelligenceAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -234,31 +234,31 @@
             "use_handler_template": false,
             "model_inputs": {
                 "CampaignOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000
                 },
                 "AudienceStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 },
                 "ChannelMixOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 },
                 "CampaignArchitectureAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 },
                 "CreativeSelectionAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -288,11 +288,11 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 },
                 "AdCPBuyerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 }
             },
@@ -324,16 +324,16 @@
             ],
             "model_inputs": {
                 "InventoryOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -358,7 +358,7 @@
             "external_agents": [],
             "model_inputs": {
                 "AudienceIntelligenceAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 }
             },
@@ -386,16 +386,16 @@
             "external_agents": [],
             "model_inputs": {
                 "AdLoadOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 16000
                 },
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 },
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -425,7 +425,7 @@
             "external_agents": [],
             "model_inputs": {
                 "AdFormatSelectorAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -445,7 +445,7 @@
             "external_agents": [],
             "model_inputs": {
                 "BidOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -472,7 +472,7 @@
             "external_agents": [],
             "model_inputs": {
                 "BidSimulatorAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -499,7 +499,7 @@
             "external_agents": [],
             "model_inputs": {
                 "ContextualAnalysisAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -526,7 +526,7 @@
             "external_agents": [],
             "model_inputs": {
                 "CurrentEventsAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -554,7 +554,7 @@
             "external_agents": [],
             "model_inputs": {
                 "EventsAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.8
                 }
@@ -581,7 +581,7 @@
             "external_agents": [],
             "model_inputs": {
                 "MediaPlanCompiler": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000,
                     "top_p": 0.8
                 }
@@ -610,7 +610,7 @@
             "external_agents": [],
             "model_inputs": {
                 "AudienceStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -637,7 +637,7 @@
             "external_agents": [],
             "model_inputs": {
                 "ChannelMixOptimizationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -664,7 +664,7 @@
             "external_agents": [],
             "model_inputs": {
                 "CampaignArchitectureAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -691,7 +691,7 @@
             "external_agents": [],
             "model_inputs": {
                 "CreativeSelectionAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -724,7 +724,7 @@
             "external_agents": [],
             "model_inputs": {
                 "TimingStrategyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -751,7 +751,7 @@
             "external_agents": [],
             "model_inputs": {
                 "FormatStrategyOptimizerAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.95
                 }
@@ -789,24 +789,24 @@
             },
             "model_inputs": {
                 "AgencyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 },
                 "SignalAgent": {
-                    "model_id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "model_id": "global.anthropic.claude-haiku-5-5",
                     "max_tokens": 4000
                 },
                 "IdentityAgent": {
-                    "model_id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "model_id": "global.anthropic.claude-haiku-5-5",
                     "max_tokens": 4000
                 },
                 "AdvertiserAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 4000
                 },
                 "PublisherAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 4000
                 }
             },
@@ -874,21 +874,21 @@
             },
             "model_inputs": {
                 "AdvertiserAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000
                 },
                 "MeasurementAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 },
                 "AgencyAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 },
                 "VerificationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 4000
                 }
             },
@@ -916,16 +916,16 @@
             },
             "model_inputs": {
                 "PublisherAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000,
                     "top_p": 0.9
                 },
                 "SignalAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 4000
                 },
                 "VerificationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 4000
                 }
             },
@@ -952,7 +952,7 @@
             },
             "model_inputs": {
                 "SignalAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 }
@@ -981,7 +981,7 @@
             },
             "model_inputs": {
                 "VerificationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 }
@@ -1010,7 +1010,7 @@
             },
             "model_inputs": {
                 "MeasurementAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 }
@@ -1046,7 +1046,7 @@
             },
             "model_inputs": {
                 "IdentityAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000,
                     "top_p": 0.9
                 }
@@ -1068,7 +1068,7 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 }
             },
@@ -1116,7 +1116,7 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 }
             },
@@ -1153,11 +1153,11 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 64000
                 },
                 "PublisherMediaPlanningAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 12000
                 }
             },
@@ -1203,11 +1203,11 @@
             "external_agents": [],
             "model_inputs": {
                 "default": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 },
                 "CampaignActivationAgent": {
-                    "model_id": "global.anthropic.claude-sonnet-5",
+                    "model_id": "global.anthropic.claude-sonnet-5-5",
                     "max_tokens": 8000
                 }
             },

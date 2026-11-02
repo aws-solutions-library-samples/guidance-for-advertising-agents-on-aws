@@ -567,7 +567,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
   /**
    * Creates an empty agent configuration with default values
    * Validates: Requirement 4.3 - Default values for optional fields:
-   * - model_id: 'global.anthropic.claude-sonnet-5' (default model)
+   * - model_id: 'global.anthropic.claude-sonnet-5-5' (default model)
    * - max_tokens: 8000
    * - agent_tools: empty array
    * - color: '#6842ff' (purple accent)
@@ -583,7 +583,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       external_agents: [],
       model_inputs: {
         default: {
-          model_id: 'global.anthropic.claude-sonnet-5',
+          model_id: 'global.anthropic.claude-sonnet-5-5',
           max_tokens: 8000       // Validates: Requirement 4.3 - default max_tokens
         }
       },

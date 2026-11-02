@@ -822,7 +822,7 @@ def _apply_top_level_agent(
     cognito_pool_id: str,
     cognito_client_id: str,
     oauth_ssm_path: str,
-    model_id: str = "global.anthropic.claude-sonnet-5",
+    model_id: str = "global.anthropic.claude-sonnet-5-5",
 ) -> bool:
     """Upsert a top-level agent_configs entry for an external A2A agent.
 
@@ -937,7 +937,7 @@ def _apply_external_wire(
     top_level_display_name: str = "",
     top_level_description: str = "",
     top_level_team: str = "External Agents",
-    top_level_model_id: str = "global.anthropic.claude-sonnet-5",
+    top_level_model_id: str = "global.anthropic.claude-sonnet-5-5",
 ) -> bool:
     """Patch one external_agent_configs entry on a global-config dict in place.
 
@@ -1030,7 +1030,7 @@ def wire_into_global_config(
     top_level_display_name: str = "",
     top_level_description: str = "",
     top_level_team: str = "External Agents",
-    top_level_model_id: str = "global.anthropic.claude-sonnet-5",
+    top_level_model_id: str = "global.anthropic.claude-sonnet-5-5",
 ) -> bool:
     """Set the deployed ARN (and auth) on the matching external_agent_configs entry.
 
@@ -1090,7 +1090,7 @@ def wire_into_dynamodb(
     top_level_display_name: str = "",
     top_level_description: str = "",
     top_level_team: str = "External Agents",
-    top_level_model_id: str = "global.anthropic.claude-sonnet-5",
+    top_level_model_id: str = "global.anthropic.claude-sonnet-5-5",
 ) -> bool:
     """Patch the live GLOBAL_CONFIG/v1 item in the DynamoDB AgentConfig table.
 

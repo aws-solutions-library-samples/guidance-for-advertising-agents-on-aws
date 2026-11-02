@@ -52,7 +52,7 @@ _log = logging.getLogger(__name__)
 
 #: Bedrock model used for phrasing. A small, cheap model is the right tool: the task is rewording a
 #: sentence, and the LLM cost is accepted as once-off precisely because it is small.
-DEFAULT_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+DEFAULT_MODEL_ID = "global.anthropic.claude-haiku-5-5"
 
 #: Concurrent Bedrock calls during a build.
 #:
@@ -135,10 +135,8 @@ class VariationGenerator:
                 {
                     "anthropic_version": "bedrock-2023-05-31",
                     "max_tokens": 2000,
-                    # Deterministic-ish. Not 0.0, because identical phrasings across seeds would
-                    # defeat the point of variation; low, because the task is rewording and
-                    # creativity here means constraint drift.
-                    "temperature": 0.4,
+                    # No temperature/top_p: Claude models from Opus 4.7 onward reject
+                    # sampling parameters.
                     "messages": [{"role": "user", "content": prompt}],
                 }
             ),

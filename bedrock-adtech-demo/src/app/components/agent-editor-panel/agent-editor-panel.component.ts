@@ -342,7 +342,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
       if (!this.editingAgent.model_inputs || Object.keys(this.editingAgent.model_inputs).length === 0) {
         this.editingAgent.model_inputs = {
-          default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
+          default: { model_id: 'global.anthropic.claude-sonnet-5-5', max_tokens: 8000 }
         };
       }
 
@@ -537,7 +537,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       agent_id: '', agent_name: '', agent_display_name: '', team_name: '',
       agent_description: '', tool_agent_names: [], external_agents: [],
       model_inputs: {
-        default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
+        default: { model_id: 'global.anthropic.claude-sonnet-5-5', max_tokens: 8000 }
       },
       agent_tools: [], injectable_values: {}, instructions: '', color: '#6842ff',
       mcp_servers: [], external_agent_configs: [], runtime_arn: '', knowledge_base: '',
@@ -688,14 +688,14 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   updateModelInput(field: 'model_id' | 'max_tokens' | 'top_p', value: string | number): void {
     if (!this.editingAgent.model_inputs) {
       this.editingAgent.model_inputs = {
-        default: { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }
+        default: { model_id: 'global.anthropic.claude-sonnet-5-5', max_tokens: 8000 }
       };
     }
     let key = 'default';
     if (!this.editingAgent.model_inputs['default']) {
       const keys = Object.keys(this.editingAgent.model_inputs);
       if (keys.length > 0) { key = keys[0]; }
-      else { this.editingAgent.model_inputs['default'] = { model_id: 'global.anthropic.claude-sonnet-5', max_tokens: 8000 }; }
+      else { this.editingAgent.model_inputs['default'] = { model_id: 'global.anthropic.claude-sonnet-5-5', max_tokens: 8000 }; }
     }
     (this.editingAgent.model_inputs[key] as any)[field] = value;
   }

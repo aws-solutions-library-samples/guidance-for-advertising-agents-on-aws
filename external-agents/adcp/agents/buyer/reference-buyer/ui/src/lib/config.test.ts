@@ -17,7 +17,7 @@ import { fetchAppConfig } from './config';
 const SHELL = '<!doctype html>\n<html lang="en"><head></head><body></body></html>';
 
 const CONFIG = {
-  model_id: 'global.anthropic.claude-sonnet-5',
+  model_id: 'global.anthropic.claude-sonnet-5-5',
   cognito_region: 'us-east-1',
   cognito_client_id: 'abc123',
   agent_runtime_arn: 'arn:aws:bedrock-agentcore:us-east-1:1:runtime/x',

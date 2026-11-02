@@ -847,8 +847,8 @@ cp .env.example .env   # fill in SELLER_AGENTS_JSON and SESSION_STORAGE_BUCKET
 
 Requires AWS credentials with Bedrock `InvokeModel`/`InvokeModelWithResponseStream`
 access in your environment (`aws configure` / SSO / whatever you normally use).
-The default model is Claude Sonnet 5 via a cross-region inference profile
-(`global.anthropic.claude-sonnet-5`) in `us-east-1`. Override
+The default model is Claude Sonnet 5.5 via a cross-region inference profile
+(`global.anthropic.claude-sonnet-5-5`) in `us-east-1`. Override
 `BEDROCK_MODEL_ID` / `AWS_REGION` in `.env` if you want a different model or
 region.
 

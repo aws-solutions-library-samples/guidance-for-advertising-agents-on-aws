@@ -2913,9 +2913,8 @@ print(arn)
     deploy_cmd="$deploy_cmd --env PYTHONPATH=/app/agentcore/shared"
 
     # KB RetrieveAndGenerate model. Current Claude models are INFERENCE_PROFILE-only
-    # (no ON_DEMAND), so this must be an account-scoped inference-profile ARN — the
-    # hardcoded foundation-model default in knowledge_base_helper.py is a decommissioned
-    # legacy model. Resolve the account id (profile-aware) to build the ARN.
+    # (no ON_DEMAND), so this must be an account-scoped inference-profile ARN.
+    # Resolve the account id (profile-aware) to build the ARN.
     local toolkit_account_id=""
     if [ -n "$AWS_PROFILE" ]; then
         toolkit_account_id=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
@@ -2924,7 +2923,7 @@ print(arn)
     fi
     toolkit_account_id=$(echo "$toolkit_account_id" | tr -d '\n\r\t ')
     if [ -n "$toolkit_account_id" ] && [ "$toolkit_account_id" != "None" ]; then
-        local kb_model_arn="arn:aws:bedrock:${toolkit_region}:${toolkit_account_id}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        local kb_model_arn="arn:aws:bedrock:${toolkit_region}:${toolkit_account_id}:inference-profile/global.anthropic.claude-haiku-5-5"
         deploy_cmd="$deploy_cmd --env KB_MODEL_ARN=$kb_model_arn"
         print_status "KB generation model: $kb_model_arn"
     else

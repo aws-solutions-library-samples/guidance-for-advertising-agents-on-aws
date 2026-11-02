@@ -34,10 +34,10 @@
 # Their own default is Nova Pro, which reliably fails CrewAI tool calling on the
 # Bedrock Converse API with:
 #   ModelErrorException: Model produced invalid sequence as part of ToolUse
-# (observed in both AAMP runtimes' CloudWatch logs). Claude Sonnet 5 via the
+# (observed in both AAMP runtimes' CloudWatch logs). Claude Sonnet 5.5 via the
 # global cross-region inference profile handles the tool-use contract, so we
 # default to it. Override with AAMP_LLM_MODEL to use a different model.
-: "${AAMP_LLM_MODEL:=bedrock/global.anthropic.claude-sonnet-5}"
+: "${AAMP_LLM_MODEL:=bedrock/global.anthropic.claude-sonnet-5-5}"
 
 # Inbound auth for the AAMP runtimes: "oauth" (Cognito JWT authorizer, works
 # cross-account/anywhere) or "iam" (SigV4, same-account only). Defaults to
@@ -299,7 +299,7 @@ PYAUTH
 # temperature, e.g.
 #     llm=LLM(model=settings.default_llm_model, temperature=0.5)
 # (~11 sites per repo, plus one inline call in the seller's http_main.py).
-# Claude Sonnet 5 — the model this deploy selects — REJECTS that parameter, so
+# Claude Sonnet 5 REJECTS that parameter (the strip is kept for the 5.5 default), so
 # every crew invocation fails the request outright:
 #     Request validation failed: temperature is deprecated for this model.
 # and the agent surfaces a failed/placeholder result instead of real output.

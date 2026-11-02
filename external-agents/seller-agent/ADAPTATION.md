@@ -7,7 +7,7 @@ original CrewAI HTTP crew. It was brought in-repo to stop maintaining the agent 
 externally-cloned, patched-at-deploy dependency.
 
 ## What the A2A runtime uses (new, added here)
-- `src/ad_seller/interfaces/agentcore/a2a_main.py` — Strands `Agent` (Bedrock Sonnet 5) served via
+- `src/ad_seller/interfaces/agentcore/a2a_main.py` — Strands `Agent` (Bedrock Sonnet 5.5) served via
   `strands.multiagent.a2a.A2AServer`. **This is the deployed entrypoint.**
 - `src/ad_seller/interfaces/agentcore/deal_logic.py` — crewai-free deal creation (extracted from
   `crew_tools.CreateDealTool._create_deal_direct`).

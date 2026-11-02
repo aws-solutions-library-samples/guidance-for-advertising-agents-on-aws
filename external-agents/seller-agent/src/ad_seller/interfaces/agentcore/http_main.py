@@ -470,7 +470,7 @@ async def _run_crew_with_crewai(prompt: str, payload: dict) -> dict:
 
     bedrock_model = os.environ.get(
         "DEFAULT_LLM_MODEL",
-        "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "bedrock/global.anthropic.claude-sonnet-5-5",
     )
     bedrock_llm = LLM(model=bedrock_model, max_tokens=4096)
     publisher_crew.inventory_manager.llm = bedrock_llm

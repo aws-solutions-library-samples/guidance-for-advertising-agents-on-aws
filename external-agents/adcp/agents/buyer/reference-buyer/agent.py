@@ -29,7 +29,7 @@ from seller_agents import list_seller_agents_public, resolve_seller_agent
 
 load_dotenv()
 
-DEFAULT_MODEL_ID = "global.anthropic.claude-sonnet-5"
+DEFAULT_MODEL_ID = "global.anthropic.claude-sonnet-5-5"
 
 #: Output-token ceiling for one model turn. Set explicitly because Strands only sends `maxTokens` when
 #: configured, and Bedrock's own default is low enough to truncate a turn that emits several tool calls at

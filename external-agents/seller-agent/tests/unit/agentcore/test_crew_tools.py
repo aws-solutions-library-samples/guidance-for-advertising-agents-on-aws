@@ -130,7 +130,7 @@ class TestCrewAIInjection:
             goal="Test tool injection",
             backstory="Testing",
             tools=AGENTCORE_SELLER_TOOLS,
-            llm=LLM(model="bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+            llm=LLM(model="bedrock/global.anthropic.claude-sonnet-5-5"),
             memory=False,
             verbose=False,
         )
@@ -147,7 +147,7 @@ class TestCrewAIInjection:
             goal="Maximize yield",
             backstory="Seasoned strategist",
             tools=[],
-            llm=LLM(model="bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+            llm=LLM(model="bedrock/global.anthropic.claude-sonnet-5-5"),
             memory=False,
             verbose=False,
         )

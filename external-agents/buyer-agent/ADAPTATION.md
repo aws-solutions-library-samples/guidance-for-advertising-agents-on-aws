@@ -8,7 +8,7 @@ patched-at-deploy dependency.
 
 ## What the A2A runtime uses (new, added here)
 - `src/ad_buyer/interfaces/agentcore/a2a_main.py` — a Strands **coordinator** agent (Bedrock
-  Haiku 4.5) served via `A2AServer`, with two tools: `allocate_budget` (runs one Sonnet-5
+  Haiku 5.5) served via `A2AServer`, with two tools: `allocate_budget` (runs one Sonnet-5.5
   `structured_output` budget call) and `search_inventory` (calls the seller). **Deployed entrypoint.**
 - `src/ad_buyer/interfaces/agentcore/budget_models.py` — crewai-free `BudgetAllocationOutput`
   (extracted from `crews/portfolio_crew.py`).

@@ -57,7 +57,7 @@ CONSUMER_AGENT = "AgencyAgent"
 EXTERNAL_ENTRY_NAME = "AdCPBuyerAgent"
 TOP_LEVEL_ID = "AdCPBuyer"
 AUTH_TYPE = "oauth_m2m"
-DEFAULT_TOP_LEVEL_MODEL = "global.anthropic.claude-sonnet-5"
+DEFAULT_TOP_LEVEL_MODEL = "global.anthropic.claude-sonnet-5-5"
 
 TOP_LEVEL_SPEC = {
     "id": TOP_LEVEL_ID,

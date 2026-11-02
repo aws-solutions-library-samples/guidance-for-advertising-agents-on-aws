@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     default_protocol: str = "opendirect21"  # opendirect21, a2a
 
     # LLM Configuration
-    default_llm_model: str = "anthropic/claude-sonnet-4-5-20250929"
-    manager_llm_model: str = "anthropic/claude-opus-4-20250514"
+    default_llm_model: str = "anthropic/claude-sonnet-5-5"
+    manager_llm_model: str = "anthropic/claude-opus-5-5"
     llm_temperature: float = 0.3
     llm_max_tokens: int = 4096
 

@@ -90,7 +90,7 @@ Options:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ROUTING_MODE` | `crew` | Default routing mode |
-| `DEFAULT_LLM_MODEL` | `bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock model for PortfolioCrew |
+| `DEFAULT_LLM_MODEL` | `bedrock/global.anthropic.claude-sonnet-5-5` | Bedrock model for PortfolioCrew |
 | `STORAGE_TYPE` | `sqlite` | Storage backend |
 | `DATABASE_URL` | `sqlite:///:memory:` | Database connection string |
 

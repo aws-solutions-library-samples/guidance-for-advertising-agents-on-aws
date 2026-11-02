@@ -129,7 +129,7 @@ Set these in the AgentCore runtime configuration:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ROUTING_MODE` | `chat` | Default routing mode (`crew` or `chat`) |
-| `DEFAULT_LLM_MODEL` | `bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock model for CrewAI |
+| `DEFAULT_LLM_MODEL` | `bedrock/global.anthropic.claude-sonnet-5-5` | Bedrock model for CrewAI |
 | `INTERNAL_API_PORT` | `8001` | Port for background FastAPI server |
 | `CREW_MCP_TOOLS` | `list_products,get_product_details,...` | Comma-separated MCP tool filter |
 | `CREW_MAX_ITER` | `0` (unlimited) | Max CrewAI iterations per task |

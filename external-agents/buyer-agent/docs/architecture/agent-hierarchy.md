@@ -59,7 +59,7 @@ The Portfolio Manager is the top-level orchestrator. It receives a campaign brie
 | Attribute | Value |
 |-----------|-------|
 | Role | Portfolio Manager |
-| LLM | `anthropic/claude-opus-4-20250514` (configurable via `MANAGER_LLM_MODEL`) |
+| LLM | `anthropic/claude-opus-5-5` (configurable via `MANAGER_LLM_MODEL`) |
 | Temperature | 0.3 |
 | Delegation | Enabled --- delegates to Level 2 agents |
 | Memory | Enabled |
@@ -95,7 +95,7 @@ All channel specialists share these defaults:
 
 | Attribute | Value |
 |-----------|-------|
-| LLM | `anthropic/claude-sonnet-4-5-20250929` (configurable via `DEFAULT_LLM_MODEL`) |
+| LLM | `anthropic/claude-sonnet-5-5` (configurable via `DEFAULT_LLM_MODEL`) |
 | Temperature | 0.5 |
 | Delegation | Enabled --- delegates to Level 3 agents |
 | Memory | Enabled |
@@ -186,7 +186,7 @@ All functional agents share these defaults:
 
 | Attribute | Value |
 |-----------|-------|
-| LLM | `anthropic/claude-sonnet-4-5-20250929` |
+| LLM | `anthropic/claude-sonnet-5-5` |
 | Delegation | Disabled --- they are leaf-level executors |
 | Memory | Enabled |
 

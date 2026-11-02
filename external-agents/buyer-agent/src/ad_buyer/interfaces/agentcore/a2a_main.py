@@ -2,8 +2,8 @@
 
 Adaptation of upstream rkmaws/buyer-agent for **Strands + A2A** (see ADAPTATION.md).
 Replaces the CrewAI ``crew_tools.run_campaign_plan`` + ``DealBookingFlow`` path with a single
-coordinator agent (Haiku 4.5) that: (1) calls ``allocate_budget`` — which runs the reused
-pure-Python brief/audience steps plus one Sonnet-5 ``structured_output`` budget call — then
+coordinator agent (Haiku 5.5) that: (1) calls ``allocate_budget`` — which runs the reused
+pure-Python brief/audience steps plus one Sonnet-5.5 ``structured_output`` budget call — then
 (2) calls ``search_inventory`` once per funded channel against the seller's A2A runtime, and
 (3) emits a media-plan JSON. No CrewAI Flow, no hierarchical delegation. Crewai-free.
 
@@ -38,10 +38,10 @@ logger = logging.getLogger(__name__)
 
 _REGION = os.environ.get("AWS_REGION", "us-east-1")
 _BUDGET_MODEL = os.environ.get(
-    "BUYER_BUDGET_MODEL", os.environ.get("DEFAULT_LLM_MODEL", "global.anthropic.claude-sonnet-5")
+    "BUYER_BUDGET_MODEL", os.environ.get("DEFAULT_LLM_MODEL", "global.anthropic.claude-sonnet-5-5")
 )
 _COORDINATOR_MODEL = os.environ.get(
-    "BUYER_COORDINATOR_MODEL", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    "BUYER_COORDINATOR_MODEL", "global.anthropic.claude-haiku-5-5"
 )
 _A2A_PORT = int(os.environ.get("AGENTCORE_A2A_PORT", "9000"))
 

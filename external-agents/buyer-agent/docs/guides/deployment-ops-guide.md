@@ -75,8 +75,8 @@ SELLER_ENDPOINTS=http://localhost:8000
 IAB_SERVER_URL=http://localhost:8000
 
 # LLM models
-DEFAULT_LLM_MODEL=anthropic/claude-sonnet-4-5-20250929
-MANAGER_LLM_MODEL=anthropic/claude-opus-4-20250514
+DEFAULT_LLM_MODEL=anthropic/claude-sonnet-5-5
+MANAGER_LLM_MODEL=anthropic/claude-opus-5-5
 
 # Storage
 DATABASE_URL=sqlite:///./ad_buyer.db
@@ -437,8 +437,8 @@ Authentication is enforced via the `X-API-Key` header. Public paths (`/health`, 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEFAULT_LLM_MODEL` | `anthropic/claude-sonnet-4-5-20250929` | Model for Level 2 channel specialists and Level 3 functional agents. |
-| `MANAGER_LLM_MODEL` | `anthropic/claude-opus-4-20250514` | Model for the Level 1 Portfolio Manager. Opus is used for strategic reasoning. |
+| `DEFAULT_LLM_MODEL` | `anthropic/claude-sonnet-5-5` | Model for Level 2 channel specialists and Level 3 functional agents. |
+| `MANAGER_LLM_MODEL` | `anthropic/claude-opus-5-5` | Model for the Level 1 Portfolio Manager. Opus is used for strategic reasoning. |
 | `LLM_TEMPERATURE` | `0.3` | Default temperature. Individual agents use tuned values (0.1–0.5). |
 | `LLM_MAX_TOKENS` | `4096` | Maximum token output per LLM call. |
 
@@ -446,7 +446,7 @@ Models use `provider/model-name` format with CrewAI's native provider integratio
 
 ```dotenv
 DEFAULT_LLM_MODEL=openai/gpt-4o
-MANAGER_LLM_MODEL=anthropic/claude-opus-4-20250514
+MANAGER_LLM_MODEL=anthropic/claude-opus-5-5
 ```
 
 ### Storage
@@ -947,8 +947,8 @@ Reduce concurrency by lowering `CREW_MAX_ITERATIONS` and limiting the number of 
 If a specific model is unavailable, switch to a different model:
 
 ```dotenv
-DEFAULT_LLM_MODEL=anthropic/claude-haiku-3-5-20241022
-MANAGER_LLM_MODEL=anthropic/claude-sonnet-4-5-20250929
+DEFAULT_LLM_MODEL=anthropic/claude-haiku-5-5
+MANAGER_LLM_MODEL=anthropic/claude-sonnet-5-5
 ```
 
 ---
