@@ -1464,41 +1464,6 @@ def get_agentcore_config_from_ssm():
         return None
 
 
-def get_memory_id_from_ssm() -> str:
-    """
-    Retrieve AgentCore memory ID from SSM Parameter Store.
-    
-    The memory ID is stored at: /{stack_prefix}/{unique_id}/agentcore_memory_id
-    
-    Falls back to MEMORY_ID environment variable if SSM retrieval fails.
-
-    Returns:
-        str: Memory ID if found, empty string otherwise
-    """
-    try:
-        stack_prefix = os.environ.get("STACK_PREFIX", "sim")
-        unique_id = os.environ.get("UNIQUE_ID", "")
-        region = os.environ.get("AWS_REGION", "us-east-1")
-
-        if not unique_id:
-            logging.warning("[get_memory_id_from_ssm] UNIQUE_ID not set, falling back to env var")
-            return os.environ.get("MEMORY_ID", "")
-
-        parameter_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
-        ssm = boto3.client("ssm", region_name=region)
-
-        # Retrieve parameter
-        response = ssm.get_parameter(Name=parameter_name)
-        memory_id = response["Parameter"]["Value"]
-        
-        logging.info(f"[get_memory_id_from_ssm] Retrieved memory ID from SSM: {memory_id}")
-        return memory_id
-
-    except Exception as e:
-        logging.warning(f"[get_memory_id_from_ssm] SSM retrieval failed: {e}, falling back to env var")
-        return os.environ.get("MEMORY_ID", "")
-
-
 def get_runtime_arn_and_auth_config(agent_name: str):
     """
     Get runtime ARN and A2A auth config for an agent from SSM Parameter Store or RUNTIMES env var.
