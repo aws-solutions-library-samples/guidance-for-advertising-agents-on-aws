@@ -60,8 +60,10 @@ def create_shared_memory(stack_prefix, unique_id, aws_region="us-east-1"):
         # Import AgentCore memory client
         from bedrock_agentcore.memory import MemoryClient
 
-        memory_client = MemoryClient()
-        print("✅ AgentCore memory client initialized")
+        # Without region_name the SDK uses the boto3 session region, which ignores
+        # AWS_REGION, and otherwise defaults to us-west-2.
+        memory_client = MemoryClient(region_name=aws_region)
+        print(f"✅ AgentCore memory client initialized ({memory_client.region_name})")
     except ImportError as e:
         print(f"❌ AgentCore memory client not available: {e}")
         print("This is expected if bedrock-agentcore package is not installed")
@@ -116,7 +118,7 @@ def create_shared_memory(stack_prefix, unique_id, aws_region="us-east-1"):
                     
                     # Try again
                     from bedrock_agentcore.memory import MemoryClient
-                    memory_client = MemoryClient()
+                    memory_client = MemoryClient(region_name=aws_region)
                     print("✅ AgentCore memory client initialized after upgrade")
                 else:
                     print(f"❌ Failed to upgrade boto3: {result.stderr}")
@@ -232,7 +234,7 @@ def main():
                     "stack_prefix": args.stack_prefix,
                     "unique_id": args.unique_id,
                     "aws_region": args.aws_region,
-                    "ssm_parameter": f"/{args.stack_prefix}/agentcore_memory_id/{args.unique_id}",
+                    "ssm_parameter": f"/{args.stack_prefix}/{args.unique_id}/agentcore_memory_id",
                     "created_at": __import__("datetime").datetime.utcnow().isoformat()
                     + "Z",
                 }
