@@ -175,6 +175,7 @@ from shared.memory_integration import (
     get_memory_configuration,
     create_memory_hooks_and_state,
     extract_session_id_and_memory_id_and_actor_from_payload,
+    memory_id_from_environment,
     MEMORY_AVAILABLE,
 )
 
@@ -232,10 +233,10 @@ def get_memory_id_from_ssm() -> str:
     unique_id = os.environ.get("UNIQUE_ID", "")
     aws_region = os.environ.get("AWS_REGION", "us-east-1")
     
-    # If stack_prefix or unique_id not set, fall back to environment variable
+    # If stack_prefix or unique_id not set, fall back to the runtime environment
     if not stack_prefix or not unique_id:
-        logger.warning("⚠️ MEMORY_SSM: STACK_PREFIX or UNIQUE_ID not set, falling back to MEMORY_ID env var")
-        return os.environ.get("MEMORY_ID", "")
+        logger.warning("⚠️ MEMORY_SSM: STACK_PREFIX or UNIQUE_ID not set, falling back to environment")
+        return memory_id_from_environment() or ""
     
     # Build SSM parameter name
     ssm_param_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
@@ -262,15 +263,10 @@ def get_memory_id_from_ssm() -> str:
         logger.info(f"✅ MEMORY_SSM: Retrieved memory ID from SSM: {memory_id}")
         return memory_id
         
-    except boto3.client("ssm").exceptions.ParameterNotFound:
-        logger.warning(f"⚠️ MEMORY_SSM: Parameter not found: {ssm_param_name}")
-        logger.warning("   Falling back to MEMORY_ID environment variable")
-        return os.environ.get("MEMORY_ID", "")
-        
     except Exception as e:
-        logger.error(f"❌ MEMORY_SSM: Failed to retrieve memory ID from SSM: {e}")
-        logger.warning("   Falling back to MEMORY_ID environment variable")
-        return os.environ.get("MEMORY_ID", "")
+        # ParameterNotFound included: the toolkit-created memory is still in the env.
+        logger.warning(f"⚠️ MEMORY_SSM: Could not read {ssm_param_name} ({type(e).__name__}); falling back to environment")
+        return memory_id_from_environment() or ""
 
 
 def clear_ssm_cache(param_name: Optional[str] = None):
@@ -2831,9 +2827,10 @@ async def agent_invocation(payload, context):
             orchestrator_instance.direct_mention_target = direct_mention_target
             if session_id:
                 orchestrator_instance.session_id = session_id
-                # None when neither the payload, SSM nor MEMORY_ID yields a valid id.
+                # None only when the payload, SSM, BEDROCK_AGENTCORE_MEMORY_ID and
+                # MEMORY_ID all lack a valid id (logged as an error upstream).
                 # create_orchestrator does `"default" in memory_id`, so None crashed
-                # every turn; "default" runs the agent without memory instead.
+                # every turn.
                 orchestrator_instance.memory_id = extracted_memory_id or "default"
                 memory_id = orchestrator_instance.memory_id
             else:
