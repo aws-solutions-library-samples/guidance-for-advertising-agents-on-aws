@@ -2549,7 +2549,7 @@ except:
         if [ -n "$file_memory_id" ] && [ "$file_memory_id" != "" ]; then
             print_status "✅ Shared AgentCore memory already exists (from local file): $file_memory_id"
             print_status "   Storing in SSM for runtime retrieval..."
-            store_agentcore_memory_id_in_ssm "$file_memory_id"
+            store_agentcore_memory_id_in_ssm "$file_memory_id" || return 1
             return 0
         fi
     fi
@@ -2564,9 +2564,8 @@ except:
         print_status "Installing bedrock-agentcore package..."
         $PYTHON_CMD -m pip install bedrock-agentcore --quiet
         if [ $? -ne 0 ]; then
-            print_warning "⚠️  Failed to install bedrock-agentcore package"
-            print_warning "   Memory functionality may be limited"
-            return 0
+            print_error "❌ Failed to install bedrock-agentcore package"
+            return 1
         fi
         print_success "✅ bedrock-agentcore package installed"
     fi
@@ -2574,8 +2573,8 @@ except:
     # Create ONE memory record using the simple script
     local memory_script="${PROJECT_ROOT}/agentcore/deployment/create_simple_memory.py"
     if [ ! -f "$memory_script" ]; then
-        print_warning "Simple memory creation script not found: $memory_script"
-        return 0
+        print_error "❌ Memory creation script not found: $memory_script"
+        return 1
     fi
     
     print_status "Creating ONE shared memory record..."
@@ -2612,16 +2611,39 @@ except:
                 print_status "📄 Memory record file: $memory_record_file"
                 
                 # Store memory ID in SSM Parameter Store for runtime retrieval
-                store_agentcore_memory_id_in_ssm "$memory_record_id"
+                store_agentcore_memory_id_in_ssm "$memory_record_id" || return 1
             else
-                print_warning "⚠️  Could not read memory record ID from file"
+                print_error "❌ Could not read memory record ID from $memory_record_file"
+                return 1
             fi
         else
-            print_warning "⚠️  Memory record file was not created"
+            print_error "❌ Memory record file was not created: $memory_record_file"
+            return 1
         fi
     else
-        print_warning "⚠️  Failed to create shared AgentCore memory, agents may have limited memory functionality"
+        # The runtime reads the memory ID from SSM and the UI looks the memory up by
+        # name, so deploying agents without one leaves every turn without memory.
+        print_error "❌ Failed to create shared AgentCore memory in ${AWS_REGION} (see the error above)"
+        return 1
     fi
+}
+
+# Print the real AgentCore memory ID (<name>-<suffix>) for this stack from SSM,
+# falling back to the local memory record file. Prints nothing if neither has it.
+resolve_agentcore_memory_id() {
+    local ssm_param_name="/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id"
+    local resolved=""
+    resolved=$(aws_cmd ssm get-parameter --name "$ssm_param_name" --region "$AWS_REGION" \
+        --query 'Parameter.Value' --output text 2>/dev/null || true)
+    if [ -z "$resolved" ] || [ "$resolved" = "None" ]; then
+        local memory_record_file="${PROJECT_ROOT}/.memory-record-${STACK_PREFIX}-${UNIQUE_ID}.json"
+        if [ -f "$memory_record_file" ]; then
+            resolved=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('memory_record_id',''))" \
+                "$memory_record_file" 2>/dev/null || true)
+        fi
+    fi
+    [ "$resolved" = "None" ] && resolved=""
+    printf '%s' "$resolved"
 }
 
 # Function to store AgentCore memory ID in SSM Parameter Store
@@ -2706,8 +2728,16 @@ deploy_agent_via_toolkit() {
     # The toolkit internally derives ECR-compatible names from this
     local runtime_name=$(echo "${agentcore_agent_name}" | tr '[:upper:]' '[:lower:]' | sed 's/-/_/g')
     
-    # Gather environment variables (same logic as build_and_deploy.sh)
-    local memory_id="${STACK_PREFIX}memory${UNIQUE_ID}"
+    # MEMORY_ID must be the real memory ID (<name>-<suffix>). The bare name
+    # ${STACK_PREFIX}memory${UNIQUE_ID} is rejected by the handler, which only
+    # accepts ids containing "-".
+    local memory_id
+    memory_id=$(resolve_agentcore_memory_id)
+    if [ -z "$memory_id" ]; then
+        print_error "❌ No AgentCore memory ID in SSM (/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id) or the memory record file"
+        return 1
+    fi
+    print_status "  Memory ID: $memory_id"
     
     # Gather knowledge base IDs
     print_status "Gathering knowledge base IDs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
@@ -3213,7 +3243,11 @@ detect_and_deploy_agentcore_agents() {
     print_status "Found ${#agentcore_agents[@]} AgentCore agents: ${agentcore_agents[*]}"
     
     # Create shared memory BEFORE deploying agents so it exists when agents start
-    create_agentcore_memory
+    if ! create_agentcore_memory; then
+        print_error "❌ Stopping before the agent deploy: no AgentCore memory for ${STACK_PREFIX}/${UNIQUE_ID}."
+        print_error "   Fix the error above, then re-run: $0 --resume-at 10 --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+        return 1
+    fi
     
     # Deploy each AgentCore agent
     local deployed_agents=()
@@ -6137,6 +6171,14 @@ prompt_and_deploy_external_agents() {
 main() {
     # Parse command line arguments first
     parse_args "$@"
+
+    # boto3 reads AWS_DEFAULT_REGION, not AWS_REGION. Without it, a host with no
+    # region in ~/.aws/config (the workshop IDE instance) sends boto3 children to
+    # their own default, and bedrock_agentcore's MemoryClient defaults to us-west-2.
+    if [ -n "${AWS_REGION:-}" ]; then
+        export AWS_REGION
+        export AWS_DEFAULT_REGION="$AWS_REGION"
+    fi
 
     # Resolve the profile once, up front, when --profile was not passed.
     #
