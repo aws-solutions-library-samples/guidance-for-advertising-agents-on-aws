@@ -2396,6 +2396,7 @@ class GenericAgent:
         # Setup memory hooks
         hooks = []
         self.session_id = session_id
+        memory_id = memory_id or "default"
         self.memory_id = memory_id
 
         if "default" in memory_id:
@@ -2830,8 +2831,11 @@ async def agent_invocation(payload, context):
             orchestrator_instance.direct_mention_target = direct_mention_target
             if session_id:
                 orchestrator_instance.session_id = session_id
-                orchestrator_instance.memory_id = extracted_memory_id
-                memory_id = extracted_memory_id
+                # None when neither the payload, SSM nor MEMORY_ID yields a valid id.
+                # create_orchestrator does `"default" in memory_id`, so None crashed
+                # every turn; "default" runs the agent without memory instead.
+                orchestrator_instance.memory_id = extracted_memory_id or "default"
+                memory_id = orchestrator_instance.memory_id
             else:
                 # No session id: this turn cannot be tied to a conversation, so
                 # nothing is restored. It is still persisted under a one-off id
@@ -2880,17 +2884,17 @@ async def agent_invocation(payload, context):
             _flush_log(f"♻️ AGENT_INVOCATION: Reusing existing agent {agent_name}")
             if session_id:
                 orchestrator_instance.session_id = session_id
-                orchestrator_instance.memory_id = extracted_memory_id
+                orchestrator_instance.memory_id = extracted_memory_id or "default"
                 orchestrator_instance.direct_mention_mode = direct_mention_mode
                 orchestrator_instance.direct_mention_target = direct_mention_target
-                memory_id = extracted_memory_id
+                memory_id = orchestrator_instance.memory_id
                 
                 # Update agent state without recreating
                 normalized_actor_id = agent_name.replace("_", "-")
                 agent.state = {
                     "session_id": session_id,
                     "actor_id": normalized_actor_id,
-                    "memory_id": extracted_memory_id,
+                    "memory_id": memory_id,
                 }
                 
                 # CRITICAL: Update the conversation manager's session info for memory persistence
@@ -2903,8 +2907,8 @@ async def agent_invocation(payload, context):
                         _flush_log(f"♻️ Updated conversation_manager session info for {agent_name}")
                     # Also update memory_id if the manager has it
                     if hasattr(agent.conversation_manager, 'memory_id'):
-                        agent.conversation_manager.memory_id = extracted_memory_id
-                        _flush_log(f"♻️ Updated conversation_manager memory_id to {extracted_memory_id}")
+                        agent.conversation_manager.memory_id = memory_id
+                        _flush_log(f"♻️ Updated conversation_manager memory_id to {memory_id}")
                     
                     # Retrieve conversation history from memory and inject into system prompt
                     if hasattr(agent.conversation_manager, 'retrieve_conversation_history'):
