@@ -9,7 +9,9 @@ aws-opentelemetry-distro>=0.10.0
 # bedrock-agentcore>=1.0.0 required for MemorySessionManager (used by AgentCoreMemoryConversationManager)
 bedrock-agentcore>=1.0.0
 strands-agents>=1.21.0
-strands-agents-tools
+# 0.9.0 turned use_llm, memory, http_request, file_read, generate_image, image_reader
+# and a2a_client into stubs that raise ImportError, which crashes the handler on import.
+strands-agents-tools<0.9.0
 strands-agents[a2a]>=1.21.0
 
 a2a-sdk[sql]>=0.3.0

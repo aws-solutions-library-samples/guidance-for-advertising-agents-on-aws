@@ -972,7 +972,7 @@ def _unknown_specialist_message(agent_name: str) -> str:
         f"entry — refusing to build a stand-in. Known external entries: {external}"
     )
     return (
-        f"<agent-message agent='{getattr(orchestrator_instance, "agent_name", "orchestrator")}'>"
+        f"<agent-message agent='{getattr(orchestrator_instance, 'agent_name', 'orchestrator')}'>"
         f"Cannot reach '{agent_name}': it is not a configured agent and there is no "
         f"external agent entry with that name, so no such agent was contacted and "
         f"there is no result to report. Available external agents: "

@@ -21,7 +21,7 @@ def fetch_agent_card():
     escaped_agent_arn = quote(agent_arn, safe='')
 
     # Construct the URL
-    url = f"https://bedrock-agentcore.{os.environ.get("AWS_REGION")}.amazonaws.com/runtimes/{escaped_agent_arn}/invocations/.well-known/agent-card.json"
+    url = f"https://bedrock-agentcore.{os.environ.get('AWS_REGION')}.amazonaws.com/runtimes/{escaped_agent_arn}/invocations/.well-known/agent-card.json"
 
     # Generate a unique session ID
     session_id = str(uuid4())
