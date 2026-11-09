@@ -123,20 +123,67 @@ AGENTCORE_BIN="${VENV_PATH}/bin/agentcore"
 # detected at setup time against the pinned binary.
 AGENTCORE_DEPLOY_SUBCMD="deploy"
 
+# Python version for the deployment venv. The starter toolkit renders the
+# runtime Dockerfile as FROM uv:python<venv version>-bookworm-slim, so this also
+# sets the Python version the deployed AgentCore runtime runs on.
+DEPLOY_PYTHON_VERSION="${DEPLOY_PYTHON_VERSION:-3.12}"
+
+# Print the major.minor version of a Python interpreter, or nothing.
+python_minor_version() {
+    "$1" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null
+}
+
+# Create $VENV_PATH on $DEPLOY_PYTHON_VERSION. Tries pythonX.Y, then uv (which
+# downloads the interpreter if missing). Returns 1 if neither works.
+create_versioned_venv() {
+    local py="python${DEPLOY_PYTHON_VERSION}"
+    if command -v "$py" >/dev/null 2>&1 && "$py" -m venv "$VENV_PATH" 2>/dev/null; then
+        print_status "Created venv with $(command -v "$py")"
+        return 0
+    fi
+    rm -rf "$VENV_PATH"
+    if command -v uv >/dev/null 2>&1 && uv venv --seed --python "$DEPLOY_PYTHON_VERSION" "$VENV_PATH" >/dev/null 2>&1; then
+        print_status "Created venv with uv (Python ${DEPLOY_PYTHON_VERSION})"
+        return 0
+    fi
+    rm -rf "$VENV_PATH"
+    return 1
+}
+
 # Function to setup Python environment with required dependencies
 setup_python_environment() {
     print_status "Setting up Python environment for AWS operations..."
-    
-    # Check if virtual environment exists
+
+    # A reused venv keeps the Python it was built with, so rebuild one on the
+    # wrong version. Only rebuild if the target version is actually obtainable,
+    # otherwise the rebuild would land on the same fallback interpreter.
+    if [ -x "$VENV_PATH/bin/python" ]; then
+        local venv_version
+        venv_version=$(python_minor_version "$VENV_PATH/bin/python" || true)
+        if [ "$venv_version" != "$DEPLOY_PYTHON_VERSION" ]; then
+            if command -v "python${DEPLOY_PYTHON_VERSION}" >/dev/null 2>&1 || command -v uv >/dev/null 2>&1; then
+                print_warning "Deployment venv is Python ${venv_version:-unknown}, expected ${DEPLOY_PYTHON_VERSION}; rebuilding it"
+                rm -rf "$VENV_PATH"
+            else
+                print_warning "Deployment venv is Python ${venv_version:-unknown}, expected ${DEPLOY_PYTHON_VERSION}, and neither python${DEPLOY_PYTHON_VERSION} nor uv is installed; keeping it"
+            fi
+        fi
+    fi
+
     if [ ! -d "$VENV_PATH" ]; then
-        print_status "Creating Python virtual environment..."
-        python3 -m venv "$VENV_PATH"
-        
-        if [ $? -ne 0 ]; then
-            print_error "Failed to create virtual environment. Please ensure python3-venv is installed."
-            print_error "On Ubuntu/Debian: sudo apt-get install python3-venv"
-            print_error "On macOS: python3 should include venv by default"
-            exit 1
+        print_status "Creating Python ${DEPLOY_PYTHON_VERSION} virtual environment..."
+        if ! create_versioned_venv; then
+            local fallback_version
+            fallback_version=$(python_minor_version python3 || true)
+            print_warning "Neither python${DEPLOY_PYTHON_VERSION} nor uv could create the venv; falling back to system python3 (${fallback_version:-unknown})."
+            print_warning "The AgentCore runtime will be built on Python ${fallback_version:-unknown}. Install uv or python${DEPLOY_PYTHON_VERSION} to avoid this."
+            python3 -m venv "$VENV_PATH"
+            if [ $? -ne 0 ]; then
+                print_error "Failed to create virtual environment. Please ensure python3-venv is installed."
+                print_error "On Ubuntu/Debian: sudo apt-get install python3-venv"
+                print_error "On macOS: python3 should include venv by default"
+                exit 1
+            fi
         fi
     fi
     
@@ -4970,6 +5017,8 @@ show_usage() {
     echo ""
     echo "NOTES:"
     echo "  - This script automatically creates a Python virtual environment (.venv-deployment)"
+    echo "  - The venv uses Python 3.12 (python3.12 or uv), override with DEPLOY_PYTHON_VERSION;"
+    echo "    the AgentCore runtime container is built on the same Python version"
     echo "  - Required Python packages (boto3, botocore) are installed automatically"
     echo "  - The virtual environment is cleaned up during cleanup operations"
     echo "  - For cleanup: --unique-id is useful when running from a different directory"
