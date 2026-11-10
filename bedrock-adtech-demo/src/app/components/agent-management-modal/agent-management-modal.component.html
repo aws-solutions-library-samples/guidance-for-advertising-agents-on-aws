@@ -396,6 +396,92 @@
                   (click)="editorPanel.setMcpAuthType(mcpServer, 'aws_iam')">
                   <span class="material-icons">security</span> AWS IAM
                 </div>
+                <div class="auth-type-option" [class.selected]="editorPanel.isMcpBearerTokenSelected(mcpServer)"
+                  (click)="editorPanel.setMcpAuthType(mcpServer, 'bearer_token')">
+                  <span class="material-icons">key</span> Bearer Token
+                </div>
+              </div>
+
+              <!-- Static Bearer Token Config (sent verbatim, works with any provider) -->
+              <div class="oauth-credentials-config" *ngIf="editorPanel.isMcpBearerTokenSelected(mcpServer)">
+                <div class="token-error" *ngIf="mcpServer.transport === 'sse'">
+                  <span class="material-icons">error_outline</span>
+                  The SSE transport does not carry auth headers in this runtime. Use HTTP for a bearer-token server.
+                </div>
+                <div class="credential-status-indicator"
+                  *ngIf="!editorPanel.mcpBearerTokenEditing && !editorPanel.mcpBearerTokenPending">
+                  <div class="credential-status stored" *ngIf="mcpServer.bearerToken?.hasToken">
+                    <span class="material-icons">check_circle</span>
+                    <span>Token stored</span>
+                  </div>
+                  <div class="credential-status not-stored" *ngIf="!mcpServer.bearerToken?.hasToken">
+                    <span class="material-icons">radio_button_unchecked</span>
+                    <span>Not stored</span>
+                  </div>
+                </div>
+                <div class="token-error"
+                  *ngIf="mcpServer.bearerToken?.hasToken && editorPanel.isBearerTokenExpired(mcpServer.bearerToken?.expiresAt)">
+                  <span class="material-icons">error_outline</span>
+                  Token expired ({{ mcpServer.bearerToken?.expiresAt | date:'medium' }}). Paste a new one.
+                </div>
+                <div class="token-status" *ngIf="mcpServer.bearerToken?.hasToken && !editorPanel.mcpBearerTokenEditing">
+                  <div class="token-actions">
+                    <button class="nova-button secondary small" (click)="editorPanel.mcpBearerTokenEditing = true">
+                      <span class="material-icons">edit</span> Update
+                    </button>
+                    <button class="nova-button secondary small danger"
+                      (click)="editorPanel.removeMcpBearerToken(mcpServer)" [disabled]="editorPanel.mcpBearerTokenSaving">
+                      <span class="material-icons">delete_outline</span> Remove
+                    </button>
+                  </div>
+                </div>
+                <div class="credentials-input-group"
+                  *ngIf="!mcpServer.bearerToken?.hasToken || editorPanel.mcpBearerTokenEditing">
+                  <div class="credential-field">
+                    <label>Token <span class="required">*</span></label>
+                    <div class="token-input-row">
+                      <input [type]="editorPanel.mcpBearerTokenVisible ? 'text' : 'password'" class="form-control"
+                        [(ngModel)]="editorPanel.mcpBearerTokenValue" placeholder="Paste bearer token..."
+                        autocomplete="off" spellcheck="false">
+                      <button class="toggle-visibility-btn"
+                        (click)="editorPanel.mcpBearerTokenVisible = !editorPanel.mcpBearerTokenVisible" type="button"
+                        [title]="editorPanel.mcpBearerTokenVisible ? 'Hide' : 'Show'">
+                        <span class="material-icons">{{ editorPanel.mcpBearerTokenVisible ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="credential-field">
+                    <label>Expiry <span class="optional-hint">(optional)</span></label>
+                    <input type="datetime-local" class="form-control" [(ngModel)]="editorPanel.mcpBearerTokenExpiry"
+                      autocomplete="off">
+                  </div>
+                  <span class="field-hint token-hint">
+                    <span class="material-icons">info_outline</span>
+                    The token is stored encrypted in AWS SSM Parameter Store and sent verbatim as
+                    <code>Authorization: Bearer &lt;token&gt;</code> on the HTTP transport. It is not refreshed. Set an
+                    optional expiry to be warned when it lapses, then paste a replacement.
+                  </span>
+                  <span class="field-hint token-hint credential-blocker"
+                    *ngIf="editorPanel.credentialSaveBlocker(mcpServer.name, 'server') as blocker">
+                    <span class="material-icons">warning_amber</span>
+                    {{ blocker }}
+                  </span>
+                  <div class="token-save-actions">
+                    <button class="nova-button primary small" (click)="editorPanel.saveMcpBearerToken()"
+                      [disabled]="editorPanel.mcpBearerTokenSaving || !!editorPanel.credentialSaveBlocker(mcpServer.name, 'server') || !editorPanel.mcpBearerTokenValue.trim()">
+                      <span class="material-icons">{{ editorPanel.mcpBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
+                      {{ editorPanel.mcpBearerTokenSaving ? 'Saving...' : 'Save Token' }}
+                    </button>
+                    <button class="nova-button secondary small" *ngIf="editorPanel.mcpBearerTokenEditing"
+                      (click)="editorPanel.cancelMcpBearerTokenEdit()">
+                      Cancel
+                    </button>
+                  </div>
+                  <div class="token-error" *ngIf="editorPanel.mcpServerJsonError">
+                    <span class="material-icons">error_outline</span>
+                    {{ editorPanel.mcpServerJsonError }}
+                  </div>
+                </div>
               </div>
 
               <!-- OAuth client-credentials (machine-to-machine) Config -->
@@ -479,9 +565,14 @@
                     <span class="material-icons">info_outline</span>
                     The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
                   </span>
+                  <span class="field-hint token-hint credential-blocker"
+                    *ngIf="editorPanel.credentialSaveBlocker(mcpServer.name, 'server') as blocker">
+                    <span class="material-icons">warning_amber</span>
+                    {{ blocker }}
+                  </span>
                   <div class="token-save-actions">
                     <button class="nova-button primary small" (click)="editorPanel.saveMcpClientCredentials()"
-                      [disabled]="editorPanel.mcpM2mSaving || !editorPanel.mcpM2mClientId.trim() || !editorPanel.mcpM2mClientSecret.trim() || !editorPanel.mcpM2mTokenUrl.trim()">
+                      [disabled]="editorPanel.mcpM2mSaving || !!editorPanel.credentialSaveBlocker(mcpServer.name, 'server') || !editorPanel.mcpM2mClientId.trim() || !editorPanel.mcpM2mClientSecret.trim() || !editorPanel.mcpM2mTokenUrl.trim()">
                       <span class="material-icons">{{ editorPanel.mcpM2mSaving ? 'hourglass_empty' : 'save' }}</span>
                       {{ editorPanel.mcpM2mSaving ? 'Saving...' : 'Save Credentials' }}
                     </button>
@@ -506,7 +597,7 @@
                     <span>OAuth credentials configured</span>
                   </div>
                   <div class="token-actions">
-                    <button class="nova-button secondary small" (click)="editorPanel.mcpOAuthCredentialsEditing = true">
+                    <button class="nova-button secondary small" (click)="editorPanel.beginMcpOAuthCredentialsUpdate()">
                       <span class="material-icons">edit</span> Update
                     </button>
                     <button class="nova-button secondary small danger" (click)="editorPanel.removeMcpOAuthCredentials(mcpServer)">
@@ -516,6 +607,11 @@
                 </div>
                 <!-- Credentials input (new or editing) -->
                 <div class="credentials-input-group" *ngIf="!mcpServer.oauthToken?.hasToken || editorPanel.mcpOAuthCredentialsEditing">
+                  <div class="credential-field">
+                    <label>Auth Client ID <span class="required">*</span></label>
+                    <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpOAuthClientId"
+                      placeholder="Cognito App Client ID" autocomplete="off">
+                  </div>
                   <div class="credential-field">
                     <label>Username <span class="required">*</span></label>
                     <input type="text" class="form-control" [(ngModel)]="editorPanel.mcpOAuthUsername"
@@ -535,16 +631,23 @@
                   </div>
                   <span class="field-hint token-hint">
                     <span class="material-icons">info_outline</span>
-                    Credentials are stored encrypted in AWS SSM Parameter Store. A bearer token will be obtained automatically at runtime.
+                    Credentials are stored encrypted in AWS SSM Parameter Store. On each connection the runtime signs
+                    in to Cognito with <code>USER_PASSWORD_AUTH</code> (the app client must allow it) and sends the
+                    access token as <code>Authorization: Bearer &lt;token&gt;</code>. HTTP transport only.
+                  </span>
+                  <span class="field-hint token-hint credential-blocker"
+                    *ngIf="editorPanel.credentialSaveBlocker(mcpServer.name, 'server') as blocker">
+                    <span class="material-icons">warning_amber</span>
+                    {{ blocker }}
                   </span>
                   <div class="token-save-actions">
                     <button class="nova-button primary small" (click)="editorPanel.saveMcpOAuthCredentials()"
-                      [disabled]="editorPanel.mcpOAuthCredentialsSaving || !editorPanel.mcpOAuthUsername.trim() || !editorPanel.mcpOAuthPassword.trim()">
+                      [disabled]="editorPanel.mcpOAuthCredentialsSaving || !!editorPanel.credentialSaveBlocker(mcpServer.name, 'server') || !editorPanel.mcpOAuthClientId.trim() || !editorPanel.mcpOAuthUsername.trim() || !editorPanel.mcpOAuthPassword.trim()">
                       <span class="material-icons">{{ editorPanel.mcpOAuthCredentialsSaving ? 'hourglass_empty' : 'save' }}</span>
                       {{ editorPanel.mcpOAuthCredentialsSaving ? 'Saving...' : 'Save Credentials' }}
                     </button>
                     <button class="nova-button secondary small" *ngIf="editorPanel.mcpOAuthCredentialsEditing"
-                      (click)="editorPanel.mcpOAuthCredentialsEditing = false; editorPanel.mcpOAuthUsername = ''; editorPanel.mcpOAuthPassword = ''">
+                      (click)="editorPanel.cancelMcpOAuthCredentialsEdit()">
                       Cancel
                     </button>
                   </div>
@@ -827,9 +930,14 @@
                 <code>Authorization: Bearer &lt;token&gt;</code>. It is not refreshed — set an optional expiry to be
                 warned when it lapses, then paste a replacement. Works with peers hosted anywhere.
               </span>
+              <span class="field-hint token-hint credential-blocker"
+                *ngIf="editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="editorPanel.saveA2aBearerToken()"
-                  [disabled]="editorPanel.a2aBearerTokenSaving || !editorPanel.a2aBearerTokenValue.trim()">
+                  [disabled]="editorPanel.a2aBearerTokenSaving || !!editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') || !editorPanel.a2aBearerTokenValue.trim()">
                   <span class="material-icons">{{ editorPanel.a2aBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ editorPanel.a2aBearerTokenSaving ? 'Saving...' : 'Save Token' }}
                 </button>
@@ -897,9 +1005,14 @@
                 <span class="material-icons">info_outline</span>
                 Credentials are stored encrypted in AWS SSM Parameter Store. A bearer token will be obtained automatically at runtime.
               </span>
+              <span class="field-hint token-hint credential-blocker"
+                *ngIf="editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="editorPanel.saveA2aOAuthCredentials()"
-                  [disabled]="editorPanel.a2aOAuthCredentialsSaving || !editorPanel.a2aOAuthClientId.trim() || !editorPanel.a2aOAuthUsername.trim() || !editorPanel.a2aOAuthPassword.trim()">
+                  [disabled]="editorPanel.a2aOAuthCredentialsSaving || !!editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') || !editorPanel.a2aOAuthClientId.trim() || !editorPanel.a2aOAuthUsername.trim() || !editorPanel.a2aOAuthPassword.trim()">
                   <span class="material-icons">{{ editorPanel.a2aOAuthCredentialsSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ editorPanel.a2aOAuthCredentialsSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>
@@ -994,9 +1107,14 @@
                 <span class="material-icons">info_outline</span>
                 The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
               </span>
+              <span class="field-hint token-hint credential-blocker"
+                *ngIf="editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="editorPanel.saveA2aClientCredentials()"
-                  [disabled]="editorPanel.a2aM2mSaving || !editorPanel.a2aM2mClientId.trim() || !editorPanel.a2aM2mClientSecret.trim() || !editorPanel.a2aM2mTokenUrl.trim()">
+                  [disabled]="editorPanel.a2aM2mSaving || !!editorPanel.credentialSaveBlocker(a2aAgent.name, 'external agent') || !editorPanel.a2aM2mClientId.trim() || !editorPanel.a2aM2mClientSecret.trim() || !editorPanel.a2aM2mTokenUrl.trim()">
                   <span class="material-icons">{{ editorPanel.a2aM2mSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ editorPanel.a2aM2mSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>

@@ -109,11 +109,12 @@ export const MCP_SERVER_PRESETS: { name: string; config: Partial<MCPServerConfig
     }
   },
   {
-    name: 'OAuth Bearer Token',
+    name: 'Bearer Token',
     config: {
       transport: 'http',
       url: '',
-      description: 'MCP server with OAuth bearer token authentication'
+      authType: 'bearer_token',
+      description: 'MCP server with static bearer token authentication'
     }
   }
 ];

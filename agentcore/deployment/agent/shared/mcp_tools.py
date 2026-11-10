@@ -78,6 +78,89 @@ def _uses_client_credentials(server_config: dict) -> bool:
     )
 
 
+def _uses_cognito_password(server_config: dict) -> bool:
+    """Whether this server is configured for the OAuth (username/password) mode.
+
+    The UI records this mode as `authType == "bearer"` and stores a
+    `{client_id, username, password}` document under `oauthToken.ssmPath`.
+    """
+    auth_type = (server_config.get("authType") or "").lower()
+    if auth_type:
+        return auth_type == "bearer"
+    return bool((server_config.get("oauthToken") or {}).get("hasToken"))
+
+
+def _resolve_cognito_password_bearer(server_config: dict) -> Optional[str]:
+    """Mint a Cognito USER_PASSWORD_AUTH access token for an MCP server.
+
+    Uses the shared token manager, which reads the credential document from SSM
+    and caches the token until shortly before it expires. Returns None on any
+    failure so the caller can fail closed.
+    """
+    server_name = server_config.get("name", "unknown")
+    ref = server_config.get("oauthToken") or {}
+    ssm_path = ref.get("ssmPath") or ""
+
+    if not ref.get("hasToken") or not ssm_path:
+        logger.error(
+            f"❌ MCP_TOOLS: OAuth selected for '{server_name}' but no credentials are "
+            f"stored. Save the Auth Client ID, username, and password in the "
+            f"server's Authentication settings"
+        )
+        return None
+
+    token, err = _get_token_manager().get_bearer_token(ssm_path)
+    if err or not token:
+        # get_bearer_token logs the cause without credential values. Documents
+        # saved before the Auth Client ID field existed fail here.
+        logger.error(f"❌ MCP_TOOLS: Could not acquire an OAuth token for '{server_name}': {err}")
+        return None
+
+    logger.info(f"🔐 MCP_TOOLS: Acquired OAuth bearer token for '{server_name}'")
+    return token
+
+
+def _uses_static_bearer(server_config: dict) -> bool:
+    """Whether this server is configured for the static Bearer Token mode.
+
+    `authType == "bearer"` is the older username/password OAuth mode, so the
+    static token mode has its own value, `bearer_token`.
+    """
+    auth_type = (server_config.get("authType") or "").lower()
+    if auth_type:
+        return auth_type == "bearer_token"
+    return bool((server_config.get("bearerToken") or {}).get("hasToken"))
+
+
+def _resolve_static_bearer(server_config: dict) -> Optional[str]:
+    """Read an MCP server's static bearer token from SSM.
+
+    Returns None when no token is recorded or the read fails, so the caller can
+    fail closed. Read uncached so a re-pasted token is picked up without a
+    runtime restart.
+    """
+    server_name = server_config.get("name", "unknown")
+    ref = server_config.get("bearerToken") or {}
+    ssm_path = ref.get("ssmPath") or ""
+
+    if not ref.get("hasToken") or not ssm_path:
+        logger.error(
+            f"❌ MCP_TOOLS: Bearer Token selected for '{server_name}' but no token "
+            f"is stored. Save a token in the server's Authentication settings"
+        )
+        return None
+
+    from shared.dynamodb_config_loader import resolve_ssm_parameter
+
+    token = resolve_ssm_parameter(ssm_path, use_cache=False)
+    if not token:
+        logger.error(f"❌ MCP_TOOLS: Could not read the bearer token for '{server_name}' from SSM")
+        return None
+
+    logger.info(f"🔐 MCP_TOOLS: Using stored bearer token for '{server_name}'")
+    return token
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -233,6 +316,16 @@ def _create_http(server_config: dict, prefix: str, tool_filters: dict) -> Option
         if not token:
             return None
         headers = {**headers, "Authorization": f"Bearer {token}"}
+    elif _uses_static_bearer(server_config):
+        token = _resolve_static_bearer(server_config)
+        if not token:
+            return None
+        headers = {**headers, "Authorization": f"Bearer {token}"}
+    elif _uses_cognito_password(server_config):
+        token = _resolve_cognito_password_bearer(server_config)
+        if not token:
+            return None
+        headers = {**headers, "Authorization": f"Bearer {token}"}
 
     mcp_client_kwargs: Dict = {}
     if prefix:
@@ -319,6 +412,14 @@ def _create_sse(server_config: dict, prefix: str, tool_filters: dict) -> Optiona
         # not be attached. Fail closed rather than connecting unauthenticated.
         logger.error(
             f"❌ MCP_TOOLS: OAuth M2M is configured for '{server_config.get('name', 'unknown')}' "
+            f"but the SSE transport in this runtime does not carry auth headers. "
+            f"Use the HTTP transport for this server."
+        )
+        return None
+
+    if _uses_static_bearer(server_config) or _uses_cognito_password(server_config):
+        logger.error(
+            f"❌ MCP_TOOLS: Bearer authentication is configured for '{server_config.get('name', 'unknown')}' "
             f"but the SSE transport in this runtime does not carry auth headers. "
             f"Use the HTTP transport for this server."
         )

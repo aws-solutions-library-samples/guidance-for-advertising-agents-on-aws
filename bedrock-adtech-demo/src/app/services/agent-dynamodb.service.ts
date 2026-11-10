@@ -49,14 +49,31 @@ export interface MCPServerConfig {
     ssmPath?: string;
   };
   /**
+   * Static Bearer Token reference. The raw token lives only in SSM
+   * SecureString (same per-server parameter as the other MCP credential
+   * modes); the record keeps a reference plus an optional operator-supplied
+   * expiry used for UI warnings (no auto-refresh). Used when
+   * `authType === 'bearer_token'`.
+   */
+  bearerToken?: {
+    hasToken: boolean;
+    ssmPath?: string;
+    /** ISO 8601 expiry timestamp; optional; drives UI expiry awareness only */
+    expiresAt?: string;
+  };
+  /**
    * Selected authentication mode.
    *
    * Older records have no value here; the editor and the runtime both fall back
    * to inferring the mode from which credential field is populated. New records
-   * always set it, because `oauth_m2m` and `bearer` both authenticate with an
-   * `Authorization` header and cannot be told apart by presence alone.
+   * always set it, because `oauth_m2m`, `bearer` and `bearer_token` all
+   * authenticate with an `Authorization` header and cannot be told apart by
+   * presence alone.
+   *
+   * `bearer` is the username/password OAuth mode (the value predates the static
+   * token mode); `bearer_token` sends a pasted token verbatim.
    */
-  authType?: 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m';
+  authType?: 'none' | 'bearer' | 'bearer_token' | 'aws_iam' | 'oauth_m2m';
   /**
    * OAuth 2.0 client-credentials reference. The secret lives in SSM under
    * `ssmPath`; the runtime mints a token per server and sends it as a bearer.
@@ -1478,6 +1495,48 @@ export class AgentDynamoDBService {
       // Re-throw with a descriptive message so the UI can display it
       throw new Error(`SSM PutParameter failed for ${ssmPath}: ${errorMsg}. Ensure the Cognito AuthenticatedRole has ssm:PutParameter permission (redeploy infrastructure-core.yml).`);
     }
+  }
+
+  /**
+   * Read an MCP server's stored credential value. Prefers the `ssmPath`
+   * recorded on the server config, so a value stored before the agent name
+   * changed is still found; falls back to the path derived from the current
+   * names. Only paths under this deployment's `mcp-tokens` prefix are read.
+   */
+  async getMcpCredentialDocument(agentName: string, serverId: string, ssmPath?: string): Promise<string | null> {
+    const prefix = `/${this.stackPrefix}/mcp-tokens/`;
+    const path = ssmPath && ssmPath.startsWith(prefix)
+      ? ssmPath
+      : (agentName ? this.getMcpTokenSsmPath(agentName, serverId) : null);
+    if (!path || !await this.ensureClient() || !this.ssmClient) {
+      return null;
+    }
+    try {
+      const response = await this.ssmClient.send(new GetParameterCommand({ Name: path, WithDecryption: true }));
+      return response.Parameter?.Value || null;
+    } catch (error: any) {
+      if (error.name !== 'ParameterNotFound') {
+        console.error(`❌ AgentDynamoDBService: Failed to read MCP credential at ${path}:`, error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Store a static Bearer Token for an MCP server in SSM, on the same
+   * per-server parameter the other MCP credential modes use, so the existing
+   * IAM grants cover it. Validates like `storeA2ABearerToken` and never
+   * includes the token value in errors.
+   */
+  async storeMcpBearerToken(agentName: string, serverId: string, token: string): Promise<string | null> {
+    const trimmed = (token || '').trim();
+    if (!trimmed) {
+      throw new Error('Bearer token is required and cannot be empty.');
+    }
+    if (trimmed.length > AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH) {
+      throw new Error(`Bearer token is too long (max ${AgentDynamoDBService.MAX_BEARER_TOKEN_LENGTH} characters).`);
+    }
+    return this.storeMcpOAuthToken(agentName, serverId, trimmed);
   }
 
   /**
