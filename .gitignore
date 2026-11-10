@@ -225,3 +225,37 @@ external-agents/adcp/agents/governance/reference-governance/xGOVERNANCE-AGENT-AD
 external-agents/adcp/agents/governance/reference-governance/x_GOVERNANCE-AGENT-ADCP-COMPLIANCE.md
 external-agents/ui
 external-agents/adcp/agents/seller/reference-seller/agentcore/agentcore.json
+
+# BEGIN AI-DLC:gitignore
+# AI-DLC: local working files
+aidlc/active-space
+aidlc/spaces/*/intents/active-intent
+aidlc/.aidlc-clone-id
+aidlc.settings.local.json
+aidlc/.aidlc-unit-scope.json
+aidlc/.aidlc-unit-parked
+aidlc/.aidlc-claim-generations.json
+aidlc/.aidlc-unit-participant
+aidlc/.aidlc-claim-registry.json
+aidlc/.aidlc-unit-releases/
+aidlc/.aidlc-unit-merges/
+aidlc/.aidlc-active-space-*.tmp
+aidlc/active-memory/
+aidlc/.aidlc-turn-counter
+aidlc/.aidlc-readonly-latch
+aidlc/.aidlc-sessions/
+aidlc/.aidlc-request-text/
+aidlc/spaces/*/intents/.aidlc-*
+**/aidlc/spaces/*/intents/**/.aidlc-engine/
+**/aidlc/spaces/*/intents/**/.aidlc-sensors/
+aidlc/spaces/*/knowledge/documentkb/.journal/
+aidlc/spaces/*/knowledge/.sources.local.json
+aidlc/spaces/*/intents/*/runtime-graph.json
+aidlc/spaces/*/intents/*/.aidlc-*
+aidlc/diagnostics/
+.kiro/steering/aidlc-active-memory.md
+.kiro/agents/aidlc-scoped-review-*.md
+# END AI-DLC:gitignore
+AGENTS.md
+agentcore/deployment/agent/bk_global_configuration.json
+aidlc/spaces/default/memory
