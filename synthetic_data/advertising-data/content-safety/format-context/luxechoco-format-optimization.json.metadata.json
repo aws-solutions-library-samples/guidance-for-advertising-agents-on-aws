@@ -8,38 +8,5 @@
         "industry": "premium_chocolate",
         "geographic_scope": "european_markets",
         "content_type": "format_intelligence"
-    },
-    "documentStructureConfiguration": {
-        "type": "HIERARCHICAL_STRUCTURE_METADATA",
-        "hierarchicalStructureMetadata": {
-            "level1Fields": [
-                {
-                    "fieldName": "formatPerformance"
-                },
-                {
-                    "fieldName": "contextualAlignment"
-                },
-                {
-                    "fieldName": "revenueOptimization"
-                }
-            ],
-            "level2Fields": [
-                {
-                    "fieldName": "displayFormats"
-                },
-                {
-                    "fieldName": "videoFormats"
-                },
-                {
-                    "fieldName": "nativeFormats"
-                },
-                {
-                    "fieldName": "performanceMetrics"
-                },
-                {
-                    "fieldName": "brandSafety"
-                }
-            ]
-        }
     }
 }

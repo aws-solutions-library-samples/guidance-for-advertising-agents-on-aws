@@ -8,38 +8,5 @@
         "industry": "premium_chocolate",
         "geographic_scope": "european_markets",
         "content_type": "safety_guidelines"
-    },
-    "documentStructureConfiguration": {
-        "type": "HIERARCHICAL_STRUCTURE_METADATA",
-        "hierarchicalStructureMetadata": {
-            "level1Fields": [
-                {
-                    "fieldName": "safetyRequirements"
-                },
-                {
-                    "fieldName": "contentGuidelines"
-                },
-                {
-                    "fieldName": "complianceFramework"
-                }
-            ],
-            "level2Fields": [
-                {
-                    "fieldName": "restrictions"
-                },
-                {
-                    "fieldName": "approvedContexts"
-                },
-                {
-                    "fieldName": "riskCategories"
-                },
-                {
-                    "fieldName": "monitoringProtocols"
-                },
-                {
-                    "fieldName": "escalationProcedures"
-                }
-            ]
-        }
     }
 }
