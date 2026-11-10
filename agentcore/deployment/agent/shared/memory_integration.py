@@ -323,13 +323,31 @@ def validate_and_resolve_memory_id(memory_id: Optional[str]) -> Optional[str]:
     if ssm_memory_id:
         return ssm_memory_id
     
-    # Fallback to environment variable if SSM fails
-    env_memory_id = os.environ.get("MEMORY_ID")
-    if env_memory_id and "-" in env_memory_id:
-        logger.info(f"Using memory ID from environment: {env_memory_id}")
+    env_memory_id = memory_id_from_environment()
+    if env_memory_id:
         return env_memory_id
-    
-    logger.error("Could not resolve valid memory ID from SSM or environment")
+
+    logger.error(
+        "Could not resolve a memory ID from the payload, SSM "
+        f"(/{stack_prefix}/{unique_id}/agentcore_memory_id), "
+        "BEDROCK_AGENTCORE_MEMORY_ID or MEMORY_ID"
+    )
+    return None
+
+
+def memory_id_from_environment() -> Optional[str]:
+    """
+    Return a real memory ID (contains "-") from the runtime environment, or None.
+
+    BEDROCK_AGENTCORE_MEMORY_ID is set by the starter toolkit's `launch`, which
+    creates <runtime_name>_mem and injects its ID into the runtime. MEMORY_ID is
+    set by deploy-ecosystem.sh.
+    """
+    for var in ("BEDROCK_AGENTCORE_MEMORY_ID", "MEMORY_ID"):
+        value = os.environ.get(var, "")
+        if value and "-" in value:
+            logger.info(f"Using memory ID from {var}: {value}")
+            return value
     return None
 
 

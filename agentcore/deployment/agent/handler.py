@@ -175,6 +175,7 @@ from shared.memory_integration import (
     get_memory_configuration,
     create_memory_hooks_and_state,
     extract_session_id_and_memory_id_and_actor_from_payload,
+    memory_id_from_environment,
     MEMORY_AVAILABLE,
 )
 
@@ -232,10 +233,10 @@ def get_memory_id_from_ssm() -> str:
     unique_id = os.environ.get("UNIQUE_ID", "")
     aws_region = os.environ.get("AWS_REGION", "us-east-1")
     
-    # If stack_prefix or unique_id not set, fall back to environment variable
+    # If stack_prefix or unique_id not set, fall back to the runtime environment
     if not stack_prefix or not unique_id:
-        logger.warning("⚠️ MEMORY_SSM: STACK_PREFIX or UNIQUE_ID not set, falling back to MEMORY_ID env var")
-        return os.environ.get("MEMORY_ID", "")
+        logger.warning("⚠️ MEMORY_SSM: STACK_PREFIX or UNIQUE_ID not set, falling back to environment")
+        return memory_id_from_environment() or ""
     
     # Build SSM parameter name
     ssm_param_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
@@ -262,15 +263,10 @@ def get_memory_id_from_ssm() -> str:
         logger.info(f"✅ MEMORY_SSM: Retrieved memory ID from SSM: {memory_id}")
         return memory_id
         
-    except boto3.client("ssm").exceptions.ParameterNotFound:
-        logger.warning(f"⚠️ MEMORY_SSM: Parameter not found: {ssm_param_name}")
-        logger.warning("   Falling back to MEMORY_ID environment variable")
-        return os.environ.get("MEMORY_ID", "")
-        
     except Exception as e:
-        logger.error(f"❌ MEMORY_SSM: Failed to retrieve memory ID from SSM: {e}")
-        logger.warning("   Falling back to MEMORY_ID environment variable")
-        return os.environ.get("MEMORY_ID", "")
+        # ParameterNotFound included: the toolkit-created memory is still in the env.
+        logger.warning(f"⚠️ MEMORY_SSM: Could not read {ssm_param_name} ({type(e).__name__}); falling back to environment")
+        return memory_id_from_environment() or ""
 
 
 def clear_ssm_cache(param_name: Optional[str] = None):
@@ -1468,41 +1464,6 @@ def get_agentcore_config_from_ssm():
         return None
 
 
-def get_memory_id_from_ssm() -> str:
-    """
-    Retrieve AgentCore memory ID from SSM Parameter Store.
-    
-    The memory ID is stored at: /{stack_prefix}/{unique_id}/agentcore_memory_id
-    
-    Falls back to MEMORY_ID environment variable if SSM retrieval fails.
-
-    Returns:
-        str: Memory ID if found, empty string otherwise
-    """
-    try:
-        stack_prefix = os.environ.get("STACK_PREFIX", "sim")
-        unique_id = os.environ.get("UNIQUE_ID", "")
-        region = os.environ.get("AWS_REGION", "us-east-1")
-
-        if not unique_id:
-            logging.warning("[get_memory_id_from_ssm] UNIQUE_ID not set, falling back to env var")
-            return os.environ.get("MEMORY_ID", "")
-
-        parameter_name = f"/{stack_prefix}/{unique_id}/agentcore_memory_id"
-        ssm = boto3.client("ssm", region_name=region)
-
-        # Retrieve parameter
-        response = ssm.get_parameter(Name=parameter_name)
-        memory_id = response["Parameter"]["Value"]
-        
-        logging.info(f"[get_memory_id_from_ssm] Retrieved memory ID from SSM: {memory_id}")
-        return memory_id
-
-    except Exception as e:
-        logging.warning(f"[get_memory_id_from_ssm] SSM retrieval failed: {e}, falling back to env var")
-        return os.environ.get("MEMORY_ID", "")
-
-
 def get_runtime_arn_and_auth_config(agent_name: str):
     """
     Get runtime ARN and A2A auth config for an agent from SSM Parameter Store or RUNTIMES env var.
@@ -2396,6 +2357,7 @@ class GenericAgent:
         # Setup memory hooks
         hooks = []
         self.session_id = session_id
+        memory_id = memory_id or "default"
         self.memory_id = memory_id
 
         if "default" in memory_id:
@@ -2830,8 +2792,12 @@ async def agent_invocation(payload, context):
             orchestrator_instance.direct_mention_target = direct_mention_target
             if session_id:
                 orchestrator_instance.session_id = session_id
-                orchestrator_instance.memory_id = extracted_memory_id
-                memory_id = extracted_memory_id
+                # None only when the payload, SSM, BEDROCK_AGENTCORE_MEMORY_ID and
+                # MEMORY_ID all lack a valid id (logged as an error upstream).
+                # create_orchestrator does `"default" in memory_id`, so None crashed
+                # every turn.
+                orchestrator_instance.memory_id = extracted_memory_id or "default"
+                memory_id = orchestrator_instance.memory_id
             else:
                 # No session id: this turn cannot be tied to a conversation, so
                 # nothing is restored. It is still persisted under a one-off id
@@ -2880,17 +2846,17 @@ async def agent_invocation(payload, context):
             _flush_log(f"♻️ AGENT_INVOCATION: Reusing existing agent {agent_name}")
             if session_id:
                 orchestrator_instance.session_id = session_id
-                orchestrator_instance.memory_id = extracted_memory_id
+                orchestrator_instance.memory_id = extracted_memory_id or "default"
                 orchestrator_instance.direct_mention_mode = direct_mention_mode
                 orchestrator_instance.direct_mention_target = direct_mention_target
-                memory_id = extracted_memory_id
+                memory_id = orchestrator_instance.memory_id
                 
                 # Update agent state without recreating
                 normalized_actor_id = agent_name.replace("_", "-")
                 agent.state = {
                     "session_id": session_id,
                     "actor_id": normalized_actor_id,
-                    "memory_id": extracted_memory_id,
+                    "memory_id": memory_id,
                 }
                 
                 # CRITICAL: Update the conversation manager's session info for memory persistence
@@ -2903,8 +2869,8 @@ async def agent_invocation(payload, context):
                         _flush_log(f"♻️ Updated conversation_manager session info for {agent_name}")
                     # Also update memory_id if the manager has it
                     if hasattr(agent.conversation_manager, 'memory_id'):
-                        agent.conversation_manager.memory_id = extracted_memory_id
-                        _flush_log(f"♻️ Updated conversation_manager memory_id to {extracted_memory_id}")
+                        agent.conversation_manager.memory_id = memory_id
+                        _flush_log(f"♻️ Updated conversation_manager memory_id to {memory_id}")
                     
                     # Retrieve conversation history from memory and inject into system prompt
                     if hasattr(agent.conversation_manager, 'retrieve_conversation_history'):

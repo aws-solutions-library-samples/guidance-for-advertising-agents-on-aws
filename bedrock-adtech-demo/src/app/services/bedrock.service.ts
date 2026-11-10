@@ -254,18 +254,28 @@ export class BedrockService {
         region: awsConfig.region,
         credentials: awsConfig.credentials
       });
-      const memoryIdPart = this.awsConfig.getStackPrefix() + 'memory' + this.awsConfig.getStackSuffix();
+      const stackPrefix = this.awsConfig.getStackPrefix();
+      const stackSuffix = this.awsConfig.getStackSuffix();
+      // Shared memory from create_simple_memory.py: <prefix>memory<suffix>-<id>.
+      const memoryIdPart = stackPrefix + 'memory' + stackSuffix;
+      // Memory the starter toolkit creates at launch: <prefix>_<agent>_<suffix>_mem-<id>.
+      // The runtime receives it as BEDROCK_AGENTCORE_MEMORY_ID.
+      const toolkitMemoryPrefix = `${stackPrefix}_`.toLowerCase();
+      const toolkitMemorySuffix = `_${stackSuffix}_mem-`.toLowerCase();
 
-      console.log(`🔍 Searching for memory with pattern: ${memoryIdPart}`);
+      console.log(`🔍 Searching for memory with pattern: ${memoryIdPart} or ${toolkitMemoryPrefix}*${toolkitMemorySuffix}`);
 
       const memoryRecords = await controlClient.send(new ListMemoriesCommand({ maxResults: 100 }));
-
-      memoryRecords.memories?.forEach(memory => {
-        if (memory.id && memory.id.indexOf(memoryIdPart) > -1) {
-          this.memoryRecordId = memory.id;
-          console.log(`✅ Found memory record ID: ${this.memoryRecordId}`);
-        }
+      const ids = (memoryRecords.memories ?? []).map(m => m.id).filter((id): id is string => !!id);
+      const sharedId = ids.find(id => id.indexOf(memoryIdPart) > -1);
+      const toolkitId = ids.find(id => {
+        const lower = id.toLowerCase();
+        return lower.startsWith(toolkitMemoryPrefix) && lower.indexOf(toolkitMemorySuffix) > -1;
       });
+      if (sharedId || toolkitId) {
+        this.memoryRecordId = sharedId || toolkitId;
+        console.log(`✅ Found memory record ID: ${this.memoryRecordId}`);
+      }
 
       if (!this.memoryRecordId) {
         console.warn(`⚠️ No memory found matching pattern: ${memoryIdPart}. Available memories:`, 

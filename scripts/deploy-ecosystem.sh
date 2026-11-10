@@ -123,20 +123,67 @@ AGENTCORE_BIN="${VENV_PATH}/bin/agentcore"
 # detected at setup time against the pinned binary.
 AGENTCORE_DEPLOY_SUBCMD="deploy"
 
+# Python version for the deployment venv. The starter toolkit renders the
+# runtime Dockerfile as FROM uv:python<venv version>-bookworm-slim, so this also
+# sets the Python version the deployed AgentCore runtime runs on.
+DEPLOY_PYTHON_VERSION="${DEPLOY_PYTHON_VERSION:-3.12}"
+
+# Print the major.minor version of a Python interpreter, or nothing.
+python_minor_version() {
+    "$1" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null
+}
+
+# Create $VENV_PATH on $DEPLOY_PYTHON_VERSION. Tries pythonX.Y, then uv (which
+# downloads the interpreter if missing). Returns 1 if neither works.
+create_versioned_venv() {
+    local py="python${DEPLOY_PYTHON_VERSION}"
+    if command -v "$py" >/dev/null 2>&1 && "$py" -m venv "$VENV_PATH" 2>/dev/null; then
+        print_status "Created venv with $(command -v "$py")"
+        return 0
+    fi
+    rm -rf "$VENV_PATH"
+    if command -v uv >/dev/null 2>&1 && uv venv --seed --python "$DEPLOY_PYTHON_VERSION" "$VENV_PATH" >/dev/null 2>&1; then
+        print_status "Created venv with uv (Python ${DEPLOY_PYTHON_VERSION})"
+        return 0
+    fi
+    rm -rf "$VENV_PATH"
+    return 1
+}
+
 # Function to setup Python environment with required dependencies
 setup_python_environment() {
     print_status "Setting up Python environment for AWS operations..."
-    
-    # Check if virtual environment exists
+
+    # A reused venv keeps the Python it was built with, so rebuild one on the
+    # wrong version. Only rebuild if the target version is actually obtainable,
+    # otherwise the rebuild would land on the same fallback interpreter.
+    if [ -x "$VENV_PATH/bin/python" ]; then
+        local venv_version
+        venv_version=$(python_minor_version "$VENV_PATH/bin/python" || true)
+        if [ "$venv_version" != "$DEPLOY_PYTHON_VERSION" ]; then
+            if command -v "python${DEPLOY_PYTHON_VERSION}" >/dev/null 2>&1 || command -v uv >/dev/null 2>&1; then
+                print_warning "Deployment venv is Python ${venv_version:-unknown}, expected ${DEPLOY_PYTHON_VERSION}; rebuilding it"
+                rm -rf "$VENV_PATH"
+            else
+                print_warning "Deployment venv is Python ${venv_version:-unknown}, expected ${DEPLOY_PYTHON_VERSION}, and neither python${DEPLOY_PYTHON_VERSION} nor uv is installed; keeping it"
+            fi
+        fi
+    fi
+
     if [ ! -d "$VENV_PATH" ]; then
-        print_status "Creating Python virtual environment..."
-        python3 -m venv "$VENV_PATH"
-        
-        if [ $? -ne 0 ]; then
-            print_error "Failed to create virtual environment. Please ensure python3-venv is installed."
-            print_error "On Ubuntu/Debian: sudo apt-get install python3-venv"
-            print_error "On macOS: python3 should include venv by default"
-            exit 1
+        print_status "Creating Python ${DEPLOY_PYTHON_VERSION} virtual environment..."
+        if ! create_versioned_venv; then
+            local fallback_version
+            fallback_version=$(python_minor_version python3 || true)
+            print_warning "Neither python${DEPLOY_PYTHON_VERSION} nor uv could create the venv; falling back to system python3 (${fallback_version:-unknown})."
+            print_warning "The AgentCore runtime will be built on Python ${fallback_version:-unknown}. Install uv or python${DEPLOY_PYTHON_VERSION} to avoid this."
+            python3 -m venv "$VENV_PATH"
+            if [ $? -ne 0 ]; then
+                print_error "Failed to create virtual environment. Please ensure python3-venv is installed."
+                print_error "On Ubuntu/Debian: sudo apt-get install python3-venv"
+                print_error "On macOS: python3 should include venv by default"
+                exit 1
+            fi
         fi
     fi
     
@@ -2502,7 +2549,7 @@ except:
         if [ -n "$file_memory_id" ] && [ "$file_memory_id" != "" ]; then
             print_status "✅ Shared AgentCore memory already exists (from local file): $file_memory_id"
             print_status "   Storing in SSM for runtime retrieval..."
-            store_agentcore_memory_id_in_ssm "$file_memory_id"
+            store_agentcore_memory_id_in_ssm "$file_memory_id" || return 1
             return 0
         fi
     fi
@@ -2517,9 +2564,8 @@ except:
         print_status "Installing bedrock-agentcore package..."
         $PYTHON_CMD -m pip install bedrock-agentcore --quiet
         if [ $? -ne 0 ]; then
-            print_warning "⚠️  Failed to install bedrock-agentcore package"
-            print_warning "   Memory functionality may be limited"
-            return 0
+            print_error "❌ Failed to install bedrock-agentcore package"
+            return 1
         fi
         print_success "✅ bedrock-agentcore package installed"
     fi
@@ -2527,8 +2573,8 @@ except:
     # Create ONE memory record using the simple script
     local memory_script="${PROJECT_ROOT}/agentcore/deployment/create_simple_memory.py"
     if [ ! -f "$memory_script" ]; then
-        print_warning "Simple memory creation script not found: $memory_script"
-        return 0
+        print_error "❌ Memory creation script not found: $memory_script"
+        return 1
     fi
     
     print_status "Creating ONE shared memory record..."
@@ -2565,16 +2611,39 @@ except:
                 print_status "📄 Memory record file: $memory_record_file"
                 
                 # Store memory ID in SSM Parameter Store for runtime retrieval
-                store_agentcore_memory_id_in_ssm "$memory_record_id"
+                store_agentcore_memory_id_in_ssm "$memory_record_id" || return 1
             else
-                print_warning "⚠️  Could not read memory record ID from file"
+                print_error "❌ Could not read memory record ID from $memory_record_file"
+                return 1
             fi
         else
-            print_warning "⚠️  Memory record file was not created"
+            print_error "❌ Memory record file was not created: $memory_record_file"
+            return 1
         fi
     else
-        print_warning "⚠️  Failed to create shared AgentCore memory, agents may have limited memory functionality"
+        # The runtime reads the memory ID from SSM and the UI looks the memory up by
+        # name, so deploying agents without one leaves every turn without memory.
+        print_error "❌ Failed to create shared AgentCore memory in ${AWS_REGION} (see the error above)"
+        return 1
     fi
+}
+
+# Print the real AgentCore memory ID (<name>-<suffix>) for this stack from SSM,
+# falling back to the local memory record file. Prints nothing if neither has it.
+resolve_agentcore_memory_id() {
+    local ssm_param_name="/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id"
+    local resolved=""
+    resolved=$(aws_cmd ssm get-parameter --name "$ssm_param_name" --region "$AWS_REGION" \
+        --query 'Parameter.Value' --output text 2>/dev/null || true)
+    if [ -z "$resolved" ] || [ "$resolved" = "None" ]; then
+        local memory_record_file="${PROJECT_ROOT}/.memory-record-${STACK_PREFIX}-${UNIQUE_ID}.json"
+        if [ -f "$memory_record_file" ]; then
+            resolved=$($PYTHON_CMD -c "import json,sys; print(json.load(open(sys.argv[1])).get('memory_record_id',''))" \
+                "$memory_record_file" 2>/dev/null || true)
+        fi
+    fi
+    [ "$resolved" = "None" ] && resolved=""
+    printf '%s' "$resolved"
 }
 
 # Function to store AgentCore memory ID in SSM Parameter Store
@@ -2659,8 +2728,16 @@ deploy_agent_via_toolkit() {
     # The toolkit internally derives ECR-compatible names from this
     local runtime_name=$(echo "${agentcore_agent_name}" | tr '[:upper:]' '[:lower:]' | sed 's/-/_/g')
     
-    # Gather environment variables (same logic as build_and_deploy.sh)
-    local memory_id="${STACK_PREFIX}memory${UNIQUE_ID}"
+    # MEMORY_ID must be the real memory ID (<name>-<suffix>). The bare name
+    # ${STACK_PREFIX}memory${UNIQUE_ID} is rejected by the handler, which only
+    # accepts ids containing "-".
+    local memory_id
+    memory_id=$(resolve_agentcore_memory_id)
+    if [ -z "$memory_id" ]; then
+        print_error "❌ No AgentCore memory ID in SSM (/${STACK_PREFIX}/${UNIQUE_ID}/agentcore_memory_id) or the memory record file"
+        return 1
+    fi
+    print_status "  Memory ID: $memory_id"
     
     # Gather knowledge base IDs
     print_status "Gathering knowledge base IDs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
@@ -3166,7 +3243,11 @@ detect_and_deploy_agentcore_agents() {
     print_status "Found ${#agentcore_agents[@]} AgentCore agents: ${agentcore_agents[*]}"
     
     # Create shared memory BEFORE deploying agents so it exists when agents start
-    create_agentcore_memory
+    if ! create_agentcore_memory; then
+        print_error "❌ Stopping before the agent deploy: no AgentCore memory for ${STACK_PREFIX}/${UNIQUE_ID}."
+        print_error "   Fix the error above, then re-run: $0 --resume-at 10 --stack-prefix $STACK_PREFIX --unique-id $UNIQUE_ID --region $AWS_REGION"
+        return 1
+    fi
     
     # Deploy each AgentCore agent
     local deployed_agents=()
@@ -4970,6 +5051,8 @@ show_usage() {
     echo ""
     echo "NOTES:"
     echo "  - This script automatically creates a Python virtual environment (.venv-deployment)"
+    echo "  - The venv uses Python 3.12 (python3.12 or uv), override with DEPLOY_PYTHON_VERSION;"
+    echo "    the AgentCore runtime container is built on the same Python version"
     echo "  - Required Python packages (boto3, botocore) are installed automatically"
     echo "  - The virtual environment is cleaned up during cleanup operations"
     echo "  - For cleanup: --unique-id is useful when running from a different directory"
@@ -6088,6 +6171,14 @@ prompt_and_deploy_external_agents() {
 main() {
     # Parse command line arguments first
     parse_args "$@"
+
+    # boto3 reads AWS_DEFAULT_REGION, not AWS_REGION. Without it, a host with no
+    # region in ~/.aws/config (the workshop IDE instance) sends boto3 children to
+    # their own default, and bedrock_agentcore's MemoryClient defaults to us-west-2.
+    if [ -n "${AWS_REGION:-}" ]; then
+        export AWS_REGION
+        export AWS_DEFAULT_REGION="$AWS_REGION"
+    fi
 
     # Resolve the profile once, up front, when --profile was not passed.
     #
