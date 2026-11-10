@@ -1,5 +1,5 @@
 <!-- Agent Management Modal -->
-<div class="agent-modal-overlay" *ngIf="isOpen" (click)="onOverlayClick($event)">
+<div class="agent-modal-overlay" *ngIf="isOpen">
   <div class="agent-modal standard-modal-panel" (click)="$event.stopPropagation()">
     
     <!-- Modal Header -->
@@ -207,7 +207,7 @@
 
     <!-- Delete Confirmation Dialog -->
     <!-- Validates: Requirements 5.1, 5.2, 5.4, 5.5 -->
-    <div class="delete-confirmation-overlay" *ngIf="showDeleteConfirmation" (click)="cancelDelete()">
+    <div class="delete-confirmation-overlay" *ngIf="showDeleteConfirmation">
       <div class="delete-confirmation-dialog" (click)="$event.stopPropagation()">
         <div class="delete-dialog-header">
           <span class="material-icons warning-icon">warning</span>
@@ -259,7 +259,7 @@
 
 <!-- MCP Server Editor Overlay - Rendered at modal level to escape overflow clipping -->
 <ng-container *ngIf="showMcpEditorOverlay && editorPanel?.editingMcpServer as mcpServer">
-  <div class="mcp-editor-top-overlay" (click)="editorPanel.closeMcpServerEditor()">
+  <div class="mcp-editor-top-overlay">
     <div class="mcp-editor-top-modal" (click)="$event.stopPropagation()">
 
       <!-- Header -->
@@ -640,7 +640,7 @@
 
 <!-- A2A External Agent Editor Overlay - Rendered at modal level to escape overflow clipping -->
 <ng-container *ngIf="showA2aEditorOverlay && editorPanel?.editingA2aAgent as a2aAgent">
-  <div class="a2a-editor-top-overlay" (click)="editorPanel.closeA2aAgentEditor()">
+  <div class="a2a-editor-top-overlay">
     <div class="a2a-editor-top-modal" (click)="$event.stopPropagation()">
 
       <!-- Header -->
@@ -1046,7 +1046,7 @@
 </ng-container>
 
 <!-- Generate Agent Modal Overlay -->
-<div class="generate-agent-overlay" *ngIf="showGenerateAgentModal" (click)="closeGenerateAgentModal()">
+<div class="generate-agent-overlay" *ngIf="showGenerateAgentModal">
   <div class="generate-agent-modal" (click)="$event.stopPropagation()">
     
     <!-- Header -->

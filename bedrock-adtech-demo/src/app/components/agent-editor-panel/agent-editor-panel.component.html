@@ -1498,7 +1498,7 @@
   </div>
 
   <!-- Delete Confirmation Modal -->
-  <div class="delete-confirm-overlay" *ngIf="showDeleteConfirm" (click)="cancelDeleteAgent()">
+  <div class="delete-confirm-overlay" *ngIf="showDeleteConfirm">
     <div class="delete-confirm-dialog" (click)="$event.stopPropagation()">
       <div class="delete-confirm-header">
         <span class="material-icons warning-icon">warning</span>
@@ -1522,7 +1522,7 @@
   </div>
 
   <!-- Visualization Preview Modal -->
-  <div class="visualization-preview-overlay" *ngIf="showVisualizationPreview" (click)="closeVisualizationPreview()">
+  <div class="visualization-preview-overlay" *ngIf="showVisualizationPreview">
     <div class="visualization-preview-modal" (click)="$event.stopPropagation()">
       <div class="preview-header">
         <div class="preview-title">
@@ -1575,7 +1575,7 @@
   </div>
 
   <!-- Visualization JSON Editor Modal -->
-  <div class="visualization-json-overlay" *ngIf="showVisualizationJsonEditor" (click)="closeVisualizationJsonEditor()">
+  <div class="visualization-json-overlay" *ngIf="showVisualizationJsonEditor">
     <div class="visualization-json-modal" (click)="$event.stopPropagation()">
       <div class="json-editor-header">
         <div class="json-editor-title">

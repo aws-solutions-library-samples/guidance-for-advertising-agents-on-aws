@@ -165,7 +165,7 @@
   </main>
 
   <!-- Node Editor Modal -->
-  <div *ngIf="showNodeEditor" class="modal-overlay" (click)="closeEditor()">
+  <div *ngIf="showNodeEditor" class="modal-overlay">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div class="agent-title">
@@ -277,7 +277,7 @@
   </div>
 
   <!-- Agent Discovery Results Modal -->
-  <div *ngIf="showDiscoveryResults" class="modal-overlay" (click)="closeDiscoveryResults()">
+  <div *ngIf="showDiscoveryResults" class="modal-overlay">
     <div class="modal-content discovery-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Discovered Agents</h3>

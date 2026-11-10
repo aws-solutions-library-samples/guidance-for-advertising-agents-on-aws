@@ -645,14 +645,6 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
     return '#6842ff';
   }
 
-  /**
-   * Handles click outside modal to close
-   */
-  onOverlayClick(event: Event): void {
-    if ((event.target as HTMLElement).classList.contains('agent-modal-overlay')) {
-      this.close();
-    }
-  }
 
   /**
    * Checks if the current user can edit/delete the specified agent
