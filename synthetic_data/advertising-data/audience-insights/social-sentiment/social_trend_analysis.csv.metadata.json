@@ -16,49 +16,5 @@
     "cultural_significance": "Medium to Very High cultural impact scores",
     "business_applications": "content strategy alignment, advertising campaign timing, audience targeting, brand safety assessment",
     "related_datasets": "streaming_content_social_sentiment.csv, audience_segmentation_profiles.csv, influencer_partnership_opportunities.csv"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "trend_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "trend_name"
-          },
-          {
-            "fieldName": "trend_category"
-          },
-          {
-            "fieldName": "primary_demographics"
-          },
-          {
-            "fieldName": "platforms_active"
-          },
-          {
-            "fieldName": "sentiment_score"
-          },
-          {
-            "fieldName": "brand_alignment_score"
-          },
-          {
-            "fieldName": "advertising_opportunity_score"
-          },
-          {
-            "fieldName": "geographic_concentration"
-          },
-          {
-            "fieldName": "commercial_potential"
-          },
-          {
-            "fieldName": "cultural_significance"
-          }
-        ]
-      }
-    }
   }
 }
