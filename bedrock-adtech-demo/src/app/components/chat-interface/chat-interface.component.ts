@@ -6271,6 +6271,43 @@ ${formattedJson}
     }
   }
 
+  onPaste(event: ClipboardEvent): void {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+
+    // Copying cells from Excel or text from Word also puts a rendered image on the
+    // clipboard. When there is plain text, paste the text and attach nothing.
+    if (Array.from(clipboard.types).includes('text/plain')) return;
+
+    const images: File[] = [];
+    for (const item of Array.from(clipboard.items)) {
+      if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+      const file = item.getAsFile();
+      if (file) images.push(this.renamePastedImage(file, images.length));
+    }
+    if (images.length === 0) return;
+
+    event.preventDefault();
+    this.handleFiles(images);
+  }
+
+  // Clipboard images arrive named "image.png" or unnamed. The backend chooses its
+  // image processor by file extension, so derive the extension from the MIME type.
+  private renamePastedImage(file: File, index: number): File {
+    const extensions: Record<string, string> = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/gif': 'gif',
+      'image/webp': 'webp'
+    };
+    const ext = extensions[file.type];
+    if (!ext) return file; // isValidFile rejects other image types
+
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+    const suffix = index > 0 ? `-${index + 1}` : '';
+    return new File([file], `pasted-image-${stamp}${suffix}.${ext}`, { type: file.type });
+  }
+
   private async handleFiles(files: File[]): Promise<void> {
     for (const file of files) {
       if (!this.isValidFile(file)) {

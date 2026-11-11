@@ -17,49 +17,5 @@
     "advertising_receptivity": "6.5-9.2 scores with premium content willingness variations",
     "business_applications": "family-targeted advertising, content acquisition strategy, subscription optimization, brand safety policy development",
     "related_datasets": "streaming_content_social_sentiment.csv, social_trend_analysis.csv, streaming_brand_safety_requirements.json"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "segment_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "segment_name"
-          },
-          {
-            "fieldName": "household_size"
-          },
-          {
-            "fieldName": "subscription_tier"
-          },
-          {
-            "fieldName": "monthly_viewing_hours"
-          },
-          {
-            "fieldName": "content_preferences"
-          },
-          {
-            "fieldName": "device_preferences"
-          },
-          {
-            "fieldName": "ad_tolerance"
-          },
-          {
-            "fieldName": "brand_safety_requirements"
-          },
-          {
-            "fieldName": "geographic_distribution"
-          },
-          {
-            "fieldName": "advertising_receptivity_score"
-          }
-        ]
-      }
-    }
   }
 }

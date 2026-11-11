@@ -8,38 +8,5 @@
         "industry": "premium_chocolate",
         "geographic_scope": "european_markets",
         "content_type": "audience_intelligence"
-    },
-    "documentStructureConfiguration": {
-        "type": "HIERARCHICAL_STRUCTURE_METADATA",
-        "hierarchicalStructureMetadata": {
-            "level1Fields": [
-                {
-                    "fieldName": "audienceSegments"
-                },
-                {
-                    "fieldName": "targetingStrategies"
-                },
-                {
-                    "fieldName": "behavioralPatterns"
-                }
-            ],
-            "level2Fields": [
-                {
-                    "fieldName": "demographics"
-                },
-                {
-                    "fieldName": "psychographics"
-                },
-                {
-                    "fieldName": "purchaseBehavior"
-                },
-                {
-                    "fieldName": "mediaConsumption"
-                },
-                {
-                    "fieldName": "seasonalTrends"
-                }
-            ]
-        }
     }
 }

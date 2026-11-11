@@ -18,49 +18,5 @@
     "compliance_features": "AI-powered content analysis, real-time monitoring, automated matching, cultural sensitivity assessment",
     "business_applications": "automated advertiser-content matching, brand safety compliance, premium inventory identification, family-focused advertising packages",
     "related_datasets": "streaming_content_performance.csv, streaming_family_segments.csv, streaming_content_social_sentiment.csv"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "advertiser_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "company_name"
-          },
-          {
-            "fieldName": "industry"
-          },
-          {
-            "fieldName": "brand_safety_tier"
-          },
-          {
-            "fieldName": "content_rating_requirements"
-          },
-          {
-            "fieldName": "prohibited_content_categories"
-          },
-          {
-            "fieldName": "preferred_content_categories"
-          },
-          {
-            "fieldName": "demographic_targeting"
-          },
-          {
-            "fieldName": "brand_safety_score_minimum"
-          },
-          {
-            "fieldName": "family_co_viewing_preference"
-          },
-          {
-            "fieldName": "advertising_integration_preferences"
-          }
-        ]
-      }
-    }
   }
 }

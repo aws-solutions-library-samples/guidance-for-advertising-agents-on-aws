@@ -47,8 +47,11 @@
       <div class="form-group" *ngIf="isNew">
         <label for="agent_name">Agent Name <span class="required">*</span></label>
         <input type="text" id="agent_name" class="form-control" [(ngModel)]="editingAgent.agent_name"
-          [class.error]="hasError('agent_name')" [disabled]="isLoading" placeholder="e.g., MyCustomAgent"
-          maxlength="64">
+          [class.error]="hasError('agent_name')" [disabled]="isLoading || agentNameLockedByCredentials"
+          placeholder="e.g., MyCustomAgent" maxlength="64">
+        <span class="field-hint" *ngIf="agentNameLockedByCredentials">
+          Locked because credentials are stored under this name. Remove them to change it.
+        </span>
         <span class="error-message" *ngIf="hasError('agent_name')">
           <span class="material-icons">error_outline</span>
           {{ getError('agent_name') }}
@@ -267,9 +270,13 @@
                 Current values are shown below. Change any of them and click Save to overwrite the stored
                 credentials in SSM. All three fields are required.
               </span>
+              <span class="field-hint token-hint credential-blocker" *ngIf="credentialSaveBlocker() as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="saveInboundA2aOAuthCredentials()"
-                  [disabled]="inboundA2aOAuthSaving || !inboundA2aOAuthTokenEndpoint.trim() || !inboundA2aOAuthUsername.trim() || !inboundA2aOAuthPassword.trim()">
+                  [disabled]="inboundA2aOAuthSaving || !!credentialSaveBlocker() || !inboundA2aOAuthTokenEndpoint.trim() || !inboundA2aOAuthUsername.trim() || !inboundA2aOAuthPassword.trim()">
                   <span class="material-icons">{{ inboundA2aOAuthSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ inboundA2aOAuthSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>
@@ -365,9 +372,13 @@
                 <span class="material-icons">info_outline</span>
                 The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
               </span>
+              <span class="field-hint token-hint credential-blocker" *ngIf="credentialSaveBlocker() as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="saveInboundClientCredentials()"
-                  [disabled]="inboundM2mSaving || !inboundM2mClientId.trim() || !inboundM2mClientSecret.trim() || !inboundM2mTokenUrl.trim()">
+                  [disabled]="inboundM2mSaving || !!credentialSaveBlocker() || !inboundM2mClientId.trim() || !inboundM2mClientSecret.trim() || !inboundM2mTokenUrl.trim()">
                   <span class="material-icons">{{ inboundM2mSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ inboundM2mSaving ? 'Saving...' : 'Save Credentials' }}
                 </button>
@@ -445,9 +456,13 @@
                 <input type="datetime-local" class="form-control" [(ngModel)]="inboundA2aBearerTokenExpiry"
                   autocomplete="off">
               </div>
+              <span class="field-hint token-hint credential-blocker" *ngIf="credentialSaveBlocker() as blocker">
+                <span class="material-icons">warning_amber</span>
+                {{ blocker }}
+              </span>
               <div class="token-save-actions">
                 <button class="nova-button primary small" (click)="saveInboundA2aBearerToken()"
-                  [disabled]="inboundA2aBearerTokenSaving || !inboundA2aBearerTokenValue.trim()">
+                  [disabled]="inboundA2aBearerTokenSaving || !!credentialSaveBlocker() || !inboundA2aBearerTokenValue.trim()">
                   <span class="material-icons">{{ inboundA2aBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
                   {{ inboundA2aBearerTokenSaving ? 'Saving...' : 'Save Token' }}
                 </button>
@@ -782,8 +797,23 @@
                   AWS IAM ({{ server.awsAuth.region }})
                 </span>
                 <span class="server-detail auth-badge" *ngIf="server.oauthToken?.hasToken">
+                  <span class="material-icons">token</span>
+                  OAuth configured
+                </span>
+                <span class="server-detail auth-badge"
+                  *ngIf="server.bearerToken?.hasToken && !isBearerTokenExpired(server.bearerToken?.expiresAt)">
                   <span class="material-icons">vpn_key</span>
                   Bearer token configured
+                </span>
+                <span class="server-detail auth-badge"
+                  *ngIf="server.bearerToken?.hasToken && isBearerTokenExpired(server.bearerToken?.expiresAt)">
+                  <span class="material-icons">error_outline</span>
+                  Bearer token expired
+                </span>
+                <span class="server-detail auth-badge"
+                  *ngIf="server.authType === 'bearer_token' && !server.bearerToken?.hasToken">
+                  <span class="material-icons">radio_button_unchecked</span>
+                  Bearer token not stored
                 </span>
                 <span class="server-detail auth-badge" *ngIf="server.oauthClientCredentials?.hasCredentials">
                   <span class="material-icons">sync_lock</span>
@@ -1130,9 +1160,13 @@
               <code>Authorization: Bearer &lt;token&gt;</code>. It is not refreshed — set an optional expiry to be
               warned when it lapses, then paste a replacement.
             </span>
+            <span class="field-hint token-hint credential-blocker" *ngIf="credentialSaveBlocker() as blocker">
+              <span class="material-icons">warning_amber</span>
+              {{ blocker }}
+            </span>
             <div class="token-save-actions">
               <button class="nova-button primary small" (click)="saveNotifyBearerToken()"
-                [disabled]="notifyBearerTokenSaving || !notifyBearerTokenValue.trim()">
+                [disabled]="notifyBearerTokenSaving || !!credentialSaveBlocker() || !notifyBearerTokenValue.trim()">
                 <span class="material-icons">{{ notifyBearerTokenSaving ? 'hourglass_empty' : 'save' }}</span>
                 {{ notifyBearerTokenSaving ? 'Saving...' : 'Save Token' }}
               </button>
@@ -1225,9 +1259,13 @@
               <span class="material-icons">info_outline</span>
               The client secret is not read back from SSM — re-enter it to overwrite the stored credentials.
             </span>
+            <span class="field-hint token-hint credential-blocker" *ngIf="credentialSaveBlocker() as blocker">
+              <span class="material-icons">warning_amber</span>
+              {{ blocker }}
+            </span>
             <div class="token-save-actions">
               <button class="nova-button primary small" (click)="saveNotifyClientCredentials()"
-                [disabled]="notifyM2mSaving || !notifyM2mClientId.trim() || !notifyM2mClientSecret.trim() || !notifyM2mTokenUrl.trim()">
+                [disabled]="notifyM2mSaving || !!credentialSaveBlocker() || !notifyM2mClientId.trim() || !notifyM2mClientSecret.trim() || !notifyM2mTokenUrl.trim()">
                 <span class="material-icons">{{ notifyM2mSaving ? 'hourglass_empty' : 'save' }}</span>
                 {{ notifyM2mSaving ? 'Saving...' : 'Save Credentials' }}
               </button>
@@ -1498,7 +1536,7 @@
   </div>
 
   <!-- Delete Confirmation Modal -->
-  <div class="delete-confirm-overlay" *ngIf="showDeleteConfirm" (click)="cancelDeleteAgent()">
+  <div class="delete-confirm-overlay" *ngIf="showDeleteConfirm">
     <div class="delete-confirm-dialog" (click)="$event.stopPropagation()">
       <div class="delete-confirm-header">
         <span class="material-icons warning-icon">warning</span>
@@ -1522,7 +1560,7 @@
   </div>
 
   <!-- Visualization Preview Modal -->
-  <div class="visualization-preview-overlay" *ngIf="showVisualizationPreview" (click)="closeVisualizationPreview()">
+  <div class="visualization-preview-overlay" *ngIf="showVisualizationPreview">
     <div class="visualization-preview-modal" (click)="$event.stopPropagation()">
       <div class="preview-header">
         <div class="preview-title">
@@ -1575,7 +1613,7 @@
   </div>
 
   <!-- Visualization JSON Editor Modal -->
-  <div class="visualization-json-overlay" *ngIf="showVisualizationJsonEditor" (click)="closeVisualizationJsonEditor()">
+  <div class="visualization-json-overlay" *ngIf="showVisualizationJsonEditor">
     <div class="visualization-json-modal" (click)="$event.stopPropagation()">
       <div class="json-editor-header">
         <div class="json-editor-title">

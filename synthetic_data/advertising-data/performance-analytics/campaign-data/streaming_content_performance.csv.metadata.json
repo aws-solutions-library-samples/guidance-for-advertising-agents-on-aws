@@ -18,49 +18,5 @@
     "advertising_demand": "8.1-9.8 scores with live sports and family content leading",
     "business_applications": "content acquisition decisions, advertising inventory pricing, audience targeting, brand safety assessment",
     "related_datasets": "streaming_family_segments.csv, streaming_content_social_sentiment.csv, streaming_brand_safety_requirements.json"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "content_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "content_title"
-          },
-          {
-            "fieldName": "content_type"
-          },
-          {
-            "fieldName": "total_views"
-          },
-          {
-            "fieldName": "completion_rate"
-          },
-          {
-            "fieldName": "advertiser_demand_score"
-          },
-          {
-            "fieldName": "cpm_premium_multiplier"
-          },
-          {
-            "fieldName": "brand_safety_incidents"
-          },
-          {
-            "fieldName": "family_co_viewing_rate"
-          },
-          {
-            "fieldName": "international_appeal_score"
-          },
-          {
-            "fieldName": "educational_value_score"
-          }
-        ]
-      }
-    }
   }
 }

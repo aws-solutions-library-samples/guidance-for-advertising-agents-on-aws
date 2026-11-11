@@ -8,44 +8,5 @@
         "industry": "premium_chocolate",
         "geographic_scope": "european_markets",
         "content_type": "strategic_intelligence"
-    },
-    "documentStructureConfiguration": {
-        "type": "HIERARCHICAL_STRUCTURE_METADATA",
-        "hierarchicalStructureMetadata": {
-            "level1Fields": [
-                {
-                    "fieldName": "brandProfile"
-                },
-                {
-                    "fieldName": "marketIntelligence"
-                }
-            ],
-            "level2Fields": [
-                {
-                    "fieldName": "name"
-                },
-                {
-                    "fieldName": "category"
-                },
-                {
-                    "fieldName": "positioning"
-                },
-                {
-                    "fieldName": "targetMarkets"
-                },
-                {
-                    "fieldName": "keyCompetitors"
-                },
-                {
-                    "fieldName": "brandSafetyRequirements"
-                },
-                {
-                    "fieldName": "consumerInsights"
-                },
-                {
-                    "fieldName": "digitalPresence"
-                }
-            ]
-        }
     }
 }

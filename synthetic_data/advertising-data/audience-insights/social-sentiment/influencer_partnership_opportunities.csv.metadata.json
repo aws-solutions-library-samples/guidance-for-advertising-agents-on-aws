@@ -19,49 +19,5 @@
     "authenticity_scores": "8.5-9.8 with high community trust and engagement",
     "business_applications": "influencer partnership strategy, content promotion campaigns, educational collaborations, family-focused marketing amplification",
     "related_datasets": "streaming_content_social_sentiment.csv, social_trend_analysis.csv, streaming_family_segments.csv, streaming_brand_safety_requirements.json"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "influencer_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "influencer_name"
-          },
-          {
-            "fieldName": "platform_primary"
-          },
-          {
-            "fieldName": "follower_count"
-          },
-          {
-            "fieldName": "engagement_rate"
-          },
-          {
-            "fieldName": "audience_demographics"
-          },
-          {
-            "fieldName": "content_categories"
-          },
-          {
-            "fieldName": "brand_safety_score"
-          },
-          {
-            "fieldName": "family_friendly_rating"
-          },
-          {
-            "fieldName": "educational_content_score"
-          },
-          {
-            "fieldName": "audience_overlap_with_segments"
-          }
-        ]
-      }
-    }
   }
 }

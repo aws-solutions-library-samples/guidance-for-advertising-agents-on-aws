@@ -2222,6 +2222,8 @@ def deploy_knowledge_base(kb_name, kb_description, index_name, stack_prefix, uni
         f"VectorIndexName={index_name}",
         f"EmbeddingModelArn=arn:aws:bedrock:{region}::foundation-model/{embedding_model}",
         "--capabilities", "CAPABILITY_NAMED_IAM",
+        # An unchanged stack otherwise exits 255, which skipped every data source on a re-run.
+        "--no-fail-on-empty-changeset",
         "--region", region
     ]
     
@@ -2281,6 +2283,7 @@ def deploy_data_source(kb_id, ds_name, ds_description, data_prefix, chunking_tok
         f"DataPrefix={data_prefix}",
         f"ChunkingMaxTokens={chunking_tokens}",
         f"ChunkingOverlapPercentage={chunking_overlap}",
+        "--no-fail-on-empty-changeset",
         "--region", region
     ]
     

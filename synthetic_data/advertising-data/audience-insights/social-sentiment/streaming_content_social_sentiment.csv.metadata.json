@@ -15,49 +15,5 @@
     "trending_elements": "hashtags, influencer_mentions, user_generated_content, cross_platform_reach",
     "business_applications": "content performance optimization, audience sentiment monitoring, brand safety assessment, viral content prediction",
     "related_datasets": "audience_segmentation_profiles.csv, streaming_family_segments.csv, influencer_partnership_opportunities.csv"
-  },
-  "documentStructureConfiguration": {
-    "type": "RECORD_BASED_STRUCTURE_METADATA",
-    "recordBasedStructureMetadata": {
-      "contentFields": [
-        {
-          "fieldName": "content_id"
-        }
-      ],
-      "metadataFieldsSpecification": {
-        "fieldsToInclude": [
-          {
-            "fieldName": "content_title"
-          },
-          {
-            "fieldName": "content_type"
-          },
-          {
-            "fieldName": "platform_mentions"
-          },
-          {
-            "fieldName": "sentiment_score"
-          },
-          {
-            "fieldName": "audience_demographics"
-          },
-          {
-            "fieldName": "trending_hashtags"
-          },
-          {
-            "fieldName": "brand_safety_score"
-          },
-          {
-            "fieldName": "viral_potential"
-          },
-          {
-            "fieldName": "geographic_hotspots"
-          },
-          {
-            "fieldName": "cross_platform_reach"
-          }
-        ]
-      }
-    }
   }
 }

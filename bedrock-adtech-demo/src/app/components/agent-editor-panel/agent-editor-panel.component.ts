@@ -156,7 +156,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   mcpToolListResults: Map<string, MCPToolListResult> = new Map();
 
   // OAuth token input state (never persisted — only used during editing)
+  // MCP static Bearer Token state (authType 'bearer_token')
   mcpBearerTokenValue: string = '';
+  mcpBearerTokenExpiry: string = '';
   mcpBearerTokenSaving: boolean = false;
   mcpBearerTokenPending: boolean = false;
   mcpBearerTokenEditing: boolean = false;
@@ -195,7 +197,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
    */
   a2aCredentialsAwaitingAgentSave = new Set<string>();
 
-  // MCP OAuth credentials state (username/password)
+  // MCP OAuth credentials state (Cognito app client id / username / password)
+  mcpOAuthClientId: string = '';
   mcpOAuthUsername: string = '';
   mcpOAuthPassword: string = '';
   mcpOAuthPasswordVisible: boolean = false;
@@ -914,6 +917,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     };
     this.editingAgent.mcp_servers.push(newServer);
     this.openMcpServerEditor(this.editingAgent.mcp_servers.length - 1);
+    // Apply the preset's auth mode through the normal switch so the editor
+    // opens with that chip selected and its credential form showing.
+    if (preset?.config?.authType && this.editingMcpServer) {
+      this.setMcpAuthType(this.editingMcpServer, preset.config.authType);
+    }
   }
 
   removeMcpServer(index: number): void {
@@ -933,17 +941,10 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.mcpServerJsonText = JSON.stringify(this.editingMcpServer, null, 2);
     this.mcpServerJsonError = null;
     this.showMcpServerEditor = true;
-    this.mcpBearerTokenValue = '';
+    this.clearMcpBearerFormState();
     this.mcpBearerTokenSaving = false;
-    this.mcpBearerTokenPending = false;
-    this.mcpBearerTokenEditing = false;
-    this.mcpBearerTokenVisible = false;
-    this.mcpOAuthUsername = '';
-    this.mcpOAuthPassword = '';
-    this.mcpOAuthPasswordVisible = false;
+    this.clearMcpOAuthFormState();
     this.mcpOAuthCredentialsSaving = false;
-    this.mcpOAuthCredentialsPending = false;
-    this.mcpOAuthCredentialsEditing = false;
     this.clearMcpM2mFormState();
     this.mcpM2mSaving = false;
     // Show the stored token URL/scope/audience without a round trip to SSM; the
@@ -960,17 +961,15 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.editingMcpServerIndex = -1;
     this.mcpServerJsonText = '';
     this.mcpServerJsonError = null;
-    this.mcpBearerTokenValue = '';
+    this.clearMcpBearerFormState();
     this.mcpBearerTokenSaving = false;
-    this.mcpBearerTokenPending = false;
-    this.mcpBearerTokenEditing = false;
-    this.mcpBearerTokenVisible = false;
+    this.clearMcpOAuthFormState();
     this.clearMcpM2mFormState();
     this.mcpM2mSaving = false;
     this.mcpEditorClosed.emit();
   }
 
-  saveMcpServerChanges(): void {
+  async saveMcpServerChanges(): Promise<void> {
     if (!this.editingMcpServer || this.editingMcpServerIndex < 0) return;
     if (!this.editingMcpServer.name?.trim()) { this.mcpServerJsonError = 'Server name is required'; return; }
     if (this.editingMcpServer.transport === 'stdio' && !this.editingMcpServer.command?.trim()) {
@@ -991,34 +990,25 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       return;
     }
 
-    // If OAuth credentials were entered, store them in SSM before saving
-    if (this.mcpOAuthUsername.trim() && this.mcpOAuthPassword.trim() && this.editingAgent.agent_name) {
-      this.mcpOAuthCredentialsSaving = true;
+    // Same guard for a pasted bearer token that has not been written to SSM.
+    if (this.getMcpAuthType(this.editingMcpServer) === 'bearer_token' &&
+        this.mcpBearerTokenValue.trim() &&
+        !this.mcpBearerTokenSaving) {
+      this.mcpServerJsonError = 'Click "Save Token" to store the bearer token first.';
       this.cdr.markForCheck();
-
-      const credentialsJson = JSON.stringify({ username: this.mcpOAuthUsername.trim(), password: this.mcpOAuthPassword.trim() });
-      this.agentDynamoDBService.storeMcpOAuthToken(
-        this.editingAgent.agent_name,
-        this.editingMcpServer.id,
-        credentialsJson
-      ).then(ssmPath => {
-        if (ssmPath && this.editingMcpServer) {
-          this.editingMcpServer.oauthToken = { hasToken: true, ssmPath };
-          this.editingMcpServer.authType = 'bearer';
-          this.editingMcpServer.oauthClientCredentials = undefined;
-        }
-        this.finalizeMcpServerSave();
-      }).catch(err => {
-        console.error('Error storing OAuth credentials:', err);
-        this.mcpServerJsonError = 'Failed to store credentials. Server saved without credentials.';
-        this.finalizeMcpServerSave();
-      }).finally(() => {
-        this.mcpOAuthCredentialsSaving = false;
-        this.cdr.markForCheck();
-      });
-    } else {
-      this.finalizeMcpServerSave();
+      return;
     }
+
+    // OAuth credentials typed but not stored yet: store them first, and keep the
+    // editor open if that fails so the server is never saved pointing at a
+    // parameter that does not exist.
+    if (this.isMcpOAuthSelected(this.editingMcpServer) &&
+        (this.mcpOAuthUsername.trim() || this.mcpOAuthPassword.trim())) {
+      const stored = await this.saveMcpOAuthCredentials();
+      if (!stored) return;
+    }
+
+    this.finalizeMcpServerSave();
   }
 
   private finalizeMcpServerSave(): void {
@@ -1246,7 +1236,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
 
     // If OAuth credentials were entered, store them in SSM before saving
-    if (this.a2aOAuthUsername.trim() && this.a2aOAuthPassword.trim() && this.editingAgent.agent_name) {
+    if (this.a2aOAuthUsername.trim() && this.a2aOAuthPassword.trim()) {
+      const blocker = this.credentialSaveBlocker(this.editingA2aAgent.name, 'external agent');
+      if (blocker) {
+        this.a2aEditorError = blocker;
+        this.cdr.markForCheck();
+        return;
+      }
       // The runtime needs the Cognito app client id to mint a bearer token, so
       // require it whenever OAuth credentials are being stored.
       if (!this.a2aOAuthClientId.trim()) {
@@ -1320,7 +1316,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
   /** Save a bearer token to SSM independently for an A2A agent (update/new token flow) */
   async saveA2aBearerToken(): Promise<void> {
-    if (!this.editingA2aAgent || !this.a2aBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
+    if (!this.editingA2aAgent || !this.a2aBearerTokenValue.trim()) return;
+    const blocker = this.credentialSaveBlocker(this.editingA2aAgent.name, 'external agent');
+    if (blocker) {
+      this.a2aEditorError = blocker;
+      this.cdr.markForCheck();
+      return;
+    }
 
     // Validate the optional expiry before storing (SECURITY-05). Empty is
     // allowed (non-expiring); a provided value must parse as a valid date.
@@ -1678,7 +1680,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
 
   /** Save A2A OAuth credentials (client id / username / password) to SSM as JSON */
   async saveA2aOAuthCredentials(): Promise<void> {
-    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+    if (!this.editingA2aAgent) return;
+    const blocker = this.credentialSaveBlocker(this.editingA2aAgent.name, 'external agent');
+    if (blocker) {
+      this.a2aEditorError = blocker;
+      this.cdr.markForCheck();
+      return;
+    }
 
     const clientId = this.a2aOAuthClientId.trim();
     const username = this.a2aOAuthUsername.trim();
@@ -1768,7 +1776,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
    * reference on the entry.
    */
   async saveA2aClientCredentials(): Promise<void> {
-    if (!this.editingA2aAgent || !this.editingAgent.agent_name) return;
+    if (!this.editingA2aAgent) return;
+    const blocker = this.credentialSaveBlocker(this.editingA2aAgent.name, 'external agent');
+    if (blocker) {
+      this.a2aEditorError = blocker;
+      this.cdr.markForCheck();
+      return;
+    }
 
     const entry = this.editingA2aAgent;
     this.a2aM2mSaving = true;
@@ -2206,39 +2220,113 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   }
 
   /** Save MCP OAuth credentials (username/password) to SSM as JSON */
-  async saveMcpOAuthCredentials(): Promise<void> {
-    if (!this.editingMcpServer || !this.mcpOAuthUsername.trim() || !this.mcpOAuthPassword.trim() || !this.editingAgent.agent_name) return;
+  /**
+   * Store the MCP server's Cognito USER_PASSWORD_AUTH credentials. The document
+   * matches the A2A OAuth one (`{client_id, username, password}`), which is what
+   * the runtime token manager and the browser tool listing exchange for a token.
+   * Returns true when the credentials were stored.
+   */
+  async saveMcpOAuthCredentials(): Promise<boolean> {
+    if (!this.editingMcpServer) return false;
+
+    const blocker = this.credentialSaveBlocker(this.editingMcpServer.name, 'server');
+    if (blocker) {
+      this.mcpServerJsonError = blocker;
+      this.cdr.markForCheck();
+      return false;
+    }
+
+    const clientId = this.mcpOAuthClientId.trim();
+    const username = this.mcpOAuthUsername.trim();
+    const password = this.mcpOAuthPassword.trim();
+    const missing: string[] = [];
+    if (!clientId) missing.push('Auth Client ID');
+    if (!username) missing.push('Username');
+    if (!password) missing.push('Password');
+    if (missing.length > 0) {
+      this.mcpServerJsonError = `Please fill in: ${missing.join(', ')}.`;
+      this.cdr.markForCheck();
+      return false;
+    }
 
     this.mcpOAuthCredentialsSaving = true;
     this.mcpServerJsonError = null;
     this.cdr.markForCheck();
 
     try {
-      const credentialsJson = JSON.stringify({ username: this.mcpOAuthUsername.trim(), password: this.mcpOAuthPassword.trim() });
+      const credentialsJson = JSON.stringify({ client_id: clientId, username, password });
       const ssmPath = await this.agentDynamoDBService.storeMcpOAuthToken(
         this.editingAgent.agent_name,
         this.editingMcpServer.id,
         credentialsJson
       );
+      if (!ssmPath) {
+        this.mcpServerJsonError = 'Could not reach Parameter Store. Sign in again and retry.';
+        return false;
+      }
 
-      this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
+      this.editingMcpServer.oauthToken = { hasToken: true, ssmPath };
       this.editingMcpServer.authType = 'bearer';
       // The parameter now holds a username/password document, so a
       // client-credentials reference to the same path would misreport what is
-      // stored.
+      // stored. Same for a static bearer reference.
       this.editingMcpServer.oauthClientCredentials = undefined;
-      this.mcpOAuthUsername = '';
-      this.mcpOAuthPassword = '';
-      this.mcpOAuthCredentialsEditing = false;
-      this.mcpOAuthCredentialsPending = false;
+      this.editingMcpServer.bearerToken = undefined;
+      this.clearMcpOAuthFormState();
       this.updateMcpServerJsonFromForm();
+      return true;
     } catch (error: any) {
       console.error('Error saving MCP OAuth credentials:', error);
       this.mcpServerJsonError = error.message || 'Failed to store credentials.';
+      return false;
     } finally {
       this.mcpOAuthCredentialsSaving = false;
       this.cdr.markForCheck();
     }
+  }
+
+  /** Clear the MCP OAuth (username/password) form fields, leaving any stored reference. */
+  private clearMcpOAuthFormState(): void {
+    this.mcpOAuthClientId = '';
+    this.mcpOAuthUsername = '';
+    this.mcpOAuthPassword = '';
+    this.mcpOAuthPasswordVisible = false;
+    this.mcpOAuthCredentialsPending = false;
+    this.mcpOAuthCredentialsEditing = false;
+  }
+
+  /** Abandon an in-progress MCP OAuth credentials update. */
+  cancelMcpOAuthCredentialsEdit(): void {
+    this.clearMcpOAuthFormState();
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Begin updating stored MCP OAuth credentials. Prefills the client id and
+   * username from SSM; the password stays blank so it has to be re-entered.
+   */
+  async beginMcpOAuthCredentialsUpdate(): Promise<void> {
+    if (!this.editingMcpServer) return;
+    const server = this.editingMcpServer;
+    this.mcpOAuthCredentialsEditing = true;
+    this.mcpOAuthPassword = '';
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+
+    const raw = await this.agentDynamoDBService.getMcpCredentialDocument(
+      this.editingAgent.agent_name, server.id, server.oauthToken?.ssmPath
+    );
+    try {
+      const doc = raw ? JSON.parse(raw) : null;
+      if (doc && typeof doc === 'object') {
+        this.mcpOAuthClientId = doc.client_id || doc.clientId || '';
+        this.mcpOAuthUsername = doc.username || '';
+      }
+    } catch {
+      // Not a JSON document; leave the fields blank for re-entry.
+    }
+    this.cdr.markForCheck();
   }
 
   /** Remove MCP OAuth credentials from SSM */
@@ -2255,10 +2343,7 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         server.id
       );
       server.oauthToken = undefined;
-      this.mcpOAuthCredentialsPending = false;
-      this.mcpOAuthCredentialsEditing = false;
-      this.mcpOAuthUsername = '';
-      this.mcpOAuthPassword = '';
+      this.clearMcpOAuthFormState();
       this.updateMcpServerJsonFromForm();
     } catch (error: any) {
       console.error('Error removing MCP OAuth credentials:', error);
@@ -2452,7 +2537,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
       case 'oauth_m2m': return 'OAuth M2M';
       case 'iam':
       case 'aws_iam': return 'IAM';
-      case 'bearer': return 'Bearer Token';
+      case 'bearer':
+      case 'bearer_token': return 'Bearer Token';
       default: return 'None';
     }
   }
@@ -2462,12 +2548,42 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
    * discriminator, so fall back to inferring it from whichever credential
    * field is populated.
    */
-  getMcpAuthType(server: MCPServerConfig): 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m' {
+  getMcpAuthType(server: MCPServerConfig): 'none' | 'bearer' | 'bearer_token' | 'aws_iam' | 'oauth_m2m' {
     if (server.authType) return server.authType;
     if (server.awsAuth) return 'aws_iam';
     if (server.oauthClientCredentials?.hasCredentials) return 'oauth_m2m';
+    if (server.bearerToken?.hasToken) return 'bearer_token';
     if (server.oauthToken?.hasToken) return 'bearer';
     return 'none';
+  }
+
+  /**
+   * Why a credential cannot be stored yet, or null when it can. Every credential
+   * parameter path includes the agent name, so storing one before the name is
+   * set (or under a name that later changes) leaves it where nothing looks.
+   * `entryKind` names the server/peer being configured, when there is one.
+   */
+  credentialSaveBlocker(entryName?: string | null, entryKind?: string): string | null {
+    if (!this.editingAgent?.agent_name?.trim()) {
+      return 'Enter the Agent Name before saving credentials. They are stored under that name.';
+    }
+    if (entryKind && !entryName?.trim()) {
+      return `Enter the ${entryKind} name before saving credentials.`;
+    }
+    return null;
+  }
+
+  /**
+   * A new agent's name is locked once any credential reference has been staged
+   * on it, because those parameters were written under the current name.
+   */
+  get agentNameLockedByCredentials(): boolean {
+    return this.isNew && JSON.stringify(this.editingAgent || {}).includes('"ssmPath"');
+  }
+
+  /** True when the MCP static Bearer Token chip should read as selected. */
+  isMcpBearerTokenSelected(server: MCPServerConfig): boolean {
+    return this.getMcpAuthType(server) === 'bearer_token' || this.mcpBearerTokenPending;
   }
 
   /** True when the MCP OAuth (username/password) chip should read as selected. */
@@ -2484,7 +2600,8 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   isMcpNoAuthSelected(server: MCPServerConfig): boolean {
     return this.getMcpAuthType(server) === 'none' &&
       !this.mcpOAuthCredentialsPending &&
-      !this.mcpM2mPending;
+      !this.mcpM2mPending &&
+      !this.mcpBearerTokenPending;
   }
 
   // ============================================
@@ -2552,52 +2669,47 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
   // ============================================
 
   /** Switch authentication type for an MCP server */
-  setMcpAuthType(server: MCPServerConfig, authType: 'none' | 'bearer' | 'aws_iam' | 'oauth_m2m'): void {
-    // Record the choice explicitly. 'bearer' and 'oauth_m2m' both end up sending
-    // an Authorization header, so the mode can no longer be inferred from which
-    // credential field happens to be set.
+  setMcpAuthType(server: MCPServerConfig, authType: 'none' | 'bearer' | 'bearer_token' | 'aws_iam' | 'oauth_m2m'): void {
+    // Record the choice explicitly. 'bearer', 'bearer_token' and 'oauth_m2m' all
+    // end up sending an Authorization header, so the mode can no longer be
+    // inferred from which credential field happens to be set.
     server.authType = authType;
     switch (authType) {
       case 'none':
         server.awsAuth = undefined;
-        this.mcpBearerTokenPending = false;
-        this.mcpBearerTokenEditing = false;
-        this.mcpBearerTokenValue = '';
-        this.mcpOAuthUsername = '';
-        this.mcpOAuthPassword = '';
-        this.mcpOAuthCredentialsPending = false;
-        this.mcpOAuthCredentialsEditing = false;
+        this.clearMcpBearerFormState();
+        this.clearMcpOAuthFormState();
         this.clearMcpM2mFormState();
         break;
       case 'bearer':
         server.awsAuth = undefined;
+        this.clearMcpBearerFormState();
         this.clearMcpM2mFormState();
         if (!server.oauthToken?.hasToken) {
           this.mcpOAuthCredentialsPending = true;
         }
         break;
+      case 'bearer_token':
+        // Verbatim static token: no AWS identity, no token exchange.
+        server.awsAuth = undefined;
+        this.clearMcpOAuthFormState();
+        this.clearMcpM2mFormState();
+        if (!server.bearerToken?.hasToken) {
+          this.mcpBearerTokenPending = true;
+        }
+        break;
       case 'oauth_m2m':
         server.awsAuth = undefined;
-        this.mcpBearerTokenPending = false;
-        this.mcpBearerTokenEditing = false;
-        this.mcpBearerTokenValue = '';
-        this.mcpOAuthUsername = '';
-        this.mcpOAuthPassword = '';
-        this.mcpOAuthCredentialsPending = false;
-        this.mcpOAuthCredentialsEditing = false;
+        this.clearMcpBearerFormState();
+        this.clearMcpOAuthFormState();
         if (!server.oauthClientCredentials?.hasCredentials) {
           this.mcpM2mPending = true;
         }
         break;
       case 'aws_iam':
         server.awsAuth = { region: 'us-east-1', service: 'bedrock-agentcore' };
-        this.mcpBearerTokenPending = false;
-        this.mcpBearerTokenEditing = false;
-        this.mcpBearerTokenValue = '';
-        this.mcpOAuthUsername = '';
-        this.mcpOAuthPassword = '';
-        this.mcpOAuthCredentialsPending = false;
-        this.mcpOAuthCredentialsEditing = false;
+        this.clearMcpBearerFormState();
+        this.clearMcpOAuthFormState();
         this.clearMcpM2mFormState();
         break;
     }
@@ -2614,6 +2726,24 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     this.mcpM2mTokenUrl = stored?.tokenUrl || '';
     this.mcpM2mScope = stored?.scope || '';
     this.mcpM2mAudience = stored?.audience || '';
+    this.mcpServerJsonError = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Clear the MCP bearer-token form fields, leaving any stored reference. */
+  private clearMcpBearerFormState(): void {
+    this.mcpBearerTokenPending = false;
+    this.mcpBearerTokenEditing = false;
+    this.mcpBearerTokenValue = '';
+    this.mcpBearerTokenExpiry = '';
+    this.mcpBearerTokenVisible = false;
+  }
+
+  /** Abandon an in-progress MCP bearer-token update. */
+  cancelMcpBearerTokenEdit(): void {
+    this.mcpBearerTokenEditing = false;
+    this.mcpBearerTokenValue = '';
+    this.mcpBearerTokenExpiry = '';
     this.mcpServerJsonError = null;
     this.cdr.markForCheck();
   }
@@ -2635,7 +2765,13 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
    * path the username/password mode uses) and record the reference.
    */
   async saveMcpClientCredentials(): Promise<void> {
-    if (!this.editingMcpServer || !this.editingAgent.agent_name) return;
+    if (!this.editingMcpServer) return;
+    const blocker = this.credentialSaveBlocker(this.editingMcpServer.name, 'server');
+    if (blocker) {
+      this.mcpServerJsonError = blocker;
+      this.cdr.markForCheck();
+      return;
+    }
 
     const server = this.editingMcpServer;
     this.mcpM2mSaving = true;
@@ -2656,9 +2792,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         )
       );
       server.authType = 'oauth_m2m';
-      // The username/password reference would otherwise still point at the same
-      // parameter, which now holds a client-credentials document.
+      // The username/password and static-bearer references would otherwise
+      // still point at the same parameter, which now holds a client-credentials
+      // document.
       server.oauthToken = undefined;
+      server.bearerToken = undefined;
       this.mcpM2mClientSecret = '';
       this.mcpM2mEditing = false;
       this.mcpM2mPending = false;
@@ -2719,9 +2857,9 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
   }
 
-  /** Remove the OAuth bearer token from SSM and clear the config */
+  /** Remove the MCP server's static bearer token from SSM and clear the reference. */
   async removeMcpBearerToken(server: MCPServerConfig): Promise<void> {
-    if (!this.editingAgent.agent_name) return;
+    if (!server || !this.editingAgent.agent_name) return;
 
     this.mcpBearerTokenSaving = true;
     this.mcpServerJsonError = null;
@@ -2732,13 +2870,11 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
         this.editingAgent.agent_name,
         server.id
       );
-      server.oauthToken = undefined;
-      this.mcpBearerTokenPending = false;
-      this.mcpBearerTokenEditing = false;
-      this.mcpBearerTokenValue = '';
+      server.bearerToken = undefined;
+      this.clearMcpBearerFormState();
       this.updateMcpServerJsonFromForm();
     } catch (error: any) {
-      console.error('Error removing OAuth token:', error);
+      console.error('Error removing MCP bearer token:', error);
       this.mcpServerJsonError = error.message || 'Failed to remove token.';
     } finally {
       this.mcpBearerTokenSaving = false;
@@ -2746,31 +2882,55 @@ export class AgentEditorPanelComponent implements OnInit, OnChanges {
     }
   }
 
-  /** Save a bearer token to SSM independently (for update/new token flow) */
+  /** Store the pasted static bearer token for the MCP server being edited. */
   async saveMcpBearerToken(): Promise<void> {
-    if (!this.editingMcpServer || !this.mcpBearerTokenValue.trim() || !this.editingAgent.agent_name) return;
+    if (!this.editingMcpServer || !this.mcpBearerTokenValue.trim()) return;
+    const blocker = this.credentialSaveBlocker(this.editingMcpServer.name, 'server');
+    if (blocker) {
+      this.mcpServerJsonError = blocker;
+      this.cdr.markForCheck();
+      return;
+    }
 
+    // Empty expiry means non-expiring; a provided value must parse as a date.
+    const expiryRaw = this.mcpBearerTokenExpiry.trim();
+    let expiresAt: string | undefined;
+    if (expiryRaw) {
+      const parsed = new Date(expiryRaw);
+      if (isNaN(parsed.getTime())) {
+        this.mcpServerJsonError = 'Expiry must be a valid date/time or left empty.';
+        this.cdr.markForCheck();
+        return;
+      }
+      expiresAt = parsed.toISOString();
+    }
+
+    const server = this.editingMcpServer;
     this.mcpBearerTokenSaving = true;
     this.mcpServerJsonError = null;
     this.cdr.markForCheck();
 
     try {
-      const ssmPath = await this.agentDynamoDBService.storeMcpOAuthToken(
+      const ssmPath = await this.agentDynamoDBService.storeMcpBearerToken(
         this.editingAgent.agent_name,
-        this.editingMcpServer.id,
-        this.mcpBearerTokenValue.trim()
+        server.id,
+        this.mcpBearerTokenValue
       );
 
-      this.editingMcpServer.oauthToken = { hasToken: true, ssmPath: ssmPath || undefined };
-      // The parameter now holds a static token, so a client-credentials
-      // reference to the same path would misreport what is stored.
-      this.editingMcpServer.oauthClientCredentials = undefined;
-      this.mcpBearerTokenValue = '';
-      this.mcpBearerTokenEditing = false;
-      this.mcpBearerTokenPending = false;
+      server.bearerToken = { hasToken: true, ssmPath: ssmPath || undefined, expiresAt };
+      server.authType = 'bearer_token';
+      // The shared per-server parameter now holds a static token, so the
+      // OAuth and client-credentials references would misreport what is stored.
+      if (server.oauthClientCredentials?.ssmPath) {
+        clearClientCredentialsTokenCache(server.oauthClientCredentials.ssmPath);
+      }
+      server.oauthToken = undefined;
+      server.oauthClientCredentials = undefined;
+      this.clearMcpBearerFormState();
       this.updateMcpServerJsonFromForm();
     } catch (error: any) {
-      console.error('Error saving bearer token:', error);
+      // error.message never contains the token value (see storeMcpBearerToken).
+      console.error('Error saving MCP bearer token:', error);
       this.mcpServerJsonError = error.message || 'Failed to store token.';
     } finally {
       this.mcpBearerTokenSaving = false;

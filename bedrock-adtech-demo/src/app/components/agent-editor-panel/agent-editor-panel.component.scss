@@ -578,16 +578,19 @@ $fuchsia-accent: #c300e0;
         }
       }
 
+      // Block flow, not flex: inline <code> in the hint would otherwise become separate flex columns.
       .token-hint {
-        display: flex;
-        align-items: flex-start;
-        gap: 6px;
+        display: block;
+        position: relative;
+        padding-left: 22px;
+        line-height: 1.5;
         font-size: 12px;
         color: #9ca3af;
         margin-top: 8px;
         margin-bottom: 14px;
 
-        .material-icons { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+        .material-icons { position: absolute; left: 0; top: 1px; font-size: 16px; }
+        code { overflow-wrap: anywhere; }
       }
 
       .token-save-actions {
@@ -4894,4 +4897,11 @@ $fuchsia-accent: #c300e0;
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+// Shown in place of a silent no-op when a credential cannot be stored yet.
+.field-hint.token-hint.credential-blocker {
+  color: #b45309;
+
+  .material-icons { color: #d97706; }
 }

@@ -315,7 +315,7 @@
         </div>
 
         <textarea #messageInput [(ngModel)]="currentMessage" id="messageInput" (input)="onMessageInput($event)"
-          (keydown)="onMessageKeyDown($event)" (keypress)="onKeyPress($event)"
+          (keydown)="onMessageKeyDown($event)" (keypress)="onKeyPress($event)" (paste)="onPaste($event)"
           placeholder="Ask me about campaign optimization, audience analysis, or bidding strategies... (Type @ to mention a specific agent)"
           [disabled]="isLoading" rows="1" class="message-textarea"></textarea>
 

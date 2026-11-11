@@ -354,7 +354,7 @@
 </div>
 
 <!-- Agent Configuration Modal (Legacy) -->
-<div class="agent-config-overlay" *ngIf="showAgentConfig" (click)="closeAgentConfig()">
+<div class="agent-config-overlay" *ngIf="showAgentConfig">
   <div class="agent-config-modal" (click)="$event.stopPropagation()">
     <app-agent-config (closeModal)="closeAgentConfig()"></app-agent-config>
   </div>

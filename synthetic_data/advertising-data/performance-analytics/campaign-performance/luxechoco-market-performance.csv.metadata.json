@@ -8,49 +8,5 @@
         "industry": "premium_chocolate",
         "geographic_scope": "european_markets",
         "content_type": "performance_data"
-    },
-    "documentStructureConfiguration": {
-        "type": "RECORD_BASED_STRUCTURE_METADATA",
-        "recordBasedStructureMetadata": {
-            "contentFields": [
-                {
-                    "fieldName": "market"
-                }
-            ],
-            "metadataFieldsSpecification": {
-                "fieldsToInclude": [
-                    {
-                        "fieldName": "week"
-                    },
-                    {
-                        "fieldName": "status"
-                    },
-                    {
-                        "fieldName": "planned_reach_millions"
-                    },
-                    {
-                        "fieldName": "actual_reach_millions"
-                    },
-                    {
-                        "fieldName": "reach_percentage"
-                    },
-                    {
-                        "fieldName": "budget_spent_eur"
-                    },
-                    {
-                        "fieldName": "budget_planned_eur"
-                    },
-                    {
-                        "fieldName": "issue"
-                    },
-                    {
-                        "fieldName": "action_taken"
-                    },
-                    {
-                        "fieldName": "performance_notes"
-                    }
-                ]
-            }
-        }
     }
 }
