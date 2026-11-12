@@ -351,6 +351,8 @@ class KnowledgeBaseHelper:
             # Look up the knowledge base ID from GLOBAL_CONFIG by agent name,
             # falling back to the STRANDS_KNOWLEDGE_BASE_ID env var
             kb_id = None
+            model_arn = None
+            global_config = None
             if agent:
                 try:
                     from shared.dynamodb_config_loader import load_global_config
@@ -368,16 +370,8 @@ class KnowledgeBaseHelper:
                 self.logger.error(f"No knowledge base ID found for agent '{agent}' in GLOBAL_CONFIG or STRANDS_KNOWLEDGE_BASE_ID env var")
                 return None
 
-            # Generation model ARN. Defaults to the Claude Haiku 5.5 global inference
-            # profile; it has no in-Region (foundation-model) ID, so the ARN must be
-            # account-scoped.
-            model_arn = os.environ.get("KB_MODEL_ARN")
-            if not model_arn:
-                account_id = boto3.client("sts", region_name=self.region).get_caller_identity()["Account"]
-                model_arn = (
-                    f"arn:aws:bedrock:{self.region}:{account_id}:"
-                    "inference-profile/global.anthropic.claude-haiku-5-5"
-                )
+            model_arn = self._resolve_generation_model_arn(agent, global_config)
+            self.logger.info(f"📚 KB generation model for {agent}: {model_arn}")
 
             # Create bedrock agent runtime client
             bedrock_agent_runtime = boto3.client(
@@ -479,10 +473,52 @@ class KnowledgeBaseHelper:
             return response
 
         except Exception as e:
-            self.logger.error(f"Error in retrieve_and_generate: {e}")
+            self.logger.error(
+                f"Error in retrieve_and_generate (model {model_arn or 'unresolved'}): {e}"
+            )
             import traceback
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
             return None
+
+    # Used only when no override env var and no agent config names a model.
+    DEFAULT_GENERATION_MODEL_ID = "global.anthropic.claude-haiku-5-5"
+
+    # Cross-region inference profile prefixes. These IDs need an account-scoped
+    # inference-profile ARN; anything else is an in-Region foundation model.
+    _INFERENCE_PROFILE_PREFIXES = ("global.", "us.", "us-gov.", "eu.", "apac.", "jp.", "au.", "ca.")
+
+    def _resolve_generation_model_arn(
+        self, agent: Optional[str], global_config: Optional[dict]
+    ) -> str:
+        """
+        Pick the RetrieveAndGenerate generation model.
+
+        Order: the KB_MODEL_ARN or KB_MODEL_ID env var (operator override), then the calling
+        agent's configured model_id, then DEFAULT_GENERATION_MODEL_ID. Accepts a
+        full ARN, an inference-profile ID, or a foundation-model ID.
+        """
+        override = os.environ.get("KB_MODEL_ARN") or os.environ.get("KB_MODEL_ID")
+        if override:
+            return self._model_id_to_arn(override)
+
+        model_id = None
+        if agent and global_config:
+            agent_config = global_config.get("agent_configs", {}).get(agent, {})
+            model_id = (
+                agent_config.get("model_inputs", {}).get(agent, {}).get("model_id")
+            )
+        return self._model_id_to_arn(model_id or self.DEFAULT_GENERATION_MODEL_ID)
+
+    def _model_id_to_arn(self, model_id: str) -> str:
+        """Turn a Bedrock model ID into the ARN RetrieveAndGenerate expects."""
+        if model_id.startswith("arn:"):
+            return model_id
+        if model_id.startswith(self._INFERENCE_PROFILE_PREFIXES):
+            account_id = boto3.client(
+                "sts", region_name=self.region
+            ).get_caller_identity()["Account"]
+            return f"arn:aws:bedrock:{self.region}:{account_id}:inference-profile/{model_id}"
+        return f"arn:aws:bedrock:{self.region}::foundation-model/{model_id}"
 
     def _parse_retrieve_and_generate_citations(
         self,

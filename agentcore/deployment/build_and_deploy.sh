@@ -954,8 +954,8 @@ permissions_policy = {
             "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*", f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
         },
         {
-            # RetrieveAndGenerate resolves an inference-profile modelArn (the KB helper's Haiku 5.5
-            # global profile) with GetInferenceProfile under the caller's credentials.
+            # RetrieveAndGenerate resolves an inference-profile modelArn (the calling agent's
+            # configured model) with GetInferenceProfile under the caller's credentials.
             "Sid": "BedrockInferenceProfileRead",
             "Effect": "Allow",
             "Action": ["bedrock:GetInferenceProfile"],

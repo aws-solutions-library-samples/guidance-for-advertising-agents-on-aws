@@ -2992,22 +2992,14 @@ print(arn)
     deploy_cmd="$deploy_cmd --env PYTHONDONTWRITEBYTECODE=1"
     deploy_cmd="$deploy_cmd --env PYTHONPATH=/app/agentcore/shared"
 
-    # KB RetrieveAndGenerate model. Current Claude models are INFERENCE_PROFILE-only
-    # (no ON_DEMAND), so this must be an account-scoped inference-profile ARN.
-    # Resolve the account id (profile-aware) to build the ARN.
-    local toolkit_account_id=""
-    if [ -n "$AWS_PROFILE" ]; then
-        toolkit_account_id=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
+    # KB RetrieveAndGenerate model. By default the runtime uses each agent's own
+    # configured model_id. Set KB_MODEL_ID (a model ID, inference-profile ID or
+    # ARN) only to force one model for every knowledge base query.
+    if [ -n "${KB_MODEL_ID:-}" ]; then
+        deploy_cmd="$deploy_cmd --env KB_MODEL_ID=$KB_MODEL_ID"
+        print_status "KB generation model (override): $KB_MODEL_ID"
     else
-        toolkit_account_id=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null || echo "")
-    fi
-    toolkit_account_id=$(echo "$toolkit_account_id" | tr -d '\n\r\t ')
-    if [ -n "$toolkit_account_id" ] && [ "$toolkit_account_id" != "None" ]; then
-        local kb_model_arn="arn:aws:bedrock:${toolkit_region}:${toolkit_account_id}:inference-profile/global.anthropic.claude-haiku-5-5"
-        deploy_cmd="$deploy_cmd --env KB_MODEL_ARN=$kb_model_arn"
-        print_status "KB generation model: $kb_model_arn"
-    else
-        print_warning "Could not resolve account id — KB_MODEL_ARN not set; KB retrieval will use the (legacy) default and likely fail"
+        print_status "KB generation model: each agent's configured model"
     fi
 
     if [ -n "$knowledgebases" ]; then
