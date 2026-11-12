@@ -943,6 +943,14 @@ def upload_global_config(table, config_dir: str, mode: str = 'overwrite',
         if mode == 'merge' and existing_config:
             # Merge configurations
             merged_config, changes = merge_configurations(existing_config, file_config)
+
+            # Merge keeps existing knowledge_bases entries, so a KB name stored by
+            # an earlier upload (e.g. "Advertising", written before the KB existed)
+            # would never be resolved. Resolve the merged result as well.
+            if stack_prefix and unique_id and region:
+                merged_config = resolve_knowledge_base_ids(
+                    merged_config, stack_prefix, unique_id, region, profile
+                )
             
             # Display summary and get confirmation
             if not display_changes_summary('merge', changes, file_config, existing_config, config_dir):

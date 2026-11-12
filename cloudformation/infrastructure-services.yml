@@ -199,12 +199,11 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                Resource: 
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-canvas-v1:0'
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/stability.stable-diffusion-xl-v1'
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/stability.sd3-large-v1:0'
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/stability.sd3-5-large-v1:0'
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/stability.*'
+                # Any model, so switching image models needs no IAM change. All
+                # regions, because cross-region inference profiles route there.
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*'
         - PolicyName: S3Access
           PolicyDocument:
             Version: '2012-10-17'

@@ -1997,7 +1997,13 @@ deploy_knowledge_bases() {
     local embedding_model="amazon.titan-embed-text-v2:0"
     
     if [ -z "$data_bucket" ] || [ -z "$opensearch_collection_arn" ] || [ -z "$opensearch_collection_endpoint" ] || [ -z "$bedrock_role_arn" ]; then
-        print_error "Could not retrieve required infrastructure outputs"
+        local missing_outputs=""
+        [ -z "$data_bucket" ] && missing_outputs="$missing_outputs SyntheticDataBucketName"
+        [ -z "$opensearch_collection_arn" ] && missing_outputs="$missing_outputs OpenSearchCollectionArn"
+        [ -z "$opensearch_collection_endpoint" ] && missing_outputs="$missing_outputs OpenSearchCollectionEndpoint"
+        [ -z "$bedrock_role_arn" ] && missing_outputs="$missing_outputs BedrockExecutionRoleArn"
+        print_error "Could not read outputs from stack '$infrastructure_core_stack' in $AWS_REGION:$missing_outputs"
+        print_error "Check that --stack-prefix ($STACK_PREFIX) matches the prefix the infrastructure was deployed with."
         exit 1
     fi
     
@@ -2907,19 +2913,25 @@ print(arn)
     # Run agentcore configure from the agent directory
     print_status "Configuring agent via AgentCore CLI..."
     
-    # Execution role is REQUIRED and MUST follow the AgentCoreRole- naming pattern
-    # If the role doesn't match, create/ensure the correct one regardless
+    # Execution role is REQUIRED and MUST follow the AgentCoreRole- naming pattern.
+    # Always run the ensure step: on an existing role it writes the current policy
+    # as a new default version, so permissions added since the role was created
+    # (e.g. bedrock:GetInferenceProfile) reach deployments that already exist.
     local expected_role_name="AgentCoreRole-${agentcore_agent_name}"
-    if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+    if [ -n "$role_arn" ] && [[ "$role_arn" == *"/AgentCoreRole-"* ]]; then
+        expected_role_name="${role_arn##*/}"
+        print_status "Refreshing permissions on execution role: $expected_role_name"
+    else
         if [ -n "$role_arn" ]; then
             print_warning "Rejecting non-standard role: $role_arn"
         fi
         print_status "Creating/ensuring correct execution role: $expected_role_name"
-        role_arn=""
-        
-        # Force-create the role using deploy_agentcore_manual.py
-        local force_role_output=""
-        force_role_output=$($PYTHON_CMD -c "
+    fi
+    role_arn=""
+
+    # Create the role, or refresh its policy if it exists (deploy_agentcore_manual.py)
+    local force_role_output=""
+    force_role_output=$($PYTHON_CMD -c "
 import sys, os, logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 sys.path.insert(0, '${PROJECT_ROOT}/agentcore/deployment')
@@ -2934,16 +2946,15 @@ role_name = '${expected_role_name}'
 arn = deployer.create_agent_runtime_role('${STACK_PREFIX}', role_name)
 print(arn)
 " 2>&1)
-        role_arn=$(echo "$force_role_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
-        
-        if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
-            print_error "Failed to create execution role. Output:"
-            echo "$force_role_output" | tail -20
-            print_error "Cannot deploy without a valid AgentCoreRole- execution role."
-            return 1
-        fi
-        print_status "✅ Using execution role: $role_arn"
+    role_arn=$(echo "$force_role_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
+
+    if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+        print_error "Failed to create or update execution role. Output:"
+        echo "$force_role_output" | tail -20
+        print_error "Cannot deploy without a valid AgentCoreRole- execution role."
+        return 1
     fi
+    print_status "✅ Using execution role: $role_arn"
     
     local configure_cmd="$AGENTCORE_BIN configure"
     configure_cmd="$configure_cmd --entrypoint handler.py"
@@ -2992,22 +3003,14 @@ print(arn)
     deploy_cmd="$deploy_cmd --env PYTHONDONTWRITEBYTECODE=1"
     deploy_cmd="$deploy_cmd --env PYTHONPATH=/app/agentcore/shared"
 
-    # KB RetrieveAndGenerate model. Current Claude models are INFERENCE_PROFILE-only
-    # (no ON_DEMAND), so this must be an account-scoped inference-profile ARN.
-    # Resolve the account id (profile-aware) to build the ARN.
-    local toolkit_account_id=""
-    if [ -n "$AWS_PROFILE" ]; then
-        toolkit_account_id=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --query 'Account' --output text 2>/dev/null || echo "")
+    # KB RetrieveAndGenerate model. By default the runtime uses each agent's own
+    # configured model_id. Set KB_MODEL_ID (a model ID, inference-profile ID or
+    # ARN) only to force one model for every knowledge base query.
+    if [ -n "${KB_MODEL_ID:-}" ]; then
+        deploy_cmd="$deploy_cmd --env KB_MODEL_ID=$KB_MODEL_ID"
+        print_status "KB generation model (override): $KB_MODEL_ID"
     else
-        toolkit_account_id=$(aws sts get-caller-identity --query 'Account' --output text 2>/dev/null || echo "")
-    fi
-    toolkit_account_id=$(echo "$toolkit_account_id" | tr -d '\n\r\t ')
-    if [ -n "$toolkit_account_id" ] && [ "$toolkit_account_id" != "None" ]; then
-        local kb_model_arn="arn:aws:bedrock:${toolkit_region}:${toolkit_account_id}:inference-profile/global.anthropic.claude-haiku-5-5"
-        deploy_cmd="$deploy_cmd --env KB_MODEL_ARN=$kb_model_arn"
-        print_status "KB generation model: $kb_model_arn"
-    else
-        print_warning "Could not resolve account id — KB_MODEL_ARN not set; KB retrieval will use the (legacy) default and likely fail"
+        print_status "KB generation model: each agent's configured model"
     fi
 
     if [ -n "$knowledgebases" ]; then

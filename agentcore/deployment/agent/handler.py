@@ -2023,8 +2023,10 @@ def retrieve_knowledge_base_results_tool(
     kb_id = get_kb_id_from_config(agent_name)
     logger.info(f"🔧 TOOL: KB ID for {agent_name}: {kb_id}")
     result_string = "<sources>"
+    # Failures return an explicit error. An empty string reads to the model as
+    # "the knowledge base has no matching records".
     if kb_id is None:
-        return ""
+        return f"KNOWLEDGE BASE ERROR: no knowledge base is configured for agent '{agent_name}'."
 
     if collected_sources is None:
         collected_sources = {}
@@ -2039,7 +2041,13 @@ def retrieve_knowledge_base_results_tool(
 
     if not kb_result:
         logger.warning(f"⚠️ TOOL: KB query returned None for {agent_name}")
-        return ""
+        return f"KNOWLEDGE BASE ERROR: the query for agent '{agent_name}' failed before reaching the knowledge base."
+    if kb_result.get("error"):
+        logger.warning(f"⚠️ TOOL: KB query failed for {agent_name}: {kb_result['error']}")
+        return (
+            f"KNOWLEDGE BASE ERROR: the query for agent '{agent_name}' failed: "
+            f"{kb_result['error']}. This is a system error, not an empty result."
+        )
 
     citations = kb_result.get("citations", [])
     for citation in citations:
@@ -2275,6 +2283,34 @@ def trim_context_messages(messages: List[Dict[str, Any]], max_messages: int = MA
     trimmed = messages[-max_messages:]
     logger.info(f"✂️ CONTEXT_TRIM: Trimmed {len(messages) - max_messages} old messages, keeping {len(trimmed)}")
     return trimmed
+
+
+def strip_reasoning_blocks(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Remove reasoningContent (thinking) blocks from completed turns.
+
+    Bedrock binds each thinking block's signature to the system prompt it was
+    generated under, and rejects the request ("Invalid signature in thinking
+    block") when the history is replayed under a different one, e.g. after the
+    agent is rebuilt with freshly loaded instructions. Thinking from earlier
+    turns is optional for Claude, so dropping it is safe between invocations.
+    Never call this on a turn that is still in a tool-use loop.
+    """
+    cleaned = []
+    for msg in messages:
+        content = msg.get("content")
+        if not isinstance(content, list):
+            cleaned.append(msg)
+            continue
+        kept = [
+            block for block in content
+            if not (isinstance(block, dict) and "reasoningContent" in block)
+        ]
+        if not kept:
+            # A message that held only thinking has nothing left to send.
+            continue
+        cleaned.append({**msg, "content": kept})
+    return cleaned
 
 
 class GenericAgent:
@@ -2755,7 +2791,19 @@ async def agent_invocation(payload, context):
 
         # Check if we need to create or recreate the agent
         agent_type_changed = (current_agent_name is not None and current_agent_name != agent_name)
-        _flush_log(f"🔄 AGENT_INVOCATION: agent_type_changed={agent_type_changed}, current={current_agent_name}, new={agent_name}")
+        # A warm agent holds the previous conversation's messages. Reusing it for
+        # another session leaks that history into the new chat, so rebuild it and
+        # let create_orchestrator restore this session's own history.
+        loaded_session_id = orchestrator_instance.session_id
+        session_changed = (
+            agent is not None
+            and bool(session_id)
+            and loaded_session_id != session_id
+        )
+        _flush_log(
+            f"🔄 AGENT_INVOCATION: agent_type_changed={agent_type_changed}, "
+            f"session_changed={session_changed}, current={current_agent_name}, new={agent_name}"
+        )
         
         # Access global context store
         global agent_context_store
@@ -2764,23 +2812,32 @@ async def agent_invocation(payload, context):
         context_session_key = session_id if session_id else "default_session"
         _flush_log(f"🔄 AGENT_INVOCATION: context_session_key={context_session_key}")
         
-        if agent is None or agent_type_changed:
-            _flush_log(f"🏗️ AGENT_INVOCATION: Need to create agent (agent is None: {agent is None}, type_changed: {agent_type_changed})")
-            # Need to create a new agent (first time or agent type changed)
+        if agent is None or agent_type_changed or session_changed:
+            _flush_log(
+                f"🏗️ AGENT_INVOCATION: Need to create agent (agent is None: {agent is None}, "
+                f"type_changed: {agent_type_changed}, session_changed: {session_changed})"
+            )
             
-            # SAVE current agent's context before switching (if switching)
-            if agent_type_changed and agent is not None and current_agent_name:
-                # Initialize session entry if needed
-                if context_session_key not in agent_context_store:
-                    agent_context_store[context_session_key] = {}
+            # SAVE the outgoing agent's context under the session it belongs to
+            if agent is not None and current_agent_name:
+                outgoing_session_key = loaded_session_id or "default_session"
+                if outgoing_session_key not in agent_context_store:
+                    agent_context_store[outgoing_session_key] = {}
                 
                 # Deep copy messages to preserve state
                 try:
                     saved_messages = copy.deepcopy(agent.messages) if hasattr(agent, 'messages') and agent.messages else []
                     # Trim to prevent unbounded memory growth
                     saved_messages = trim_context_messages(saved_messages, 8)
-                    agent_context_store[context_session_key][current_agent_name] = saved_messages
-                    _flush_log(f"💾 CONTEXT_SAVE: Saved {len(saved_messages)} messages for {current_agent_name}")
+                    # The rebuilt agent reloads its instructions, so its system
+                    # prompt can differ from the one these thinking blocks were
+                    # signed under.
+                    saved_messages = strip_reasoning_blocks(saved_messages)
+                    agent_context_store[outgoing_session_key][current_agent_name] = saved_messages
+                    _flush_log(
+                        f"💾 CONTEXT_SAVE: Saved {len(saved_messages)} messages for "
+                        f"{current_agent_name} (session {outgoing_session_key})"
+                    )
                 except Exception as e:
                     _flush_log(f"⚠️ CONTEXT_SAVE: Failed to save context for {current_agent_name}: {e}", "WARNING")
             
@@ -2871,46 +2928,10 @@ async def agent_invocation(payload, context):
                     if hasattr(agent.conversation_manager, 'memory_id'):
                         agent.conversation_manager.memory_id = memory_id
                         _flush_log(f"♻️ Updated conversation_manager memory_id to {memory_id}")
-                    
-                    # Retrieve conversation history from memory and inject into system prompt
-                    if hasattr(agent.conversation_manager, 'retrieve_conversation_history'):
-                        try:
-                            history = agent.conversation_manager.retrieve_conversation_history()
-                            if history and len(history) > 0:
-                                # Format history for context injection
-                                # Only include clean text messages, skip tool-related content
-                                context_messages = []
-                                for msg in history:
-                                    role = msg.get("role", "user").title()
-                                    content = msg.get("content", [])
-                                    if isinstance(content, list) and len(content) > 0:
-                                        text = content[0].get("text", "") if isinstance(content[0], dict) else str(content[0])
-                                    else:
-                                        text = str(content)
-                                    
-                                    # Skip tool-related messages entirely
-                                    if any(marker in text for marker in [
-                                        "'toolUse'", '"toolUse"', "toolUse",
-                                        "'toolResult'", '"toolResult"', "toolResult",
-                                        "tooluse_", "tool_use_id"
-                                    ]):
-                                        continue
-                                    
-                                    # Skip empty or very short messages
-                                    if not text or len(text.strip()) < 3:
-                                        continue
-                                    
-                                    # Truncate long messages for context
-                                    context_messages.append(f"{role}: {text[:500]}")
-                                
-                                if context_messages:
-                                    history_context = "\n".join(context_messages[-10:])  # Last 10 messages
-                                    if hasattr(agent, 'system_prompt') and agent.system_prompt:
-                                        agent.system_prompt += f"\n\n## Recent Conversation History\n{history_context}\n\nContinue the conversation naturally based on this context."
-                                        _flush_log(f"📂 Injected {len(context_messages)} history messages into system prompt")
-                        except Exception as hist_err:
-                            _flush_log(f"⚠️ Failed to retrieve/inject conversation history: {hist_err}", "WARNING")
                 
+                # The reused agent already holds this session's messages. Its system
+                # prompt must stay fixed: Bedrock rejects earlier thinking blocks once
+                # the system prompt they were signed under changes.
                 _flush_log(f"♻️ Agent reused for {agent_name} with session {session_id}")
 
         # Publish the live conversation's session id to the A2A tools before any of
@@ -3034,10 +3055,6 @@ async def agent_invocation(payload, context):
                     if event.get("message") and event.get("message").get("content"):
                         event["teamName"] = orchestrator_instance.team_name
                         yield event
-                        # After stream completes, yield sources as a separate event
-                        if collected_sources and collected_sources != {}:
-                            _flush_log(f"📦 STREAM: Yielding sources")
-                            yield {"type": "sources", "sources": collected_sources}
                 
                 _flush_log(f"✅ STREAM: Completed with {event_count} events")
                 _session_checkpoint(
@@ -3089,11 +3106,6 @@ async def agent_invocation(payload, context):
 
                     # Yield the response
                     yield response_text
-
-                    # Yield sources after response
-                    if collected_sources:
-                        _flush_log(f"📦 FALLBACK: Yielding sources with {len(collected_sources)} sources")
-                        yield {"type": "sources", "sources": collected_sources}
                         
                 except Exception as fallback_error:
                     _flush_log(f"❌ FALLBACK: Non-streaming failed: {fallback_error}", "ERROR")
@@ -3165,10 +3177,6 @@ async def agent_invocation(payload, context):
 
                 else:
                     yield "💬 RESPONSE: Analysis completed successfully."
-
-                # Yield sources at the end
-                if collected_sources:
-                    yield {"type": "sources", "sources": collected_sources}
 
             except Exception as response_error:
                 _flush_log(f"❌ NON-STREAM: Response processing failed: {response_error}", "ERROR")
