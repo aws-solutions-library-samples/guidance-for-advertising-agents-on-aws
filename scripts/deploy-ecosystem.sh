@@ -1997,7 +1997,13 @@ deploy_knowledge_bases() {
     local embedding_model="amazon.titan-embed-text-v2:0"
     
     if [ -z "$data_bucket" ] || [ -z "$opensearch_collection_arn" ] || [ -z "$opensearch_collection_endpoint" ] || [ -z "$bedrock_role_arn" ]; then
-        print_error "Could not retrieve required infrastructure outputs"
+        local missing_outputs=""
+        [ -z "$data_bucket" ] && missing_outputs="$missing_outputs SyntheticDataBucketName"
+        [ -z "$opensearch_collection_arn" ] && missing_outputs="$missing_outputs OpenSearchCollectionArn"
+        [ -z "$opensearch_collection_endpoint" ] && missing_outputs="$missing_outputs OpenSearchCollectionEndpoint"
+        [ -z "$bedrock_role_arn" ] && missing_outputs="$missing_outputs BedrockExecutionRoleArn"
+        print_error "Could not read outputs from stack '$infrastructure_core_stack' in $AWS_REGION:$missing_outputs"
+        print_error "Check that --stack-prefix ($STACK_PREFIX) matches the prefix the infrastructure was deployed with."
         exit 1
     fi
     
