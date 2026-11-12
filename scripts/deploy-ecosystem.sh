@@ -2913,19 +2913,25 @@ print(arn)
     # Run agentcore configure from the agent directory
     print_status "Configuring agent via AgentCore CLI..."
     
-    # Execution role is REQUIRED and MUST follow the AgentCoreRole- naming pattern
-    # If the role doesn't match, create/ensure the correct one regardless
+    # Execution role is REQUIRED and MUST follow the AgentCoreRole- naming pattern.
+    # Always run the ensure step: on an existing role it writes the current policy
+    # as a new default version, so permissions added since the role was created
+    # (e.g. bedrock:GetInferenceProfile) reach deployments that already exist.
     local expected_role_name="AgentCoreRole-${agentcore_agent_name}"
-    if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+    if [ -n "$role_arn" ] && [[ "$role_arn" == *"/AgentCoreRole-"* ]]; then
+        expected_role_name="${role_arn##*/}"
+        print_status "Refreshing permissions on execution role: $expected_role_name"
+    else
         if [ -n "$role_arn" ]; then
             print_warning "Rejecting non-standard role: $role_arn"
         fi
         print_status "Creating/ensuring correct execution role: $expected_role_name"
-        role_arn=""
-        
-        # Force-create the role using deploy_agentcore_manual.py
-        local force_role_output=""
-        force_role_output=$($PYTHON_CMD -c "
+    fi
+    role_arn=""
+
+    # Create the role, or refresh its policy if it exists (deploy_agentcore_manual.py)
+    local force_role_output=""
+    force_role_output=$($PYTHON_CMD -c "
 import sys, os, logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 sys.path.insert(0, '${PROJECT_ROOT}/agentcore/deployment')
@@ -2940,16 +2946,15 @@ role_name = '${expected_role_name}'
 arn = deployer.create_agent_runtime_role('${STACK_PREFIX}', role_name)
 print(arn)
 " 2>&1)
-        role_arn=$(echo "$force_role_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
-        
-        if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
-            print_error "Failed to create execution role. Output:"
-            echo "$force_role_output" | tail -20
-            print_error "Cannot deploy without a valid AgentCoreRole- execution role."
-            return 1
-        fi
-        print_status "✅ Using execution role: $role_arn"
+    role_arn=$(echo "$force_role_output" | grep "^arn:aws:iam" | tail -1 | tr -d '\n\r\t ')
+
+    if [ -z "$role_arn" ] || [[ "$role_arn" != *"/AgentCoreRole-"* ]]; then
+        print_error "Failed to create or update execution role. Output:"
+        echo "$force_role_output" | tail -20
+        print_error "Cannot deploy without a valid AgentCoreRole- execution role."
+        return 1
     fi
+    print_status "✅ Using execution role: $role_arn"
     
     local configure_cmd="$AGENTCORE_BIN configure"
     configure_cmd="$configure_cmd --entrypoint handler.py"

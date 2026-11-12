@@ -635,6 +635,14 @@ class ManualAgentCoreDeployer:
                     "Resource": [f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
                 },
                 {
+                    # RetrieveAndGenerate is authorized against "*", so the ARN
+                    # patterns in BedrockModelInvocation never match it.
+                    "Sid": "BedrockRetrieveAndGenerate",
+                    "Effect": "Allow",
+                    "Action": ["bedrock:RetrieveAndGenerate"],
+                    "Resource": "*",
+                },
+                {
                     "Sid": "AgentCoreAccess",
                     "Effect": "Allow",
                     "Action": [

@@ -962,6 +962,14 @@ permissions_policy = {
             "Resource": [f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
         },
         {
+            # RetrieveAndGenerate is authorized against "*", so the ARN patterns
+            # in BedrockModelInvocation never match it.
+            "Sid": "BedrockRetrieveAndGenerate",
+            "Effect": "Allow",
+            "Action": ["bedrock:RetrieveAndGenerate"],
+            "Resource": "*",
+        },
+        {
             "Sid": "AgentCoreGatewayInvoke",
             "Effect": "Allow",
             "Action": [
@@ -1131,6 +1139,8 @@ try:
              "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*", f"arn:aws:bedrock:*:{account_id}:inference-profile/*"]},
             {"Sid": "BedrockInferenceProfileRead", "Effect": "Allow", "Action": ["bedrock:GetInferenceProfile"],
              "Resource": [f"arn:aws:bedrock:*:{account_id}:inference-profile/*"]},
+            {"Sid": "BedrockRetrieveAndGenerate", "Effect": "Allow", "Action": ["bedrock:RetrieveAndGenerate"],
+             "Resource": "*"},
             {"Sid": "AgentCoreGatewayInvoke", "Effect": "Allow",
              "Action": ["bedrock-agentcore:InvokeGateway", "bedrock-agentcore:GetGateway", "bedrock-agentcore:ListGateways", "bedrock-agentcore:ListGatewayTargets", "bedrock-agentcore:GetGatewayTarget"],
              "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*"},
