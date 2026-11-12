@@ -627,6 +627,14 @@ class ManualAgentCoreDeployer:
                     "Resource": ["arn:aws:bedrock:*::*/*", "arn:aws:bedrock:*:*:*",f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
                 },
                 {
+                    # RetrieveAndGenerate resolves an inference-profile modelArn (the KB helper's
+                    # Haiku 5.5 global profile) with GetInferenceProfile under the caller's credentials.
+                    "Sid": "BedrockInferenceProfileRead",
+                    "Effect": "Allow",
+                    "Action": ["bedrock:GetInferenceProfile"],
+                    "Resource": [f"arn:aws:bedrock:*:{account_id}:inference-profile/*"],
+                },
+                {
                     "Sid": "AgentCoreAccess",
                     "Effect": "Allow",
                     "Action": [
