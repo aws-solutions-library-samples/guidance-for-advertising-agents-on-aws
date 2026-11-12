@@ -3055,10 +3055,6 @@ async def agent_invocation(payload, context):
                     if event.get("message") and event.get("message").get("content"):
                         event["teamName"] = orchestrator_instance.team_name
                         yield event
-                        # After stream completes, yield sources as a separate event
-                        if collected_sources and collected_sources != {}:
-                            _flush_log(f"📦 STREAM: Yielding sources")
-                            yield {"type": "sources", "sources": collected_sources}
                 
                 _flush_log(f"✅ STREAM: Completed with {event_count} events")
                 _session_checkpoint(
@@ -3110,11 +3106,6 @@ async def agent_invocation(payload, context):
 
                     # Yield the response
                     yield response_text
-
-                    # Yield sources after response
-                    if collected_sources:
-                        _flush_log(f"📦 FALLBACK: Yielding sources with {len(collected_sources)} sources")
-                        yield {"type": "sources", "sources": collected_sources}
                         
                 except Exception as fallback_error:
                     _flush_log(f"❌ FALLBACK: Non-streaming failed: {fallback_error}", "ERROR")
@@ -3186,10 +3177,6 @@ async def agent_invocation(payload, context):
 
                 else:
                     yield "💬 RESPONSE: Analysis completed successfully."
-
-                # Yield sources at the end
-                if collected_sources:
-                    yield {"type": "sources", "sources": collected_sources}
 
             except Exception as response_error:
                 _flush_log(f"❌ NON-STREAM: Response processing failed: {response_error}", "ERROR")
