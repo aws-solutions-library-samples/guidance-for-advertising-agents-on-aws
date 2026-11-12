@@ -2023,8 +2023,10 @@ def retrieve_knowledge_base_results_tool(
     kb_id = get_kb_id_from_config(agent_name)
     logger.info(f"🔧 TOOL: KB ID for {agent_name}: {kb_id}")
     result_string = "<sources>"
+    # Failures return an explicit error. An empty string reads to the model as
+    # "the knowledge base has no matching records".
     if kb_id is None:
-        return ""
+        return f"KNOWLEDGE BASE ERROR: no knowledge base is configured for agent '{agent_name}'."
 
     if collected_sources is None:
         collected_sources = {}
@@ -2039,7 +2041,13 @@ def retrieve_knowledge_base_results_tool(
 
     if not kb_result:
         logger.warning(f"⚠️ TOOL: KB query returned None for {agent_name}")
-        return ""
+        return f"KNOWLEDGE BASE ERROR: the query for agent '{agent_name}' failed before reaching the knowledge base."
+    if kb_result.get("error"):
+        logger.warning(f"⚠️ TOOL: KB query failed for {agent_name}: {kb_result['error']}")
+        return (
+            f"KNOWLEDGE BASE ERROR: the query for agent '{agent_name}' failed: "
+            f"{kb_result['error']}. This is a system error, not an empty result."
+        )
 
     citations = kb_result.get("citations", [])
     for citation in citations:

@@ -15,6 +15,37 @@ from strands import Agent, tool
 from strands_tools import http_request, use_llm, memory
 
 
+# RetrieveAndGenerate prompt templates. Both must contain $query$; generation needs
+# $search_results$, orchestration needs $conversation_history$, and
+# $output_format_instructions$ is what makes Bedrock return citations.
+KB_GENERATION_PROMPT = """You are a question answering agent. I will provide you with a set of search results and a user's question. Answer the question using only information from the search results. If the search results do not contain the answer, say that you could not find an exact answer. Do not treat a user's assertion as fact unless the search results confirm it.
+
+Here are the search results in numbered order:
+<search_results>
+$search_results$
+</search_results>
+
+Here is the user's question:
+<question>
+$query$
+</question>
+
+$output_format_instructions$"""
+
+KB_ORCHESTRATION_PROMPT = """Rewrite the user's latest request as a standalone search query for a knowledge base, using the conversation so far for context.
+
+<conversation_history>
+$conversation_history$
+</conversation_history>
+
+Here is the user's latest request:
+<question>
+$query$
+</question>
+
+$output_format_instructions$"""
+
+
 @dataclass
 class KnowledgeBaseSource:
     """Represents a knowledge base source citation"""
@@ -390,7 +421,16 @@ class KnowledgeBaseHelper:
                             'vectorSearchConfiguration': {
                                 'numberOfResults': max_results
                             }
-                        }
+                        },
+                        # Newer models (e.g. Claude Sonnet 5.5) have no built-in KB
+                        # prompts, and Bedrock rejects the call unless both templates
+                        # are supplied. Sending them always keeps any model usable.
+                        'generationConfiguration': {
+                            'promptTemplate': {'textPromptTemplate': KB_GENERATION_PROMPT}
+                        },
+                        'orchestrationConfiguration': {
+                            'promptTemplate': {'textPromptTemplate': KB_ORCHESTRATION_PROMPT}
+                        },
                     }
                 }
             )
@@ -478,7 +518,9 @@ class KnowledgeBaseHelper:
             )
             import traceback
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
-            return None
+            # Returned instead of None so the caller can tell a failed query from
+            # one that matched nothing.
+            return {"error": str(e), "model_arn": model_arn}
 
     # Used only when no override env var and no agent config names a model.
     DEFAULT_GENERATION_MODEL_ID = "global.anthropic.claude-haiku-5-5"
