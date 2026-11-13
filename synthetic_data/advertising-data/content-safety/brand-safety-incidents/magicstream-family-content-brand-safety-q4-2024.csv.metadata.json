@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "brand_safety_scorecard",
+        "category": "brand_safety",
+        "business_domain": "content_safety",
+        "analysis_type": "brand_safety_analysis",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "north_america",
+        "content_type": "safety_data"
+    }
+}

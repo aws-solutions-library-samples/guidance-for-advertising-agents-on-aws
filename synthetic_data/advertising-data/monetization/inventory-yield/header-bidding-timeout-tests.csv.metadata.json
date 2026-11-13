@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "header_bidding_test",
+        "category": "yield_optimization",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "timeout_test",
+        "brand": "MagicStream",
+        "industry": "digital_publishing",
+        "geographic_scope": "north_america",
+        "content_type": "experiment_data"
+    }
+}

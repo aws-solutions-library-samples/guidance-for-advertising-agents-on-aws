@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "live_event_inventory",
+        "category": "inventory_yield",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "live_sports_inventory_planning",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "north_america",
+        "content_type": "inventory_data"
+    }
+}

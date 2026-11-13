@@ -2826,6 +2826,55 @@
     background: rgba(73, 23, 130, 0.1);
 }
 
+/* Tool result bubble: one header line when collapsed, full output when expanded */
+.tool-result-bubble {
+    border-left: 4px solid #6842ff;
+    border-radius: 8px;
+    background: rgba(73, 23, 130, 0.04);
+    margin: 4px 0;
+    overflow: hidden;
+}
+
+.tool-result-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: #491782;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(73, 23, 130, 0.08);
+    }
+
+    .tool-result-icon {
+        font-size: 18px;
+    }
+
+    .tool-result-title {
+        flex: 1;
+    }
+
+    .tool-result-action {
+        font-size: 12px;
+        color: #6842ff;
+    }
+}
+
+.tool-result-body {
+    padding: 4px 16px 12px 16px;
+    max-height: 420px;
+    overflow-y: auto;
+    font-size: 13px;
+    border-top: 1px solid rgba(73, 23, 130, 0.1);
+}
+
 /* File Upload Styles */
 .chat-input {
     flex-direction: row;

@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "advertiser_demand",
+        "category": "media_planning",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "demand_analysis",
+        "brand": "MagicStream",
+        "industry": "family_brands",
+        "geographic_scope": "north_america",
+        "content_type": "demand_data"
+    }
+}

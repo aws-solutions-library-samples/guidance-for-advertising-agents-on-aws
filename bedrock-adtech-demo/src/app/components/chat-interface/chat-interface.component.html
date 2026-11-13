@@ -135,7 +135,8 @@
           [class.has-questions]="message.sender === 'agent' && message.data?.visualizationAnalysis?.questions?.length"
           [attr.data-agent]="message.agentName"
           [attr.data-message-id]="message.id"
-          [attr.data-tool-use-id]="message.data?.toolUseId">
+          [attr.data-tool-use-id]="message.data?.toolUseId"
+          [attr.data-testid]="message.data?.isHistoryRestoreNotice ? 'history-restore-notice' : null">
 
 
 
@@ -265,6 +266,13 @@
         </div>
       </ng-container>
 
+      <!-- Earlier messages of a resumed session are being read -->
+      <div class="message agent" *ngIf="isRestoringHistory" data-testid="history-restoring">
+        <div class="message-content">
+          <div class="message-text">Loading earlier messages...</div>
+        </div>
+      </div>
+
       <!-- Loading indicator -->
       <div class="message agent" *ngIf="isLoading">
         <div class="message-content">
@@ -370,7 +378,23 @@
 
 <!-- Template for agent messages with thinking/final content separation -->
 <ng-template #agentMessageTemplate let-message="message">
-  <ng-container *ngIf="getFormattedAgentMessage(message) as formatted">
+  <!-- Tool results (knowledge base, event lookup, MCP tools): collapsed until opened -->
+  <div *ngIf="message.data?.messageType === 'tool-result'" class="tool-result-bubble"
+    [class.expanded]="isToolResultExpanded(message.id)"
+    [style.border-left-color]="getAgentColor(message.agentName)">
+    <button type="button" class="tool-result-toggle" (click)="toggleToolResult(message.id)"
+      [attr.aria-expanded]="isToolResultExpanded(message.id)">
+      <span class="material-icons tool-result-icon">{{ message.data?.toolName === 'retrieve_knowledge_base_results_tool' ? 'menu_book' : 'build' }}</span>
+      <span class="tool-result-title">{{ getToolResultTitle(message) }}</span>
+      <span class="tool-result-action">{{ isToolResultExpanded(message.id) ? 'Hide' : 'Show' }}</span>
+      <span class="material-icons">{{ isToolResultExpanded(message.id) ? 'expand_less' : 'expand_more' }}</span>
+    </button>
+    <div *ngIf="isToolResultExpanded(message.id)" class="tool-result-body">
+      <markdown [data]="message.data?.finalResponse" ngPreserveWhitespaces></markdown>
+    </div>
+  </div>
+
+  <ng-container *ngIf="message.data?.messageType !== 'tool-result' && getFormattedAgentMessage(message) as formatted">
     <!-- Show thinking content if available -->
     <div *ngIf="formatted.thinkingContent && formatted.thinkingContent.trim()" class="thinking-section"
       [class.collapsed]="isThinkingCollapsed(message.id)">

@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "subscription_economics",
+        "category": "ad_load_optimization",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "subscription_tier_analysis",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "north_america",
+        "content_type": "revenue_data"
+    }
+}

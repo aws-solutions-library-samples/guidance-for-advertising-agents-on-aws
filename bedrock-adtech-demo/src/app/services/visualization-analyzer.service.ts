@@ -215,7 +215,20 @@ Return ONLY a JSON object — no other text:
       const jsonStr = this.extractJsonFromResponse(claudeResponse);
       if (!jsonStr) return null;
 
-      const parsed = JSON.parse(jsonStr);
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (parseError) {
+        // Log what the model returned so a malformed card can be diagnosed;
+        // the error alone gives only a character position.
+        const position = Number((parseError as Error).message.match(/position (\d+)/)?.[1] ?? -1);
+        const around = position >= 0 ? jsonStr.substring(Math.max(0, position - 120), position + 40) : jsonStr.slice(-160);
+        console.warn(
+          `VisualizationAnalyzer: model returned invalid JSON for ${template.templateId} ` +
+          `(${jsonStr.length} chars). Near the error: ${around}`
+        );
+        return null;
+      }
 
       if (!parsed.data || !parsed.templateId) return null;
 
@@ -450,7 +463,9 @@ Return ONLY a JSON object — absolutely no other text before or after it:
   private static readonly ARRAY_FIELDS = new Set([
     'insights', 'risks', 'recommendations', 'items', 'metrics',
     'subMetrics', 'allocations', 'channels', 'segments', 'tags',
-    'keywords', 'features', 'benefits', 'actions'
+    'keywords', 'features', 'benefits', 'actions',
+    'key_insights', 'keyElements', 'key_elements', 'opportunities',
+    'optimization_opportunities', 'risk_factors'
   ]);
 
   /**
@@ -507,9 +522,14 @@ Return ONLY a JSON object — absolutely no other text before or after it:
 
         let value = data[key];
 
-        // If this key should be an array but got a string, wrap it
-        if (VisualizationAnalyzerService.ARRAY_FIELDS.has(key) && typeof value === 'string') {
-          value = [value];
+        // If this key should be an array but got a string or a keyed object, convert it.
+        // Templates bind these with *ngFor, which throws NG0901 on a non-iterable.
+        if (VisualizationAnalyzerService.ARRAY_FIELDS.has(key)) {
+          if (typeof value === 'string') {
+            value = [value];
+          } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+            value = Object.values(value);
+          }
         }
 
         // Truncate verbose array items and cap array length for insight-like fields

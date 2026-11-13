@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "ad_load_tests",
+        "category": "ad_load_optimization",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "ad_load_test",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "north_america",
+        "content_type": "experiment_data"
+    }
+}

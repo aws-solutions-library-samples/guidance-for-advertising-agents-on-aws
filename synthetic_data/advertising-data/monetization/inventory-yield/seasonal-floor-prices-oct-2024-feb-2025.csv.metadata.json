@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "floor_pricing",
+        "category": "yield_optimization",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "seasonal_pricing",
+        "brand": "MagicStream",
+        "industry": "digital_publishing",
+        "geographic_scope": "north_america",
+        "content_type": "pricing_data"
+    }
+}

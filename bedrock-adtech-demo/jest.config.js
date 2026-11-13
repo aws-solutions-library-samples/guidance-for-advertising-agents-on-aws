@@ -4,7 +4,9 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.spec.ts', '**/*.test.ts'],
   moduleNameMapper: {
-    '^src/(.*)$': '<rootDir>/src/$1'
+    '^src/(.*)$': '<rootDir>/src/$1',
+    // uuid 14 is ESM-only; see src/test-support/uuid-shim.ts
+    '^uuid$': '<rootDir>/src/test-support/uuid-shim.ts'
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

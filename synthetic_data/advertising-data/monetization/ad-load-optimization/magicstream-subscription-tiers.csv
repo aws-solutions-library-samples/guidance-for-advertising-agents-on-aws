@@ -1,0 +1,4 @@
+"tier","monthly_price_usd","subscribers_millions","ad_minutes_per_hour","monthly_viewing_hours_per_sub","ads_viewed_per_sub_month","net_ad_cpm_usd","ad_arpu_usd_month","total_arpu_usd_month","monthly_churn_pct","churn_to_competitor_ad_free_pct","monthly_upgrade_rate_pct","monthly_downgrade_rate_pct","subscriber_lifetime_value_usd","competitor_ad_free_reference"
+"Premium (ad-free)","14.99","6.8","0.0","44.0","0","0.00","0.00","14.99","2.1","0.6","0.0","1.8","713.81","Lumen+ ad-free 12.99 USD; StreamVault Media ad-free 13.49 USD"
+"Standard (limited ads)","7.99","11.4","2.5","38.0","190","31.00","5.89","13.88","3.4","1.2","1.1","0.9","408.24","Lumen+ ad-free 12.99 USD; StreamVault Media ad-free 13.49 USD"
+"Basic (standard ads)","4.99","9.2","5.0","41.0","410","27.00","11.07","16.06","5.2","2.3","1.6","0.0","308.85","Lumen+ ad-free 12.99 USD; StreamVault Media ad-free 13.49 USD"

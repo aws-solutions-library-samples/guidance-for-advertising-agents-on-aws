@@ -1,0 +1,8 @@
+"channel","avg_cpm_usd","avg_completion_rate","avg_ctr","brand_lift_awareness_pts","brand_lift_consideration_pts","cost_per_completed_view_usd","recommended_weekly_frequency","typical_budget_share_pct","source_notes"
+"ctv","36.40","0.97","0.0000","4.9","3.1","0.0375","2-3","40-50","MagicStream 2024 energy and home services campaigns (18 campaigns)"
+"olv","21.80","0.79","0.0042","2.6","1.8","0.0276","3-4","20-30","MagicStream 2024 energy and home services campaigns (18 campaigns)"
+"audio","17.10","0.95","0.0000","2.2","1.4","0.0180","3-5","10-15","MagicStream 2024 energy and home services campaigns (11 campaigns)"
+"display","7.20","n/a","0.0021","1.1","0.9","n/a","5-8","10-15","MagicStream 2024 energy and home services campaigns (18 campaigns)"
+"ctv+olv","29.60","0.89","0.0021","6.3","4.0","0.0333","3-4","65-75","Combined exposure, brand lift vs. control"
+"ctv+audio","28.10","0.96","0.0000","6.8","4.4","0.0293","3-4","55-65","Combined exposure, brand lift vs. control; strongest in commute-heavy DMAs"
+"ctv+olv+audio+display","24.90","0.90","0.0024","7.4","4.9","0.0277","4-6","100","Full funnel; median cost per quote request 88 USD"

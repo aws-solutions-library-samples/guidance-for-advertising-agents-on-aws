@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "audience_segments",
+        "category": "audience_segmentation",
+        "business_domain": "audience_intelligence",
+        "analysis_type": "segment_sizing",
+        "brand": "MagicStream",
+        "industry": "home_energy",
+        "geographic_scope": "united_states",
+        "content_type": "audience_data"
+    }
+}

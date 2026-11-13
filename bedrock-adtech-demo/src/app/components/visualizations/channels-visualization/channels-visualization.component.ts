@@ -331,25 +331,33 @@ export class ChannelsVisualizationComponent implements OnChanges {
     return properties;
   }
 
+  // These lists come from model-generated JSON, which sometimes holds a string or
+  // an object instead of an array. *ngFor throws NG0901 on anything not iterable.
+  private toList(value: any): string[] {
+    if (value === null || value === undefined || value === '') return [];
+    if (Array.isArray(value)) return value.map((v: any) => (typeof v === 'string' ? v : String(v)));
+    if (typeof value === 'object') return Object.values(value).map((v: any) => String(v));
+    return [String(value)];
+  }
+
   // Helper method to get insights (generic or specific)
   getInsights(channel: any): string[] {
-    return channel.insights || channel.key_insights || [];
+    return this.toList(channel.insights || channel.key_insights);
   }
 
   // Helper method to get key elements (generic or specific)
   getKeyElements(channel: any): string[] {
-    return channel.keyElements || channel.key_elements || [];
+    return this.toList(channel.keyElements || channel.key_elements);
   }
 
   // Helper method to get risks (generic or specific)
   getRisks(channel: any): string[] {
-    const risks = channel.risks || channel.risk_factors || [];
-    return risks.map((r: any) => typeof r === 'string' ? r : String(r));
+    return this.toList(channel.risks || channel.risk_factors);
   }
 
   // Helper method to get opportunities (generic or specific)
   getOpportunities(channel: any): string[] {
-    return channel.opportunities || channel.optimization_opportunities || [];
+    return this.toList(channel.opportunities || channel.optimization_opportunities);
   }
 
   // Helper method to get recommendation (generic or specific)

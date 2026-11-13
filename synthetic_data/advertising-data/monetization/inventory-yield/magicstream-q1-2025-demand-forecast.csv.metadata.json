@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "demand_forecast",
+        "category": "inventory_forecasting",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "demand_forecast",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "north_america",
+        "content_type": "forecast_data"
+    }
+}

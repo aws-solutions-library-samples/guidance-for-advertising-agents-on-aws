@@ -228,6 +228,7 @@ external-agents/adcp/agents/seller/reference-seller/agentcore/agentcore.json
 
 # BEGIN AI-DLC:gitignore
 # AI-DLC: local working files
+aidlc/
 aidlc/active-space
 aidlc/spaces/*/intents/active-intent
 aidlc/.aidlc-clone-id

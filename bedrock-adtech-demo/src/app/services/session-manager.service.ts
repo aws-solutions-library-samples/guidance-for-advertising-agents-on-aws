@@ -12,6 +12,11 @@ export interface SessionInfo {
   title?: string;
   /** Which tab owns this session. Sessions are never shared between tabs. */
   tabId?: string;
+  /**
+   * Agents the user invoked in this session, in first-use order. Their memory
+   * actors are the ones read to restore the transcript on resume.
+   */
+  agentNames?: string[];
 }
 
 /**
@@ -169,6 +174,32 @@ export class SessionManagerService {
       session.messageCount = (session.messageCount || 0) + 1;
       session.lastUsed = new Date();
     }
+  }
+
+  /**
+   * Record that an agent was invoked in a session. Each name is kept once, in
+   * the order first used.
+   */
+  recordAgent(sessionId: string, agentName: string): void {
+    const session = this.sessions.get(sessionId);
+    const name = (agentName || '').trim();
+    if (!session || !name) {
+      return;
+    }
+    const agentNames = session.agentNames || [];
+    if (!agentNames.includes(name)) {
+      session.agentNames = [...agentNames, name];
+    }
+  }
+
+  /** Whether this page load created the session. */
+  hasSession(sessionId: string): boolean {
+    return this.sessions.has(sessionId);
+  }
+
+  /** A session this page load created, or null. Does not change which session is active. */
+  getSession(sessionId: string): SessionInfo | null {
+    return this.sessions.get(sessionId) || null;
   }
 
   /**
