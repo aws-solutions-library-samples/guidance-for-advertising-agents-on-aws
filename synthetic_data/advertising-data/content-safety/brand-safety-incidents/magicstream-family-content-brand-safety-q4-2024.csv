@@ -1,0 +1,8 @@
+"content_category","content_rating","content_hours","ad_impressions_millions","brand_safety_score_pct","incidents","incident_types","avg_cpm_usd","family_safe_cpm_premium_pct","verification_vendor","period_start","period_end"
+"Animated family series","G","4200","310.0","99.2","2","Off-brand toy ad mislabeled for 8+","44.00","18","ClearView Verify","2024-10-01","2024-12-31"
+"Family live-action series (incl. Enchanted Kingdoms)","PG","3100","420.0","98.7","5","Fantasy violence flagged by an advertiser rule set","47.00","21","ClearView Verify","2024-10-01","2024-12-31"
+"Family movies","PG","2600","280.0","98.4","6","Mild language in 2 titles; trailer adjacency","42.00","15","ClearView Verify","2024-10-01","2024-12-31"
+"Kids educational","G","1500","95.0","99.6","0","","38.00","12","ClearView Verify","2024-10-01","2024-12-31"
+"Family competition and reality","PG","900","120.0","97.6","7","Contestant conflict scenes; user-generated clip in promo","36.00","8","ClearView Verify","2024-10-01","2024-12-31"
+"Teen fantasy and adventure","PG-13","1100","160.0","96.9","9","Peril and mild violence; 2 alcohol-adjacent placements","39.00","6","ClearView Verify","2024-10-01","2024-12-31"
+"All family content (weighted)","G-PG-13","13400","1385.0","98.5","29","Impression-weighted overall score","42.82","15","ClearView Verify","2024-10-01","2024-12-31"

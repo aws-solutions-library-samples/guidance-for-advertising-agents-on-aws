@@ -12,7 +12,8 @@ WHAT IS WRITTEN
 ---------------
 Two config shapes, because they are reached two different ways:
 
-1. ``external_agent_configs`` entry ``AdCPBuyerAgent`` on AgencyAgent — reached with
+1. ``external_agent_configs`` entry ``AdCPBuyerAgent`` on each consumer in CONSUMER_AGENTS
+   (AgencyAgent and MediaPlanningAgent) — reached with
    ``invoke_specialist(agent_name="AdCPBuyerAgent")``.
 2. Top-level ``agent_configs`` entry ``AdCPBuyer`` — directly selectable in the UI.
 
@@ -53,7 +54,8 @@ import json
 import os
 from typing import Any, Dict, List, Tuple
 
-CONSUMER_AGENT = "AgencyAgent"
+# Orchestrators that reach the AdCP buyer. Each gets the same external entry and credential path.
+CONSUMER_AGENTS = ("AgencyAgent", "MediaPlanningAgent")
 EXTERNAL_ENTRY_NAME = "AdCPBuyerAgent"
 TOP_LEVEL_ID = "AdCPBuyer"
 AUTH_TYPE = "oauth_m2m"
@@ -188,21 +190,27 @@ def put_credential(
 # --------------------------------------------------------------------------------------------------
 
 def apply_external_connection(data: dict, arn: str, ssm_path: str) -> List[str]:
-    """Upsert the AdCPBuyerAgent entry in AgencyAgent's external_agent_configs.
+    """Upsert the AdCPBuyerAgent entry in every consumer's external_agent_configs.
 
     Also adds the entry name to ``tool_agent_names`` and gives it a ``configured_colors`` value: the
     UI reads both, and a correctly wired connection with neither is invisible in the console.
     """
     notes: List[str] = []
     agents = data.setdefault("agent_configs", {})
-    consumer = agents.get(CONSUMER_AGENT)
-    if consumer is None:
-        notes.append(
-            f"⚠️  {CONSUMER_AGENT} is absent from agent_configs; the external connection was not "
-            f"written. Nothing can reach {EXTERNAL_ENTRY_NAME} via invoke_specialist."
-        )
-        return notes
+    for consumer_name in CONSUMER_AGENTS:
+        consumer = agents.get(consumer_name)
+        if consumer is None:
+            notes.append(
+                f"⚠️  {consumer_name} is absent from agent_configs; the external connection was not "
+                f"written there, so it cannot reach {EXTERNAL_ENTRY_NAME} via invoke_specialist."
+            )
+            continue
+        _apply_consumer_entry(data, consumer_name, consumer, arn, ssm_path)
+    return notes
 
+
+def _apply_consumer_entry(data: dict, consumer_name: str, consumer: dict, arn: str, ssm_path: str) -> None:
+    """Upsert the AdCPBuyerAgent entry on one consumer."""
     entries = consumer.setdefault("external_agent_configs", [])
     entry = next(
         (e for e in entries if str(e.get("name", "")).strip() == EXTERNAL_ENTRY_NAME), None
@@ -239,8 +247,7 @@ def apply_external_connection(data: dict, arn: str, ssm_path: str) -> List[str]:
     colors = data.setdefault("configured_colors", {})
     colors.setdefault(EXTERNAL_ENTRY_NAME, TOP_LEVEL_SPEC["color"])
 
-    _log(f"  ✅ {CONSUMER_AGENT} → {EXTERNAL_ENTRY_NAME}: {arn} [auth={AUTH_TYPE}]")
-    return notes
+    _log(f"  ✅ {consumer_name} → {EXTERNAL_ENTRY_NAME}: {arn} [auth={AUTH_TYPE}]")
 
 
 def apply_top_level_agent(
@@ -307,13 +314,16 @@ def verify_paths_provisioned(data: dict, provisioned: set) -> List[str]:
     if top_path and top_path not in provisioned:
         problems.append(f"{TOP_LEVEL_ID} names {top_path}, which was not provisioned")
 
-    consumer = agents.get(CONSUMER_AGENT) or {}
-    for e in consumer.get("external_agent_configs") or []:
-        if str(e.get("name", "")).strip() != EXTERNAL_ENTRY_NAME:
-            continue
-        path = (e.get("oauthClientCredentials") or {}).get("ssmPath") or ""
-        if path and path not in provisioned:
-            problems.append(f"{EXTERNAL_ENTRY_NAME} names {path}, which was not provisioned")
+    for consumer_name in CONSUMER_AGENTS:
+        consumer = agents.get(consumer_name) or {}
+        for e in consumer.get("external_agent_configs") or []:
+            if str(e.get("name", "")).strip() != EXTERNAL_ENTRY_NAME:
+                continue
+            path = (e.get("oauthClientCredentials") or {}).get("ssmPath") or ""
+            if path and path not in provisioned:
+                problems.append(
+                    f"{consumer_name}.{EXTERNAL_ENTRY_NAME} names {path}, which was not provisioned"
+                )
     return problems
 
 

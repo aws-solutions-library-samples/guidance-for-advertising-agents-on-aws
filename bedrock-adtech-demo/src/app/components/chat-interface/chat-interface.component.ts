@@ -17,10 +17,11 @@ import { TextUtils } from 'src/app/utils/text-utils';
 import { Content, Publisher } from 'src/app/models/advertising';
 import { AgentSummary, SummaryModalState } from '../agent-summary-modal/agent-summary-modal.component';
 import { VisibilitySettings } from '../visibility-settings-modal/visibility-settings-modal.component';
-import { BedrockAgentCoreClient, ListEventsCommand } from '@aws-sdk/client-bedrock-agentcore';
 import { from } from 'rxjs';
 import { ScenarioExample, AgentParticipant, AttachedFile, KnowledgeBaseSource, Message, AgentSuggestion, EnrichedAgent, PendingSpecialistInvocation, VisualizationAnalysisResult, ViewMode } from 'src/app/models/application-models';
 import { VisualizationAnalyzerService } from '../../services/visualization-analyzer.service';
+import { SessionHistoryResult, SessionHistoryService } from '../../services/session-history.service';
+import { HistoryEntry } from 'src/app/utils/session-history';
 
 
 
@@ -62,6 +63,12 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   messages: Message[] = [];
   currentMessage = '';
   isLoading = false;
+  /** True while a resumed session's earlier messages are being read. The input stays usable. */
+  isRestoringHistory = false;
+  /** Incremented per restore, so a result for a session the user has left is ignored. */
+  private historyRestoreId = 0;
+  /** NFR3: a slow history read gives up after this long and shows the failure notice. */
+  private static readonly HISTORY_RESTORE_TIMEOUT_MS = 10000;
   showScenarios = true;
   selectedScenarioIndex: number | null = null;
   @Output() closeContextSelectorEvent: EventEmitter<any> = new EventEmitter<any>();
@@ -71,6 +78,7 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   private isFirstMessage = true; // Track if this is the first message of the session
   private agentFirstMessages = new Map<string, boolean>(); // Track first message per agent
   private thinkingCollapsed = new Map<string, boolean>();
+  private toolResultExpanded = new Map<string, boolean>(); // Tool-result bubbles start collapsed
   private recentMessageHashes = new Set<string>(); // Track recent message content to prevent duplicates
   private changeDetectionPending = false; // Throttle change detection
   rightNow = new Date();
@@ -1498,40 +1506,6 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
       .replace(/[-_]/g, '') // Remove hyphens and underscores
       .trim();
   }
-  async getEventsByActorAndSession(actorId) {
-    actorId = (this.agentConfig.getAgent(actorId)?.name || actorId).replaceAll(" ", "_")
-    const credentials = await this.awsConfig.getAwsConfig();
-    if (!credentials?.credentials) {
-      throw new Error('AWS credentials not available');
-    }
-    const client = new BedrockAgentCoreClient({ region: this.awsConfig.getRegion(), credentials: credentials.credentials }); // e.g., "us-east-1"
-
-    const input = {
-      memoryId: this.awsConfig.getMemoryRecordId(),
-      actorId: actorId,
-      sessionId: this.getCurrentSessionId(),
-      // Optional: You can add filters, pagination, and payload inclusion
-      // filter: {
-      //   branch: {
-      //     name: "main", // Example filter by branch name
-      //   },
-      // },
-      // includePayloads: true, // Set to true to include event payloads
-      // maxResults: 10, // Max number of events to retrieve
-      // nextToken: "your-next-token", // For pagination
-    };
-
-    try {
-      const command = new ListEventsCommand(input);
-      const response = await client.send(command);
-      console.log(response)
-      return response.events; // Returns an array of event objects
-    } catch (error) {
-      console.error("Error retrieving events:", error);
-      throw error;
-    }
-  }
-
   // Prompt generation system for Claude Haiku summarization
   private buildSummaryPrompt(agentMessages: Message[], agentDisplayName: string): string {
     if (!agentMessages || agentMessages.length === 0) {
@@ -1673,7 +1647,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     private agentDynamoDBService: AgentDynamoDBService,
     private demoTrackingService: DemoTrackingService,
     private pdfExportService: PdfExportService,
-    private visualizationAnalyzerService: VisualizationAnalyzerService
+    private visualizationAnalyzerService: VisualizationAnalyzerService,
+    private sessionHistoryService: SessionHistoryService
   ) {
     // Session management is now handled by SessionManagerService
   }
@@ -2387,6 +2362,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
 
     // Clear agent participants to reset color assignments
     this.agentParticipants.clear();
@@ -2552,6 +2528,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
     this.agentFirstMessages.clear();
     this.isFirstMessage = true;
 
@@ -2743,6 +2720,8 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
       // existing session is worth resuming — the counter previously had no
       // callers, so every session looked empty and tabs always started a new one.
       this.sessionManager.updateSessionMessageCount(customSessionId);
+      // The agents recorded here are the memory actors read when this session is resumed.
+      this.sessionManager.recordAgent(customSessionId, targetAgent.name);
 
       const streamingSubscription = this.bedrockService.invokeAgentWithStreaming(agent, finalQuery, customSessionId, attachedFiles).subscribe({
         next: (event) => {
@@ -2948,8 +2927,33 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                 }
                 break;
 
-              case 'final-response':
               case 'tool-result':
+                {
+                  // Rendered as its own bubble, collapsed until the user opens it.
+                  // No visualization analysis: raw tool output is not an answer.
+                  const toolMetadata = (event as any).metadata || {};
+                  const toolResultMessage: Message = {
+                    id: `tool-result-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    text: messageText,
+                    sender: 'agent',
+                    timestamp: new Date(),
+                    type: 'text',
+                    agentName: agentName,
+                    displayName: displayName,
+                    data: {
+                      isThinking: false,
+                      finalResponse: this.formatToolResultText(messageText),
+                      messageType: 'tool-result',
+                      contentType: 'tool-result',
+                      toolName: toolMetadata.toolName,
+                      toolUseId: toolMetadata.toolUseId
+                    }
+                  };
+                  this.addMessageIfNotDuplicate(toolResultMessage, agentInMessage);
+                }
+                break;
+
+              case 'final-response':
               case 'response':
                 // Always create a new message for final responses - don't update existing ones
                 messageText = this.removeLastFinalResponseText(agentName, messageText);
@@ -3274,7 +3278,10 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
 
             //console.log('🔍 Chunk messageType:', messageType, 'agentName:', agentName);
 
-            if (messageType === 'collaborator-response') {
+            if (messageType === 'tool-result') {
+              // Handled by the messageType switch above. Falling through would add a
+              // second, expanded copy of the bubble and run visualization analysis on it.
+            } else if (messageType === 'collaborator-response') {
               // Check if this is actually an AgentCore agent before treating as such
               const resolvedAgent = this.agentConfig.getAgentByAgentNameAndTeam(agentName, teamName);
               // Get metadata from the event if available
@@ -5436,6 +5443,48 @@ ${formattedJson}
     this.thinkingCollapsed.set(messageId, !current);
   }
 
+  isToolResultExpanded(messageId: string): boolean {
+    return this.toolResultExpanded.get(messageId) ?? false;
+  }
+
+  toggleToolResult(messageId: string): void {
+    this.toolResultExpanded.set(messageId, !this.isToolResultExpanded(messageId));
+  }
+
+  /** Header label for a tool-result bubble, e.g. "Knowledge base results". */
+  getToolResultTitle(message: Message): string {
+    const toolName: string = message.data?.toolName || '';
+    const text = message.text || '';
+    if (toolName === 'retrieve_knowledge_base_results_tool' || text.trim().startsWith('<sources>')) {
+      return text.startsWith('KNOWLEDGE BASE ERROR') ? 'Knowledge base error' : 'Knowledge base results';
+    }
+    if (!toolName) return 'Tool result';
+    const readable = toolName
+      .replace(/_tool$/, '')
+      .replace(/_/g, ' ')
+      .trim();
+    return `Tool result: ${readable}`;
+  }
+
+  /**
+   * Make raw tool output readable in markdown. The knowledge base tool returns
+   * <sources><source>...</source></sources>; each source becomes a list item.
+   */
+  formatToolResultText(text: string): string {
+    if (!text) return '';
+    const trimmed = text.trim();
+    if (trimmed.startsWith('<sources>')) {
+      const sources = Array.from(trimmed.matchAll(/<source>([\s\S]*?)<\/source>/g))
+        .map(match => match[1].trim())
+        .filter(source => source.length > 0);
+      if (sources.length === 0) {
+        return '_The knowledge base returned no matching passages._';
+      }
+      return sources.map(source => `- ${source.replace(/\n+/g, ' ')}`).join('\n');
+    }
+    return trimmed;
+  }
+
   getThinkingPreview(thinkingContent: string): string {
     if (!thinkingContent) return '';
 
@@ -7529,6 +7578,7 @@ ${formattedJson}
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
     this.agentParticipants.clear();
     this.currentAgentResponses.clear();
     this.subAgentThinkingMessages.clear();
@@ -8390,12 +8440,14 @@ This analysis shows the impact of weather on audience behavior.`;
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
     this.agentParticipants.clear();
     this.agentFirstMessages.clear();
     this.agentConfig.clearAgentColorCache();
     this.shouldScrollToBottom = true;
 
     const newSession = this.sessionManager.forceNewSession(this.tabId);
+    this.cancelHistoryRestore();
     this.currentSessionInfo = newSession;
     this.loadAvailableSessions();
     this.changeDetectorRef.markForCheck();
@@ -8422,6 +8474,7 @@ This analysis shows the impact of weather on audience behavior.`;
     this.recentMessageHashes.clear();
     this.referencesExpanded.clear();
     this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
     this.agentParticipants.clear();
     this.agentFirstMessages.clear();
     this.agentConfig.clearAgentColorCache();
@@ -8429,6 +8482,7 @@ This analysis shows the impact of weather on audience behavior.`;
 
     // Create new session via forceNewSession
     const newSession = this.sessionManager.forceNewSession(this.tabId);
+    this.cancelHistoryRestore();
     this.currentSessionInfo = newSession;
 
     // Refresh available sessions
@@ -8458,6 +8512,7 @@ This analysis shows the impact of weather on audience behavior.`;
       this.recentMessageHashes.clear();
       this.referencesExpanded.clear();
       this.thinkingCollapsed.clear();
+    this.toolResultExpanded.clear();
       this.agentParticipants.clear();
       this.agentFirstMessages.clear();
       this.agentConfig.clearAgentColorCache();
@@ -8472,7 +8527,111 @@ This analysis shows the impact of weather on audience behavior.`;
       this.changeDetectorRef.markForCheck();
 
       console.log(`🔄 Switched to session: ${session.sessionId}`);
+
+      void this.restoreSessionHistory(session.sessionId);
     }
+  }
+
+  /**
+   * Reads a resumed session's earlier messages back from AgentCore Memory and
+   * shows them. Does not set isLoading, so the user can send while it runs.
+   */
+  private async restoreSessionHistory(sessionId: string): Promise<void> {
+    const restoreId = ++this.historyRestoreId;
+    this.isRestoringHistory = true;
+    this.changeDetectorRef.markForCheck();
+
+    const result = await this.loadHistoryWithTimeout(sessionId);
+
+    // A newer restore owns the indicator and the transcript.
+    if (restoreId !== this.historyRestoreId || this.destroyed) {
+      return;
+    }
+    this.isRestoringHistory = false;
+    if (this.currentSessionInfo?.sessionId !== sessionId) {
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.applyRestoredHistory(result);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  /** A new session has nothing to restore; drop any read still running for the old one. */
+  private cancelHistoryRestore(): void {
+    this.historyRestoreId++;
+    this.isRestoringHistory = false;
+  }
+
+  private loadHistoryWithTimeout(sessionId: string): Promise<SessionHistoryResult> {
+    const timeoutMs = ChatInterfaceComponent.HISTORY_RESTORE_TIMEOUT_MS;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<SessionHistoryResult>(resolve => {
+      timeoutId = setTimeout(() => resolve({ entries: [], error: `timed out after ${timeoutMs} ms` }), timeoutMs);
+    });
+    return Promise.race([this.sessionHistoryService.loadHistory(sessionId), timeout]).finally(() =>
+      clearTimeout(timeoutId)
+    );
+  }
+
+  private applyRestoredHistory(result: SessionHistoryResult): void {
+    const restored = result.entries.map((entry, index) => this.toRestoredMessage(entry, index));
+    for (const agentName of new Set(result.entries.map(entry => entry.agentName))) {
+      // The next message to this agent continues the conversation, so it is not wrapped with context again.
+      this.agentFirstMessages.set(agentName, true);
+      const agent = this.agentConfig.getAgent(agentName);
+      if (agent) {
+        this.updateAgentParticipant(agent);
+      } else {
+        console.warn(`Session history: no agent configuration found for ${agentName}`);
+      }
+    }
+
+    if (result.error) {
+      console.error(`Session history: earlier messages could not be loaded (${result.error})`);
+      restored.push(this.createHistoryRestoreNotice());
+    }
+    if (restored.length === 0) {
+      return;
+    }
+
+    // Messages sent while the restore ran stay; display order comes from timestamps.
+    this.messages = [...restored, ...this.messages];
+    this.shouldScrollToBottom = true;
+    this.messagesUpdated.emit(this.messages);
+    this.bedrockService.updateChatMessages(this.messages);
+  }
+
+  private toRestoredMessage(entry: HistoryEntry, index: number): Message {
+    const id = `restored-${entry.timestamp.getTime()}-${index}`;
+    if (entry.role === 'user') {
+      return { id, text: entry.text, sender: 'user', timestamp: entry.timestamp };
+    }
+    // The final-response shape lets formatAgentMessage render <visualization-data> blocks
+    // already in the text. The visualization analyzer is not run for restored messages.
+    return {
+      id,
+      text: entry.text,
+      sender: 'agent',
+      timestamp: entry.timestamp,
+      type: 'text',
+      agentName: entry.agentName,
+      displayName: entry.agentName,
+      agent: this.agentConfig.getAgent(entry.agentName) || undefined,
+      data: { isThinking: false, finalResponse: entry.text, messageType: 'final-response' }
+    };
+  }
+
+  private createHistoryRestoreNotice(): Message {
+    const text = 'Earlier messages in this conversation could not be loaded.';
+    return {
+      id: `history-restore-notice-${Date.now()}`,
+      text,
+      sender: 'agent',
+      timestamp: new Date(),
+      type: 'text',
+      data: { isThinking: false, finalResponse: text, isHistoryRestoreNotice: true }
+    };
   }
 
   /**

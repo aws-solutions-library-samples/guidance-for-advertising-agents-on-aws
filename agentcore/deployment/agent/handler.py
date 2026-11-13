@@ -147,7 +147,6 @@ def list_s3_objects(bucket: str, prefix: str) -> list:
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands.tools.mcp import MCPClient
-from shared.short_term_memory_hook import ShortTermMemoryHook
 from bedrock_agentcore.memory import MemoryClient
 
 import boto3
@@ -2154,21 +2153,9 @@ def create_agent(agent_name, conversation_context, is_collaborator):
         cache_tools="default",
     )
 
+    # The conversation manager below is the agent's only memory writer. A second
+    # writer (ShortTermMemoryHook) stored every message twice, tool blocks included.
     hooks = []
-    if "default" in orchestrator_instance.memory_id:
-        logger.info(f"🏗️ CREATE_AGENT: Skipping memory hook for default memory_id")
-    else: 
-        if not is_collaborator:
-            # Normalize actor_id to comply with validation pattern
-            normalized_actor_id = agent_name.replace("_", "-")
-            hooks = [
-                ShortTermMemoryHook(
-                    memory_client=client,
-                    memory_id=orchestrator_instance.memory_id,
-                    actor_id=normalized_actor_id,
-                    session_id=orchestrator_instance.session_id,
-                )
-            ]
 
     # Load base instructions and add conversation context if available
     base_instructions = load_instructions_for_agent(agent_name=agent_name)
@@ -2390,28 +2377,13 @@ class GenericAgent:
             import traceback
 
             logger.error(f"   Traceback: {traceback.format_exc()}")
-        # Setup memory hooks
+        # The conversation manager created below is the orchestrator's only
+        # memory writer. A second writer (ShortTermMemoryHook) stored every
+        # message twice, tool blocks included.
         hooks = []
         self.session_id = session_id
         memory_id = memory_id or "default"
         self.memory_id = memory_id
-
-        if "default" in memory_id:
-            logger.info(f"⊘ Skipping memory hook for default memory_id")
-        else:
-            try:
-                # Normalize actor_id to comply with validation pattern
-                normalized_actor_id = agent_name.replace("_", "-")
-                hooks = [
-                    ShortTermMemoryHook(
-                        client, memory_id, normalized_actor_id, session_id
-                    )
-                ]
-            except Exception as e:
-                logger.error(f"✗ Failed to create memory hook: {e}")
-                import traceback
-
-                logger.error(f"   Traceback: {traceback.format_exc()}")
 
         # Load instructions
         logger.info(f"\n📝 Loading agent instructions...")

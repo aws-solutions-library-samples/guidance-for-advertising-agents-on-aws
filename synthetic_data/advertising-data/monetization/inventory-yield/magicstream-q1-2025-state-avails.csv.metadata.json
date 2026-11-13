@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "inventory_avails",
+        "category": "inventory_yield",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "inventory_availability_analysis",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "united_states",
+        "content_type": "inventory_data"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "audience_reach",
+        "category": "audience_segmentation",
+        "business_domain": "audience_intelligence",
+        "analysis_type": "reach_analysis",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "united_states",
+        "content_type": "audience_data"
+    }
+}

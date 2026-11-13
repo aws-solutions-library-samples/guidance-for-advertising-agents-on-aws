@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "yield_benchmarks",
+        "category": "yield_optimization",
+        "business_domain": "programmatic_advertising",
+        "analysis_type": "placement_analysis",
+        "brand": "MagicStream",
+        "industry": "digital_publishing",
+        "geographic_scope": "north_america",
+        "content_type": "performance_data"
+    }
+}

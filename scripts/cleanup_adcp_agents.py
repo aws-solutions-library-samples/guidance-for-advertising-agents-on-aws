@@ -62,7 +62,7 @@ _PREFIX_RE = re.compile(r"^[a-z][a-z0-9]{0,19}$")
 # Names written by scripts/wire_adcp_agents.py.
 WIRE_TOP_LEVEL_ID = "AdCPBuyer"
 WIRE_EXTERNAL_ENTRY = "AdCPBuyerAgent"
-WIRE_CONSUMER_AGENT = "AgencyAgent"
+WIRE_CONSUMER_AGENTS = ("AgencyAgent", "MediaPlanningAgent")
 
 KMS_PENDING_WINDOW_DAYS = 7
 
@@ -583,21 +583,33 @@ class Cleanup:
                 changed = True
             else:
                 _log(f"  - {WIRE_TOP_LEVEL_ID} entry points at a different instance; left in place")
-        consumer = agents.get(WIRE_CONSUMER_AGENT) or {}
-        entries = consumer.get("external_agent_configs") or []
-        kept = []
-        for e in entries:
-            if str(e.get("name", "")).strip() != WIRE_EXTERNAL_ENTRY:
-                kept.append(e)
-            elif self._owns(e, "arn", "runtime_arn"):
-                changed = True
-            else:
-                _log(f"  - {WIRE_EXTERNAL_ENTRY} entry points at a different instance; left in place")
-                kept.append(e)
-        if len(kept) != len(entries):
-            consumer["external_agent_configs"] = kept
-            tools = consumer.get("tool_agent_names") or []
-            consumer["tool_agent_names"] = [t for t in tools if t != WIRE_EXTERNAL_ENTRY]
+        removed_any = False
+        for consumer_name in WIRE_CONSUMER_AGENTS:
+            consumer = agents.get(consumer_name) or {}
+            entries = consumer.get("external_agent_configs") or []
+            kept = []
+            for e in entries:
+                if str(e.get("name", "")).strip() != WIRE_EXTERNAL_ENTRY:
+                    kept.append(e)
+                elif self._owns(e, "arn", "runtime_arn"):
+                    changed = True
+                else:
+                    _log(
+                        f"  - {consumer_name}.{WIRE_EXTERNAL_ENTRY} entry points at a different "
+                        "instance; left in place"
+                    )
+                    kept.append(e)
+            if len(kept) != len(entries):
+                removed_any = True
+                consumer["external_agent_configs"] = kept
+                tools = consumer.get("tool_agent_names") or []
+                consumer["tool_agent_names"] = [t for t in tools if t != WIRE_EXTERNAL_ENTRY]
+        still_wired = any(
+            str(e.get("name", "")).strip() == WIRE_EXTERNAL_ENTRY
+            for name in WIRE_CONSUMER_AGENTS
+            for e in ((agents.get(name) or {}).get("external_agent_configs") or [])
+        )
+        if removed_any and not still_wired:
             (data.get("configured_colors") or {}).pop(WIRE_EXTERNAL_ENTRY, None)
         if WIRE_TOP_LEVEL_ID not in agents:
             (data.get("configured_colors") or {}).pop(WIRE_TOP_LEVEL_ID, None)

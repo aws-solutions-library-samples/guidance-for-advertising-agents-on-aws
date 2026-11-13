@@ -3267,52 +3267,56 @@ Example format:
                                       }
                                       console.log('✅ AgentCore tool agent message emitted with toolUseId:', toolResult.toolUseId);
                                     } else {
-                                      console.log('⚠️ No agent-message wrapper found in tool result');
-                                      // Regular tool result without agent wrapper
+                                      // Plain tool result (knowledge base, event lookup, MCP tools).
+                                      const resultToolName = toolResult.toolUseId
+                                        ? this.toolUseNames.get(toolResult.toolUseId)
+                                        : undefined;
+                                      if (toolResult.toolUseId) {
+                                        this.toolUseNames.delete(toolResult.toolUseId);
+                                      }
 
-                                      console.log('✅ AgentCore tool result processed:', toolText.substring(0, 100) + '...');
+                                      let emittedVisualization = false;
                                       try {
                                         const agentCoreVisualizations = this.extractAllVisualizationsFromText(toolText);
-                                        console.log('🔍 Found AgentCore visualizations:', agentCoreVisualizations.length);
-
                                         for (const visualization of agentCoreVisualizations) {
-                                          if (visualization && visualization.visualizationType) {
-                                            const messageType = `${visualization.visualizationType}-visualization`;
-                                            const visualContent = visualization;
-                                            this.addToRecentEvents(sessionId, messageType, visualContent);
-                                            observer.next({
-                                              type: 'chunk',
-                                              data: JSON.stringify(visualization),
-                                              timestamp: new Date(),
-                                              agentName: resolvedAgent.name || resolvedAgent.id,
-                                              messageType: "visualization-data",
-                                              metadata: {
-                                                type: 'visualization-data',
-                                                toolUseId: toolResult.toolUseId,
-                                                name: toolResult.name
-                                              }
-                                            });
-
-                                          }
-                                          else {
-                                            observer.next({
-                                        type: 'chunk',
-                                        data: toolText,
-                                        timestamp: new Date(),
-                                        agentName: resolvedAgent.name || resolvedAgent.id,
-                                        messageType: 'streaming-chunk',
-                                        metadata: {
-                                          type: 'tool-result',
-                                          toolUseId: toolResult.toolUseId
-                                        }
-                                      });
-                                      console.log('✅ AgentCore tool result processed:', toolText.substring(0, 100) + '...');
-
-                                          }
+                                          if (!visualization || !visualization.visualizationType) continue;
+                                          const messageType = `${visualization.visualizationType}-visualization`;
+                                          this.addToRecentEvents(sessionId, messageType, visualization);
+                                          observer.next({
+                                            type: 'chunk',
+                                            data: JSON.stringify(visualization),
+                                            timestamp: new Date(),
+                                            agentName: resolvedAgent.name || resolvedAgent.id,
+                                            messageType: "visualization-data",
+                                            metadata: {
+                                              type: 'visualization-data',
+                                              toolUseId: toolResult.toolUseId,
+                                              name: resultToolName
+                                            }
+                                          });
+                                          emittedVisualization = true;
                                         }
                                       }
                                       catch (ex) {
-                                        console.log('could not extract visualizations from the final response')
+                                        console.log('could not extract visualizations from the tool result')
+                                      }
+
+                                      // The result itself goes to the chat as a collapsed bubble.
+                                      // Previously it was emitted only from inside the loop above,
+                                      // so a result with no visualization never reached the UI.
+                                      if (!emittedVisualization && toolText.trim()) {
+                                        observer.next({
+                                          type: 'chunk',
+                                          data: toolText,
+                                          timestamp: new Date(),
+                                          agentName: resolvedAgent.name || resolvedAgent.id,
+                                          messageType: 'tool-result',
+                                          metadata: {
+                                            type: 'tool-result',
+                                            toolUseId: toolResult.toolUseId,
+                                            toolName: resultToolName
+                                          }
+                                        });
                                       }
                                     }
                                   }

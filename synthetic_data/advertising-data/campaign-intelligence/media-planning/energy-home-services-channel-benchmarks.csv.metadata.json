@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "channel_benchmarks",
+        "category": "media_planning",
+        "business_domain": "campaign_planning",
+        "analysis_type": "benchmark_analysis",
+        "brand": "MagicStream",
+        "industry": "home_energy",
+        "geographic_scope": "united_states",
+        "content_type": "performance_data"
+    }
+}

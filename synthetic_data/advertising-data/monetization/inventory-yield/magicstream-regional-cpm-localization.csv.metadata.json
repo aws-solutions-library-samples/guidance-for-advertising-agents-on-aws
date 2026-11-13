@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "regional_cpm",
+        "category": "inventory_yield",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "regional_pricing_analysis",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "global",
+        "content_type": "pricing_data"
+    }
+}

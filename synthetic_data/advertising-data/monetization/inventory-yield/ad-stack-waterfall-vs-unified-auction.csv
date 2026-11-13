@@ -1,0 +1,8 @@
+"setup","demand_source","fill_rate_pct","avg_ecpm_usd","avg_response_time_ms","notes","monthly_revenue_usd"
+"current_waterfall","Tier 1: primary ad server (direct and programmatic guaranteed)","45","8.50","420","Sequential; passes unfilled requests to tier 2",""
+"current_waterfall","Tier 2: StreamVault Media exchange","25","6.20","780","Called only after tier 1 passes",""
+"current_waterfall","Tier 3: Prebid header bidding (8 partners)","30","4.80","1100","Last look; bids often exceed tier 2 but arrive too late",""
+"current_waterfall","Total","78","6.82","2300","Blended; 22% of requests unfilled","35000"
+"test_unified_auction","All sources compete in one auction","84","7.32","1450","Header bids compete with the ad server line items","41100"
+"test_parallel_header_bidding","Prebid in parallel with the ad server; StreamVault as a bidder","86","7.48","1300","Best tested setup; 1000 ms timeout","42900"
+"test_partner_pruning","Parallel setup with 6 of 8 partners (lowest 2 removed)","85","7.41","1150","Removed partners contributed under 2% of wins","42400"

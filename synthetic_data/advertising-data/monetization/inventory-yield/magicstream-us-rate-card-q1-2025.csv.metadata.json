@@ -1,0 +1,12 @@
+{
+    "metadataAttributes": {
+        "data_source": "publisher_rate_card",
+        "category": "inventory_yield",
+        "business_domain": "publisher_monetization",
+        "analysis_type": "rate_card",
+        "brand": "MagicStream",
+        "industry": "streaming_media",
+        "geographic_scope": "united_states",
+        "content_type": "pricing_data"
+    }
+}

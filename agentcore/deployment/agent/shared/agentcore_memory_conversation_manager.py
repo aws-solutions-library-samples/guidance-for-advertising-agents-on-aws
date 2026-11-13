@@ -36,6 +36,12 @@ except ImportError:
     MemorySessionManager = None
     MemorySession = None
 
+try:
+    from .memory_text import persistable_text
+except ImportError:
+    # Loaded as a top-level module, as the unit tests in shared/ do.
+    from memory_text import persistable_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -273,38 +279,33 @@ class AgentCoreMemoryConversationManager(ConversationManager):
             if not new_messages:
                 return
             
-            # Convert to AgentCore Memory format and persist
+            # Store only user and assistant text. Tool use, tool results and
+            # reasoning are skipped, so one message becomes at most one event.
             conversational_messages = []
             for msg in new_messages:
-                role_str = msg.get("role", "user").lower()
+                text = persistable_text(msg)
+                if text is None:
+                    continue
+
+                role_str = str(msg.get("role", "user")).lower()
                 role = MessageRole.USER if role_str == "user" else MessageRole.ASSISTANT
-                
-                # Extract text content
-                content = msg.get("content", [])
-                if isinstance(content, list) and len(content) > 0:
-                    if isinstance(content[0], dict) and "text" in content[0]:
-                        text = content[0]["text"]
-                    else:
-                        text = str(content[0])
-                elif isinstance(content, str):
-                    text = content
-                else:
-                    text = str(content)
-                
+
                 # Truncate very long messages to avoid API limits
                 text = text[:9000] if len(text) > 9000 else text
-                
+
                 conversational_messages.append(
                     ConversationalMessage(text, role)
                 )
-            
+
             if conversational_messages:
                 self._memory_session.add_turns(messages=conversational_messages)
-                self._last_persisted_index = len(messages) - 1
-                self._persisted_message_count = len(messages)
                 logger.debug(
                     f"💾 Persisted {len(conversational_messages)} messages to AgentCore Memory"
                 )
+
+            # Advance past skipped messages too, so they are not retried.
+            self._last_persisted_index = len(messages) - 1
+            self._persisted_message_count = len(messages)
                 
         except Exception as e:
             logger.error(f"❌ Failed to persist messages to AgentCore Memory: {e}")

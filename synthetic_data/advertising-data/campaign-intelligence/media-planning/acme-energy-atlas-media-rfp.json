@@ -1,0 +1,88 @@
+{
+  "rfpBrief": {
+    "rfp_id": "ATLAS-ACME-2025Q1-001",
+    "agency": "Atlas Media",
+    "advertiser": "Acme Energy",
+    "received_date": "2024-12-02",
+    "response_due_date": "2024-12-13",
+    "campaign_name": "Acme Energy Home Solar Q1 2025",
+    "objective": "Build awareness and drive quote requests for residential solar plus home battery systems",
+    "budget_usd": 2000000,
+    "flight_start": "2025-01-06",
+    "flight_end": "2025-03-30",
+    "flight_weeks": 12,
+    "markets": [
+      "US-CA",
+      "US-TX",
+      "US-AZ",
+      "US-FL",
+      "US-CO"
+    ],
+    "audience": "Homeowners aged 35-65; priority on solar-ready and high utility spend households",
+    "channels_requested": [
+      "ctv",
+      "olv",
+      "audio",
+      "display"
+    ],
+    "agency_channel_guidance": "CTV at least 40% of budget; audio optional but preferred in TX and FL commute markets",
+    "kpis": {
+      "unique_household_reach_target": "35% of homeowners 35-65 in the five states",
+      "video_completion_rate_min": 0.8,
+      "brand_lift_awareness_target_pts": 5,
+      "quote_request_cost_target_usd": 85,
+      "frequency_cap": "3 per household per week on CTV and OLV combined"
+    },
+    "guardrails": [
+      "Brand safety tier_1 only for video",
+      "No adjacency to fossil-fuel advertisers within the same ad pod",
+      "Competitive separation from other solar installers",
+      "Sustainability and home content adjacency preferred"
+    ],
+    "deliverables": [
+      "Recommended products with rate card and negotiated CPMs",
+      "Budget split by channel and by state",
+      "Available impressions by month for Jan-Mar 2025",
+      "Projected unique reach, frequency and completed views",
+      "Measurement plan: brand lift study and quote-request attribution"
+    ]
+  },
+  "advertiserProfile": {
+    "advertiser": "Acme Energy",
+    "category": "Residential clean energy",
+    "products": [
+      "Residential solar panels",
+      "Home battery storage",
+      "Smart thermostat bundles"
+    ],
+    "service_area": [
+      "US-CA",
+      "US-TX",
+      "US-AZ",
+      "US-FL",
+      "US-CO"
+    ],
+    "brand_positioning": "Lower home energy bills with reliable clean power",
+    "prior_campaigns": [
+      {
+        "period": "2024-Q2",
+        "channels": [
+          "ctv",
+          "display"
+        ],
+        "budget_usd": 650000,
+        "results": "Brand lift +3.8 pts awareness; cost per quote request 112 USD"
+      },
+      {
+        "period": "2024-Q3",
+        "channels": [
+          "ctv",
+          "olv",
+          "audio"
+        ],
+        "budget_usd": 900000,
+        "results": "Brand lift +4.6 pts awareness; cost per quote request 94 USD; audio drove 18% of quote requests"
+      }
+    ]
+  }
+}
