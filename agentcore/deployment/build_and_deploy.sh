@@ -487,44 +487,9 @@ MEMORY_ID="${STACK_PREFIX}memory${UNIQUE_ID}"
 #     VISUALIZATIONS_TABLE_NAME=""
 # fi
 
-# Gather knowledge base IDs for the stack
-print_status "Gathering knowledge base IDs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
-KNOWLEDGEBASES=""
-if [ -n "$AWS_PROFILE" ]; then
-    KB_LIST=$(aws bedrock-agent list-knowledge-bases --profile "$AWS_PROFILE" --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
-else
-    KB_LIST=$(aws bedrock-agent list-knowledge-bases --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
-fi
-
-# Process knowledge bases into name:ID format
-if [ "$KB_LIST" != "[]" ] && [ -n "$KB_LIST" ]; then
-    KNOWLEDGEBASES=$(echo "$KB_LIST" | python3 -c "
-import json
-import sys
-try:
-    kbs = json.load(sys.stdin)
-    kb_pairs = []
-    stack_prefix = '${STACK_PREFIX}-'
-    unique_suffix = '-${UNIQUE_ID}'
-    for kb in kbs:
-        name = kb.get('name', '')
-        kb_id = kb.get('id', '')
-        if name and kb_id and name.startswith(stack_prefix) and name.endswith(unique_suffix):
-            # Extract the middle part as the KB type name
-            kb_type = name[len(stack_prefix):-len(unique_suffix)]
-            kb_pairs.append(f'{kb_type}:{kb_id}')
-    print(','.join(kb_pairs))
-except:
-    print('')
-")
-fi
-
-if [ -n "$KNOWLEDGEBASES" ]; then
-    print_status "Found knowledge bases: $KNOWLEDGEBASES"
-    print_status "Knowledge bases will be available in container via KNOWLEDGEBASES environment variable"
-else
-    print_warning "No knowledge bases found for stack pattern"
-fi
+# Knowledge bases are not passed to the runtime. The agent discovers them
+# with ListKnowledgeBases and reads each agent's knowledge base from the
+# knowledge_bases map in the global configuration.
 
 # Gather runtime ARNs from SSM Parameter Store
 print_status "Gathering runtime ARNs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
@@ -671,7 +636,6 @@ docker build \
     --build-arg ACTOR_ID="AdFabricAgent" \
     --build-arg STACK_PREFIX="$STACK_PREFIX" \
     --build-arg UNIQUE_ID="$UNIQUE_ID" \
-    --build-arg KNOWLEDGEBASES="$KNOWLEDGEBASES" \
     --build-arg RUNTIMES="$RUNTIMES" \
     --build-arg ADCP_GATEWAY_URL="$ADCP_GATEWAY_URL_VALUE" \
     --build-arg ADCP_USE_MCP="true" \
@@ -970,6 +934,20 @@ permissions_policy = {
             "Resource": "*",
         },
         {
+            # Lets the agent find and read any knowledge base in the account.
+            # ListKnowledgeBases is authorized against "*" like RetrieveAndGenerate.
+            "Sid": "BedrockKnowledgeBaseDiscovery",
+            "Effect": "Allow",
+            "Action": ["bedrock:ListKnowledgeBases"],
+            "Resource": "*",
+        },
+        {
+            "Sid": "BedrockKnowledgeBaseRead",
+            "Effect": "Allow",
+            "Action": ["bedrock:GetKnowledgeBase", "bedrock:Retrieve", "bedrock:ListDataSources"],
+            "Resource": [f"arn:aws:bedrock:*:{account_id}:knowledge-base/*"],
+        },
+        {
             "Sid": "AgentCoreGatewayInvoke",
             "Effect": "Allow",
             "Action": [
@@ -1141,6 +1119,11 @@ try:
              "Resource": [f"arn:aws:bedrock:*:{account_id}:inference-profile/*"]},
             {"Sid": "BedrockRetrieveAndGenerate", "Effect": "Allow", "Action": ["bedrock:RetrieveAndGenerate"],
              "Resource": "*"},
+            {"Sid": "BedrockKnowledgeBaseDiscovery", "Effect": "Allow", "Action": ["bedrock:ListKnowledgeBases"],
+             "Resource": "*"},
+            {"Sid": "BedrockKnowledgeBaseRead", "Effect": "Allow",
+             "Action": ["bedrock:GetKnowledgeBase", "bedrock:Retrieve", "bedrock:ListDataSources"],
+             "Resource": [f"arn:aws:bedrock:*:{account_id}:knowledge-base/*"]},
             {"Sid": "AgentCoreGatewayInvoke", "Effect": "Allow",
              "Action": ["bedrock-agentcore:InvokeGateway", "bedrock-agentcore:GetGateway", "bedrock-agentcore:ListGateways", "bedrock-agentcore:ListGatewayTargets", "bedrock-agentcore:GetGatewayTarget"],
              "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*"},
@@ -1200,7 +1183,7 @@ POLICY_UPDATE_EOF
     print_status "Executing update command with environment variables..."
     
     # Build environment variables JSON
-    ENV_VARS="{\"STACK_PREFIX\":\"${STACK_PREFIX}\",\"UNIQUE_ID\":\"${UNIQUE_ID}\",\"KNOWLEDGEBASES\":\"${KNOWLEDGEBASES}\",\"RUNTIMES\":\"${RUNTIMES}\""
+    ENV_VARS="{\"STACK_PREFIX\":\"${STACK_PREFIX}\",\"UNIQUE_ID\":\"${UNIQUE_ID}\",\"RUNTIMES\":\"${RUNTIMES}\""
     
     # Add AdCP MCP Gateway URL if available
     if [ -n "$ADCP_GATEWAY_URL_VALUE" ] && [ "$ADCP_GATEWAY_URL_VALUE" != "None" ]; then
@@ -1490,12 +1473,6 @@ print_status "   ✅ Shared Dockerfile: Used template from agentcore/Dockerfile.
 print_status "   ✅ Container Image: $ECR_URI:latest"
 print_status ""
 print_status "📊 Environment Variables Configured:"
-if [ -n "$KNOWLEDGEBASES" ]; then
-    KB_COUNT=$(echo "$KNOWLEDGEBASES" | tr ',' '\n' | wc -l)
-    print_status "   ✅ KNOWLEDGEBASES: $KB_COUNT knowledge bases pre-configured"
-else
-    print_status "   ⚠️  KNOWLEDGEBASES: No knowledge bases found"
-fi
 if [ -n "$RUNTIMES" ]; then
     RUNTIME_COUNT=$(echo "$RUNTIMES" | tr ',' '\n' | wc -l)
     print_status "   ✅ RUNTIMES: $RUNTIME_COUNT runtime ARNs pre-configured"

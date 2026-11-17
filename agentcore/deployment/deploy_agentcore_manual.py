@@ -643,6 +643,24 @@ class ManualAgentCoreDeployer:
                     "Resource": "*",
                 },
                 {
+                    # Lets the agent find and read any knowledge base in the account.
+                    # ListKnowledgeBases is authorized against "*" like RetrieveAndGenerate.
+                    "Sid": "BedrockKnowledgeBaseDiscovery",
+                    "Effect": "Allow",
+                    "Action": ["bedrock:ListKnowledgeBases"],
+                    "Resource": "*",
+                },
+                {
+                    "Sid": "BedrockKnowledgeBaseRead",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock:GetKnowledgeBase",
+                        "bedrock:Retrieve",
+                        "bedrock:ListDataSources",
+                    ],
+                    "Resource": [f"arn:aws:bedrock:*:{account_id}:knowledge-base/*"],
+                },
+                {
                     "Sid": "AgentCoreAccess",
                     "Effect": "Allow",
                     "Action": [
@@ -1082,8 +1100,6 @@ class ManualAgentCoreDeployer:
                     f"Attempt {attempt + 1}/{max_retries} to create AgentCore runtime..."
                 )
 
-                # Gather environment variables for the container
-                kb_env_value = self.gather_knowledge_base_ids(stack_prefix, unique_id)
 
                 # Get RUNTIMES from runtime registry
                 from runtime_registry import RuntimeRegistry
@@ -1108,7 +1124,6 @@ class ManualAgentCoreDeployer:
                 env_vars = {
                     "STACK_PREFIX": stack_prefix,
                     "UNIQUE_ID": unique_id,
-                    "KNOWLEDGEBASES": kb_env_value,
                     "RUNTIMES": runtime_env_value,
                 }
 
@@ -1338,12 +1353,8 @@ class ManualAgentCoreDeployer:
         for attempt in range(max_retries):
             try:
                 # Gather environment variables for the container
-                kb_env_value = ""
                 runtime_env_value = ""
                 if stack_prefix and unique_id:
-                    kb_env_value = self.gather_knowledge_base_ids(
-                        stack_prefix, unique_id
-                    )
 
                     # Get RUNTIMES from runtime registry
                     from runtime_registry import RuntimeRegistry
@@ -1368,7 +1379,6 @@ class ManualAgentCoreDeployer:
                 env_vars = {
                     "STACK_PREFIX": stack_prefix or "",
                     "UNIQUE_ID": unique_id or "",
-                    "KNOWLEDGEBASES": kb_env_value,
                     "RUNTIMES": runtime_env_value,
                 }
 
