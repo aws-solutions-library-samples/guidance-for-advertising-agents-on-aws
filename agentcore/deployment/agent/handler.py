@@ -1250,22 +1250,26 @@ def get_collaborator_agent_config(agent_name, orchestrator_name):
 
 # Import shared knowledge base helper
 from shared.knowledge_base_helper import (
+    resolve_knowledge_base_id,
     retrieve_knowledge_base_results,
 )
 
 
 def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     """
-    Get the knowledge base ID for an agent from DynamoDB global config.
-    The config value must be the actual KB ID (e.g. 'ABCDEF1234'), not a name.
+    Get the knowledge base ID for an agent from the DynamoDB global config.
+    The config value can be a knowledge base ID or the name of any knowledge
+    base in the account; names are resolved with ListKnowledgeBases.
     """
     global GLOBAL_CONFIG
     if not GLOBAL_CONFIG:
         GLOBAL_CONFIG = ddb_load_global_config() or {}
-    kb_id = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
-    if kb_id and len(kb_id) < 8:
-        logger.warning(f"⚠️ KB config for {agent_name} looks like a name ('{kb_id}'), not an ID. "
-                       f"Update knowledge_bases in DynamoDB global config to use actual KB IDs.")
+    configured = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
+    if not configured:
+        return None
+    kb_id = resolve_knowledge_base_id(configured)
+    if not kb_id:
+        logger.warning(f"Knowledge base '{configured}' for {agent_name} was not found in the account")
     return kb_id
 
 
@@ -2025,7 +2029,10 @@ def retrieve_knowledge_base_results_tool(
     # Failures return an explicit error. An empty string reads to the model as
     # "the knowledge base has no matching records".
     if kb_id is None:
-        return f"KNOWLEDGE BASE ERROR: no knowledge base is configured for agent '{agent_name}'."
+        return (
+            f"KNOWLEDGE BASE ERROR: no knowledge base is configured for agent '{agent_name}', "
+            "or the configured knowledge base was not found in the account."
+        )
 
     if collected_sources is None:
         collected_sources = {}

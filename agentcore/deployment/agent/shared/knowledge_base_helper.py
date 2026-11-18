@@ -8,6 +8,8 @@ It handles knowledge base ID resolution, retrieval, and source citation formatti
 import os
 import json
 import logging
+import re
+import time
 import boto3
 from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
@@ -44,6 +46,43 @@ $query$
 </question>
 
 $output_format_instructions$"""
+
+# Knowledge bases are discovered with ListKnowledgeBases, not passed in through
+# the runtime environment. The name map is cached per region for a few minutes
+# so a new knowledge base shows up without a redeploy.
+_KB_NAME_CACHE: Dict[str, tuple] = {}
+_KB_NAME_CACHE_TTL_SECONDS = 300
+_KB_ID_PATTERN = re.compile(r"^[0-9A-Z]{10}$")
+
+
+def resolve_knowledge_base_id(value: Optional[str], region: Optional[str] = None) -> Optional[str]:
+    """Return the knowledge base ID for an ID or a name.
+
+    Accepts a knowledge base ID, an exact knowledge base name, or a short name
+    that this stack prefixes as ``{STACK_PREFIX}-{name}-{UNIQUE_ID}``. Any
+    knowledge base in the account and region can be named. Returns None when
+    nothing matches.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    if _KB_ID_PATTERN.match(value):
+        return value
+    helper = KnowledgeBaseHelper(region=region or os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+    kb_mapping = helper._discover_knowledge_bases_from_aws() or {}
+    if value in kb_mapping:
+        return kb_mapping[value]
+    stack_prefix = os.environ.get("STACK_PREFIX")
+    unique_id = os.environ.get("UNIQUE_ID")
+    if stack_prefix and unique_id:
+        stacked = f"{stack_prefix}-{value}-{unique_id}"
+        if stacked in kb_mapping:
+            return kb_mapping[stacked]
+    lowered = value.lower()
+    for kb_name, kb_id in kb_mapping.items():
+        if kb_name.lower() == lowered:
+            return kb_id
+    return None
 
 
 @dataclass
@@ -227,45 +266,12 @@ class KnowledgeBaseHelper:
                 return None
         return self._bedrock_agent_client
 
-    def _discover_knowledge_bases_from_environment(self) -> Optional[Dict[str, str]]:
-        """Discover knowledge bases from environment variables (faster than API calls)"""
-        try:
-            import os
-
-            # Get knowledge bases from environment variable
-            kb_env = os.environ.get("KNOWLEDGEBASES", "")
-            if not kb_env:
-                self.logger.debug("No KNOWLEDGEBASES environment variable found")
-                return None
-
-            # Parse comma-separated "name:ID" pairs
-            kb_mapping = {}
-            kb_pairs = [pair.strip() for pair in kb_env.split(",") if pair.strip()]
-
-            for pair in kb_pairs:
-                if ":" in pair:
-                    kb_name, kb_id = pair.split(":", 1)
-                    kb_mapping[kb_name.strip()] = kb_id.strip()
-                    self.logger.debug(
-                        f"Found knowledge base from environment: {kb_name} -> {kb_id}"
-                    )
-
-            if kb_mapping:
-                self.logger.info(
-                    f"Discovered {len(kb_mapping)} knowledge bases from environment"
-                )
-                self._kb_ids_cache = kb_mapping
-                return kb_mapping
-            else:
-                self.logger.debug("No valid knowledge base pairs found in environment")
-                return None
-
-        except Exception as e:
-            self.logger.error(f"Error parsing knowledge bases from environment: {e}")
-            return None
-
     def _discover_knowledge_bases_from_aws(self) -> Optional[Dict[str, str]]:
-        """Discover knowledge bases from AWS Bedrock Agent API"""
+        """Map every knowledge base name in the account and region to its ID."""
+        cached = _KB_NAME_CACHE.get(self.region)
+        if cached and time.time() - cached[0] < _KB_NAME_CACHE_TTL_SECONDS:
+            self._kb_ids_cache = cached[1]
+            return cached[1]
         try:
             client = self._get_bedrock_agent_client()
             if not client:
@@ -276,21 +282,24 @@ class KnowledgeBaseHelper:
                 "Discovering knowledge bases from AWS Bedrock Agent API..."
             )
 
-            # List all knowledge bases
-            response = client.list_knowledge_bases(maxResults=100)
-            knowledge_bases = response.get("knowledgeBaseSummaries", [])
-
             kb_mapping = {}
-            for kb in knowledge_bases:
-                kb_id = kb.get("knowledgeBaseId")
-                kb_name = kb.get("name")
-                if kb_id and kb_name:
-                    kb_mapping[kb_name] = kb_id
-                    # print(f"[KB_HELPER] Found knowledge base: {kb_name} -> {kb_id}")
-                    # self.logger.info(f"Found knowledge base: {kb_name} -> {kb_id}")
+            next_token = None
+            while True:
+                kwargs = {"maxResults": 100}
+                if next_token:
+                    kwargs["nextToken"] = next_token
+                response = client.list_knowledge_bases(**kwargs)
+                for kb in response.get("knowledgeBaseSummaries", []):
+                    kb_id = kb.get("knowledgeBaseId")
+                    kb_name = kb.get("name")
+                    if kb_id and kb_name:
+                        kb_mapping[kb_name] = kb_id
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
 
-            # Cache the results
             self._kb_ids_cache = kb_mapping
+            _KB_NAME_CACHE[self.region] = (time.time(), kb_mapping)
             # print(f"[KB_HELPER] Discovered {len(kb_mapping)} knowledge bases from AWS")
             # self.logger.info(f"Discovered {len(kb_mapping)} knowledge bases from AWS")
 
@@ -312,16 +321,10 @@ class KnowledgeBaseHelper:
     def _load_knowledge_base_ids(
         self, stack_prefix: str, unique_id: str
     ) -> Optional[Dict[str, str]]:
-        """Load knowledge base IDs - first try environment, then AWS discovery, then fallback to file"""
+        """Load knowledge base IDs from AWS discovery, then fall back to a local file"""
         if self._kb_ids_cache:
             return self._kb_ids_cache
 
-        # First try to discover from environment variables (fastest)
-        kb_mapping = self._discover_knowledge_bases_from_environment()
-        if kb_mapping:
-            return kb_mapping
-
-        # Then try to discover from AWS
         kb_mapping = self._discover_knowledge_bases_from_aws()
         if kb_mapping:
             return kb_mapping
@@ -398,7 +401,12 @@ class KnowledgeBaseHelper:
             if not kb_id:
                 kb_id = os.environ.get("STRANDS_KNOWLEDGE_BASE_ID")
             if not kb_id:
-                self.logger.error(f"No knowledge base ID found for agent '{agent}' in GLOBAL_CONFIG or STRANDS_KNOWLEDGE_BASE_ID env var")
+                self.logger.error(f"No knowledge base configured for agent '{agent}' in GLOBAL_CONFIG")
+                return None
+            configured_kb = kb_id
+            kb_id = resolve_knowledge_base_id(configured_kb, self.region)
+            if not kb_id:
+                self.logger.error(f"Knowledge base '{configured_kb}' for agent '{agent}' was not found in the account")
                 return None
 
             model_arn = self._resolve_generation_model_arn(agent, global_config)
@@ -1005,20 +1013,14 @@ class KnowledgeBaseHelper:
         Returns:
             Dict[str, str]: Mapping of knowledge base names to IDs
         """
-        # First try environment variables
-        kb_mapping = self._discover_knowledge_bases_from_environment()
-        if not kb_mapping:
-            # Fallback to AWS API
-            kb_mapping = self._discover_knowledge_bases_from_aws()
+        kb_mapping = self._discover_knowledge_bases_from_aws()
 
         if kb_mapping:
             self.logger.info("Reference Datas:")
             for name, kb_id in kb_mapping.items():
                 self.logger.info(f"  - {name}: {kb_id}")
         else:
-            self.logger.warning(
-                "No knowledge bases found in environment or AWS account"
-            )
+            self.logger.warning("No knowledge bases found in AWS account")
         return kb_mapping or {}
 
     def enhance_response_with_sources(

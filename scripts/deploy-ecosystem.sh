@@ -2748,36 +2748,6 @@ deploy_agent_via_toolkit() {
     fi
     print_status "  Memory ID: $memory_id"
     
-    # Gather knowledge base IDs
-    print_status "Gathering knowledge base IDs for stack: ${STACK_PREFIX}-*-${UNIQUE_ID}"
-    local knowledgebases=""
-    local kb_list=""
-    if [ -n "$AWS_PROFILE" ]; then
-        kb_list=$(aws bedrock-agent list-knowledge-bases --profile "$AWS_PROFILE" --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
-    else
-        kb_list=$(aws bedrock-agent list-knowledge-bases --region "$AWS_REGION" --max-results 100 --query "knowledgeBaseSummaries[?starts_with(name, '${STACK_PREFIX}-') && ends_with(name, '-${UNIQUE_ID}')].{name:name,id:knowledgeBaseId}" --output json 2>/dev/null || echo "[]")
-    fi
-    
-    if [ "$kb_list" != "[]" ] && [ -n "$kb_list" ]; then
-        knowledgebases=$(echo "$kb_list" | $PYTHON_CMD -c "
-import json, sys
-try:
-    kbs = json.load(sys.stdin)
-    prefix = '${STACK_PREFIX}-'
-    suffix = '-${UNIQUE_ID}'
-    pairs = []
-    for kb in kbs:
-        name, kid = kb.get('name',''), kb.get('id','')
-        if name and kid and name.startswith(prefix) and name.endswith(suffix):
-            pairs.append(f'{name[len(prefix):-len(suffix)]}:{kid}')
-    print(','.join(pairs))
-except: print('')
-")
-    fi
-    
-    if [ -n "$knowledgebases" ]; then
-        print_status "Found knowledge bases: $knowledgebases"
-    fi
     
     # Gather runtime ARNs from SSM
     print_status "Gathering runtime ARNs from SSM..."
@@ -3013,9 +2983,6 @@ print(arn)
         print_status "KB generation model: each agent's configured model"
     fi
 
-    if [ -n "$knowledgebases" ]; then
-        deploy_cmd="$deploy_cmd --env KNOWLEDGEBASES=$knowledgebases"
-    fi
     
     if [ -n "$runtimes" ]; then
         deploy_cmd="$deploy_cmd --env RUNTIMES=$runtimes"
