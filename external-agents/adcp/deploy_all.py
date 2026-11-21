@@ -1447,11 +1447,15 @@ def ensure_cdk_dependencies(agent_dir: Path, dry_run: bool, step_name: str) -> N
 
     if node_modules.exists():
         # package.json is newer than the installed tree (a `git pull` moved a version pin), so the
-        # tree may no longer satisfy it. Always `npm install` here: a package-lock.json left by the
-        # earlier install still records the old pins, and `npm ci` fails on that mismatch instead
-        # of resolving it.
+        # tree may no longer satisfy it. Start clean: the lockfile left by the earlier install still
+        # records the old pins (so `npm ci` fails on the mismatch), and an in-place `npm install`
+        # leaves aws-cdk-lib's bundled packages pointing at a hoisted module that was removed.
+        print("  cdk package.json is newer than node_modules — removing node_modules and "
+              "package-lock.json, then `npm install`")
+        if not dry_run:
+            shutil.rmtree(node_modules)
+            (cdk_dir / "package-lock.json").unlink(missing_ok=True)
         cmd = ["npm", "install"]
-        print(f"  cdk package.json is newer than node_modules — reinstalling with `{' '.join(cmd)}`")
     else:
         cmd = ["npm", "ci"] if (cdk_dir / "package-lock.json").exists() else ["npm", "install"]
         print(f"  cdk node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
