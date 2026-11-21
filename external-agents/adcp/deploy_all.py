@@ -1445,12 +1445,15 @@ def ensure_cdk_dependencies(agent_dir: Path, dry_run: bool, step_name: str) -> N
         print(f"  cdk dependencies present: {node_modules}")
         return
 
-    cmd = ["npm", "ci"] if (cdk_dir / "package-lock.json").exists() else ["npm", "install"]
     if node_modules.exists():
         # package.json is newer than the installed tree (a `git pull` moved a version pin), so the
-        # tree may no longer satisfy it. `npm install` reconciles in place.
+        # tree may no longer satisfy it. Always `npm install` here: a package-lock.json left by the
+        # earlier install still records the old pins, and `npm ci` fails on that mismatch instead
+        # of resolving it.
+        cmd = ["npm", "install"]
         print(f"  cdk package.json is newer than node_modules — reinstalling with `{' '.join(cmd)}`")
     else:
+        cmd = ["npm", "ci"] if (cdk_dir / "package-lock.json").exists() else ["npm", "install"]
         print(f"  cdk node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
     run_subprocess(cmd, cwd=cdk_dir, dry_run=dry_run, step_name=f"{step_name} (cdk npm install)")
     if not dry_run and node_modules.exists():
