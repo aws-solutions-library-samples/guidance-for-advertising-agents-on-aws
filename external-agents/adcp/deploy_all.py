@@ -1439,13 +1439,23 @@ def ensure_cdk_dependencies(agent_dir: Path, dry_run: bool, step_name: str) -> N
         print("!!!   Only run `agentcore create` if this agent has genuinely never been deployed.")
         sys.exit(1)
 
-    if (cdk_dir / "node_modules").exists():
-        print(f"  cdk dependencies present: {cdk_dir / 'node_modules'}")
+    node_modules = cdk_dir / "node_modules"
+    package_json = cdk_dir / "package.json"
+    if node_modules.exists() and node_modules.stat().st_mtime >= package_json.stat().st_mtime:
+        print(f"  cdk dependencies present: {node_modules}")
         return
 
     cmd = ["npm", "ci"] if (cdk_dir / "package-lock.json").exists() else ["npm", "install"]
-    print(f"  cdk node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
+    if node_modules.exists():
+        # package.json is newer than the installed tree (a `git pull` moved a version pin), so the
+        # tree may no longer satisfy it. `npm install` reconciles in place.
+        print(f"  cdk package.json is newer than node_modules — reinstalling with `{' '.join(cmd)}`")
+    else:
+        print(f"  cdk node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
     run_subprocess(cmd, cwd=cdk_dir, dry_run=dry_run, step_name=f"{step_name} (cdk npm install)")
+    if not dry_run and node_modules.exists():
+        # A reconciling install can leave the directory's own mtime untouched; mark it current.
+        os.utime(node_modules)
 
 
 def step_deploy_ref_seller(dry_run: bool) -> None:
