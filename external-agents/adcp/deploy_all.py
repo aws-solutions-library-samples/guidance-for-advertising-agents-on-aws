@@ -2019,11 +2019,29 @@ def step_capture_buyer_arns(dry_run: bool) -> None:
     upsert_env_values(BUYER_ENV_PATH, values, dry_run=dry_run)
 
 
+def ensure_ui_dependencies(dry_run: bool) -> None:
+    """Install the buyer React UI's npm dependencies when `ui/node_modules` is absent.
+
+    `ui/node_modules` is gitignored, so a fresh clone has the UI source and none of its dependencies.
+    `deploy_ui.py` deliberately refuses to install them mid-build; this is the one place in the
+    automated flow that does, before that script runs. Same lockfile rule as the CDK apps: `npm ci`
+    when a `package-lock.json` is committed, `npm install` otherwise.
+    """
+    ui_dir = BUYER_DIR / "ui"
+    if (ui_dir / "node_modules").exists():
+        print(f"  ui dependencies present: {ui_dir / 'node_modules'}")
+        return
+    cmd = ["npm", "ci"] if (ui_dir / "package-lock.json").exists() else ["npm", "install"]
+    print(f"  ui node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
+    run_subprocess(cmd, cwd=ui_dir, dry_run=dry_run, step_name="deploy-ui (ui npm install)")
+
+
 def step_deploy_ui(dry_run: bool) -> None:
     header(
         13,
         "Publish the static chat UI to S3 + CloudFront (deploy_ui.py, idempotent)",
     )
+    ensure_ui_dependencies(dry_run)
     run_subprocess(
         [str(BUYER_VENV_PYTHON), "deploy_ui.py"],
         cwd=BUYER_DIR,
