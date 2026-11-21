@@ -1913,9 +1913,9 @@ Example format:
   }
 
   /**
-   * Invoke Claude Opus 4.8 for AI-assisted content generation
+   * Invoke Claude Opus 5.5 for AI-assisted content generation
    * Used for generating agent instructions and visualization mappings
-   * @param prompt The prompt to send to Claude Opus 4.8
+   * @param prompt The prompt to send to Claude Opus 5.5
    * @param maxTokens Maximum tokens for the response (default: 8000)
    * @returns The generated text content
    */
@@ -1951,7 +1951,7 @@ Example format:
       const response = await this.bedrockRuntimeClient.send(command);
 
       if (!response.output?.message?.content) {
-        throw new Error('No content received from Claude Opus 4.8');
+        throw new Error('No content received from Claude Opus 5.5');
       }
 
       // Extract the text content from the response
@@ -1963,7 +1963,7 @@ Example format:
       return textContent;
 
     } catch (error) {
-      console.error('Error invoking Claude Opus 4.8:', error);
+      console.error('Error invoking Claude Opus 5.5:', error);
 
       // Check for expired token specifically
       const errorMessage = error instanceof Error ? error.message : (error as any)?.toString() || '';
