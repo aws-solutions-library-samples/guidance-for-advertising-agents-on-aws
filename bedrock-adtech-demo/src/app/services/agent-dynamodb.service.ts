@@ -261,6 +261,11 @@ export interface AgentConfiguration {
    */
   agent_hosting?: 'adfabric' | 'external';
   /**
+   * When true the agent is left out of the agent config management screen.
+   * It stays in `agent_configs` and remains invocable; this only affects the UI.
+   */
+  hidden_from_management?: boolean;
+  /**
    * Wire protocol used to invoke this agent: `a2a` for JSON-RPC 2.0
    * `message/send`, `http` for a plain JSON request body.
    *
@@ -928,9 +933,9 @@ export class AgentDynamoDBService {
       globalConfig.agent_configs[agent.agent_name] = agent;
 
       // Propagate this agent's own model_inputs entry to any orchestrator that
-      // has a per-collaborator override for this agent. When AgencyAgent
-      // invokes SignalAgent as a collaborator, the backend reads
-      // AgencyAgent.model_inputs[SignalAgent] — not SignalAgent.model_inputs.
+      // has a per-collaborator override for this agent. When MediaPlanningAgent
+      // invokes TimingStrategyAgent as a collaborator, the backend reads
+      // MediaPlanningAgent.model_inputs[TimingStrategyAgent] — not TimingStrategyAgent.model_inputs.
       // Without this propagation, model edits appear to "not take" for
       // collaborator-invoked agents.
       // See handler.py::get_collaborator_agent_model_inputs.

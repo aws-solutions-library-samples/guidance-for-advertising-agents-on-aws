@@ -104,7 +104,7 @@ media_kits:
 # --- Demo Scenarios (what prompts to run) ---
 demo_scenarios:
   - title: ""
-    agent: MediaPlanningAgent  # MediaPlanningAgent | YieldOptimizationAgent | AdLoadOptimizationAgent | AgencyAgent
+    agent: MediaPlanningAgent  # MediaPlanningAgent | YieldOptimizationAgent | AdLoadOptimizationAgent | CampaignAgent
     prompt: ""           # The actual prompt to invoke
     why_it_resonates: "" # Talking point for the demo presenter
 

@@ -35,7 +35,7 @@ class FakeAgentCoreClient implements ListEventsClient {
 function userEvent(id: string, text: string, at: string) {
   return {
     memoryId: MEMORY_ID,
-    actorId: 'AgencyAgent',
+    actorId: 'CampaignAgent',
     sessionId: SESSION_ID,
     eventId: id,
     eventTimestamp: new Date(at),
@@ -125,7 +125,7 @@ describe('SessionHistoryService', () => {
     });
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const { service } = setup({
-      agentNames: ['AgencyAgent', 'MediaPlanningAgent'],
+      agentNames: ['CampaignAgent', 'MediaPlanningAgent'],
       respond: async command => {
         if (command.input.actorId === 'MediaPlanningAgent') {
           throw accessDenied;

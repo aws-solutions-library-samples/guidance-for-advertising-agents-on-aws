@@ -5663,7 +5663,7 @@ deploy_adcp_agents() {
     fi
 
     # Wire the deployed buyer in: two SSM credential parameters, an external_agent_configs entry on
-    # AgencyAgent, and the directly selectable AdCPBuyer entry. wire_adcp_agents.py is a no-op when the
+    # CampaignAgent and MediaPlanningAgent, and the directly selectable AdCPBuyer entry. wire_adcp_agents.py is a no-op when the
     # buyer's A2A runtime ARN is absent, so a partial AdCP deploy cannot leave a config entry pointing
     # at a runtime that does not exist.
     print_status "  Wiring the AdCP buyer into the agent configuration..."

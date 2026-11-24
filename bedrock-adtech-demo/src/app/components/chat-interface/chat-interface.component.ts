@@ -89,7 +89,7 @@ export class ChatInterfaceComponent implements OnInit, OnChanges, AfterViewCheck
   // agent name. These cannot live in currentAgentResponses: that map is keyed by
   // the orchestrator's agent object, so a sub-agent's bubble would occupy the
   // orchestrator's slot and the orchestrator's own reply would then be merged
-  // into it — showing AgencyAgent's answer under the sub-agent's name.
+  // into it — showing CampaignAgent's answer under the sub-agent's name.
   private subAgentThinkingMessages = new Map<string, Message>();
 
   // Specialist invocation tracking (invoke_specialist / invoke_specialist_with_RAG)
@@ -3123,7 +3123,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
                   // Register the agent that is actually speaking. External agents
                   // (e.g. the AAMP buyer) are not in agent_configs, so the lookup
                   // above falls back to the orchestrator — registering `agent`
-                  // credited the chip and message count to AgencyAgent and the
+                  // credited the chip and message count to CampaignAgent and the
                   // sub-agent never appeared in the participants bar. Reuse the
                   // orchestrator's theme but keep the speaking agent's identity;
                   // updateAgentParticipant keys off the display name, so repeat
@@ -3268,7 +3268,7 @@ Keep the summary concise but comprehensive, focusing on actionable insights and 
           if (event.type === 'chunk') {
             console.log('🔍 Processing chunk event:', event);
 
-            // Use agent info from event if available, otherwise default to BidSimulatorAgent
+            // Use agent info from event if available, otherwise default to the selected agent
             const agentName = event.agentName ? event.agentName : agent.name;
             const teamName = event.teamName ? event.teamName : agent.teamName as string;
 

@@ -180,7 +180,7 @@ Pass `session_id` from previous response for continuity.
 When `invoke_agent` returns `status: "processing"`, the agent is still running in the background. Use this pattern:
 
 ```
-1. invoke_agent(agent_name="AgencyAgent", prompt="...") 
+1. invoke_agent(agent_name="MediaPlanningAgent", prompt="...") 
    → Returns: {status: "processing", session_id: "session-abc123..."}
 
 2. Wait ~30 seconds, then:

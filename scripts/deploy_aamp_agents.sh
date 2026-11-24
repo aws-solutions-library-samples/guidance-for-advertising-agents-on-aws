@@ -1278,7 +1278,7 @@ PYEOF2
     #   (1) the local agentcore/.../global_configuration.json source, and
     #   (2) the live GLOBAL_CONFIG/v1 item in the DynamoDB AgentConfig table.
     # Two entries per runtime: the consumer-side external_agent_configs entry
-    # (AgencyAgent's invoke tool) and a directly selectable top-level entry
+    # (MediaPlanningAgent's invoke tool) and a directly selectable top-level entry
     # (AAMP Buyer / AAMP Seller in the UI's agent list). See wire_aamp_agents.py.
     # Per-agent and independent: a missing seller ARN no longer blocks the buyer,
     # nothing is written as a placeholder, and there is no all-or-nothing abort.

@@ -250,6 +250,8 @@ export interface EnrichedAgent {
   // The transport is derived from them — see services/agent-invocation-plan.ts.
   /** Where the agent runs. `external` agents are invoked at their own endpoint. */
   agent_hosting?: 'adfabric' | 'external';
+  /** Hide this agent from the agent config management screen. It stays configured and invocable. */
+  hidden_from_management?: boolean;
   /** Request envelope: A2A JSON-RPC 2.0 or plain HTTP JSON. */
   agent_protocol?: 'a2a' | 'http';
   /** AgentCore runtime ARN or absolute agent URL. Takes precedence over runtimeArn. */

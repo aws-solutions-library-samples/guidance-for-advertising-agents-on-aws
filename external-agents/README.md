@@ -61,7 +61,7 @@ instead of inventing creatives.
 > in-repo Strands agent under `external-agents/`. It is now deployed from the
 > upstream IAB Tech Lab **seller-agent** and **buyer-agent** repos as their own
 > AgentCore HTTP runtimes, registered as `AAMPSellerAgent` /
-> `AAMPBuyerAgent`, and invoked by the **AgencyAgent** over IAM/SigV4. See
+> `AAMPBuyerAgent`, and invoked by the **MediaPlanningAgent** over IAM/SigV4. See
 > [`docs/aamp-deployment-modes.md`](../docs/aamp-deployment-modes.md) and the
 > root README's "IAB AAMP Marketplace" section for details.
 
@@ -122,7 +122,7 @@ python external-agents/AdCPSellerAgent/discovery/generate_discovery.py \
     --jwks-uri <url> --s3-bucket <ui-bucket> --cloudfront-distribution <dist-id>
 ```
 
-The A2A runtime wires into `PublisherAgent.external_agent_configs`
+The A2A runtime wires into `CampaignAgent.external_agent_configs`
 (`AdCPSellerAgent_Runtime`, tagged `adcp: true`). The deployer **auto-provisions
 the DynamoDB tables** (`<prefix>-AdCPSeller-{Catalog,MediaBuys,Tasks,Idempotency,Accounts}-<id>`)
 and scopes the execution role to them — driven by the `dynamodbStore` block in
@@ -133,7 +133,7 @@ cross-account OAuth it uses the same `A2A_DISCOVERY_URL`/`A2A_CLIENT_ID`/
 The demo ships with `ADCP_REQUIRE_SIGNATURES=false` baked into `agentcore.json`
 (the buyer-side RFC 9421 signing isn't wired yet); flip it to `true` once a
 signing buyer is in place to enforce the full AdCP trust surface. The stack's
-`PublisherAgent` cannot yet call this agent end-to-end (buyer-side AdCP client
+`CampaignAgent` does not call this agent end-to-end (buyer-side AdCP client
 mode pending) — the runtimes deploy and are reachable/testable standalone.
 
 ## Inbound auth (IAM vs OAuth)
@@ -240,7 +240,7 @@ The deployer will:
    Cognito pool/client ids) into the matching `external_agent_configs` entry
    of `global_configuration.json` — the entry named by each agent's
    `agentcore.json` `wireInto` block (`AdCreationAgent_Runtime` on
-   `MediaPlanningAgent`, `AdCPSellerAgent_Runtime` on `PublisherAgent`). The
+   `MediaPlanningAgent`, `AdCPSellerAgent_Runtime` on `CampaignAgent`). The
    entry must already exist for wiring to apply; otherwise the deployer logs
    a warning and skips it. Pass `--skip-wire` to leave the config untouched.
 6. **Register the same change into the live DynamoDB `AgentConfig` table**
@@ -287,7 +287,7 @@ granting the caller account invoke access — never a wildcard principal.
 > token from the inbound credentials the operator stores via the agent's
 > Inbound Authentication settings. `iam`/`none` entries continue to use the
 > SigV4 `invoke_agent_runtime` path. So an `oauth` entry (e.g.
-> `AdCPSellerAgent_Runtime` on `PublisherAgent`) is OAuth end-to-end once that
+> `AdCPSellerAgent_Runtime` on `CampaignAgent`) is OAuth end-to-end once that
 > agent's inbound Cognito credentials are stored (`oauthCredentials.ssmPath`
 > populated) — no cross-account IAM trust needed.
 

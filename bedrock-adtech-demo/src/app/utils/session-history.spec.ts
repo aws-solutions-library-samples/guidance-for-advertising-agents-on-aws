@@ -28,7 +28,7 @@ function summarize(eventsByAgent: AgentEvents[]): string[] {
 describe('session-history', () => {
   it('merges events from several agents oldest first', () => {
     const agency: AgentEvents = {
-      agentName: 'AgencyAgent',
+      agentName: 'CampaignAgent',
       // ListEvents does not promise an order, so these arrive newest first.
       events: [
         textEvent('ASSISTANT', 'Second answer', '2025-01-01T10:03:00Z'),
@@ -60,12 +60,12 @@ describe('session-history', () => {
   it('attributes user and assistant events to the right speaker', () => {
     const history = eventsToHistory([
       { agentName: 'Media_Planning_Agent', events: [textEvent('USER', 'Build a plan', '2025-01-01T09:00:00Z')] },
-      { agentName: 'AgencyAgent', events: [textEvent('ASSISTANT', 'Here is the brief', '2025-01-01T09:00:01Z')] },
+      { agentName: 'CampaignAgent', events: [textEvent('ASSISTANT', 'Here is the brief', '2025-01-01T09:00:01Z')] },
     ]);
 
     expect(history).toEqual([
       { role: 'user', agentName: 'Media_Planning_Agent', text: 'Build a plan', timestamp: new Date('2025-01-01T09:00:00Z') },
-      { role: 'assistant', agentName: 'AgencyAgent', text: 'Here is the brief', timestamp: new Date('2025-01-01T09:00:01Z') },
+      { role: 'assistant', agentName: 'CampaignAgent', text: 'Here is the brief', timestamp: new Date('2025-01-01T09:00:01Z') },
     ]);
     expect(toActorId('Media_Planning_Agent')).toBe('Media-Planning-Agent');
   });
@@ -78,7 +78,7 @@ describe('session-history', () => {
     expect(
       summarize([
         {
-          agentName: 'AgencyAgent',
+          agentName: 'CampaignAgent',
           events: [
             textEvent('USER', firstMessage, '2025-01-01T08:00:00Z'),
             textEvent('USER', firstWithoutContext, '2025-01-01T08:01:00Z'),
@@ -87,16 +87,16 @@ describe('session-history', () => {
         },
       ])
     ).toEqual([
-      'AgencyAgent/user: plan a campaign',
-      'AgencyAgent/user: and the budget?',
-      'AgencyAgent/user: Compare Context: CTV versus display',
+      'CampaignAgent/user: plan a campaign',
+      'CampaignAgent/user: and the budget?',
+      'CampaignAgent/user: Compare Context: CTV versus display',
     ]);
   });
 
   it('drops an adjacent duplicate from the same agent', () => {
     const adjacent = summarize([
       {
-        agentName: 'AgencyAgent',
+        agentName: 'CampaignAgent',
         events: [
           textEvent('USER', 'Plan a campaign', '2025-01-01T07:00:00Z'),
           textEvent('USER', 'Plan a campaign', '2025-01-01T07:00:00Z'),
@@ -107,8 +107,8 @@ describe('session-history', () => {
       { agentName: 'MediaPlanningAgent', events: [textEvent('USER', 'Plan a campaign', '2025-01-01T07:00:40Z')] },
     ]);
     expect(adjacent).toEqual([
-      'AgencyAgent/user: Plan a campaign',
-      'AgencyAgent/assistant: Here is the plan',
+      'CampaignAgent/user: Plan a campaign',
+      'CampaignAgent/assistant: Here is the plan',
       'MediaPlanningAgent/user: Plan a campaign',
     ]);
 
@@ -116,7 +116,7 @@ describe('session-history', () => {
     // again (tool text included) once the turn ended.
     const rewrittenTurn = summarize([
       {
-        agentName: 'AgencyAgent',
+        agentName: 'CampaignAgent',
         events: [
           textEvent('USER', 'Plan a campaign', '2025-01-01T07:00:00Z'),
           textEvent('ASSISTANT', 'Here is the plan', '2025-01-01T07:00:20Z'),
@@ -134,12 +134,12 @@ describe('session-history', () => {
       },
     ]);
     expect(rewrittenTurn).toEqual([
-      'AgencyAgent/user: Plan a campaign',
-      'AgencyAgent/assistant: Here is the plan',
-      'AgencyAgent/user: yes',
-      'AgencyAgent/assistant: Booked.',
-      'AgencyAgent/user: yes',
-      'AgencyAgent/assistant: Confirmed the second flight.',
+      'CampaignAgent/user: Plan a campaign',
+      'CampaignAgent/assistant: Here is the plan',
+      'CampaignAgent/user: yes',
+      'CampaignAgent/assistant: Booked.',
+      'CampaignAgent/user: yes',
+      'CampaignAgent/assistant: Confirmed the second flight.',
     ]);
   });
 
@@ -147,7 +147,7 @@ describe('session-history', () => {
     expect(
       summarize([
         {
-          agentName: 'AgencyAgent',
+          agentName: 'CampaignAgent',
           events: [
             textEvent('USER', 'How many placements?', '2025-01-01T06:00:00Z'),
             textEvent('ASSISTANT', '{"toolUse": {"toolUseId": "tooluse_9", "name": "count"}}', '2025-01-01T06:00:01Z'),
@@ -160,7 +160,7 @@ describe('session-history', () => {
           ],
         },
       ])
-    ).toEqual(['AgencyAgent/user: How many placements?', 'AgencyAgent/assistant: There are 42 placements.']);
+    ).toEqual(['CampaignAgent/user: How many placements?', 'CampaignAgent/assistant: There are 42 placements.']);
   });
 
   it('keeps visualization-data blocks in agent text', () => {
@@ -168,7 +168,7 @@ describe('session-history', () => {
       'Campaign results:\n<visualization-data type="metrics-visualization">{"metrics":[{"name":"CTR","value":"1.2%"}]}</visualization-data>';
 
     const [entry] = eventsToHistory([
-      { agentName: 'AgencyAgent', events: [textEvent('ASSISTANT', reply, '2025-01-01T05:00:00Z')] },
+      { agentName: 'CampaignAgent', events: [textEvent('ASSISTANT', reply, '2025-01-01T05:00:00Z')] },
     ]);
 
     expect(entry.text).toBe(reply);
@@ -176,11 +176,11 @@ describe('session-history', () => {
 
   it('returns an empty history for no events', () => {
     expect(eventsToHistory([])).toEqual([]);
-    expect(eventsToHistory([{ agentName: 'AgencyAgent', events: [] }])).toEqual([]);
+    expect(eventsToHistory([{ agentName: 'CampaignAgent', events: [] }])).toEqual([]);
     expect(
       eventsToHistory([
         {
-          agentName: 'AgencyAgent',
+          agentName: 'CampaignAgent',
           events: [
             { eventTimestamp: new Date('2025-01-01T04:00:00Z'), payload: [] },
             textEvent('ASSISTANT', '   ', '2025-01-01T04:00:01Z'),

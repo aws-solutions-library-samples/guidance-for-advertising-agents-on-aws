@@ -10,7 +10,7 @@
     "subtitle": "Brand perception and social media sentiment analysis across platforms",
     "collaborativeInsights": {
       "primaryAgent": "social-sentiment-analyzer",
-      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent1": "AudienceIntelligenceAgent",
       "supportingAgent2": "TimingStrategyAgent"
     },
     "metrics": [

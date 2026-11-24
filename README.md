@@ -12,6 +12,8 @@
 > - **Security scan findings resolved.** CodeQL, bandit, cfn_nag, semgrep, gitleaks, and Dependabot findings were fixed or justified. The changes that affect you are listed under the behavior changes below.
 > - **AdCP reference buyer conformance fixes.** `adcp_sync_accounts` now sends the `billing` party that AdCP 3.1 requires on every entry, so sellers that validate against the schema no longer reject it with `INVALID_REQUEST`. Set it with the optional `billing` argument or `BUYER_ACCOUNT_BILLING` (`operator`, `agent`, or `advertiser`; default `operator`). A seller registry entry can also set `"a2a_version": "1.0"` to reach a seller that serves only A2A 1.0. The default stays `0.3`, so existing entries are unchanged. When no governance agent is configured, the media buy refusal now says that booking needs one and points to the reference governance agent. See [`external-agents/adcp/agents/buyer/reference-buyer/README.md`](external-agents/adcp/agents/buyer/reference-buyer/README.md).
 > - **Patched dependencies.** PyJWT 2.15.1, mcp 1.30.0, pillow 13.0.0, python-dotenv 1.2.2, and refreshed lockfiles across the AdCP agents and the buyer agent. The buyer UI moves to dompurify 3.4.17, vite 8.2.4, and vitest 4.1.12.
+> - **One Campaign Agent for AdCP media buying.** The seven "Agentic Advertising Ecosystem" agents are replaced by a single `CampaignAgent` (*Campaign Agent*), the buyer-side orchestrator that walks an advertiser brief through the AdCP media buy workflow: inventory discovery, creative requirements, audience signals, a media plan for human approval, account and governance setup, spend authorization, booking, delivery reporting, and the plan audit trail. It holds no protocol tools of its own; every request goes to the external AdCP reference buyer, wired in by Phase 9 exactly as it was for `AgencyAgent`. The AdCP demo tab is a 12-step walkthrough for this agent, written in plain advertiser language.
+> - **Consolidated specialist roster.** Duplicate specialists were folded into one agent each (see the breaking changes below), `PublisherMediaPlanningAgent` was renamed `MediaPlanWorkflowAgent` (*Media Plan Workflow Agent*), and `AdFabricAgent` no longer routes to two agent names that did not exist.
 > - **Demo UI fixes.** After an email and password sign-in, the page now reloads so configuration loads with credentials, instead of failing the first call. Signed-out visitors no longer briefly appear signed in. Timeline cards stay inside their container and stack in one column at 768px and below.
 >
 > ### Breaking changes from v3
@@ -25,6 +27,9 @@
 > - **The seller database password is resolved through an `ssm-secure` dynamic reference.** The `DBMasterPasswordSSMParam` parameter in the seller storage stack is now a plain string holding the SSM parameter name, so the password value no longer appears as a stack parameter. The seller network stack also declares explicit egress rules on all four security groups.
 > - **The image Lambdas have a narrower DynamoDB policy.** `dynamodb:*` on all resources was replaced with the operations each Lambda calls, scoped to `GeneratedContentTable`.
 > - **The demo Flask servers bind to `127.0.0.1` with debug off.** Set `CAMPAIGN_DEMO_HOST`, `CAMPAIGN_DEMO_DEBUG`, `DASHBOARD_HOST`, or `DASHBOARD_DEBUG` to opt in to the old behavior.
+> - **Seven agents removed, six folded, one renamed.** `AgencyAgent`, `AdvertiserAgent`, `PublisherAgent`, `SignalAgent`, `VerificationAgent`, `MeasurementAgent`, and `IdentityAgent` are gone from `global_configuration.template.json`, the instruction library, agent cards, and visualizations; `CampaignAgent` takes their place. Folded into a surviving counterpart: `AdFormatSelectorAgent` into `FormatStrategyOptimizerAgent`, `WeatherImpactAgent` into `WeatherAgent` (which now carries the live weather lookup and `weatherAPIKey`), `AudienceStrategyAgent` into `AudienceIntelligenceAgent`, `BidSimulatorAgent` into `BidOptimizationAgent`, `CampaignArchitectureAgent` into `CampaignOptimizationAgent`. `PublisherMediaPlanningAgent` is now `MediaPlanWorkflowAgent`. Anything that addressed the old names (saved prompts, `@AgentName` mentions, `invoke_agent` calls through the Quick Gateway, custom tab configs, your own `global_configuration.json`) must use the new ones. `wire_adcp_agents.py` and `cleanup_adcp_agents.py` wire the AdCP buyer into `CampaignAgent` and `MediaPlanningAgent`; a config that still carries `AgencyAgent` is skipped with a warning.
+> - **The AAMP tab is served by `MediaPlanningAgent`.** It already carried the `AAMPBuyerAgent` route; `AgencyAgent` was the only other caller. The Quick Suite marketplace skill and the AAMP docs now address `MediaPlanningAgent`.
+> - **Tab configurations changed.** The old seven-agent "Agency & Advertiser" tab is gone and the AdCP tab's scenarios were rewritten for `CampaignAgent`. `bedrock-adtech-demo/src/assets/tab-configurations.json` is now an exact copy of `synthetic_data/configs/tab-configurations.json`, which is the file the deploy scripts upload. A running stack keeps the old tabs until you run `python scripts/upload_tab_configs_to_dynamodb.py --force` and re-upload the global configuration and instruction library (Phases 6 and 7, or a full redeploy).
 >
 > ### Known gaps
 >
@@ -42,7 +47,7 @@
 > - **Quick Suite skill definitions** — ready-made guided flows for media planning and deal negotiation, under [`quick-skill/`](quick-skill/).
 > - **Federated sign-in (optional)** — SSO through any OIDC provider registered in the Cognito user pool (Okta, Microsoft Entra ID, Ping, or your own), alongside email and password. Entirely configuration-driven, with no identity provider details in application code. See [`docs/SSO_SETUP_GUIDE.md`](docs/SSO_SETUP_GUIDE.md).
 > - **Agent instruction versioning** — append-only version snapshots with a version dropdown in the agent editor. Selecting a version loads it; saving publishes a new version rather than rewinding.
-> - **AdCP reference agents, deployable end to end (optional)** — a new opt-in **Phase 9** deploys a complete AdCP 3.1 ecosystem from [`external-agents/adcp/`](external-agents/adcp/): a reference **buyer** (with its own React UI, on two runtimes — HTTP for the UI, A2A for other agents), a reference **seller**, and a reference **governance** agent that mints KMS-signed intent tokens. Add `--deploy-adcp`. The buyer is wired into `AgencyAgent`, replacing the removed AdCP MCP Gateway with peer-to-peer AdCP over A2A and MCP rather than flattened gateway tool calls. See [AdCP Reference Agents](#10-adcp-reference-agents-optional).
+> - **AdCP reference agents, deployable end to end (optional)** — a new opt-in **Phase 9** deploys a complete AdCP 3.1 ecosystem from [`external-agents/adcp/`](external-agents/adcp/): a reference **buyer** (with its own React UI, on two runtimes — HTTP for the UI, A2A for other agents), a reference **seller**, and a reference **governance** agent that mints KMS-signed intent tokens. Add `--deploy-adcp`. The buyer is wired into `CampaignAgent`, replacing the removed AdCP MCP Gateway with peer-to-peer AdCP over A2A and MCP rather than flattened gateway tool calls. See [AdCP Reference Agents](#10-adcp-reference-agents-optional).
 > - **External agents decoupled from AgentCore** — hosting, wire protocol, and authentication are now independent (`agent_hosting` / `agent_protocol` / `agent_endpoint`), so an external agent can be a non-AgentCore endpoint and authentication no longer determines the invocation path.
 >
 > ### ⚠️ Breaking changes from v2
@@ -50,7 +55,6 @@
 > - **Deployment phases were renumbered.** If you script `--resume-at`, the numbers have moved: configs→S3 is 6, DynamoDB 7, **AAMP 8**, **AdCP 9 (new)**, **AgentCore agents 10**, **UI config 11**, **warmup 12**, **Quick Gateway 13**. Both optional external-agent phases now run *before* the AgentCore deploy, because the AgentCore agents read their configuration at deploy time and cannot see an agent wired in after them. See the phase list under [Deployment Steps](#deployment-steps).
 > - **The AdCP MCP Gateway has been removed.** `deploy_adcp_gateway.py`, `adcp_tool_schema.json`, `lambda/adcp_mcp_handler.py`, and the agent-side `adcp_tools.py` / `adcp_mcp_client.py` are deleted, along with the 8 gateway-backed tools and their declarations on `AgencyAgent`, `PublisherAgent`, `SignalAgent`, `VerificationAgent`, `MeasurementAgent`, and `IdentityAgent`. Teardown is retained, so `--cleanup` still removes a gateway left over from a pre-v3 deployment instead of leaving it billing.
 > - **AAMP is now opt-in rather than automatic.** Use `--deploy-aamp` to include it or `--skip-aamp` to exclude it. The interactive prompt defaults to No, and it is skipped entirely in non-interactive runs. Its default model is now `bedrock/global.anthropic.claude-sonnet-5-5`, and AAMP runtime names are capped at 26 characters to stay within the CloudWatch Logs delivery name limit.
-> - **`AgencyAgent`'s Mode A / Mode B split is gone.** It was built on calling the removed gateway tools directly. `AgencyAgent` now always delegates inventory to `PublisherAgent` and signals to `SignalAgent` over A2A.
 > - **`agentcore/deployment/agent/global_configuration.json` is no longer tracked in the repository.** It is generated from `global_configuration.template.json` when absent and is gitignored. If you previously edited the tracked file, edit the template or the generated file instead — a fresh clone will not contain it.
 >
 > If you are upgrading from v1, review [`docs/ARCHITECTURE_UPGRADE_V2.md`](docs/ARCHITECTURE_UPGRADE_V2.md) for the v1 → v2 changes as well.
@@ -115,7 +119,7 @@ This guidance provides an agentic solution that delivers:
 - **Nova Sonic Voice Interface**: Real-time speech-to-speech agent interaction using Amazon Nova Sonic with bidirectional streaming, tool-use routing, and turn management
 - **External API Integration**: Real-time data from weather services, social media platforms, and competitive intelligence feeds
 - **External A2A Agents**: Optionally deploy standalone agents (e.g. AdCreationAgent, AAMP Seller Agent) to their own AgentCore runtime, invoked by the main agents over the A2A protocol with IAM, Cognito OAuth, or static Bearer Token inbound auth (see [`external-agents/`](external-agents/README.md))
-- **AdCP Reference Ecosystem (Optional)**: A self-contained [AdCP 3.1](https://docs.adcontextprotocol.org) buyer/seller/governance trio in [`external-agents/adcp/`](external-agents/adcp/), deployed by Phase 9 onto four AgentCore runtimes with its own Cognito user pool. The buyer runs the buy journey (discover inventory → check governance → book a media buy) and is reachable from `AgencyAgent` via `invoke_specialist`; the seller and governance agents are MCP services the buyer calls internally. Governance decisions are signed with a KMS asymmetric key and verified against a published JWKS (see [AdCP Reference Agents](#10-adcp-reference-agents-optional))
+- **AdCP Reference Ecosystem (Optional)**: A self-contained [AdCP 3.1](https://docs.adcontextprotocol.org) buyer/seller/governance trio in [`external-agents/adcp/`](external-agents/adcp/), deployed by Phase 9 onto four AgentCore runtimes with its own Cognito user pool. The buyer runs the buy journey (discover inventory → check governance → book a media buy) and is reachable from `CampaignAgent` via `invoke_specialist`; the seller and governance agents are MCP services the buyer calls internally. Governance decisions are signed with a KMS asymmetric key and verified against a published JWKS (see [AdCP Reference Agents](#10-adcp-reference-agents-optional))
 - **Invocation Notification Hook**: Optionally configure any agent to fire a webhook notification (fire-and-forget, no response awaited) to an external endpoint every time it's invoked with a real user prompt — useful for driving an external display, log sink, or workflow trigger
 - **Quick MCP Gateway (Optional)**: An AgentCore MCP Gateway fronting a single Lambda target, exposing four tools — `list_agents`, `get_agent_schema`, `invoke_agent` and `get_agent_conversation`. Inbound auth is a Cognito JWT authorizer scoped to one app client. Long-running orchestrator calls fall back to an async polling pattern so MCP clients are never left waiting on a timeout (see [Quick MCP Gateway](#11-quick-mcp-gateway-optional))
 - **Quick Suite Skills**: Uploadable skill definitions in [`quick-skill/`](quick-skill/) that drive guided demo flows — a full platform skill, a media planning assistant with an RFP response flow, and a 3-step AAMP deal negotiation walkthrough
@@ -771,8 +775,9 @@ aws cognito-idp admin-create-user \
 
   **Understanding Agent Architecture:**
   The demo includes multiple specialized agents that work together:
-  - **Orchestrator Agents**: MediaPlanningAgent, CampaignOptimizationAgent, YieldOptimizationAgent, InventoryOptimizationAgent
-  - **Specialist Agents**: AudienceIntelligenceAgent, TimingStrategyAgent, FormatStrategyOptimizerAgent, ChannelMixOptimizationAgent, CampaignArchitectureAgent, CreativeSelectionAgent, and more
+  - **Orchestrator Agents**: MediaPlanningAgent, MediaPlanWorkflowAgent, CampaignOptimizationAgent, YieldOptimizationAgent, InventoryOptimizationAgent, BudgetOptimizationAgent
+  - **Buyer Agent**: CampaignAgent, which runs the AdCP media buy workflow through the external AdCP reference buyer
+  - **Specialist Agents**: AudienceIntelligenceAgent, TimingStrategyAgent, FormatStrategyOptimizerAgent, ChannelMixOptimizationAgent, CreativeSelectionAgent, and more
 
   **Agent Management UI:**
   The demo includes a full CRUD interface for managing agent configurations directly from the browser. Access it via the user menu in the top-right corner. From the UI you can:
@@ -812,10 +817,10 @@ aws cognito-idp admin-create-user \
 
   **AdCP (Ad Context Protocol):**
   AdCP is served by the reference agents in [`external-agents/adcp/`](external-agents/adcp/), which speak
-  the protocol as peers rather than through a gateway. `AgencyAgent` reaches the buyer over A2A; the buyer
+  the protocol as peers rather than through a gateway. `CampaignAgent` reaches the buyer over A2A; the buyer
   reaches the seller and the governance agent over MCP:
   ```
-  AgencyAgent --A2A (OAuth M2M bearer)--> AdCP reference buyer
+  CampaignAgent --A2A (OAuth M2M bearer)--> AdCP reference buyer
                                               |
                                               +--MCP--> AdCP reference seller     (inventory, media buys)
                                               +--MCP--> AdCP reference governance (signed intent tokens)
@@ -839,7 +844,7 @@ aws cognito-idp admin-create-user \
   | `AdCPBuyer` (config entry) | Created by Phase 9, not committed. This is the directly UI-selectable agent, carrying the resolvable A2A runtime ARN. It is configured and coloured but **absent from the UI until you add it to a tab** — see [AdCP Reference Agents](#10-adcp-reference-agents-optional). |
   | `AdCPSellerAgent` | **No longer a thing.** It was an `external-agents/AdCPSellerAgent/` directory reached through `deploy_external_agents.py`, still listed in `.gitignore` and absent from the tree. The reference seller above replaced it. Nothing references the old name. |
 
-  There is now an end-to-end AdCP path, provided you opt into Phase 9: `AgencyAgent` →
+  There is now an end-to-end AdCP path, provided you opt into Phase 9: `CampaignAgent` →
   `invoke_specialist(agent_name="AdCPBuyerAgent")` → the buyer's A2A runtime → the seller and
   governance agents over MCP.
 
@@ -856,8 +861,8 @@ aws cognito-idp admin-create-user \
   exist.
 
   > **No MCP server entry ships with working credentials, and no deployment phase provisions one.**
-  > All three committed `mcp_servers` entries have an empty `url` — and two of them
-  > (`WeatherAgent`, `PublisherMediaPlanningAgent`) are `enabled: true` in that state. An empty
+  > Both committed `mcp_servers` entries have an empty `url` — and one of them
+  > (`WeatherAgent`) is `enabled: true` in that state. An empty
   > `url` makes `mcp_tools.py` log an error and return no client, and a credential exchange that
   > fails does the same, because it **fails closed** rather than connect unauthorized. Either way
   > the agent is built with no tools and nothing is raised, so a misconfigured server presents as
@@ -912,13 +917,13 @@ aws cognito-idp admin-create-user \
   nano agentcore/deployment/agent/global_configuration.json
   ```
 
-  3. **Locate the WeatherImpactAgent section** and update the `injectable_values` field:
+  3. **Locate the WeatherAgent section** and update the `injectable_values` field:
   ```json
   {
     "agent_configs": {
-      "WeatherImpactAgent": {
-        "agent_id": "WeatherImpactAgent",
-        "agent_name": "WeatherImpactAgent",
+      "WeatherAgent": {
+        "agent_id": "WeatherAgent",
+        "agent_name": "WeatherAgent",
         "injectable_values": {
           "weatherAPIKey": "your-actual-api-key-here"
         },
@@ -1093,7 +1098,7 @@ aws cognito-idp admin-create-user \
     Lab seller-agent design (tiered pricing, deal-ID minting, supply-chain
     transparency).
     **Cognito OAuth** inbound auth (no cross-account IAM trust needed), no S3.
-    Wired into `PublisherAgent`.
+    Not wired into any agent by default; add an `external_agent_configs` entry on the agent that should call it.
 
   **How they connect:**
   Each external agent is referenced by an `external_agent_configs` entry on a
@@ -1241,7 +1246,7 @@ aws cognito-idp admin-create-user \
   **How they run and how the orchestrator uses them:** both agents are **Strands
   A2A** runtimes protected by **OAuth (custom JWT)**; the orchestrator reaches
   the buyer over JSON-RPC `message/stream` (SSE) with a bearer token, and both
-  hops retry on cold-start (`424`/`503`). The `AgencyAgent` calls **only the
+  hops retry on cold-start (`424`/`503`). The `MediaPlanningAgent` calls **only the
   buyer** — the buyer plans the campaign and returns real inventory/pricing that
   it sources from the seller internally, so the seller's orchestrator tool entry
   is wired but `enabled: false`. During the long buyer call the UI shows real,
@@ -1353,7 +1358,7 @@ aws cognito-idp admin-create-user \
   - Two **SSM SecureString** parameters holding a `client_credentials` document, at
     `/<PREFIX>/a2a-inbound-tokens/<UID>/AdCPBuyerAgent` and `.../AdCPBuyer`. Two paths for one
     runtime because the reader derives the path from the name it is invoking under.
-  - An `external_agent_configs` entry **`AdCPBuyerAgent` on `AgencyAgent`**
+  - An `external_agent_configs` entry **`AdCPBuyerAgent` on `CampaignAgent`** (and on `MediaPlanningAgent`)
     (`protocol: a2a`, `authType: oauth_m2m`), reached with
     `invoke_specialist(agent_prompt="...", agent_name="AdCPBuyerAgent")`.
   - A top-level `agent_configs` entry **`AdCPBuyer`** — the directly UI-selectable one, carrying the
@@ -1370,7 +1375,7 @@ aws cognito-idp admin-create-user \
      `synthetic_data/configs/tab-configurations.json` already lists it in `availableAgents`, but the
      running UI reads tab config from DynamoDB rather than that file, so you also need
      `python scripts/upload_tab_configs_to_dynamodb.py --force` (the script silently skips without
-     `--force`). Reaching the buyer via `AgencyAgent` needs none of this.
+     `--force`). Reaching the buyer via `CampaignAgent` needs none of this.
   2. **A running `AdFabricAgent` caches `GLOBAL_CONFIG` at cold start.** In a full deployment this is
      harmless, because Phase 10 redeploys the AgentCore agents right after. If you run Phase 9 *on its
      own* against a live stack, the buyer stays unreachable while every config check looks correct —

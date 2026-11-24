@@ -1774,11 +1774,11 @@ def invoke_specialist(agent_prompt: str, agent_name: str) -> str:
     
     Use this tool to collaborate with other agents in the agentic advertising ecosystem.
     This is ideal for agents that don't need to query knowledge bases but need to 
-    coordinate with other specialists (e.g., VerificationAgent, IdentityAgent, etc.)
+    coordinate with other specialists (e.g., AudienceIntelligenceAgent, TimingStrategyAgent, etc.)
     
     Args:
         agent_prompt: The prompt/request to send to the specialist agent
-        agent_name: Name of the specialist agent to invoke (e.g., "VerificationAgent", "IdentityAgent")
+        agent_name: Name of the specialist agent to invoke (e.g., "AudienceIntelligenceAgent", "TimingStrategyAgent")
     
     Returns:
         Response from the specialist agent wrapped in agent-message tags

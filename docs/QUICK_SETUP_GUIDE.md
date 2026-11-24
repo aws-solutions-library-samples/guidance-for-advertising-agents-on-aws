@@ -192,10 +192,10 @@ response = client.invoke_agent_runtime(
     runtimeSessionId="my-session-id-at-least-33-chars-long",
     qualifier="DEFAULT",
     payload=json.dumps({
-        "prompt": "@[AgencyAgent] Plan a $3M sports campaign",
+        "prompt": "@[MediaPlanningAgent] Plan a $3M sports campaign",
         "session_id": "my-session",
         "memory_id": "default",
-        "agent_name": "AgencyAgent",
+        "agent_name": "MediaPlanningAgent",
     }).encode("utf-8"),
 )
 ```
@@ -387,7 +387,7 @@ See [`quick-skill/mcp-config-sample.json`](../quick-skill/mcp-config-sample.json
 
 ## Async Polling Pattern (Orchestrator Agents)
 
-Orchestrator agents (AgencyAgent, MediaPlanningAgent, etc.) may take 60-180s. The MCP handler uses a proactive timeout pattern:
+Orchestrator agents (MediaPlanningAgent, CampaignAgent, etc.) may take 60-180s. The MCP handler uses a proactive timeout pattern:
 
 ```
 1. invoke_agent(agent_name, prompt, async=true)

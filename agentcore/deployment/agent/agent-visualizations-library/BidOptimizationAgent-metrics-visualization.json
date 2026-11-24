@@ -10,7 +10,7 @@
     "subtitle": "Win rates, efficiency metrics, and ROI analysis",
     "collaborativeInsights": {
       "primaryAgent": "BidOptimizationAgent",
-      "supportingAgent1": "BidSimulatorAgent",
+      "supportingAgent1": "ContextualAnalysisAgent",
       "supportingAgent2": "ChannelMixOptimizationAgent"
     },
     "metrics": [

@@ -27,27 +27,27 @@ describe('SessionManagerService agent tracking', () => {
   it('records each invoked agent once, in order', () => {
     const session = service.getOrCreateSession('tab-a');
 
-    service.recordAgent(session.sessionId, 'AgencyAgent');
+    service.recordAgent(session.sessionId, 'CampaignAgent');
     service.recordAgent(session.sessionId, 'Media_Planning_Agent');
-    service.recordAgent(session.sessionId, 'AgencyAgent');
+    service.recordAgent(session.sessionId, 'CampaignAgent');
     service.recordAgent(session.sessionId, '   ');
-    service.recordAgent('not-a-session-id-from-this-page-0', 'AgencyAgent');
+    service.recordAgent('not-a-session-id-from-this-page-0', 'CampaignAgent');
 
-    expect(service.getOrCreateSession('tab-a').agentNames).toEqual(['AgencyAgent', 'Media_Planning_Agent']);
+    expect(service.getOrCreateSession('tab-a').agentNames).toEqual(['CampaignAgent', 'Media_Planning_Agent']);
     expect(service.hasSession(session.sessionId)).toBe(true);
     expect(service.hasSession('not-a-session-id-from-this-page-0')).toBe(false);
   });
 
   it('switchSession returns the same session id with its agents', () => {
     const first = service.getOrCreateSession('tab-a');
-    service.recordAgent(first.sessionId, 'AgencyAgent');
+    service.recordAgent(first.sessionId, 'CampaignAgent');
     const second = service.forceNewSession('tab-a');
     expect(second.sessionId).not.toBe(first.sessionId);
 
     const resumed = service.switchSession(first.sessionId, 'tab-a');
 
     expect(resumed?.sessionId).toBe(first.sessionId);
-    expect(resumed?.agentNames).toEqual(['AgencyAgent']);
+    expect(resumed?.agentNames).toEqual(['CampaignAgent']);
     expect(service.getCurrentSessionId(null, null, 'tab-a')).toBe(first.sessionId);
     expect(service.switchSession(first.sessionId, 'tab-b')).toBeNull();
   });

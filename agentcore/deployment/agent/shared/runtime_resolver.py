@@ -6,7 +6,7 @@ and runtime registry files. It supports fallback mechanisms for runtime discover
 
 Usage:
     resolver = RuntimeARNResolver(stack_prefix="sim", unique_id="abc123")
-    runtime_arn = resolver.resolve_runtime_arn("WeatherImpactAgent")
+    runtime_arn = resolver.resolve_runtime_arn("WeatherAgent")
     
     # Get all runtimes in the stack
     runtimes = resolver.list_stack_runtimes()
@@ -46,7 +46,7 @@ class RuntimeARNResolver:
         """Resolve an agent name to its runtime endpoint.
         
         Args:
-            agent_name: The agent name (e.g., 'WeatherImpactAgent', 'audience-strategy-analyzer')
+            agent_name: The agent name (e.g., 'WeatherAgent', 'audience-strategy-analyzer')
             
         Returns:
             The runtime url if found, None otherwise
@@ -62,7 +62,7 @@ class RuntimeARNResolver:
         """Resolve an agent name to its runtime arn.
         
         Args:
-            agent_name: The agent name (e.g., 'WeatherImpactAgent', 'audience-strategy-analyzer')
+            agent_name: The agent name (e.g., 'WeatherAgent', 'audience-strategy-analyzer')
             
         Returns:
             The runtime arn if found, None otherwise
@@ -78,7 +78,7 @@ class RuntimeARNResolver:
         """Resolve an agent name to its bearer token.
         
         Args:
-            agent_name: The agent name (e.g., 'WeatherImpactAgent', 'audience-strategy-analyzer')
+            agent_name: The agent name (e.g., 'WeatherAgent', 'audience-strategy-analyzer')
             runtimes: List of runtime entries from environment
             
         Returns:

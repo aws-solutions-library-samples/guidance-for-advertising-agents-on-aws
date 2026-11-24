@@ -1,0 +1,21 @@
+{
+  "agent_name": "CampaignAgent",
+  "agent_description": "Media buy orchestrator (buyer agent) that runs the AdCP media buy workflow for an advertiser: takes a brief, discovers seller inventory and creative requirements, assembles a media plan for human approval, registers the plan with governance, books the buy through the external AdCP buyer agent, and reports delivery and audit trail.",
+  "url": "https://runtime.bedrock-agentcore.amazonaws.com/campaignagent",
+  "skills": [
+    "campaign_brief_intake",
+    "adcp_inventory_discovery",
+    "media_planning",
+    "governance_and_approval",
+    "media_buy_booking",
+    "delivery_reporting"
+  ],
+  "protocol": "A2A",
+  "version": "1.0",
+  "metadata": {
+    "domain": "advertising",
+    "category": "adtech",
+    "deployment": "bedrock-agentcore",
+    "ecosystem_role": "buyer_orchestrator"
+  }
+}

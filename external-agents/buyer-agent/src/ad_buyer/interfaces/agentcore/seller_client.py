@@ -2,7 +2,7 @@
 
 Implements FR-4 / D4: the buyer reaches the seller by sending an A2A
 ``message/send`` to the seller's AgentCore runtime, authenticated with a Cognito
-bearer — the **same pattern the AgencyAgent uses** (see the guidance repo's
+bearer — the **same pattern the CampaignAgent uses** (see the guidance repo's
 ``a2a_client_tools._invoke_agentcore_oauth`` / ``A2ATokenManager``).
 
 Transport note (deviation from functional-design Q1=B, recorded):
@@ -10,7 +10,7 @@ The functional design chose the Strands ``A2AAgent`` wrapper as primary. On
 inspection, ``A2AAgent`` fetches an agent card and does not cleanly attach the
 Cognito bearer + ``X-Amzn-Bedrock-AgentCore-Runtime-Session-Id`` header required
 by the AgentCore OAuth data-plane endpoint. So the **working transport here is
-the raw OAuth A2A JSON-RPC POST** (== D4's "same pattern the AgencyAgent uses").
+the raw OAuth A2A JSON-RPC POST** (== D4's "same pattern the CampaignAgent uses").
 An ``A2AAgent`` path can be slotted in once its client-factory auth is confirmed
 on ``dm1``. Fail-closed on missing/failed auth (business-rules BR-6).
 """

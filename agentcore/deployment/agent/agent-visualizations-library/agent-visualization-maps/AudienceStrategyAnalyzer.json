@@ -38,7 +38,7 @@
   ],
   "collaborativeAgents": [
     "MediaPlannerAgent",
-    "CampaignArchitectureAgent",
+    "CampaignOptimizationAgent",
     "BidOptimizationAgent"
   ]
 }

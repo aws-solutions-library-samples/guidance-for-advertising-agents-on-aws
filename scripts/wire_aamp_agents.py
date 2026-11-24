@@ -5,7 +5,7 @@ Each AAMP runtime is wired in **two** shapes, because they serve two different
 callers:
 
 1. **Consumer-side** ``external_agent_configs`` entries (``AAMPSellerAgent`` /
-   ``AAMPBuyerAgent``) on the agents that call them — e.g. ``AgencyAgent``. This
+   ``AAMPBuyerAgent``) on the agents that call them — e.g. ``MediaPlanningAgent``. This
    is what ``shared/a2a_client_tools.build_a2a_client_tools`` reads to give the
    AdFabric runtime an invoke tool for the remote runtime.
 
@@ -371,7 +371,7 @@ def apply_aamp_wire(
     # connection that the UI can see: the Angular app builds each agent's
     # collaborators from `tool_agent_names`
     # (aws-config.service.ts), and colours chat bubbles from
-    # `configured_colors[<name>]`. So every run of this script left AgencyAgent
+    # `configured_colors[<name>]`. So every run of this script left the consumer agent
     # looking like it had no AAMP connection at all and rendered the AAMP agent
     # grey, even though the external_agent_configs entry was correctly wired.
     # The strip also guaranteed the runtime name was absent from agent_configs,

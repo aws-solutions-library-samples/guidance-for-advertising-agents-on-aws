@@ -143,7 +143,8 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
         this.configuredColors = globalConfig.configured_colors || {};
         
         // Get agents from global config
-        this.agents = Object.values(globalConfig.agent_configs || {});
+        this.agents = Object.values(globalConfig.agent_configs || {})
+          .filter(agent => agent.hidden_from_management !== true);
         
         // Enrich agents with safe defaults for all fields that the template accesses
         // Agents from DynamoDB may be missing optional fields which can crash Angular rendering
@@ -165,7 +166,7 @@ export class AgentManagementModalComponent implements OnInit, OnChanges {
       } else {
         // Fallback to getAllAgents if global config not available
         const agents = await this.agentDynamoDBService.getAllAgents();
-        this.agents = agents;
+        this.agents = agents.filter(agent => agent.hidden_from_management !== true);
       }
     } catch (error) {
       console.error('Error loading agents:', error);

@@ -9,7 +9,7 @@
     "title": "Revenue Format Performance Analysis",
     "subtitle": "Ad format effectiveness and revenue optimization metrics",
     "collaborativeInsights": {
-      "primaryAgent": "AdFormatSelectorAgent",
+      "primaryAgent": "FormatStrategyOptimizerAgent",
       "supportingAgent1": "AdLoadOptimizationAgent",
       "supportingAgent2": "InventoryOptimizationAgent"
     },

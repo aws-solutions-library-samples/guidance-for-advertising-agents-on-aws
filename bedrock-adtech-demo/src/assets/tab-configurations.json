@@ -163,735 +163,167 @@
       "availableCampaigns": [],
       "visualizations": []
     },
-    "generic-tab-1": {
-      "id": "generic-tab-1",
-      "title": "Agency & Advertiser",
-      "description": "Demand Side",
-      "icon": "campaign",
-      "defaultAgent": "AgencyAgent",
-      "availableAgents": [
-        "AgencyAgent",
-        "AdvertiserAgent",
-        "PublisherAgent",
-        "SignalAgent",
-        "IdentityAgent",
-        "VerificationAgent",
-        "MeasurementAgent"
-      ],
-      "scenarios": [
-        {
-          "id": "advertiser-campaign-brief",
-          "title": "Advertiser Campaign Brief Submission",
-          "description": "Submit a campaign brief from Advertiser Agent to Agency Agent for reasoning and negotiation.",
-          "query": "I need to submit a campaign brief for Acme Energy's new sustainable solar panel product launch. Our objectives are: build brand awareness among environmentally conscious homeowners aged 35-55, drive consideration for residential solar solutions, and establish thought leadership in clean energy. Budget is $2M for Q1 2025, targeting CTV and online video channels. We require tier_1 brand safety and want a brand lift measurement study. Please coordinate with the Agency Agent to develop a comprehensive media plan.",
-          "category": "Media Buy Automation",
-          "agentType": "AdvertiserAgent"
-        },
-        {
-          "id": "agency-orchestration-discovery",
-          "title": "Agency Agent Orchestration & AdCP Discovery",
-          "description": "Agency Agent coordinates multi-agent workflow using AdCP Media Buy Protocol for inventory discovery.",
-          "query": "As the Agency Agent for Acme Energy's $2M sustainable energy campaign, I need to orchestrate the complete campaign workflow. First, use AdCP get_products to discover premium CTV inventory from SportsPulse, Apex Sports, and StreamVault that aligns with environmental content. Target sports enthusiasts interested in sustainability. Then coordinate with Signal Agent for audience targeting, Identity Agent for reach estimation, and Verification Agent for brand safety verification before presenting the media plan to the Advertiser Agent for approval.",
-          "category": "Media Buy Automation",
-          "agentType": "AgencyAgent"
-        },
-        {
-          "id": "signal-discovery-activation",
-          "title": "Signal Agent Discovery & Activation via AdCP",
-          "description": "Signal Agent discovers and activates audience segments using AdCP Signals Protocol.",
-          "query": "Use AdCP Signals Protocol to discover audience segments for environmentally conscious homeowners interested in sustainable technology. Search for segments from LiveRamp, Oracle Data Cloud, and Experian that match our target: household income $75k+, ages 35-55, interest in clean energy and home improvement. Once identified, activate the best-matching segments on The Trade Desk platform for our Acme Energy campaign. Return the DSP segment IDs for targeting.",
-          "category": "Media Buy Automation",
-          "agentType": "SignalAgent"
-        },
-        {
-          "id": "identity-reach-estimation",
-          "title": "Identity Agent Cross-Device Reach Estimation (MCP)",
-          "description": "Identity Agent provides deterministic reach estimation using MCP protocol.",
-          "query": "Using MCP protocol, estimate the deduplicated cross-device reach for our Acme Energy campaign. We're targeting the 'environmentally conscious homeowners' segment across CTV, mobile, and desktop channels. Calculate household-level reach using UID2 and RampID identity graphs. Provide frequency cap recommendations and privacy-compliant token resolution for our $2M budget allocation across 45 days.",
-          "category": "Media Buy Automation",
-          "agentType": "IdentityAgent"
-        },
-        {
-          "id": "verification-brand-safety",
-          "title": "Verification Agent Brand Safety & Quality Assurance (MCP)",
-          "description": "Verification Agent performs brand safety verification using MCP and alerts.",
-          "query": "Verify brand safety for our Acme Energy campaign placements using MCP protocol. Check the following publisher properties: SportsPulse.com, FoxSports.com, StreamVault environmental documentaries, and streaming fitness content. Apply tier_1 brand safety standards. Flag any properties with brand safety scores below 90 or fraud risk above 5%. If any incidents are detected, prepare an A2A alert for the Agency Agent with investigation details and recommended actions.",
-          "category": "Media Buy Automation",
-          "agentType": "VerificationAgent"
-        },
-        {
-          "id": "measurement-brand-lift",
-          "title": "Measurement Agent Brand Lift Study Configuration (MCP)",
-          "description": "Measurement Agent configures brand lift study using MCP and reports results.",
-          "query": "Configure a brand lift study for Acme Energy's Q1 2025 campaign using MCP protocol. Study parameters: measure brand awareness, ad recall, and purchase intent among environmentally conscious homeowners. Use Lucid as the measurement provider with a control/exposed methodology. Budget $8,000 for the study. Once configured, prepare interim and final reports to be delivered to the Agency Agent via A2A protocol with actionable insights on creative performance.",
-          "category": "Measurement",
-          "agentType": "MeasurementAgent"
-        },
-        {
-          "id": "publisher-media-buy",
-          "title": "Publisher Agent Media Buy Creation & Delivery (AdCP)",
-          "description": "Publisher Agent creates media buy packages and tracks delivery using AdCP Media Buy Protocol.",
-          "query": "As Publisher Agent for SportsPulse Premium CTV inventory, process the incoming media buy request from Agency Agent using AdCP Media Buy Protocol. Create a media buy package for Acme Energy with: $500,000 budget allocation, premium sports documentary placements, 30-second video format, tier_1 brand safety, and environmental content alignment. Confirm creative deadlines, provide delivery projections, and set up real-time delivery tracking. Return the media_buy_id and package confirmation.",
-          "category": "Media Buy Automation",
-          "agentType": "PublisherAgent"
-        },
-        {
-          "id": "complete-campaign-flow",
-          "title": "Complete Agentic Campaign Flow Integration",
-          "description": "End-to-end demonstration of all seven agents coordinating, AdCP, and MCP protocols.",
-          "query": "Execute the complete agentic advertising workflow for Acme Energy's $2M sustainable energy campaign: 1) Receive campaign brief from Advertiser Agent (A2A), 2) Discover inventory via Publisher Agent (AdCP Media Buy), 3) Find audience segments via Signal Agent (AdCP Signals), 4) Estimate reach via Identity Agent (MCP), 5) Verify brand safety via Verification Agent (MCP), 6) Configure measurement via Measurement Agent (MCP), 7) Present media plan to Advertiser Agent for approval (A2A), 8) Execute campaign via Publisher Agent (AdCP). Coordinate all agents and report status at each step.",
-          "category": "Media Buy Automation",
-          "agentType": "AgencyAgent"
-        },
-        {
-          "id": "agency-publisher-negotiation",
-          "title": "Agency-Publisher Rate Negotiation",
-          "description": "Agency and Publisher Agents negotiate premium inventory rates using.",
-          "query": "Initiate A2A negotiation with Publisher Agent for premium Pro Football League Playoff inventory. Our Acme Energy campaign needs 50M impressions during the playoff window, but current CPMs of $48.90 exceed our $42 target. Propose a volume commitment deal: guaranteed $1.2M spend in exchange for $42 CPM floor and first-look rights on environmental documentary inventory. Include brand safety guarantees and delivery commitments in the negotiation.",
-          "category": "Media Buy Automation",
-          "agentType": "AgencyAgent"
-        },
-        {
-          "id": "verification-incident-alert",
-          "title": "Verification Agent Incident Alert & Investigation",
-          "description": "Verification Agent detects brand safety incident and escalates via.",
-          "query": "ALERT: Brand safety incident detected on StreamVault placement for Acme Energy campaign. A video in our environmental documentary targeting was flagged for controversial climate content that conflicts with brand guidelines. Current brand safety score dropped from 96 to 78. Prepare A2A incident report for Agency Agent including: incident details, affected impressions (estimated 125,000), recommended immediate actions (pause placement, exclude content category), and investigation timeline. Request acknowledgment and escalation decision.",
-          "category": "Campaign Optimization",
-          "agentType": "VerificationAgent"
-        },
-        {
-          "id": "measurement-interim-report",
-          "title": "Measurement Agent Interim Results Report",
-          "description": "Measurement Agent delivers interim brand lift results.",
-          "query": "Deliver Week 2 interim brand lift report for Acme Energy campaign to Agency Agent. Results show: +28% brand awareness lift (target: 25%), +18% ad recall (target: 20%), +12% purchase intent (target: 15%). Key insight: 30-second creative format showing 2x lift compared to 15-second spots. Environmental documentary placements outperforming sports content by 34%. Recommend budget reallocation from sports to documentary inventory. Request Agency Agent feedback on optimization recommendations.",
-          "category": "Measurement",
-          "agentType": "MeasurementAgent"
-        },
-        {
-          "id": "artf-bid-enrichment",
-          "title": "ARTF Container Bid Enrichment Flow",
-          "description": "Identity and Verification Agents enrich bid requests via ARTF containers in exchange infrastructure.",
-          "query": "Explain the ARTF (Ad Request Transform Framework) container flow for real-time bid enrichment. When a bid request enters the exchange: 1) Identity Container adds UID2 tokens, RampID, household_id, and device_count for cross-device targeting, 2) Verification Container adds brand_safety_score, ivt_risk (fraud detection), and viewability_prediction. Show how these enriched signals flow to DSPs for better targeting and brand safety decisions. This is infrastructure-level processing, not direct agent communication.",
-          "category": "Bid Enrichment",
-          "agentType": "IdentityAgent"
-        },
-        {
-          "id": "advertiser-approval-workflow",
-          "title": "Advertiser Agent Media Plan Approval",
-          "description": "Advertiser Agent reviews and approves media plan from Agency Agent",
-          "query": "Review the media plan submitted by Agency Agent for Acme Energy Q1 2025 campaign. Plan includes: $2M total budget, 60% CTV ($1.2M), 40% online video ($800K), targeting environmentally conscious homeowners 35-55, tier_1 brand safety, brand lift study included. Projected reach: 2.1M households, 78% match rate, estimated +25% brand awareness lift. Evaluate against our objectives and brand guidelines. Provide approval decision with any modifications or clarifying questions via A2A response.",
-          "category": "Media Buy Automation",
-          "agentType": "AdvertiserAgent"
-        },
-        {
-          "id": "signal-segment-performance",
-          "title": "Signal Agent Segment Performance Analysis (UCP, MCP)",
-          "description": "Signal Agent analyzes activated segment performance and recommends optimizations.",
-          "query": "Analyze performance of activated audience segments for Acme Energy campaign after Week 1. Segments activated: lr_exp_homeowners_eco (LiveRamp), oracle_green_tech_intenders, experian_solar_considerers. Compare conversion rates, CPAs, and brand lift contribution across segments. Identify top-performing segment for budget reallocation. Recommend new lookalike segments to test based on converter profiles. Prepare optimization recommendations for Agency Agent.",
-          "category": "Measurement",
-          "agentType": "SignalAgent"
-        },
-        {
-          "id": "publisher-delivery-tracking",
-          "title": "Publisher Agent Delivery Tracking & Optimization",
-          "description": "Publisher Agent tracks media buy delivery and provides pacing recommendations.",
-          "query": "Provide delivery status for Acme Energy media buy (media_buy_id: mb_acme_q1_2025) using AdCP get_media_buy_delivery. Current status after Day 15 of 45-day campaign: Check impressions delivered vs. target, pacing status, completion rates by placement, and brand safety compliance. If under-pacing, recommend inventory reallocation. If over-pacing, suggest budget optimization. Include viewability metrics and any delivery issues requiring Agency Agent attention.",
-          "category": "Agentic Advertising - AdCP Delivery",
-          "agentType": "PublisherAgent"
-        },
-        {
-          "id": "agency-budget-reallocation",
-          "title": "Agency Agent Budget Reallocation Request",
-          "description": "Agency Agent requests budget reallocation approval from Advertiser Agent.",
-          "query": "Based on Week 2 performance data, I'm requesting budget reallocation approval from Advertiser Agent. Recommendation: shift $200K from sports content (underperforming at 0.8% CVR) to environmental documentaries (outperforming at 1.4% CVR). This reallocation is projected to improve overall campaign CPA by 18% and increase brand lift by 6 percentage points. Measurement Agent data supports this recommendation. Requesting approval within 24 hours to optimize remaining campaign flight.",
-          "category": "Campaign Optimization",
-          "agentType": "AgencyAgent"
-        }
-      ],
-      "availableCampaigns": [
-        {
-          "id": "camp-acme-energy-q1",
-          "advertiser": "Acme Energy Solutions",
-          "campaign": "Sustainable Solar Q1 2025",
-          "budget": 2000000,
-          "duration": 45,
-          "targetAudience": "environmentally_conscious_homeowners",
-          "protocols": [
-            "A2A",
-            "AdCP",
-            "MCP"
-          ],
-          "expectedMetrics": {
-            "roas": 3.2,
-            "ctr": 0.015,
-            "cvr": 0.014,
-            "impressions": 85000000,
-            "brandLift": 0.25
-          }
-        },
-        {
-          "id": "camp-greentech-awareness",
-          "advertiser": "GreenTech Industries",
-          "campaign": "Clean Energy Awareness",
-          "budget": 1250000,
-          "duration": 30,
-          "targetAudience": "sustainability_millennials",
-          "protocols": [
-            "A2A",
-            "AdCP",
-            "MCP"
-          ],
-          "expectedMetrics": {
-            "roas": 2.8,
-            "ctr": 0.018,
-            "cvr": 0.012,
-            "impressions": 62000000,
-            "brandLift": 0.22
-          }
-        },
-        {
-          "id": "camp-ecolife-launch",
-          "advertiser": "EcoLife Products",
-          "campaign": "Sustainable Living Launch",
-          "budget": 850000,
-          "duration": 28,
-          "targetAudience": "eco_conscious_families",
-          "protocols": [
-            "A2A",
-            "AdCP Signals",
-            "MCP"
-          ],
-          "expectedMetrics": {
-            "roas": 3.5,
-            "ctr": 0.016,
-            "cvr": 0.015,
-            "impressions": 45000000,
-            "brandLift": 0.2
-          }
-        }
-      ],
-      "visualizations": [
-        {
-          "type": "metrics-visualization",
-          "visualizationType": "metrics",
-          "title": "Portfolio Overview",
-          "gridSpan": 2,
-          "data": {
-            "visualizationType": "metrics",
-            "title": "Portfolio Overview",
-            "subtitle": "Key Performance Indicators",
-            "metrics": [
-              {
-                "primaryLabel": "Portfolio Performance",
-                "secondaryLabel": "Core KPIs",
-                "items": [
-                  {
-                    "primaryLabel": "Revenue Forecast",
-                    "actualValue": "dynamic",
-                    "valueKey": "totalRevenueForecast",
-                    "format": "currency",
-                    "icon": "attach_money"
-                  },
-                  {
-                    "primaryLabel": "Portfolio Fill Rate",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageFillRate",
-                    "format": "percentage",
-                    "icon": "donut_small"
-                  },
-                  {
-                    "primaryLabel": "Yield Optimization",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageYieldOptimization",
-                    "format": "percentage",
-                    "icon": "trending_up"
-                  },
-                  {
-                    "primaryLabel": "Avg CPM Floor",
-                    "actualValue": "dynamic",
-                    "valueKey": "averageCPMFloor",
-                    "format": "currency",
-                    "icon": "monetization_on"
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "type": "context-selector",
-          "title": "Publisher Selection",
-          "entityType": "publisher",
-          "displayFields": [
-            "name",
-            "tier",
-            "cpmFloor"
-          ],
-          "metricFields": [
-            "brandSafety",
-            "fillRateForecast"
-          ]
-        },
-        {
-          "type": "context-selector",
-          "title": "Campaign Selection",
-          "entityType": "campaign",
-          "displayFields": [
-            "campaign",
-            "advertiser",
-            "budget"
-          ],
-          "metricFields": [
-            "roas",
-            "ctr"
-          ]
-        },
-        {
-          "type": "segments-visualization",
-          "visualizationType": "segments",
-          "gridSpan": 2,
-          "title": "Target Audience Segments",
-          "subtitle": "Advertiser Campaign Audience Analysis",
-          "segments": [
-            {
-              "primaryLabel": "Environmentally Conscious Homeowners",
-              "secondaryLabel": "Sustainable Technology Adopters",
-              "description": "Affluent homeowners interested in clean energy solutions and sustainable living practices",
-              "actualValue": "4,250,000",
-              "targetValue": "5,000,000",
-              "actualLabel": "Current Reach",
-              "targetLabel": "Target Reach",
-              "primaryMetric": {
-                "label": "Conversion Rate",
-                "value": "1.4%"
-              },
-              "secondaryMetric": {
-                "label": "Average CPA",
-                "value": "$79.83"
-              },
-              "revenueAmount": "$285,000",
-              "statusIndicator": "active",
-              "confidenceLevel": "high",
-              "performanceLevel": "high",
-              "metadata": {
-                "size": "Household income $75k+",
-                "growth": "Ages 35-55, college educated",
-                "engagement": "Environmental documentary viewers"
-              }
-            },
-            {
-              "primaryLabel": "Sustainability-Focused Millennials",
-              "secondaryLabel": "Clean Energy Early Adopters",
-              "description": "Tech-savvy millennials prioritizing environmental impact in purchasing decisions",
-              "actualValue": "3,100,000",
-              "targetValue": "3,800,000",
-              "actualLabel": "Current Reach",
-              "targetLabel": "Target Reach",
-              "primaryMetric": {
-                "label": "Brand Lift",
-                "value": "22%"
-              },
-              "secondaryMetric": {
-                "label": "Engagement Rate",
-                "value": "91%"
-              },
-              "revenueAmount": "$125,000",
-              "statusIndicator": "active",
-              "confidenceLevel": "high",
-              "performanceLevel": "medium",
-              "metadata": {
-                "size": "Ages 28-42, urban/suburban",
-                "growth": "High social media engagement",
-                "engagement": "Sustainability content consumers"
-              }
-            }
-          ],
-          "summary": {
-            "totalSegments": 2,
-            "activeSegments": 2,
-            "topPerformer": "Environmentally Conscious Homeowners",
-            "growthOpportunity": "Expand reach to younger demographics interested in home ownership"
-          }
-        },
-        {
-          "type": "metrics-visualization",
-          "visualizationType": "metrics",
-          "title": "Platform Performance Metrics",
-          "gridSpan": 2,
-          "subtitle": "Campaign Management Platform KPIs",
-          "metrics": [
-            {
-              "primaryLabel": "Campaign Management",
-              "secondaryLabel": "Active Campaigns & Budget",
-              "items": [
-                {
-                  "primaryLabel": "Total Active Campaigns",
-                  "actualValue": "2",
-                  "targetValue": "3",
-                  "actualLabel": "Current Campaigns",
-                  "targetLabel": "Target Campaigns",
-                  "unit": "campaigns",
-                  "trend": "stable",
-                  "confidenceLevel": "high",
-                  "isPrimary": true
-                },
-                {
-                  "primaryLabel": "Total Campaign Budget",
-                  "actualValue": "$410,000",
-                  "targetValue": "$500,000",
-                  "actualLabel": "Current Budget",
-                  "targetLabel": "Target Budget",
-                  "unit": "$",
-                  "trend": "up",
-                  "confidenceLevel": "high",
-                  "isPrimary": false
-                }
-              ]
-            },
-            {
-              "primaryLabel": "Performance Metrics",
-              "secondaryLabel": "Efficiency & Results",
-              "items": [
-                {
-                  "primaryLabel": "Average CTR",
-                  "actualValue": "1.5%",
-                  "targetValue": "1.8%",
-                  "actualLabel": "Current CTR",
-                  "targetLabel": "Target CTR",
-                  "unit": "%",
-                  "trend": "up",
-                  "confidenceLevel": "medium",
-                  "isPrimary": false
-                },
-                {
-                  "primaryLabel": "Average Brand Lift",
-                  "actualValue": "20%",
-                  "targetValue": "25%",
-                  "actualLabel": "Current Lift",
-                  "targetLabel": "Target Lift",
-                  "unit": "%",
-                  "trend": "up",
-                  "confidenceLevel": "high",
-                  "isPrimary": false
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "segments-visualization",
-          "visualizationType": "segments",
-          "gridSpan": 2,
-          "title": "Active Campaign Performance",
-          "subtitle": "Current Campaign Status & Metrics",
-          "segments": [
-            {
-              "primaryLabel": "SolarMax Pro Launch Campaign",
-              "secondaryLabel": "EcoTech Solutions - Premium Solar Technology",
-              "description": "45-day campaign targeting environmentally conscious homeowners with premium solar panel technology",
-              "actualValue": "$142,500",
-              "targetValue": "$285,000",
-              "actualLabel": "Spent Budget",
-              "targetLabel": "Total Budget",
-              "primaryMetric": {
-                "label": "Days Remaining",
-                "value": "23"
-              },
-              "secondaryMetric": {
-                "label": "Current CPA",
-                "value": "$79.83"
-              },
-              "revenueAmount": "$285,000",
-              "statusIndicator": "active",
-              "confidenceLevel": "high",
-              "performanceLevel": "high",
-              "metadata": {
-                "size": "8.5M impressions delivered",
-                "growth": "1,785 conversions achieved",
-                "engagement": "1.5% CTR, 89% completion rate"
-              }
-            },
-            {
-              "primaryLabel": "Clean Energy Awareness Initiative",
-              "secondaryLabel": "EcoTech Solutions - Brand Awareness Campaign",
-              "description": "30-day awareness campaign targeting sustainability-focused millennials with clean energy messaging",
-              "actualValue": "$89,250",
-              "targetValue": "$125,000",
-              "actualLabel": "Spent Budget",
-              "targetLabel": "Total Budget",
-              "primaryMetric": {
-                "label": "Days Remaining",
-                "value": "8"
-              },
-              "secondaryMetric": {
-                "label": "Brand Lift",
-                "value": "22%"
-              },
-              "revenueAmount": "$125,000",
-              "statusIndicator": "active",
-              "confidenceLevel": "high",
-              "performanceLevel": "medium",
-              "metadata": {
-                "size": "6.2M impressions delivered",
-                "growth": "1,240 conversions achieved",
-                "engagement": "1.5% CTR, 91% completion rate"
-              }
-            }
-          ],
-          "summary": {
-            "totalSegments": 2,
-            "activeSegments": 2,
-            "topPerformer": "SolarMax Pro Launch Campaign",
-            "growthOpportunity": "Expand budget allocation to high-performing environmental documentary placements"
-          }
-        }
-      ],
-      "contextData": {
-        "advertiserProfile": {
-          "name": "Jennifer Park",
-          "role": "Digital Marketing Manager at EcoTech Solutions",
-          "company": "EcoTech Solutions",
-          "industry": "Sustainable Technology",
-          "challenge": "Launch awareness campaign for new solar panel technology on MagicStream's premium content",
-          "campaignObjectives": [
-            "Build brand awareness among environmentally conscious families",
-            "Drive consideration for residential solar solutions",
-            "Establish thought leadership in clean energy space"
-          ]
-        },
-        "availableInventory": [
-          {
-            "id": "inventory-family-originals",
-            "contentType": "Family Original Series",
-            "title": "Enchanted Kingdoms & Nature Documentaries",
-            "availableSlots": 120,
-            "estimatedReach": 8500000,
-            "cpmRange": "$28-35",
-            "brandSafety": 98,
-            "viewability": 96,
-            "completionRate": 94,
-            "audienceAlignment": "Families with environmental values",
-            "contentRating": "G/PG",
-            "peakViewingTimes": "7-9 PM weekdays, 2-8 PM weekends",
-            "seasonalMultiplier": 1.2,
-            "recommendedBudget": "$180,000-220,000"
-          },
-          {
-            "id": "inventory-sports-events",
-            "contentType": "Live Sports Events",
-            "title": "Winter Championship & Outdoor Sports",
-            "availableSlots": 45,
-            "estimatedReach": 12000000,
-            "cpmRange": "$42-55",
-            "brandSafety": 99,
-            "viewability": 98,
-            "completionRate": 97,
-            "audienceAlignment": "Active lifestyle enthusiasts",
-            "contentRating": "G",
-            "peakViewingTimes": "Event-driven, weekend heavy",
-            "seasonalMultiplier": 1.6,
-            "recommendedBudget": "$280,000-350,000"
-          },
-          {
-            "id": "inventory-documentary-programming",
-            "contentType": "Environmental Documentaries",
-            "title": "Climate Solutions & Innovation Series",
-            "availableSlots": 85,
-            "estimatedReach": 4200000,
-            "cpmRange": "$22-28",
-            "brandSafety": 97,
-            "viewability": 95,
-            "completionRate": 92,
-            "audienceAlignment": "Environmentally conscious adults",
-            "contentRating": "PG/PG-13",
-            "peakViewingTimes": "8-10 PM weekdays",
-            "seasonalMultiplier": 1.1,
-            "recommendedBudget": "$120,000-150,000"
-          }
-        ],
-        "activeCampaigns": [
-          {
-            "id": "camp-ecotech-solar-2025",
-            "advertiser": "EcoTech Solutions",
-            "campaign": "SolarMax Pro Launch Campaign",
-            "budget": 285000,
-            "spent": 142500,
-            "duration": 45,
-            "daysRemaining": 23,
-            "status": "Active",
-            "targetAudience": "Environmentally conscious homeowners",
-            "currentMetrics": {
-              "impressions": 8500000,
-              "clicks": 127500,
-              "ctr": 0.015,
-              "conversions": 1785,
-              "cvr": 0.014,
-              "cpa": 79.83,
-              "brandLift": 0.18,
-              "completionRate": 0.89
-            },
-            "targetMetrics": {
-              "impressions": 15000000,
-              "ctr": 0.018,
-              "cvr": 0.016,
-              "cpa": 75,
-              "brandLift": 0.25
-            },
-            "contentPlacements": [
-              "Environmental Documentaries - 45%",
-              "Family Original Series - 35%",
-              "Live Sports Events - 20%"
-            ]
-          },
-          {
-            "id": "camp-greentech-awareness",
-            "advertiser": "EcoTech Solutions",
-            "campaign": "Clean Energy Awareness Initiative",
-            "budget": 125000,
-            "spent": 89250,
-            "duration": 30,
-            "daysRemaining": 8,
-            "status": "Active",
-            "targetAudience": "Sustainability-focused millennials",
-            "currentMetrics": {
-              "impressions": 6200000,
-              "clicks": 93000,
-              "ctr": 0.015,
-              "conversions": 1240,
-              "cvr": 0.013,
-              "cpa": 71.98,
-              "brandLift": 0.22,
-              "completionRate": 0.91
-            },
-            "targetMetrics": {
-              "impressions": 8500000,
-              "ctr": 0.016,
-              "cvr": 0.015,
-              "cpa": 68,
-              "brandLift": 0.28
-            },
-            "contentPlacements": [
-              "Environmental Documentaries - 60%",
-              "Family Original Series - 25%",
-              "Live Sports Events - 15%"
-            ]
-          }
-        ],
-        "campaignInsights": [
-          {
-            "id": "insight-audience-performance",
-            "title": "Audience Segment Performance Analysis",
-            "category": "Audience Intelligence",
-            "insight": "Environmental documentary viewers show 34% higher conversion rates for solar technology ads compared to general family content",
-            "recommendation": "Increase budget allocation to environmental programming by 25%",
-            "impact": "Projected 18% improvement in campaign efficiency",
-            "confidence": "High",
-            "dataPoints": [
-              "Environmental docs: 1.8% CVR, $65 CPA",
-              "Family content: 1.3% CVR, $85 CPA",
-              "Sports events: 1.1% CVR, $95 CPA"
-            ]
-          },
-          {
-            "id": "insight-timing-optimization",
-            "title": "Optimal Viewing Time Analysis",
-            "category": "Temporal Targeting",
-            "insight": "Peak engagement for sustainability content occurs 8-10 PM weekdays, with 28% higher completion rates",
-            "recommendation": "Shift 40% of budget to prime evening slots",
-            "impact": "Estimated 15% increase in brand awareness lift",
-            "confidence": "High",
-            "dataPoints": [
-              "8-10 PM: 94% completion rate",
-              "6-8 PM: 87% completion rate",
-              "Weekend afternoons: 82% completion rate"
-            ]
-          },
-          {
-            "id": "insight-creative-performance",
-            "title": "Creative Asset Performance Tracking",
-            "category": "Creative Optimization",
-            "insight": "30-second educational format outperforms 15-second promotional by 42% in brand recall",
-            "recommendation": "Prioritize longer-form educational creative assets",
-            "impact": "Projected 22% improvement in brand lift metrics",
-            "confidence": "Medium-High",
-            "dataPoints": [
-              "30s educational: 68% brand recall",
-              "15s promotional: 48% brand recall",
-              "Interactive format: 71% engagement rate"
-            ]
-          }
-        ],
-        "campaignMetrics": {
-          "totalActiveCampaigns": 2,
-          "totalBudget": 410000,
-          "totalSpent": 231750,
-          "averageCPM": 18.75,
-          "totalImpressions": 14700000,
-          "totalClicks": 220500,
-          "averageCTR": 0.015,
-          "totalConversions": 3025,
-          "averageCVR": 0.0137,
-          "averageCPA": 76.61,
-          "averageBrandLift": 0.2
-        },
-        "platformMetrics": {
-          "availableInventorySlots": 250,
-          "averageInventoryCPM": 31.5,
-          "totalEstimatedReach": 24700000,
-          "averageBrandSafety": 98,
-          "averageViewability": 96.3,
-          "averageCompletionRate": 93.7,
-          "advertiserSatisfaction": 94
-        },
-        "selfServiceCapabilities": [
-          "Real-time campaign performance monitoring and optimization",
-          "Automated audience targeting and lookalike modeling",
-          "Dynamic creative optimization and A/B testing",
-          "Cross-content attribution and brand lift measurement",
-          "Predictive budget allocation and pacing recommendations",
-          "Contextual content alignment and brand safety monitoring",
-          "Advanced reporting and competitive intelligence insights",
-          "Self-service campaign setup and creative asset management"
-        ]
-      }
-    },
     "aamp-marketplace": {
       "id": "aamp-marketplace",
-      "title": "IAB AAMP Marketplace",
+      "title": "IAB AAMP Media Buy",
       "description": "AAMP campaign planning & inventory discovery",
       "icon": "storefront",
-      "defaultAgent": "AgencyAgent",
+      "defaultAgent": "MediaPlanningAgent",
       "availableAgents": [
-        "AgencyAgent",
-        "AAMPBuyerAgent"
+        "MediaPlanningAgent",
+        "AAMPBuyer",
+        "AAMPSeller"
       ],
       "scenarios": [
         {
           "id": "aamp-plan-automotive",
           "title": "Plan & Discover: Automotive",
-          "description": "Plan budget allocation and discover recommended CTV and digital video inventory with pricing.",
-          "query": "Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles. Allocate budget across channels and show me the recommended inventory with pricing.",
+          "description": "Plan budget allocation and discover recommended CTV and digital video inventory with pricing, via the AAMPBuyerAgent.",
+          "query": "Use ONLY your AAMPBuyerAgent for this request. Do not consult any other agent or specialist, and do not use your AdCPBuyerAgent. Ask the AAMPBuyerAgent to plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles, allocate budget across channels, and return the recommended inventory with pricing. Present its response together with your analysis.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 1
         },
         {
           "id": "aamp-plan-fintech-mobile",
           "title": "Plan & Discover: Fintech App",
-          "description": "Plan a mobile app install campaign and see recommended inventory with CPMs.",
-          "query": "Plan a $250K mobile app install campaign for a fintech budgeting app targeting adults 21-40 across mobile and performance video. Allocate the budget across channels and recommend inventory with CPMs and estimated impressions.",
+          "description": "Plan a mobile app install campaign and see recommended inventory with CPMs, via the AAMPBuyerAgent.",
+          "query": "Use ONLY your AAMPBuyerAgent for this request. Do not consult any other agent or specialist, and do not use your AdCPBuyerAgent. Ask the AAMPBuyerAgent to plan a $250K mobile app install campaign for a fintech budgeting app targeting adults 21-40 across mobile and performance video, allocate the budget across channels, and recommend inventory with CPMs and estimated impressions. Present its response together with your analysis.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 2
         },
         {
           "id": "aamp-plan-cpg-ctv",
           "title": "Plan & Discover: CPG Brand Awareness",
-          "description": "Plan a premium CTV brand-awareness campaign with a budget split and recommended inventory.",
-          "query": "Plan a $1M CTV brand-awareness campaign for a CPG snack brand targeting households with children. Show the budget split across channels and the recommended premium CTV inventory with pricing and audience reach.",
+          "description": "Plan a premium CTV brand-awareness campaign with a budget split and recommended inventory, via the AAMPBuyerAgent.",
+          "query": "Use ONLY your AAMPBuyerAgent for this request. Do not consult any other agent or specialist, and do not use your AdCPBuyerAgent. Ask the AAMPBuyerAgent to plan a $1M CTV brand-awareness campaign for a CPG snack brand targeting households with children, show the budget split across channels, and return the recommended premium CTV inventory with pricing and audience reach. Present its response together with your analysis.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 3
+        }
+      ],
+      "availableCampaigns": [],
+      "visualizations": []
+    },
+    "adcp-media-buy": {
+      "id": "adcp-media-buy",
+      "title": "AdCP Media Buy",
+      "description": "Campaign Agent walking an advertiser brief through the AdCP media buy workflow",
+      "icon": "shopping_cart",
+      "defaultAgent": "CampaignAgent",
+      "availableAgents": [
+        "CampaignAgent",
+        "AdCPBuyer"
+      ],
+      "scenarios": [
+        {
+          "id": "adcp-brief",
+          "title": "1. Submit the Campaign Brief",
+          "description": "Hand the Campaign Agent a brief and have it confirm what it understood and what it still needs before going to market.",
+          "query": "Here is the brief for Acme Energy (brand domain acmeenergy.example), operated by Omnicom Media Group. Product: residential solar panels. Objectives: brand awareness and consideration among environmentally conscious homeowners aged 35-55. Markets: California and Texas. Channels: connected TV and online video. Budget: $750,000 USD. Flight: 1 October to 31 December 2026. Brand safety: no fossil-fuel or climate-denial content adjacency. Confirm your understanding of the brief, tell me what is missing, and outline the steps you will take to get this campaign bought.",
+          "category": "Brief & Planning",
+          "agentType": "CampaignAgent",
+          "stepOrder": 1
+        },
+        {
+          "id": "adcp-sellers",
+          "title": "2. Who Can We Buy From",
+          "description": "Ask which sellers the Campaign Agent can reach for this campaign and what each one supports.",
+          "query": "Which sellers can you buy from for this campaign, and what does each of them support? Name every seller explicitly so I know who answered, and if any seller did not respond, say which one rather than leaving it out.",
+          "category": "AdCP Discovery",
+          "agentType": "CampaignAgent",
+          "stepOrder": 2
+        },
+        {
+          "id": "adcp-inventory",
+          "title": "3. Discover Inventory for the Brief",
+          "description": "Get matching products from every seller, with seller-attributed pricing, formats, and reach.",
+          "query": "Find inventory that fits the brief from every seller you can reach. For each product tell me which seller offers it, the pricing model and rate, the creative formats it supports, the estimated reach, and how it matches our audience and markets. Keep each seller's figures separate; do not blend sellers into one number.",
+          "category": "AdCP Discovery",
+          "agentType": "CampaignAgent",
+          "stepOrder": 3
+        },
+        {
+          "id": "adcp-creative",
+          "title": "4. Creative Requirements",
+          "description": "Check the creative formats each seller accepts for the shortlisted products against the assets we have.",
+          "query": "For the products you recommended, what creative formats does each seller accept? We have 15-second and 30-second video assets. Flag any product we could not fill with those assets, and say which seller each requirement came from.",
+          "category": "AdCP Discovery",
+          "agentType": "CampaignAgent",
+          "stepOrder": 4
+        },
+        {
+          "id": "adcp-signals",
+          "title": "5. Audience Signals",
+          "description": "Ask which audience or contextual signals the sellers can target against and how much coverage they offer.",
+          "query": "Which audience or contextual signals can the sellers target against to reach environmentally conscious homeowners, and what coverage and pricing does each one carry? Make clear that these figures are each seller's own data, and tell me if a seller does not offer signals at all.",
+          "category": "AdCP Discovery",
+          "agentType": "CampaignAgent",
+          "stepOrder": 5
+        },
+        {
+          "id": "adcp-plan",
+          "title": "6. Media Plan for Approval",
+          "description": "Assemble one media plan from the discovery results and present it for human approval.",
+          "query": "Assemble the media plan. For each seller and product give the budget, flight, pricing, expected reach, creative requirements, and risks, and show the total against the $750,000 authorization. Present it for my approval and wait. Do not book anything yet.",
+          "category": "Approval & Governance",
+          "agentType": "CampaignAgent",
+          "stepOrder": 6
+        },
+        {
+          "id": "adcp-setup",
+          "title": "7. Account and Governance Setup",
+          "description": "After approval, declare the advertiser account at each seller, bind governance, and register the plan limits.",
+          "query": "The plan is approved. Declare our advertiser account with every seller for acmeenergy.example operated by Omnicom Media Group, bind the governance agent to each seller, and register the campaign plan: $750,000 USD total, flight 1 October to 31 December 2026, authorized channels connected TV, online video and streaming audio, authorized markets US with regions California and Texas, 15 percent reallocation threshold, no extra review requirement. Confirm the result per seller, and be clear that registering the plan approves nothing by itself.",
+          "category": "Approval & Governance",
+          "agentType": "CampaignAgent",
+          "stepOrder": 7
+        },
+        {
+          "id": "adcp-authorize",
+          "title": "8. Authorize the First Buy",
+          "description": "Check a specific intended buy against the registered plan before any money is committed.",
+          "query": "Before we spend anything, check whether a $250,000 USD buy on the first product you recommended, for the full flight and targeted to California and Texas, is within the registered plan. Report the verdict and the reason. If the answer comes back with conditions, list them and treat the buy as not approved.",
+          "category": "Approval & Governance",
+          "agentType": "CampaignAgent",
+          "stepOrder": 8
+        },
+        {
+          "id": "adcp-book",
+          "title": "9. Book the Media Buy",
+          "description": "Book the authorized buy, report the seller's confirmed figures, and close the loop with governance.",
+          "query": "Book the authorized $250,000 USD buy with that seller and product for 1 October to 31 December 2026. Report the media buy identifier, the budget the seller actually confirmed, the creative deadline, and the status. If the seller only accepted the request rather than confirming it, say so instead of implying the buy is live. Then report the outcome to the governance agent using the seller's confirmed figure, and confirm the plan's tracked spend reflects it. These are sandbox sellers, so state that no real money moved.",
+          "category": "Media Buy",
+          "agentType": "CampaignAgent",
+          "stepOrder": 9
+        },
+        {
+          "id": "adcp-delivery",
+          "title": "10. Delivery Report",
+          "description": "Get billing-grade delivery and operational status for the booked buy, with pacing against the plan.",
+          "query": "How is the booked buy delivering? Give me the billing-grade impressions and spend, and separately the operational status and creative approval state, then tell me how it is pacing against the plan. If little or nothing has delivered yet, say that plainly rather than implying delivery that has not happened.",
+          "category": "Delivery & Audit",
+          "agentType": "CampaignAgent",
+          "stepOrder": 10
+        },
+        {
+          "id": "adcp-change",
+          "title": "11. Mid-Flight Change Request",
+          "description": "Ask for a reallocation and a market extension; see what the agent can check, what needs a human, and what it cannot change.",
+          "query": "Two changes: first, we want to extend the campaign into Canada with an additional $100,000 USD on the same product; second, we want to move $50,000 from the booked package to a second seller. For the Canada extension, check it against the registered plan and report the verdict and the reason. For the reallocation, tell me whether it needs human approval under our thresholds and exactly what you can and cannot do about it yourself. Do not resize or retarget anything to get it through.",
+          "category": "Delivery & Audit",
+          "agentType": "CampaignAgent",
+          "stepOrder": 11
+        },
+        {
+          "id": "adcp-audit",
+          "title": "12. Plan Audit Trail",
+          "description": "Read back the governance agent's record of every check, verdict, and booking on the plan.",
+          "query": "Show me the audit trail for this campaign plan as the governance agent recorded it: every authorization check and its verdict, every booking outcome, the plan's current tracked budget, and its lifecycle state. Read it back from the governance record rather than reconstructing it from our conversation.",
+          "category": "Delivery & Audit",
+          "agentType": "CampaignAgent",
+          "stepOrder": 12
         }
       ],
       "availableCampaigns": [],
@@ -906,8 +338,7 @@
       "availableAgents": [
         "MediaPlanningAgent",
         "MediaPlanCompiler",
-        "AgencyAgent",
-        "AAMPBuyerAgent"
+        "AAMPBuyer"
       ],
       "scenarios": [
         {
@@ -934,7 +365,7 @@
           "description": "Plan budget allocation and discover available inventory for a $500K Q4 automotive campaign.",
           "query": "Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles. Allocate budget across channels and show me available inventory with pricing.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 1
         },
         {
@@ -943,7 +374,7 @@
           "description": "Plan a mobile app install campaign and see recommended inventory with CPMs.",
           "query": "Plan a $250K mobile app install campaign for a fintech budgeting app targeting adults 21-40 across mobile and performance video. Allocate the budget across channels and recommend inventory with CPMs and estimated impressions.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 2
         },
         {
@@ -952,7 +383,7 @@
           "description": "Plan a premium CTV brand-awareness campaign with a budget split and recommended inventory.",
           "query": "Plan a $1M CTV brand-awareness campaign for a CPG snack brand targeting households with children. Show the budget split across channels and the recommended premium CTV inventory with pricing and audience reach.",
           "category": "Campaign Planning",
-          "agentType": "AgencyAgent",
+          "agentType": "MediaPlanningAgent",
           "stepOrder": 3
         }
       ],
