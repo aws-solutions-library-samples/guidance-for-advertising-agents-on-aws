@@ -11,7 +11,7 @@
     "collaborativeInsights": {
       "primaryAgent": "audience-strategy-analyzer",
       "supportingAgent1": "MediaPlannerAgent",
-      "supportingAgent2": "CampaignArchitectureAgent"
+      "supportingAgent2": "CampaignOptimizationAgent"
     },
     "metrics": [
       {

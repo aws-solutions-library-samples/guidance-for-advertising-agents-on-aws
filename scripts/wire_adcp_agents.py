@@ -13,7 +13,7 @@ WHAT IS WRITTEN
 Two config shapes, because they are reached two different ways:
 
 1. ``external_agent_configs`` entry ``AdCPBuyerAgent`` on each consumer in CONSUMER_AGENTS
-   (AgencyAgent and MediaPlanningAgent) — reached with
+   (CampaignAgent and MediaPlanningAgent) — reached with
    ``invoke_specialist(agent_name="AdCPBuyerAgent")``.
 2. Top-level ``agent_configs`` entry ``AdCPBuyer`` — directly selectable in the UI.
 
@@ -55,7 +55,7 @@ import os
 from typing import Any, Dict, List, Tuple
 
 # Orchestrators that reach the AdCP buyer. Each gets the same external entry and credential path.
-CONSUMER_AGENTS = ("AgencyAgent", "MediaPlanningAgent")
+CONSUMER_AGENTS = ("CampaignAgent", "MediaPlanningAgent")
 EXTERNAL_ENTRY_NAME = "AdCPBuyerAgent"
 TOP_LEVEL_ID = "AdCPBuyer"
 AUTH_TYPE = "oauth_m2m"

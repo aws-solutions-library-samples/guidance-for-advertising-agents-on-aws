@@ -10,7 +10,7 @@
     "subtitle": "Real-time analysis of event impact on media performance and audience behavior",
     "collaborativeInsights": {
       "primaryAgent": "CurrentEventsAgent",
-      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent1": "AudienceIntelligenceAgent",
       "supportingAgent2": "MediaPlanningSupervisorAgent"
     },
     "metrics": [

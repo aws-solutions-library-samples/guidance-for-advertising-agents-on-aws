@@ -54,7 +54,7 @@ python local_agent_tester.py --list-scenarios MediaPlanningAgent
 - `AudienceIntelligenceAgent` - Audience analysis and segmentation
 - `CreativeSelectionAgent` - Creative concepts and format selection
 - `TimingStrategyAgent` - Campaign timing and scheduling
-- `WeatherImpactAgent` - Weather-based campaign insights
+- `WeatherAgent` - Weather-based campaign insights
 - And 20+ more...
 
 ## Command Line Options

@@ -15,7 +15,7 @@ AgentCore.
 
 > **What changed:** The AAMP buyer and seller now run as **Strands A2A** agents
 > (not CrewAI/HTTP), are protected by **OAuth (custom JWT)**, and the
-> orchestrator (AgencyAgent) calls **only the buyer**. The buyer reaches the
+> orchestrator (MediaPlanningAgent) calls **only the buyer**. The buyer reaches the
 > seller internally. See [Migration notes](#migration-notes) at the end.
 
 ---
@@ -27,12 +27,12 @@ AgentCore.
 |                    Angular UI (CloudFront)                    |
 +------------------------------+--------------------------------+
                                | invoke_agent_runtime (SSE)
-                               | agent_name = "AgencyAgent"
+                               | agent_name = "MediaPlanningAgent"
 +------------------------------v--------------------------------+
 |            GUIDANCE AGENT RUNTIME (AdFabricAgent)             |
 |                    Strands + Bedrock                          |
 |                                                               |
-|  AgencyAgent (orchestrator)                                   |
+|  MediaPlanningAgent (orchestrator)                                   |
 |    +-- invoke_aampbuyeragent  (A2A, OAuth bearer)             |
 |          -> message/stream (JSON-RPC 2.0 over SSE)            |
 |          (no direct seller tool -- see Routing below)         |
@@ -67,24 +67,24 @@ AgentCore.
 | Transport | AgentCore data-plane HTTPS endpoint (`invoke_agent_runtime` for SigV4/IAM targets; direct HTTPS POST with a bearer token for OAuth targets). |
 | Auth | **OAuth (custom JWT)**. The buyer and seller runtimes are fronted by a Cognito-backed JWT authorizer. The caller obtains a bearer token via `A2ATokenManager` (client-credentials or username/password, per the stored credential document) and sends it on every invoke. SigV4 alone does not satisfy a JWT authorizer. |
 | Buyer → seller credentials | The buyer reads the seller's inbound OAuth credential from SSM. `scripts/deploy_aamp_agents.sh` grants the buyer runtime role `ssm:GetParameter` + `kms:Decrypt` on that parameter after the buyer deploys. |
-| Cold-start resilience | Both hops (AgencyAgent → buyer, buyer → seller) retry on `424`/`503` (runtime still initializing) with backoff, so the first call after an idle period is transparent instead of surfacing a failure. |
+| Cold-start resilience | Both hops (MediaPlanningAgent → buyer, buyer → seller) retry on `424`/`503` (runtime still initializing) with backoff, so the first call after an idle period is transparent instead of surfacing a failure. |
 
 ---
 
 ## Routing (buyer-only orchestration)
 
-The AgencyAgent orchestrates the AAMP marketplace through the **buyer only**:
+The MediaPlanningAgent orchestrates the AAMP marketplace through the **buyer only**:
 
-- **AgencyAgent → AAMPBuyerAgent** is the single external tool for AAMP. The
+- **MediaPlanningAgent → AAMPBuyerAgent** is the single external tool for AAMP. The
   buyer plans the campaign *and* returns real inventory and pricing, which it
   sources from the seller internally (`search_inventory` → `seller_client`).
-- **AAMPSellerAgent is not wired as an AgencyAgent tool.** Its
+- **AAMPSellerAgent is not wired as an MediaPlanningAgent tool.** Its
   `external_agent_configs` entry is present but `enabled: false`, so the tool
   builder skips it. The seller runtime is still deployed — the buyer calls it
   directly — but the orchestrator never invokes it, which avoids routing
   ambiguity between the two AAMP agents.
 
-> To re-enable direct AgencyAgent → seller calls, set the seller entry's
+> To re-enable direct MediaPlanningAgent → seller calls, set the seller entry's
 > `enabled` back to `true` in `global_configuration.template.json` and redeploy.
 
 The per-external-agent invoke tools are built in
@@ -140,11 +140,10 @@ JSON), which the UI renders directly. Free-form agent prose is analyzed
 client-side against the agent's visualization templates (DynamoDB
 `VIZ_MAP#{agent}` / `VIZ_TEMPLATE#{agent}`) to produce cards where it matches.
 
-**AgencyAgent visualization map** (`agent-visualizations-library/agent-visualization-maps/AgencyAgent.json`)
-advertises these templates: `adcp_get_products`, `allocations`,
-`adcp_create_media_buy`, `timeline`, `adcp_get_media_buy_delivery`.
+**MediaPlanningAgent visualization map** (`agent-visualizations-library/agent-visualization-maps/MediaPlanningAgent.json`)
+advertises these templates: `allocations`, `metrics`, `timeline`.
 
-**Response formatting.** The buyer, seller, and AgencyAgent prompts require:
+**Response formatting.** The buyer, seller, and MediaPlanningAgent prompts require:
 no emojis, a character cap, and any tabular/CSV data rendered as a Markdown
 table (never raw CSV).
 
@@ -158,16 +157,16 @@ table (never raw CSV).
 |-------|-------|
 | Runtime | Own AgentCore runtime, Strands A2A, OAuth (custom JWT) |
 | `isA2A` / `authType` | `true` / `oauth` |
-| Wired to AgencyAgent | **Yes** (single AAMP tool) |
+| Wired to MediaPlanningAgent | **Yes** (single AAMP tool) |
 | Returns | Media-plan JSON: per-channel budget allocation + recommended inventory/pricing (sourced from the seller) + audience coverage/gaps + approval flag |
 
-### AAMPSellerAgent (deployed, not wired to AgencyAgent)
+### AAMPSellerAgent (deployed, not wired to MediaPlanningAgent)
 
 | Field | Value |
 |-------|-------|
 | Runtime | Own AgentCore runtime, Strands A2A, OAuth (custom JWT) |
 | `isA2A` / `authType` | `true` / `oauth` |
-| Wired to AgencyAgent | **No** (`enabled: false`) — reached only by the buyer |
+| Wired to MediaPlanningAgent | **No** (`enabled: false`) — reached only by the buyer |
 | Handles | Inventory catalog, tiered pricing, deal creation (PG/PD/PA) |
 
 ---
@@ -200,7 +199,7 @@ Relevant phases:
 | Phase | Purpose |
 |-------|---------|
 | 7 | Upload agent instructions, visualization maps/templates, and the resolved global config to DynamoDB |
-| 8 | Deploy the guidance AgentCore agent (AgencyAgent / AdFabricAgent runtime — includes `a2a_client_tools.py`) |
+| 8 | Deploy the guidance AgentCore agent (MediaPlanningAgent / AdFabricAgent runtime — includes `a2a_client_tools.py`) |
 | 9 | Deploy the AAMP buyer & seller runtimes and wire them (buyer-only) |
 | 10 | Build & deploy the Angular UI |
 | 11 | Warm up runtimes (reduces cold-start latency) |
@@ -265,7 +264,7 @@ community-maintained agent/crew/flow code is not modified.
   (SSE), which fixed the `424` on long buyer responses.
 - **IAM → OAuth (custom JWT).** Both AAMP runtimes are OAuth-protected; callers
   use bearer tokens via `A2ATokenManager`.
-- **Both-agents orchestration → buyer-only.** The AgencyAgent now calls only the
-  buyer; the seller is reached internally by the buyer. The seller's AgencyAgent
+- **Both-agents orchestration → buyer-only.** The MediaPlanningAgent now calls only the
+  buyer; the seller is reached internally by the buyer. The seller's MediaPlanningAgent
   tool entry is disabled rather than removed, so it can be re-enabled without
   re-adding the configuration.

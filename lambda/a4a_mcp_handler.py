@@ -619,7 +619,7 @@ def handle_get_agent_conversation(args: Dict) -> Dict:
     # Actor IDs to try — prioritize the provided agent_name, then common orchestrator targets
     actor_ids_to_try = [actor_id] if actor_id else []
     actor_ids_to_try.extend([
-        "MediaPlanningAgent", "AgencyAgent", "CampaignOptimizationAgent",
+        "MediaPlanningAgent", "CampaignAgent", "CampaignOptimizationAgent",
         "InventoryOptimizationAgent", "YieldOptimizationAgent",
         "AAMPBuyerAgent", "AAMPSellerAgent", "AdFabricAgent",
     ])

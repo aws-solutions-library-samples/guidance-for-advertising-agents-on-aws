@@ -52,7 +52,7 @@ flowchart TD
     DUI["AdCP buyer's own React UI"]
 
     subgraph GUID["Guidance runtime — AgentCore Runtime"]
-        AGENCY["AgencyAgent orchestrator<br/>Strands + BedrockModel"]
+        AGENCY["MediaPlanningAgent (AAMP) and CampaignAgent (AdCP) orchestrators<br/>Strands + BedrockModel"]
         SPEC["~33 specialist agents<br/>config-driven via handler.py"]
     end
 
@@ -94,8 +94,8 @@ flowchart TD
 ```
 
 **Text equivalent.** The Angular UI invokes the guidance runtime, addressing
-`AgencyAgent`, which fans out to in-process specialists and to two external
-peers over A2A with OAuth bearer tokens: the AAMP buyer and the AdCP buyer. The
+`MediaPlanningAgent` for AAMP or `CampaignAgent` for AdCP. Each fans out to
+its external peer over A2A with OAuth bearer tokens: the AAMP buyer and the AdCP buyer respectively. The
 AAMP buyer reaches the AAMP seller directly. The AdCP buyer's two runtimes share
 one tool and registry core, which calls the AdCP seller and the governance
 agent. The AdCP seller independently calls governance and pulls signing keys and
@@ -107,7 +107,7 @@ of band through a DynamoDB table.
 | Layer | Responsibility | Components |
 | --- | --- | --- |
 | **Presentation** | Conversational surface, visualization rendering | Angular UI; the AdCP buyer's own React UI |
-| **Orchestration** | Intent routing, specialist coordination, approval gates | `AgencyAgent` and ~33 specialists on the guidance runtime |
+| **Orchestration** | Intent routing, specialist coordination, approval gates | `MediaPlanningAgent`, `CampaignAgent` and the specialists on the guidance runtime |
 | **Buy side** | Brief interpretation, budget allocation, plan assembly, negotiation | AdCP buyer; AAMP buyer |
 | **Governance** | Policy authority, spend tracking, signed authorisation, audit | AdCP governance agent |
 | **Sell side** | Inventory, pricing, availability, booking, delivery reporting | AdCP seller; AAMP seller |
@@ -139,11 +139,10 @@ keys from the agent's `injectable_values`, and `{{AGENT_NAME_LIST}}` — a JSON
 array of every agent card, which lets an agent fuzzy-match a mistyped
 `@AgentName` reference.
 
-`AgencyAgent` supports two inventory-integration modes, selected per
-conversation. **Direct AdCP** has the orchestrator call AdCP tasks itself.
-**Publisher agent collaboration** delegates them to `PublisherAgent` over A2A.
-The mode exists because both are legitimate real-world integration patterns and
-the solution demonstrates each.
+`CampaignAgent` owns AdCP buying: it holds no protocol tools of its own and
+routes every inventory, governance, booking, and delivery request to the external
+AdCP buyer by name. `MediaPlanningAgent` owns AAMP planning through the AAMP
+buyer in the same way.
 
 ### 3.2 AdCP buyer
 
@@ -296,7 +295,7 @@ It emits progress milestones to a shared table as it works (§7).
 
 ### 3.7 Routing: the orchestrator calls one AAMP agent
 
-`AgencyAgent` is wired to the AAMP **buyer** only. The seller's tool entry is
+`MediaPlanningAgent` is wired to the AAMP **buyer** only. The seller's tool entry is
 present but disabled, so the tool builder skips it. The buyer already returns
 seller-sourced inventory and pricing, so exposing both agents as sibling tools
 would give the orchestrator two plausible routes to the same information and no
@@ -448,7 +447,7 @@ knowing who its verifiers are.
 sequenceDiagram
     autonumber
     participant U as Angular UI
-    participant A as AgencyAgent
+    participant A as MediaPlanningAgent
     participant B as AAMP Buyer
     participant S as AAMP Seller
     participant R as Internal REST on 8001

@@ -11,7 +11,7 @@ When this skill loads, **immediately present the starter picker** — do NOT wai
 
 ### Conversational Tone
 - Speak like a media buyer's planning partner
-- "Let me plan that campaign and pull inventory options..." not "Invoking AgencyAgent orchestrator..."
+- "Let me plan that campaign and pull inventory options..." not "Invoking MediaPlanningAgent orchestrator..."
 - "The seller rejected $30 — their floor is $38. Want me to counter?" not "The agent returned status: completed with a rejection"
 
 ### Never Expose
@@ -29,7 +29,7 @@ When this skill loads, **immediately present the starter picker** — do NOT wai
 ## Available Tools (via Agents for Advertising connector)
 
 Same 12 tools as the A4A connector — key ones for this flow:
-- **invoke_agent** — Invoke AgencyAgent for planning, negotiation, booking
+- **invoke_agent** — Invoke MediaPlanningAgent for planning, negotiation, booking
 - **get_agent_conversation** — Poll for async results (long-polls up to 55s)
 
 ---
@@ -54,7 +54,7 @@ This skill walks through a complete AAMP buyer↔seller deal negotiation:
 ### Step 1: Plan & Discover Inventory
 **What happens:** The buyer agent plans the campaign budget allocation and asks the seller agent for available inventory with real pricing.
 
-**Agent:** `AgencyAgent`
+**Agent:** `MediaPlanningAgent`
 **Prompt:** `Plan a $500K Q4 automotive campaign across CTV and digital video targeting adults 25-54 who are in-market for vehicles. Allocate budget across channels and show me available inventory with pricing.`
 
 **After delivering results, show this transition picker:**
@@ -71,7 +71,7 @@ This skill walks through a complete AAMP buyer↔seller deal negotiation:
 ### Step 2: Negotiate (Low Offer — Gets Rejected)
 **What happens:** The buyer attempts to book at an aggressive CPM below the seller's floor price. The seller agent rejects the offer and counters with their minimum acceptable terms.
 
-**Agent:** `AgencyAgent`
+**Agent:** `MediaPlanningAgent`
 **Prompt:** `Create a Preferred Deal for inv-ctv-apex-sports-nba at $30 CPM for 5M impressions.`
 **Session:** Use the same `session_id` from Step 1 for continuity.
 
@@ -89,7 +89,7 @@ This skill walks through a complete AAMP buyer↔seller deal negotiation:
 ### Step 3: Counter at Floor (Deal Gets Booked)
 **What happens:** The buyer counters at the seller's minimum acceptable CPM. The seller accepts and the deal is booked with a Deal ID ready for DSP activation.
 
-**Agent:** `AgencyAgent`
+**Agent:** `MediaPlanningAgent`
 **Prompt:** `Create a Preferred Deal for inv-ctv-apex-sports-nba at $38 CPM for 5M impressions.`
 **Session:** Use the same `session_id` for continuity.
 
@@ -117,7 +117,7 @@ When selected, ask the user for their brief:
 >
 > I'll plan the allocation and discover what inventory is available from sellers."
 
-Construct the AgencyAgent prompt from their input and follow the same 3-step deal lifecycle.
+Construct the MediaPlanningAgent prompt from their input and follow the same 3-step deal lifecycle.
 
 ---
 
@@ -125,7 +125,7 @@ Construct the AgencyAgent prompt from their input and follow the same 3-step dea
 
 ### Calling the Agent
 ```
-invoke_agent(agent_name="AgencyAgent", prompt="<step prompt>", session_id="<from previous step if continuing>")
+invoke_agent(agent_name="MediaPlanningAgent", prompt="<step prompt>", session_id="<from previous step if continuing>")
 ```
 
 ### Handling Async Responses

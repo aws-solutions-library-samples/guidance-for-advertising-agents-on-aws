@@ -11,7 +11,7 @@
     "collaborativeInsights": {
       "primaryAgent": "social-sentiment-analyzer",
       "supportingAgent1": "TimingStrategyAgent",
-      "supportingAgent2": "AudienceStrategyAgent"
+      "supportingAgent2": "AudienceIntelligenceAgent"
     },
     "timeline": [
       {

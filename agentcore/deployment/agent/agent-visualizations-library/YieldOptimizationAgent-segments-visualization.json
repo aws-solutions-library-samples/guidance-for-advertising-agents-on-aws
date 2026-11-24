@@ -10,7 +10,7 @@
     "subtitle": "Yield performance analysis by audience segments and demographics",
     "collaborativeInsights": {
       "primaryAgent": "YieldOptimizationAgent",
-      "supportingAgent1": "AudienceStrategyAgent",
+      "supportingAgent1": "AudienceIntelligenceAgent",
       "supportingAgent2": "InventoryOptimizationAgent"
     },
     "segments": [

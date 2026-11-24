@@ -15,7 +15,7 @@ patched-at-deploy dependency.
 - `src/ad_buyer/interfaces/agentcore/planning_helpers.py` — crewai-free brief parse + audience
   heuristics (extracted from `crew_tools` / `flows/deal_booking_flow.py`).
 - `src/ad_buyer/interfaces/agentcore/seller_client.py` — reaches the **seller's A2A runtime** with a
-  Cognito bearer (OAuth A2A `message/send` POST — the same pattern the AgencyAgent uses). Replaces
+  Cognito bearer (OAuth A2A `message/send` POST — the same pattern the CampaignAgent uses). Replaces
   the broken `OpenDirectClient` dummy-URL path.
 - `infra/aws/agentcore/requirements-a2a.txt` — Strands deps, **no crewai**.
 - `infra/aws/agentcore/deploy.sh` — added `--mode a2a`.

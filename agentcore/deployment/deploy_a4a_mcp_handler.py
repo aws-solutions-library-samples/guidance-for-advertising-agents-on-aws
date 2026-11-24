@@ -63,7 +63,7 @@ A4A_MCP_TOOL_SCHEMA = [
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Agent name from list_agents (e.g. 'MediaPlanningAgent', 'AgencyAgent').",
+                    "description": "Agent name from list_agents (e.g. 'MediaPlanningAgent', 'CampaignAgent').",
                 }
             },
             "required": ["agent_name"],
@@ -77,7 +77,7 @@ A4A_MCP_TOOL_SCHEMA = [
             "properties": {
                 "agent_name": {
                     "type": "string",
-                    "description": "Agent name from list_agents (e.g. 'MediaPlanningAgent', 'AgencyAgent').",
+                    "description": "Agent name from list_agents (e.g. 'MediaPlanningAgent', 'CampaignAgent').",
                 },
                 "prompt": {
                     "type": "string",

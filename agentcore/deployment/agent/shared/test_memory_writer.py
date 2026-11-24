@@ -59,7 +59,7 @@ def tool_result_block():
 def make_manager():
     manager = manager_module.AgentCoreMemoryConversationManager(
         memory_id="mem-test-0001",
-        actor_id="AgencyAgent",
+        actor_id="CampaignAgent",
         session_id="0123456789abcdef0123456789abcdef0",
         region_name="us-east-1",
     )

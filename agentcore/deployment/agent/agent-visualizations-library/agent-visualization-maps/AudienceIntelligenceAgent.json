@@ -29,7 +29,7 @@
     }
   ],
   "collaborativeAgents": [
-    "AudienceStrategyAgent",
+    "AudienceIntelligenceAgent",
     "MediaPlannerAgent",
     "SocialSentimentAgent",
     "TimingStrategyAgent"

@@ -62,7 +62,7 @@ _PREFIX_RE = re.compile(r"^[a-z][a-z0-9]{0,19}$")
 # Names written by scripts/wire_adcp_agents.py.
 WIRE_TOP_LEVEL_ID = "AdCPBuyer"
 WIRE_EXTERNAL_ENTRY = "AdCPBuyerAgent"
-WIRE_CONSUMER_AGENTS = ("AgencyAgent", "MediaPlanningAgent")
+WIRE_CONSUMER_AGENTS = ("CampaignAgent", "MediaPlanningAgent")
 
 KMS_PENDING_WINDOW_DAYS = 7
 

@@ -11,7 +11,7 @@
     "collaborativeInsights": {
       "primaryAgent": "ChannelMixOptimizationAgent",
       "supportingAgent1": "MediaPlanningSupervisorAgent",
-      "supportingAgent2": "AudienceStrategyAgent"
+      "supportingAgent2": "AudienceIntelligenceAgent"
     },
     "metrics": [
       {
