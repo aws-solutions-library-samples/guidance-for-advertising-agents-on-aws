@@ -142,7 +142,7 @@ Resources:
                   - bedrock:ListKnowledgeBases
                 Resource:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::*/*"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:*:*/*"
                   - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
 
   # OpenSearch Serverless Collection for Knowledge Bases
@@ -344,6 +344,19 @@ Resources:
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
                   - "arn:aws:bedrock:*::foundation-model/*"
                   - "arn:aws:bedrock:*::inference-profile/*"
+              # First invoke of an Anthropic model in a fresh account makes Bedrock
+              # create the Marketplace subscription on the caller's behalf.
+              - Effect: Allow
+                Action:
+                  - aws-marketplace:Subscribe
+                  - aws-marketplace:Unsubscribe
+                  - aws-marketplace:ViewSubscriptions
+                  - bedrock:CreateFoundationModelAgreement
+                  - bedrock:GetFoundationModelAvailability
+                  - bedrock:ListFoundationModelAgreementOffers
+                  - bedrock:PutUseCaseForModelAccess
+                  - bedrock:GetUseCaseForModelAccess
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:InvokeAgentRuntime
