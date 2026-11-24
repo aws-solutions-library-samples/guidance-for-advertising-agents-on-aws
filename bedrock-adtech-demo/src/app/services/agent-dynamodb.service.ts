@@ -261,6 +261,11 @@ export interface AgentConfiguration {
    */
   agent_hosting?: 'adfabric' | 'external';
   /**
+   * When true the agent is left out of the agent config management screen.
+   * It stays in `agent_configs` and remains invocable; this only affects the UI.
+   */
+  hidden_from_management?: boolean;
+  /**
    * Wire protocol used to invoke this agent: `a2a` for JSON-RPC 2.0
    * `message/send`, `http` for a plain JSON request body.
    *

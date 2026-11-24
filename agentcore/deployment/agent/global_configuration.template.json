@@ -65,6 +65,7 @@
             "agent_display_name": "AdFabricAgent",
             "team_name": "Orchestration",
             "agent_description": "Determines intent of a prompt and direct the prompt to the appropriate agent.",
+            "hidden_from_management": true,
             "tool_agent_names": [
                 "MediaPlanningAgent",
                 "YieldOptimizationAgent",
