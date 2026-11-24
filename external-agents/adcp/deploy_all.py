@@ -2032,9 +2032,36 @@ def ensure_ui_dependencies(dry_run: bool) -> None:
     if (ui_dir / "node_modules").exists():
         print(f"  ui dependencies present: {ui_dir / 'node_modules'}")
         return
-    cmd = ["npm", "ci"] if (ui_dir / "package-lock.json").exists() else ["npm", "install"]
+    npm = _ui_npm_command()
+    cmd = npm + (["ci"] if (ui_dir / "package-lock.json").exists() else ["install"])
     print(f"  ui node_modules absent (correctly gitignored) — installing with `{' '.join(cmd)}`")
     run_subprocess(cmd, cwd=ui_dir, dry_run=dry_run, step_name="deploy-ui (ui npm install)")
+
+
+UI_NPM_MIN_MAJOR = 12
+
+
+def _ui_npm_command() -> list[str]:
+    """Return the npm invocation to use for the UI install.
+
+    npm 10's dependency resolver crashes on this UI's peer-dependency graph with
+    `Cannot read properties of null (reading 'edgesOut')`: vitest's optional `@vitejs/devtools`
+    peer pulls in `@vitejs/devtools-vitest`, whose own peers loop back to `vitest` and `jsdom`.
+    npm 12 resolves the same graph. When the installed npm is older, run npm 12 through `npx`
+    for this one install instead of changing the machine's global npm.
+    """
+    try:
+        version = subprocess.run(
+            ["npm", "--version"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        major = int(version.split(".")[0])
+    except (OSError, subprocess.CalledProcessError, ValueError) as exc:
+        print(f"  could not read the npm version ({exc}); using npm@{UI_NPM_MIN_MAJOR} via npx")
+        return ["npx", "--yes", f"npm@{UI_NPM_MIN_MAJOR}"]
+    if major >= UI_NPM_MIN_MAJOR:
+        return ["npm"]
+    print(f"  npm {version} is installed; the UI install needs npm {UI_NPM_MIN_MAJOR}+, using it via npx")
+    return ["npx", "--yes", f"npm@{UI_NPM_MIN_MAJOR}"]
 
 
 def step_deploy_ui(dry_run: bool) -> None:
