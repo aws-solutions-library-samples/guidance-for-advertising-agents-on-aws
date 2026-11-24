@@ -1191,9 +1191,10 @@ def step_bootstrap_venvs(dry_run: bool) -> None:
             )
         else:
             # No pyproject.toml here, so `uv sync` has nothing to resolve: build the env, then install
-            # the pinned requirements into it.
+            # the pinned requirements into it. `--clear` keeps this step re-runnable: since uv 0.9,
+            # `uv venv` fails when `.venv` already exists, which broke every `--resume-at 9` re-run.
             run_subprocess(
-                ["uv", "venv"], cwd=directory, dry_run=dry_run, step_name=f"bootstrap-venvs ({label})"
+                ["uv", "venv", "--clear"], cwd=directory, dry_run=dry_run, step_name=f"bootstrap-venvs ({label})"
             )
             # `--python .venv/bin/python` is load-bearing. Without it `uv pip install` targets an
             # already-active VIRTUAL_ENV, so running this from an activated virtualenv -- which
