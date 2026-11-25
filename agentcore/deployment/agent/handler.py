@@ -1255,6 +1255,32 @@ from shared.knowledge_base_helper import (
 )
 
 
+def _resolve_agent_key(agent_name: str, mapping: dict) -> str:
+    """Map whatever name the model put in a tool call onto the agent id that
+    keys `knowledge_bases` and `agent_configs`.
+
+    The model fills the tool's `agent_name` argument itself and often uses the
+    display name ("Ad Ops Agent") instead of the id ("AdOpsAgent"), which made
+    the knowledge base lookup miss for agents whose two names differ. Exact
+    key first; then a match on id, agent_name or agent_display_name ignoring
+    case and punctuation; then the agent handling this invocation.
+    """
+    if agent_name in mapping:
+        return agent_name
+    normalize = lambda value: re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+    target = normalize(agent_name)
+    if target:
+        for key, cfg in GLOBAL_CONFIG.get("agent_configs", {}).items():
+            candidates = {normalize(key)}
+            if isinstance(cfg, dict):
+                candidates.update(normalize(cfg.get(k)) for k in ("agent_name", "agent_display_name"))
+            if target in candidates:
+                return key
+    if current_agent_name:
+        return current_agent_name
+    return agent_name
+
+
 def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     """
     Get the knowledge base ID for an agent from the DynamoDB global config.
@@ -1264,7 +1290,8 @@ def get_kb_id_from_config(agent_name: str) -> Optional[str]:
     global GLOBAL_CONFIG
     if not GLOBAL_CONFIG:
         GLOBAL_CONFIG = ddb_load_global_config() or {}
-    configured = GLOBAL_CONFIG.get("knowledge_bases", {}).get(agent_name)
+    knowledge_bases = GLOBAL_CONFIG.get("knowledge_bases", {})
+    configured = knowledge_bases.get(_resolve_agent_key(agent_name, knowledge_bases))
     if not configured:
         return None
     kb_id = resolve_knowledge_base_id(configured)
