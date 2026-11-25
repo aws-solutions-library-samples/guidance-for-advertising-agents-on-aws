@@ -20,6 +20,10 @@ classifiers = [
 
 dependencies = [
     "crewai[anthropic,bedrock]>=1.14.4,<2.0.0",
+    # Deprecated 3.0 passes skip_file_prefixes to warnings.warn, which crewai's
+    # warnings wrapper rejects; the inventory API's Flow kickoffs then fail.
+    # See infra/aws/agentcore/requirements-a2a.txt.
+    "Deprecated<3",
     "crewai-tools>=1.14.0,<2.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
