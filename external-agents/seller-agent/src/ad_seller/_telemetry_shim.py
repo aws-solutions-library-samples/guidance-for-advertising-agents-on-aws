@@ -25,6 +25,12 @@ _TELEMETRY_ENV = {
     "POSTHOG_DISABLED": "true",
     "CHROMA_TELEMETRY_DISABLED": "true",
     "DO_NOT_TRACK": "1",
+    # crewai 1.15 opens a trace session on every Flow kickoff unless this is
+    # false, even with the telemetry opt-outs above. The Strands agent does not
+    # use it, but the internal inventory API still sequences its handlers with
+    # crewai Flow objects, and that trace-session path is where a Deprecated 3.0
+    # warning crashed /discovery (see infra/aws/agentcore/requirements-a2a.txt).
+    "CREWAI_TRACING_ENABLED": "false",
 }
 
 for _k, _v in _TELEMETRY_ENV.items():

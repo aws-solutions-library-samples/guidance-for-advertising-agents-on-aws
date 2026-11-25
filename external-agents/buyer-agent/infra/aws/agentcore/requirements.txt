@@ -2,6 +2,13 @@
 # Used by: agentcore configure --requirements-file requirements-agentcore.txt
 bedrock-agentcore
 crewai[tools,anthropic,bedrock]>=1.14.4,<2.0.0
+# crewai replaces warnings.warn at import with a wrapper that does not accept
+# the skip_file_prefixes keyword; Deprecated 3.0 passes it on Python 3.12+.
+# The internal inventory API still sequences its handlers with crewai Flow
+# objects, and a Flow kickoff opens crewai's trace session, whose OpenTelemetry
+# get_tracer call is decorated with Deprecated, so every /discovery call died
+# with TypeError (JSON-RPC -32603). Deprecated 1.x does not pass the keyword.
+Deprecated<3
 anthropic>=0.40.0
 httpx>=0.27.0
 pydantic>=2.0.0
