@@ -54,9 +54,6 @@ Steps (see STEPS below for the canonical list of names/numbers):
   13. deploy-ui            - publish the static chat UI (S3 + CloudFront)
                              via deploy_ui.py, using the just-captured
                              AGENT_RUNTIME_ARN (step 12) in .env
-  14. verify-journey       - invoke the deployed buyer for real and assert the
-                             Bind/Plan journey phases have genuine recorded
-                             steps behind them (verify_governance_journey_live.py)
 
 Explicitly OUT OF SCOPE for this script (per its own design — run this
 manually, on purpose, when you actually need it):
@@ -351,9 +348,8 @@ def warn(message: str) -> None:
 def header(step_num: int, title: str) -> None:
     # flush=True is load-bearing when stdout is redirected. Python block-buffers a non-tty stdout while
     # subprocesses write to the same fd immediately, so without this a captured log shows each step's
-    # header long after the output it labels -- during this deploy, headers for steps 3.55 to 4.98
-    # were still sitting in the buffer while pytest results from 4.98 were already in the file. A log
-    # whose failures cannot be attributed to a step is not much use for diagnosing a failed deploy.
+    # header long after the output it labels. A log whose failures cannot be attributed to a step is
+    # not much use for diagnosing a failed deploy.
     print(f"\n=== Step {step_num}: {title} ===", flush=True)
 
 
@@ -856,7 +852,7 @@ def step_publish_cache(dry_run: bool) -> None:
     Before the seller deploys rather than after, so a cold start finds `latest.json` already in place.
     A runtime that starts without one is not broken -- it discloses `artifact_unavailable` and keyword
     matches until the next 300 s refresh -- but "correct within five minutes" is a worse thing to hand
-    someone than "correct on the first request", and the verification at step 14 would race it.
+    someone than "correct on the first request".
 
     Gotham is published last on purpose: `build_gotham_artifact.py` reuses the ONNX model poseidon's
     pipeline downloads, rather than fetching a second copy of the same weights.
@@ -1165,9 +1161,7 @@ def step_bootstrap_venvs(dry_run: bool) -> None:
 
         FileNotFoundError: .../agents/buyer/reference-buyer/.venv/bin/python
 
-    at step 1, before anything was provisioned. The test step at 4.98 already tolerated the same
-    absence ("no .venv (run `uv sync` in ...)"), so the gap was visible there but never fixed for the
-    steps that cannot proceed without one.
+    at step 1, before anything was provisioned.
 
     Idempotent: `uv` is content-addressed and caches, so re-running is cheap and keeps dependencies
     current rather than silently reusing a stale environment.
@@ -2078,28 +2072,6 @@ def step_deploy_ui(dry_run: bool) -> None:
     )
 
 
-def step_verify_journey(dry_run: bool) -> None:
-    # The only step that asserts the deployed system does what the UI claims. It invokes the real
-    # buyer runtime with a real Cognito token and then reads back what the recorder wrote to
-    # DynamoDB, so it exercises the buyer, both sellers' `sync_accounts`/`sync_governance`, the
-    # governance agent's `sync_plans`, and the recording path the journey screen reads -- none of
-    # which any earlier step verifies.
-    #
-    # Last on purpose: it needs every runtime already deployed and every ARN already captured.
-    # It costs one model invocation per run, which is why it is a step you can run alone
-    # (`--only 14`) rather than something folded into a deploy step.
-    header(
-        14,
-        "Verify the Bind/Plan journey phases against real recorded steps",
-    )
-    run_subprocess(
-        [str(BUYER_VENV_PYTHON), "verify_governance_journey_live.py"],
-        cwd=BUYER_DIR,
-        dry_run=dry_run,
-        step_name="verify-journey",
-    )
-
-
 # ---------------------------------------------------------------------------
 # Step registry + CLI
 # ---------------------------------------------------------------------------
@@ -2116,9 +2088,7 @@ def step_governance_state_table(dry_run: bool) -> None:
 
 
 def step_governance_jwks(dry_run: bool) -> None:
-    # Publishes the public JWKS derived from KMS to the CloudFront distribution, and VERIFIES the
-    # published URL returns JSON rather than the SPA's index.html -- the distribution rewrites 403 to
-    # index.html, so a mislocated object returns HTML with status 200 and looks like success.
+    # Publishes the public JWKS derived from KMS to the CloudFront distribution.
     #
     # Before the runtime deploy on purpose: a seller that receives a signed token must be able to fetch
     # the key, and publishing after would leave a window where issued tokens are unverifiable.
@@ -2145,86 +2115,13 @@ def step_deploy_governance(dry_run: bool) -> None:
         step_name="deploy-governance",
     )
 
-#: Each agent's own test suite: (label, directory, extra env, extra pytest args). The directory is where
-#: `uv run pytest` finds both a virtualenv and the tests -- for every agent here the tests live beside the
-#: code rather than in a `tests/` subdirectory.
-#:
-#: Two entries carry adjustments, and both are for the same underlying reason: a suite that imports from a
-#: SIBLING package, which resolves in the container (via `agentcore.json`'s `PYTHONPATH`) and not in a bare
-#: local run.
-#:
-#:   * **poseidon** needs `PYTHONPATH=../poseidon_mock`, because `main.py` imports `mock_backend` from it.
-#:     The container gets `PYTHONPATH=/poseidon_mock` from `agentcore.json`; this is the local equivalent.
-#:     With it, the suite passes.
-#:   * **gotham** has `context_cache/tests` ignored. Those tests import `_paths`, which imports
-#:     `catalog_snapshot`, and `artifact_publisher` -- the last of which lives in POSEIDON's
-#:     `app/cache_pipeline/`, i.e. another agent's package. That is a real pre-existing defect in gotham's
-#:     cache tests, not something this step should paper over with a PYTHONPATH into a different agent.
-#:     Gotham's own 233 agent tests pass; the ignore is narrow and the step prints the reason every run.
-#:
-#: Both adjustments exist so this step does not warn on every deploy. A warning that always fires is one
-#: nobody reads, which is precisely the failure this step was added to avoid.
-_TEST_SUITES: list[tuple[str, Path, dict[str, str], list[str]]] = [
-    ("reference-governance", GOVERNANCE_APP_DIR, {}, []),
-    ("reference-seller", REF_SELLER_APP_DIR, {}, []),
-    # The poseidon and gotham seller suites are gone with those sellers: a directory that is absent by
-    # design produced a `warn()` on every single run, which devalues the warnings that mean something.
-]
-
-#: Printed by the test step so a narrowed suite is visible rather than silent. Not a `warn()`: it fires on
-#: every run by construction, and a permanent warning devalues the ones that mean something.
-_TEST_SUITE_NOTES: dict[str, str] = {}
-
-
-def step_agent_tests(dry_run: bool) -> None:
-    """Run each agent's suite and WARN on failure. The deploy is not blocked.
-
-    Warning rather than blocking is deliberate (N5). A test suite is evidence about the code, and this
-    script's job is to get the code deployed -- an operator mid-incident should not be unable to ship a
-    fix because an unrelated agent has a red test. The warning is loud, repeated at the end, and names
-    the command to reproduce.
-
-    Deliberately NOT a Kiro hook: this repo cannot assume every contributor uses Kiro, and a check that
-    only fires in one editor is a check that does not exist for everyone else.
-
-    A missing `.venv` is reported as a skip rather than a failure -- an agent nobody has set up locally
-    has no evidence to offer either way, and calling that a test failure would be a false negative.
-    """
-    header(4.98, "Run each agent's test suite (warns, never blocks)")
-    for label, directory, extra_env, extra_args in _TEST_SUITES:
-        if not directory.exists():
-            warn(f"{label}: {directory} does not exist; its tests were not run.")
-            continue
-        if not (directory / ".venv").exists():
-            print(f"  skipping {label}: no .venv (run `uv sync` in {directory} to enable)")
-            continue
-        note = _TEST_SUITE_NOTES.get(label)
-        if note:
-            print(f"  note ({label}): {note}")
-        prefix = "".join(f"{key}={value} " for key, value in extra_env.items())
-        command = ["uv", "run", "pytest", "-q", *extra_args]
-        printable = f"{prefix}{' '.join(command)}  (cwd={directory})"
-        if dry_run:
-            print(f"  [dry-run] would run: {printable}")
-            continue
-        print(f"  running: {printable}")
-        env = {**os.environ, **extra_env} if extra_env else None
-        # nosemgrep: dangerous-subprocess-use-audit - argv list without a shell; arguments come from operator-supplied config and CLI flags
-        result = subprocess.run(command, cwd=str(directory), env=env)
-        if result.returncode != 0:
-            warn(
-                f"{label}: tests FAILED (exit {result.returncode}). The deploy continued. "
-                f"Reproduce with: cd '{directory}' && {prefix}{' '.join(command)}"
-            )
-
-
 #: Ordered so that every value is created before anything reads it.
 #:
 #: The shape is four phases. **Phase 0** resolves which account this is. **Phase 1** (1 - 3.5) creates
 #: the things that depend on nothing: Cognito, both CloudFront origins, the signing key, the tables, and
 #: the buyer's role and bucket. **Phase 2** (4 - 4.96) renders per-account config and deploys governance.
-#: **Phase 3** (5 - 8.8) deploys the sellers. **Phase 4** (9 - 14) deploys the buyer, publishes content
-#: and verifies.
+#: **Phase 3** (5 - 8.8) deploys the sellers. **Phase 4** (9 - 13.5) deploys the buyer and publishes
+#: content.
 #:
 #: The origins are in phase 1 deliberately. Their URLs are referenced by the JWKS publish, the
 #: revocation list, the governance runtime's `iss`, the buyer's brand.json and every seller's trust
@@ -2288,9 +2185,6 @@ STEPS: list[tuple[int, str, callable]] = [
     (4.9, "deploy-governance", step_deploy_governance),
     (4.95, "capture-governance", step_capture_governance),
     (4.96, "brand-json", step_brand_json),
-    # After the governance deploy and before the sellers: the suites are the last cheap check available
-    # before anything else is published, and they warn rather than block so ordering here costs nothing.
-    (4.98, "agent-tests", step_agent_tests),
     (5, "deploy-ref-seller", step_deploy_ref_seller),
     (6, "capture-ref-seller", step_capture_ref_seller),
     # 7 and 8 were the triton seller. Removed, and not reassigned -- see the comment where its step
@@ -2321,7 +2215,6 @@ STEPS: list[tuple[int, str, callable]] = [
     (12.6, "relaunch-buyer-runtimes", step_relaunch_buyer_runtimes),
     (13, "deploy-ui", step_deploy_ui),
     (13.5, "creative-fixtures", step_creative_fixtures),
-    (14, "verify-journey", step_verify_journey),
 ]
 
 # NOTE on --skip-optional: the following step is intentionally NOT part

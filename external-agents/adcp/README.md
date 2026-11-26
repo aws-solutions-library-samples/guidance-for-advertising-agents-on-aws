@@ -289,7 +289,6 @@ place. Do not re-enable one without its seller — 3.7 ran with a `cwd` that doe
 | 12.5 | `agents-registry` | Rebuild `AGENTS_JSON` from the captured A2A ARN |
 | 13 | `deploy-ui` | Publish the React UI to S3 + CloudFront with a freshly built `config.json` |
 | 13.5 | `creative-fixtures` | Publish the creative fixture images to the UI origin |
-| 14 | `verify-journey` | Invoke the deployed buyer for real and assert against recorded steps |
 
 One thing is not in that list and has to be run by hand. It is idempotent.
 
@@ -306,10 +305,10 @@ project. The seller came up, answered `get_products` correctly, and then failed 
 tool with `ResourceNotFoundException`. Retrieval looked healthy, so nothing about the symptom pointed
 at a missing table. Step 3 covers every table the agents in this repository need.
 
-Step 14 is the only step that asserts the deployed system does what the UI claims — it invokes the
-real buyer runtime with a real Cognito token, then reads back what the recorder wrote to DynamoDB.
-It's last because it needs every runtime deployed and every ARN captured, and it's separately
-runnable (`--only 14`) because it costs a model invocation each time.
+The deploy runs no tests and no live checks against the agents it publishes. To exercise a finished
+deploy end to end, run `agents/buyer/reference-buyer/verify_governance_journey_live.py` by hand: it
+invokes the real buyer runtime with a real Cognito token, then reads back what the recorder wrote to
+DynamoDB, and costs one model invocation per run.
 
 The UI deploy step publishes the React app to S3 + CloudFront automatically, idempotently
 reusing the existing bucket/OAC/distribution on every re-run, and republishes a fresh
@@ -507,7 +506,7 @@ turn, so the seller-side result size drives buyer-side spend.
 
 `agentcore deploy` builds each container image in CodeBuild, billed per build-minute — five builds
 for a full run (4 runtimes plus the revocations Lambda image), fewer when you `--only` a single
-agent. Step 14 (`verify-journey`) costs one real model invocation per run.
+agent.
 
 ### If you walk away
 

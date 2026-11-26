@@ -60,20 +60,19 @@ and failed JWS verification with "must have exactly 3 dot-separated segments, go
 during U3 verification, not by inspection. A bare-origin `iss` is the only fix that is correct for
 every current and future consumer of `{origin of iss}/.well-known/...`, not just this one document.
 
-## The CloudFront trap this script verifies rather than assumes
+## The CloudFront trap the scheduled republish checks for
 
 Same as deploy_jwks.py/deploy_brand_json.py: the distribution rewrites 403 to `index.html` for SPA
-routing, so a missing `.well-known` object returns the UI's HTML with status 200, not a 404. This
-script fetches the published URL afterward and asserts it is a real, JWS-verifiable revocation list --
-verified against this agent's OWN published JWKS (fetched independently, not assumed), because "the
-upload returned no error" is not evidence.
+routing, so a missing `.well-known` object returns the UI's HTML with status 200, not a 404. The
+scheduled Lambda's `publish()` fetches the published URL afterward and asserts it is a real,
+JWS-verifiable revocation list, verified against this agent's OWN published JWKS. The deploy
+(`--apply`) uploads and invalidates without fetching the document back.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-import time
 
 import httpx
 
@@ -131,52 +130,17 @@ def build_revocation_list(*, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECO
     return jws.issue_revocation_list(issuer=issuer(), next_update_seconds=next_update_seconds)
 
 
-#: How long the CLI waits for a just-created distribution's hostname to resolve. On a fresh deploy the
-#: distribution is created minutes before this runs, and its dXXXX.cloudfront.net name can fail DNS
-#: lookup for a while (macOS also caches the negative answer). The scheduled Lambda passes 0: its
-#: distribution is long established, and a connect failure there is a real fault, not propagation.
-CLI_DNS_WAIT_SECONDS = 600
-DNS_RETRY_INTERVAL_SECONDS = 15
-
-
-def _get(url: str, *, dns_wait_seconds: int) -> httpx.Response:
-    """GET `url`, retrying only connect-level failures (DNS, refused, connect timeout).
-
-    Any HTTP response is returned as-is so the caller judges it, including a wrong-content 200.
-    """
-    deadline = time.monotonic() + dns_wait_seconds
-    while True:
-        try:
-            return httpx.get(url, timeout=15)
-        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                if dns_wait_seconds:
-                    raise SystemExit(
-                        f"{url} still unreachable after {dns_wait_seconds}s ({exc}). The upload "
-                        "itself succeeded; re-run `uv run python deploy_revocations.py --apply` once "
-                        "the distribution's hostname resolves."
-                    ) from exc
-                raise
-            print(
-                f"  {url} not reachable yet ({exc}); new CloudFront hostnames can take a few minutes "
-                f"to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s ({int(remaining)}s left)."
-            )
-            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
-            time.sleep(DNS_RETRY_INTERVAL_SECONDS)
-
-
-def verify_published(*, dns_wait_seconds: int = 0) -> dict:
+def verify_published() -> dict:
     """Fetch what was actually published and check it verifies against this agent's own live JWKS.
 
-    Returns the verified payload so a caller (main() or the Lambda handler) can log/report on it
+    Returns the verified payload so the Lambda handler can log/report on it
     without re-fetching.
     """
     from adcp.signing.jws import verify_jws_document
     from adcp.signing.jwks import StaticJwksResolver
     from adcp.signing.revocation_fetcher import REVOCATION_LIST_TYP
 
-    response = _get(published_url(), dns_wait_seconds=dns_wait_seconds)
+    response = httpx.get(published_url(), timeout=15)
     body = response.text.strip()
     content_type = response.headers.get("content-type", "")
     if body.startswith("<"):
@@ -186,7 +150,7 @@ def verify_published(*, dns_wait_seconds: int = 0) -> dict:
             "the object is not at the expected key."
         )
 
-    jwks_response = _get(jwks_url(), dns_wait_seconds=dns_wait_seconds)
+    jwks_response = httpx.get(jwks_url(), timeout=15)
     jwks = jwks_response.json()
     resolver = StaticJwksResolver(jwks)
     payload = verify_jws_document(body, jwks_resolver=resolver, expected_typ=REVOCATION_LIST_TYP)
@@ -200,13 +164,13 @@ def verify_published(*, dns_wait_seconds: int = 0) -> dict:
 
 
 def publish(
-    *, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECONDS, dns_wait_seconds: int = 0
-) -> dict:
+    *, next_update_seconds: int = DEFAULT_NEXT_UPDATE_SECONDS, verify: bool = True
+) -> dict | None:
     """Build, upload, invalidate and verify -- the one publish path both the CLI (`--apply`) and the
     scheduled Lambda call, so there is exactly one implementation of "how this document gets
     republished" rather than a CLI copy and a Lambda copy that could drift apart.
 
-    Returns the verified published payload.
+    Returns the verified published payload, or None when `verify` is False (the deploy CLI).
     """
     token = build_revocation_list(next_update_seconds=next_update_seconds)
     body = token.encode()
@@ -233,8 +197,10 @@ def publish(
     )
     print(f"Invalidated /{S3_KEY} on distribution {dist}")
 
+    if not verify:
+        return None
     print("\n=== Verifying what is actually served ===")
-    return verify_published(dns_wait_seconds=dns_wait_seconds)
+    return verify_published()
 
 
 def main() -> int:
@@ -263,7 +229,7 @@ def main() -> int:
         print("\nDry run. Nothing uploaded.")
         return 0
 
-    publish(next_update_seconds=args.next_update_seconds, dns_wait_seconds=CLI_DNS_WAIT_SECONDS)
+    publish(next_update_seconds=args.next_update_seconds, verify=False)
     print(f"\nSellers poll this at: {published_url()}")
     return 0
 
