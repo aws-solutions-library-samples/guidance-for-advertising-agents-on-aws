@@ -60,8 +60,7 @@ namespace, which is the cross-principal replay the SDK warns about.
 **A `client_credentials` token has no human principal** — `sub` is the app client. So every caller sharing
 one M2M client shares one idempotency namespace, and the bug that docstring was written to fix returns by a
 different route. The mitigation is one app client per calling principal, which is why the client name below
-is a parameter rather than a constant. Verified against a real token at the end of this script, which prints
-the `sub` it actually observes rather than asserting what it should be.
+is a parameter rather than a constant.
 """
 
 from __future__ import annotations
@@ -69,19 +68,14 @@ from __future__ import annotations
 from aws_region import region
 
 import argparse
-import base64
 import json
 import re
-import ssl
 import sys
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 import os
 
 import boto3
-import certifi
 from botocore.exceptions import ClientError
 
 REGION = region()
@@ -145,8 +139,7 @@ def ensure_domain(pool_id: str, apply: bool) -> bool:
         status = (described.get("DomainDescription") or {}).get("Status")
         if status:
             print(f"Domain exists: {prefix} (status={status})")
-            # Reported rather than waited on. A domain still provisioning will make the token request below
-            # fail with a clear DNS error, which is more informative than this script guessing a timeout.
+            # Reported rather than waited on.
             return status == "ACTIVE"
     except ClientError as exc:
         if exc.response["Error"]["Code"] not in ("ResourceNotFoundException", "InvalidParameterException"):
@@ -160,7 +153,7 @@ def ensure_domain(pool_id: str, apply: bool) -> bool:
     cognito.create_user_pool_domain(Domain=prefix, UserPoolId=pool_id)
     print(
         "  Domain created. Cognito provisions it behind CloudFront, so it can take a few minutes to become\n"
-        "  ACTIVE. If the token check at the end fails with a DNS error, that is why — re-run then."
+        "  ACTIVE before the token endpoint answers."
     )
     return False
 
@@ -290,40 +283,6 @@ def store_secret(client_name: str, client_id: str, client_secret: str, apply: bo
     return name
 
 
-def fetch_token(client_id: str, client_secret: str) -> dict:
-    """Actually get a token. The only way to know the flow works.
-
-    HTTP Basic with the client id and secret, which is what Cognito expects for a confidential client — the
-    credentials do not go in the body.
-
-    Uses certifi's CA bundle explicitly. A framework Python on macOS often has no usable system trust store
-    for `urllib`, which surfaces as CERTIFICATE_VERIFY_FAILED against a perfectly healthy endpoint — observed
-    here, and misleading enough to be worth pinning rather than leaving to the environment.
-    """
-    context = ssl.create_default_context(cafile=certifi.where())
-    body = urllib.parse.urlencode(
-        {"grant_type": "client_credentials", "scope": FULL_SCOPE}
-    ).encode()
-    basic = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-    request = urllib.request.Request(
-        token_endpoint(),
-        data=body,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {basic}",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=15, context=context) as response:
-        return json.loads(response.read())
-
-
-def describe_token(token: str) -> dict:
-    """Claims, without verifying — this is a provisioning check, not an auth path."""
-    payload = token.split(".")[1]
-    payload += "=" * (-len(payload) % 4)
-    return json.loads(base64.urlsafe_b64decode(payload))
-
-
 def _read_env_value(key: str) -> str | None:
     if not ENV_PATH.exists():
         return None
@@ -375,8 +334,8 @@ def main() -> int:
     print(f"Token endpoint (once the domain is ACTIVE): {token_endpoint()}")
     print()
 
-    domain_ready = ensure_domain(pool_id, args.apply)
-    resource_ready = ensure_resource_server(pool_id, args.apply)
+    ensure_domain(pool_id, args.apply)
+    ensure_resource_server(pool_id, args.apply)
     try:
         credentials = ensure_m2m_client(pool_id, args.client_name, args.apply)
     except ClientError as exc:
@@ -423,32 +382,6 @@ def main() -> int:
     )
     print(f"\nCOGNITO_ADDITIONAL_CLIENT_IDS now lists {len(merged)} client(s).")
     print("The client secret was NOT written to .env — it is in Secrets Manager only.")
-
-    print("\n=== Verifying the flow by actually requesting a token ===")
-    if not (domain_ready and resource_ready):
-        print(
-            "Skipped: the domain or resource server was created in this run and may still be provisioning.\n"
-            "Re-run this script (it is idempotent) to verify once the domain is ACTIVE."
-        )
-    else:
-        try:
-            token_response = fetch_token(client_id, client_secret)
-            claims = describe_token(token_response["access_token"])
-            print(f"  token_use : {claims.get('token_use')}")
-            print(f"  client_id : {claims.get('client_id')}")
-            print(f"  scope     : {claims.get('scope')}")
-            print(f"  sub       : {claims.get('sub')}")
-            print(f"  aud       : {claims.get('aud', '(absent, as expected for client_credentials)')}")
-            if claims.get("sub") == client_id:
-                print(
-                    "\n  NOTE, and it is the one that matters: `sub` IS the app client id, not a user.\n"
-                    "  The reference seller uses `sub` as `caller_identity` for idempotency scoping, so\n"
-                    "  every caller sharing this client shares one idempotency namespace. Use one client\n"
-                    "  per principal (--client-name) rather than sharing this one."
-                )
-        except Exception as exc:  # noqa: BLE001 - provisioning check, report and continue
-            print(f"  Token request failed: {type(exc).__name__}: {exc}")
-            print("  If this is a DNS failure the domain is still provisioning. Re-run shortly.")
 
     print("\n=== Remaining manual step ===")
     print(

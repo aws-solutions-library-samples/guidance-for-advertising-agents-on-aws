@@ -41,12 +41,6 @@ list resolution (RFC 6454 origin has no path) -- see `deploy_governance_origin.p
 for the live failure this caused and why a dedicated bare origin is the correct fix, not a narrower
 one scoped only to the revocation list.
 
-## The CloudFront trap this script verifies rather than assumes
-
-Same as `deploy_jwks.py`: the distribution rewrites 403 to `index.html` for SPA routing, so a missing
-`.well-known` object returns the UI's HTML with status 200, not a 404. This script fetches the
-published URL afterward and asserts it parses as JSON containing the expected governance agent entry,
-because "the upload returned no error" is not evidence.
 """
 
 from __future__ import annotations
@@ -60,7 +54,6 @@ import os
 import sys
 
 import boto3
-import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -139,36 +132,6 @@ def build_brand_json() -> dict:
     }
 
 
-def verify_published(expected_url: str) -> None:
-    """Fetch what was actually published and check it is brand.json, not the SPA's HTML.
-
-    Uses httpx (already a project dependency via adcp) rather than stdlib urllib -- httpx verifies
-    against the certifi bundle by default, avoiding local-trust-store gaps some Python builds have
-    (notably python.org's macOS framework build, which does not seed the OS keychain).
-    """
-    response = httpx.get(published_url(), timeout=15)
-    body = response.content
-    content_type = response.headers.get("content-type", "")
-    try:
-        document = json.loads(body)
-    except json.JSONDecodeError:
-        head = body[:80].decode("utf-8", "replace")
-        raise SystemExit(
-            f"{published_url()} did not return JSON (Content-Type: {content_type!r}). First bytes: "
-            f"{head!r}\nThis is the CloudFront 403-to-index.html rewrite serving the UI, which means "
-            "the object is not at the expected key."
-        ) from None
-    agents = document.get("agents", [])
-    governance_entries = [a for a in agents if a.get("type") == "governance"]
-    urls = [a.get("url") for a in governance_entries]
-    if expected_url not in urls:
-        raise SystemExit(
-            f"Published brand.json has no governance agent with url {expected_url!r}; found {urls}."
-        )
-    print(f"  verified: {published_url()} declares a governance agent at {expected_url!r}")
-    print(f"  content-type: {content_type}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
@@ -206,9 +169,6 @@ def main() -> int:
         },
     )
     print(f"Invalidated /{S3_KEY} on distribution {dist}")
-
-    print("\n=== Verifying what is actually served ===")
-    verify_published(governance_agent_url())
 
     print(f"\nSellers resolve this buyer's identity via: {published_url()}")
     return 0

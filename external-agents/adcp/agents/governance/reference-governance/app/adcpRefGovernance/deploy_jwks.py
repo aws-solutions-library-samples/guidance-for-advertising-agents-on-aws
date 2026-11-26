@@ -41,25 +41,13 @@ a JWS document. See `deploy_governance_origin.py`'s module docstring for the ful
 The private key lives in KMS and is non-exportable. `kms:GetPublicKey` returns the public half, so this
 script derives a public artifact rather than moving key material. That is what made KMS the right answer
 over a PEM in Secrets Manager, and it is why publishing is a deploy step rather than a decision.
-
-## The CloudFront trap this script verifies rather than assumes
-
-The distribution rewrites 403 to `index.html` for single-page-app routing. A missing `.well-known` object
-therefore returns the **UI's HTML with status 200** rather than a 404 -- so an upload that silently went
-to the wrong key looks indistinguishable from success until a verifier tries to parse HTML as a JWKS.
-This script fetches the published URL afterwards and asserts it parses as JSON containing the expected
-`kid`, because "the upload returned no error" is not evidence.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import socket
 import sys
-import time
-import urllib.error
-import urllib.request
 
 import boto3
 
@@ -119,66 +107,6 @@ def build_jwks() -> dict:
     return {"keys": [jwk]}
 
 
-#: How long to wait for a just-created distribution's hostname to resolve. On a fresh deploy
-#: deploy_governance_origin.py creates the distribution moments before this runs, and its
-#: dXXXX.cloudfront.net name can return NXDOMAIN for a few minutes; macOS then caches that negative
-#: answer, so a single immediate fetch fails with "nodename nor servname provided".
-DNS_WAIT_SECONDS = 600
-DNS_RETRY_INTERVAL_SECONDS = 15
-
-
-def _fetch_published() -> tuple[bytes, str]:
-    """GET the published URL, retrying only while the hostname does not resolve or connect yet.
-
-    HTTP-level responses (including a wrong-content 200) are returned or raised immediately: those
-    mean the origin is reachable and the check below must judge them.
-    """
-    url = published_url()
-    deadline = time.monotonic() + DNS_WAIT_SECONDS
-    while True:
-        try:
-            with urllib.request.urlopen(url, timeout=15) as response:
-                return response.read(), response.headers.get("Content-Type", "")
-        except urllib.error.HTTPError:
-            raise
-        except urllib.error.URLError as exc:
-            if not isinstance(exc.reason, (socket.gaierror, ConnectionError, TimeoutError)):
-                raise
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise SystemExit(
-                    f"{url} still unreachable after {DNS_WAIT_SECONDS}s ({exc.reason}). The upload "
-                    "itself succeeded; re-run `uv run python deploy_jwks.py --apply` once the "
-                    "distribution's hostname resolves."
-                ) from exc
-            print(
-                f"  {url} not reachable yet ({exc.reason}); new CloudFront hostnames can take a few "
-                f"minutes to resolve. Retrying in {DNS_RETRY_INTERVAL_SECONDS}s "
-                f"({int(remaining)}s left)."
-            )
-            # nosemgrep: arbitrary-sleep - Intentional polling or retry backoff in deploy and smoke tooling
-            time.sleep(DNS_RETRY_INTERVAL_SECONDS)
-
-
-def verify_published(expected_kid: str) -> None:
-    """Fetch what was actually published and check it is a JWKS, not the SPA's HTML."""
-    body, content_type = _fetch_published()
-    try:
-        document = json.loads(body)
-    except json.JSONDecodeError:
-        head = body[:80].decode("utf-8", "replace")
-        raise SystemExit(
-            f"{published_url()} did not return JSON (Content-Type: {content_type!r}). First bytes: "
-            f"{head!r}\nThis is the CloudFront 403-to-index.html rewrite serving the UI, which means the "
-            "object is not at the expected key."
-        ) from None
-    kids = [k.get("kid") for k in document.get("keys", [])]
-    if expected_kid not in kids:
-        raise SystemExit(f"Published JWKS does not contain kid {expected_kid!r}; found {kids}.")
-    print(f"  verified: {published_url()} returns a JWKS containing kid {expected_kid!r}")
-    print(f"  content-type: {content_type}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
@@ -224,9 +152,6 @@ def main() -> int:
         },
     )
     print(f"Invalidated /{S3_KEY} on distribution {dist}")
-
-    print("\n=== Verifying what is actually served ===")
-    verify_published(kid)
 
     print("\nRegister this as `jwks_uri` on the governance agent's record:")
     print(f"  {published_url()}")

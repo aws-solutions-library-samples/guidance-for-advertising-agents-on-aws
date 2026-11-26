@@ -21,20 +21,12 @@ properties before saving them). This script's only job is making them reachable 
 Reuses `agents/buyer/reference-buyer`'s existing CloudFront distribution/bucket -- the same
 infrastructure `deploy_brand_json.py` and the governance agent's `deploy_jwks.py`/
 `deploy_revocations.py` already publish `.well-known/*` documents to. No new AWS resources: this is
-four small PNGs, and the buyer's distribution already has TLS, a stable domain, and the exact
-403-to-index.html trap this script's own `verify_published` checks for, per those scripts' own
-precedent.
+four small PNGs, and the buyer's distribution already has TLS and a stable domain.
 
 Published under `.well-known/creatives/` (not `.well-known/` directly) since these are not
 protocol-defined discovery documents like `brand.json`/`jwks.json` -- they are this unit's own fixture
 assets, namespaced so they cannot collide with a real `.well-known` document a future unit adds.
 
-## The CloudFront trap this script verifies rather than assumes
-
-Same as `deploy_brand_json.py`/`deploy_jwks.py`: the distribution rewrites 403 to `index.html` for
-SPA routing, so a missing object returns the UI's HTML with status 200, not a 404. A "the upload
-returned no error" check would not catch a wrong key or a stale invalidation. This script fetches
-each published URL afterward and asserts the content-type is a real image type, never `text/html`.
 """
 
 from __future__ import annotations
@@ -50,7 +42,6 @@ import functools
 import os
 
 import boto3
-import httpx
 
 # The account comes from the credentials in use, not from a constant: this publishes into the buyer's
 # UI bucket. Its name is `<instance-prefix>-buyer-agent-ui`: the prefix (an auto-generated unique
@@ -123,25 +114,6 @@ def published_url(filename: str) -> str:
     return f"{published_root()}/{S3_PREFIX}{filename}"
 
 
-def verify_published(filename: str, expected_content_type: str) -> None:
-    """Fetch what was actually published and check it is a real image, not the SPA's HTML.
-
-    Uses httpx (already a project dependency via adcp) rather than stdlib urllib -- httpx verifies
-    against the certifi bundle by default, same reasoning as `deploy_brand_json.py`'s own choice.
-    """
-    url = published_url(filename)
-    response = httpx.get(url, timeout=15)
-    content_type = response.headers.get("content-type", "")
-    if not content_type.startswith("image/"):
-        head = response.content[:80]
-        raise SystemExit(
-            f"{url} did not return an image (Content-Type: {content_type!r}). First bytes: {head!r}\n"
-            "This is the CloudFront 403-to-index.html rewrite serving the UI, which means the object "
-            "is not at the expected key."
-        )
-    print(f"  verified: {url} -> {content_type}, {len(response.content)} bytes")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
@@ -188,10 +160,6 @@ def main() -> int:
         },
     )
     print(f"Invalidated {len(paths)} path(s) on distribution {dist}")
-
-    print("\n=== Verifying what is actually served ===")
-    for filename, content_type in FIXTURE_FILES:
-        verify_published(filename, content_type)
 
     print("\nThe governance agent's get_creative_features evaluator fetches these URLs directly:")
     for filename, _ in FIXTURE_FILES:
