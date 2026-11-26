@@ -244,6 +244,7 @@
             "agent_display_name": "AdCPBuyerAgent",
             "team_name": "AdCP-compatible Agents",
             "agent_description": "does adcp buys",
+            "hidden_from_management": true,
             "tool_agent_names": [],
             "external_agents": [],
             "model_inputs": {

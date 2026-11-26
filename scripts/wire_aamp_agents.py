@@ -304,6 +304,8 @@ def _apply_top_level_agent(
 
     # Deploy-owned: the runtime this entry addresses and how to authenticate.
     entry["is_a2a"] = True
+    # External buyer/seller runtimes are reached through an orchestrator; keep them off the agent management screen.
+    entry["hidden_from_management"] = True
     entry["agent_hosting"] = "external"
     entry["agent_protocol"] = "a2a"
     entry["agent_endpoint"] = arn

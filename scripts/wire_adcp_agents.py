@@ -286,6 +286,8 @@ def apply_top_level_agent(
     )
 
     entry["is_a2a"] = True
+    # External buyer/seller runtimes are reached through an orchestrator; keep them off the agent management screen.
+    entry["hidden_from_management"] = True
     entry["agent_hosting"] = "external"
     entry["agent_protocol"] = "a2a"
     entry["agent_endpoint"] = arn
